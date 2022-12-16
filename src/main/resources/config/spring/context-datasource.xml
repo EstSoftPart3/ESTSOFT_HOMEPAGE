@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+                        http://www.springframework.org/schema/jdbc  http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd">
+     
+     
+    <!-- DB 연결정보(maria-DB) -->
+    <bean id="dataSourceSpied" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+        <property name="driverClassName" value="org.mariadb.jdbc.Driver"/>
+        <!-- 2개 이상의 서브쿼리를 사용하기 위함 변경 사항 / 선준혁 _ 2021. 11. 03 -->
+        <!-- <property name="url" value="jdbc:mariadb://15.165.159.240:3306/EDUCATION?autoReconnect=true&amp;characterEncoding=UTF-8&amp;serverTimezone=Asia/Seoul "/> -->
+        <property name="url" value="jdbc:mariadb://est-rds-database.cvexd5iyp2s5.ap-northeast-2.rds.amazonaws.com:3306/est_eep_db?autoReconnect=true&amp;allowMultiQueries=true&amp;characterEncoding=UTF-8&amp;serverTimezone=Asia/Seoul "/>
+        <property name="username" value="admin"/>
+        <property name="password" value="admin123!!"/>
+        <property name="validationQuery" value="select 1"/>
+    </bean>
+    
+    <bean id="dataSource" class="net.sf.log4jdbc.Log4jdbcProxyDataSource">
+		<constructor-arg ref="dataSourceSpied" />
+		<property name="logFormatter">
+			<bean class="net.sf.log4jdbc.tools.Log4JdbcCustomFormatter">
+				<property name="loggingType" value="MULTI_LINE" />
+				<property name="sqlPrefix" value="SQL	:	"/>
+			</bean>
+		</property>
+	</bean>
+	
+	
+	
+</beans>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace : 현재 프로젝트에서 고유한 mapper 이름을 말합니다. -->
+<mapper namespace="sampleBoard">
+	
+	<!-- 용어
+	
+	parameterType : DAO에서 최종적으로 데이터를 받아올 때 어떤 타입으로 가지고 올껀지 정하는 걸 말합니다.
+	resultType : 쿼리가 실행이되고 나서 나온 데이터를 가지고 갈때 어떤 타입으로 가지고 갈껀지 정하는 걸 말합니다.
+	<![CDATA[ xxxxx ]]> : Mybatis 사용시 쿼리문에 부등호 및 비교연산자처리를 할 때 특수문자를 이용하는데 제한이 걸리도합니다. 그런 부분은 문자열로 인식하게 해주는 역할을 합니다. 
+	
+	 -->
+
+    <!-- 샘플 게시판 리스트 + 페이징 비동기식 -->
+    <select id="sampleBoardAjaxPagingList" parameterType="hashmap" resultType="com.sample.vo.BoardSampleVo">
+       <![CDATA[
+        SELECT
+              BNO
+            , TITLE
+            , CONTENT
+            , WRITER
+            , REGDATE
+            , VIEWCNT
+        FROM 
+        	est_eep_db.TB_EST_SAMPLE_BORAD
+        LIMIT 0,10
+        ]]>   
+      
+    </select>
+   
+</mapper>
