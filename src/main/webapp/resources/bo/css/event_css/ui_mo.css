@@ -1,0 +1,275 @@
+@charset "utf-8";
+
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable.css');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600&display=swap');
+
+html, body{font-size: calc(100vw / 75);}
+.wrap {
+    width: 100%;
+    height: 100%;
+    background: #eee;
+}
+.head-wrap {
+    width: 100%;
+    background-image: url("/resources/img/bg-mo.png");
+    background-size: 100%;
+    background-repeat: no-repeat;
+    background-color: #eef8f7;
+    padding: 0 4rem;
+    overflow: hidden;
+}
+
+.b{
+    font-weight: 600;
+}
+.bb{font-weight:800;}
+.nl-top{
+    max-width: 100%;
+    margin: 0 auto;
+    text-align: center;
+    clear: both;
+}
+.logo{
+    text-align: center;
+    margin-top: 19.6rem;
+    margin-bottom: 5.5rem;
+}
+.nl-h2{
+    font-size: 3.4rem;
+    font-family: "Pretendard";
+    font-weight: 300;
+    color: #fff;
+}
+.nl-h3{
+    padding-top: 4rem;
+    padding-bottom: 6rem;
+    font-size: 10rem;
+    color: #fff;
+    font-weight: 400;
+    font-family: "Poppins";
+}
+
+.d-youtube{
+    width: 100%;
+    height: 37.8rem;
+    overflow: hidden;
+    margin: 0 auto;
+    padding: 1rem;
+    background-color: #fff;
+}
+.d-youtube iframe{}
+
+.nl-sum{
+    margin-top: 13rem;
+    display: none;
+}
+.nl-sum ul{
+    clear: both;
+    width: 100%;
+    height: 100%;
+}
+.nl-sum ul li{
+    width: 440px;
+    height: 235px;
+    float: left;
+    display: table;
+}
+.nl-sum ul li .nl-div{
+    display: table-cell;
+    width: 100%;
+    vertical-align: middle;
+}
+.nl-sum ul li .nl-div .nl-title{
+    font-size: 40px;
+    color: #fff;
+    font-family: "Pretendard";
+    font-weight: 200;
+    /* width: 100%; */
+}
+.nl-sum ul li .nl-div .nl-p{
+    font-size: 24px;
+    color: #fff;
+    padding-top: 10px;
+    font-weight: 300;
+}
+.nl-sum ul li:nth-child(1){
+    background-color: #f7ba00;
+}
+.nl-sum ul li:nth-child(2){
+    background-color: #cabcb7;
+}
+.nl-sum ul li:nth-child(3){
+    background-color: #b5a098;
+}
+.nl-sum ul li:nth-child(4){
+    background-color: #cc9f8e;
+}
+.nl-sum ul li:nth-child(5){
+    background-color: #c0b0aa;
+}
+.nl-sum ul li:nth-child(6){
+    background-color: #cabcb7;
+}
+.nl-sum ul:after{content:''; clear:both;display: block;}
+
+
+.gallery-box{
+    margin-top: 12rem;
+    text-align: center;
+}
+.gallery-box .gallery-list{}
+.gallery-box .gallery-list img{
+    margin-left: -14.5rem;
+    width: 94rem;
+}
+
+.ens-title{
+    text-align: center;
+}
+.ens-title h3{
+    padding: 14rem 0 9rem 0;
+    font-size: 7.2rem;
+    font-weight: 300;
+    font-family: "Pretendard";
+    line-height: 1.23;
+}
+
+.ene-box{
+    max-width: 100%;
+    margin: 0 auto;
+}
+.ene-ul{
+    /* margin: 0 40px; */
+}
+.ene-ul li{
+    width: 100%;
+    height: 38.7rem;
+    background-color: #fff;
+    display: inline-block;
+    padding: 5.1rem 0 5.1rem 5rem;
+    vertical-align: top;
+    /* margin-right: 40px; */
+    margin-bottom: 4rem;
+    position: relative;
+}
+.ene-ul li .elist{}
+.ene-ul li .elist .e-nunber{
+    display: block;
+    height: 7.3rem;
+}
+.ene-ul li .elist .e-nunber img{}
+.ene-ul li .elist .e-nunber span{
+    font-family: "Utopia Std";
+    font-weight: bold;
+    font-size: 6rem;
+    display: table-cell;
+    vertical-align: top;
+}
+.ene-ul li .elist .e-text{
+    font-size: 5rem;
+    font-family: "Pretendard";
+    line-height: 1.25;
+    height: 11.1rem;
+}
+.ene-ul li .elist .e-p{
+    font-size: 2.7rem;
+    font-family: "Pretendard";
+    line-height: 1.1;
+}
+.ene-ul li .elist .e-span{
+    font-size: 2rem;
+    display: block;
+    padding-top: 1.5rem;
+    opacity: 0.6;
+}
+.ene-ul li .elist .e-img-1{
+    position: absolute;
+    right: 5rem;
+    top: 3.7rem;
+    width: 14.8rem;
+}
+.ene-ul li .elist .e-img-2{
+    position: absolute;
+    top: 5rem;
+    right: 5.5rem;
+    width: 7rem;
+}
+.ene-ul li .elist .e-img-3{
+    position: absolute;
+    top: 6.4rem;
+    right: 2.8rem;
+    width: 20rem;
+}
+.ene-ul li .elist .e-img-4{
+    position: absolute;
+    top: 56px;
+    right:5.5rem; 
+    width:15rem;
+}
+
+
+.ene-ul li .elist .ep-top{
+    padding-top: 7.3rem;
+}
+.ene-ul li:nth-child(2){margin-right:0;}
+.ene-ul li:nth-child(3){/* margin-bottom:0; */}
+.ene-ul li:nth-child(4){margin-right:0; margin-bottom:0;}
+
+.ene-ul:after{content:''; clear:both;display: block;}
+
+.btn-box{
+    padding: 3rem 0 17rem 0;
+    display: table;
+    width: 100%;
+}
+.btn-1{
+    width: 100%;
+    height: 17rem;
+    background-color: #ff556a;
+    display: table-cell;
+    font-size: 4.2rem;
+    color: #fff;
+    margin: 0 auto;
+    text-align: center;
+    vertical-align: middle;
+    line-height: 1.3;
+    margin: 0 4rem;
+}
+.btn-1:hover{color:#fff;}
+
+
+.footer-wrap{
+    max-width: 100%;
+    margin: 0 auto;
+    /* padding: 0 40px; */
+}
+.footer-wrap .footer-box{
+    padding-bottom: 12rem;
+}
+.footer-wrap .footer-box .footer-title{
+    font-size: 3rem;
+    font-family: "Pretendard";
+    padding-bottom: 2.5rem;
+    font-weight: bold;
+    color: #687b79;
+    letter-spacing: -0.25px;
+}
+.footer-wrap .footer-box .footer-text{}
+.footer-wrap .footer-box .footer-text ol{}
+.footer-wrap .footer-box .footer-text ol li{
+    color: #687b79;
+    font-size: 2.4rem;
+    font-family: "Pretendard";
+    margin-bottom: 3rem;
+    position: relative;
+    padding-left: 2rem;
+}
+.footer-wrap .footer-box .footer-text ol li:after{content:'ㆍ';position: absolute;left: 0;top: 0;}
+.pd_l20{padding-left: 2rem;}
+.pd_ta{
+    margin-top: 2.2rem;
+    display: block;
+}
+.letter-1-2{letter-spacing: -0.15rem;}
+

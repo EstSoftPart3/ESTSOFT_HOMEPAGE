@@ -14,9 +14,6 @@
        http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.0.xsd">
 		
 		<context:component-scan base-package="com"></context:component-scan>
-		
-		
-
 
 		<!-- <mvc:interceptors>
 			<mvc:interceptor>
@@ -26,8 +23,9 @@
 			</mvc:interceptor>
 		</mvc:interceptors> -->
 		
+		<mvc:annotation-driven/>
 		
-		 <!-- <mvc:resources mapping="/resources/**" location="/resources/" /> -->
+		 <mvc:resources mapping="/resources/**" location="/resources/" />
 		
 		<bean
 			class="org.springframework.web.servlet.mvc.annotation.DefaultAnnotationHandlerMapping" />
@@ -38,9 +36,6 @@
 		
 		<bean id="jsonView"
 			class="org.springframework.web.servlet.view.json.MappingJacksonJsonView" />
-
-
-		
 
 		<bean
 			class="org.springframework.web.servlet.view.UrlBasedViewResolver"
