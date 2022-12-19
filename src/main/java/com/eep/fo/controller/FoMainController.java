@@ -10,7 +10,7 @@ import common.base.controller.BaseController;
 public class FoMainController extends BaseController {
 
 	@RequestMapping(value = "/eep/mainPage.do")
-	public ModelAndView openFoMainPage() {
+	public ModelAndView openFoMainPage() { 
 		
 		ModelAndView mv = new ModelAndView("/main");
 		return mv;
