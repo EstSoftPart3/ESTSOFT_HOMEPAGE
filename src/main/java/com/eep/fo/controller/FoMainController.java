@@ -12,7 +12,7 @@ public class FoMainController extends BaseController {
 	@RequestMapping(value = "/eep/mainPage.do")
 	public ModelAndView openFoMainPage() { 
 		
-		ModelAndView mv = new ModelAndView("/main");
+		ModelAndView mv = new ModelAndView("/index");
 		return mv;
 	}
 	
