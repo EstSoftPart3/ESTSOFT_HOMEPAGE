@@ -45,7 +45,33 @@
     <div class="container-xxl py-5">
         <div class="container">
         
-        	
+        	<div class="row g-4">
+        		
+        		<div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
+                    <div class="bg-light p-5">
+                       <img src="/resources/fo/img/c01.png">
+                    </div>
+                </div>
+                
+<!--                 <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s"> -->
+<!--                     <div class="bg-light p-5"> -->
+<!--                        <img src="/resources/fo/img/c02.png"> -->
+<!--                     </div> -->
+<!--                 </div> -->
+                
+                <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
+                    <div class="bg-light p-5">
+                       <img src="/resources/fo/img/c03.png">
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
+                    <div class="bg-light p-5">
+                       <img src="/resources/fo/img/c04.png">
+                    </div>
+                </div>
+        		
+        	</div>
             
         </div>
     </div>
