@@ -33,6 +33,8 @@
 <script src="/resources/bo/dist/js/demo.js"></script>
 
 
+<script type="text/javascript" src="/resources/navereditor/js/HuskyEZCreator.js" charset="utf-8"></script>
+
 <script src="/resources/bo/plugins/moment/moment.min.js"></script>
 <script src="/resources/bo/plugins/daterangepicker/daterangepicker.js"></script>
 <link rel="stylesheet" href="/resources/bo/plugins/daterangepicker/daterangepicker.css">
