@@ -52,9 +52,52 @@
 
     <!-- Start -->
     <div class="container-xxl py-5">
-        <div class="container">
-        
-        	        
+        <div class="container text-center menu">
+        		<center>
+        		
+        	      <div class="col-lg-7 col-md-6 wow fadeInUp" data-wow-delay="0.5s">
+        	      
+                   <div class="col-lg-6">
+                    	<h4 class="display-3" style="font-size:30px;"><b>컨설팅 의뢰</b></h1>
+                   </div>
+                
+                    <form>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="subject" placeholder="Subject">
+                                    <label for="subject">의뢰제목</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="name" placeholder="Your Name">
+                                    <label for="name">의뢰인</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <input type="email" class="form-control" id="email" placeholder="Your Email">
+                                    <label for="email">이메일</label>
+                                </div>
+                            </div>
+                            
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <textarea class="form-control" placeholder="Leave a message here" id="message" style="height: 250px"></textarea>
+                                    <label for="message">의뢰내용</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <button class="btn btn-primary py-3 px-4" type="submit">의뢰요청</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                
+                </center>
+                
+            </div>   
               
             
         </div>

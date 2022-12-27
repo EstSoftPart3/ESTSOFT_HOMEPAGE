@@ -71,7 +71,11 @@ public class FoMainController extends BaseController {
 		return mv;
 	}
 	
-	
-	
+	//채용정보
+	@RequestMapping(value = "/eep/employmentInfoPage.do")
+	public ModelAndView openFoEmploymentInfoPage() { 
+		ModelAndView mv = new ModelAndView("/employmentInfo");
+		return mv;
+	}
 	
 }

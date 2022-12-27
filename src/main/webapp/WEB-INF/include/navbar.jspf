@@ -26,8 +26,17 @@
                         <a href="/eep/consultRequestPage.do" class="dropdown-item">컨설팅 의뢰</a>
                      </div>
                 </div>
-                <a href="contact.html" class="nav-item nav-link">고객센터</a>
-				<a href="contact.html" class="nav-item nav-link">커뮤니티</a>
+                
+                <div class="nav-item dropdown">
+                	<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">채용</a>
+                	<div class="dropdown-menu shadow-sm m-0">
+                        <a href="/eep/employmentInfoPage.do" class="dropdown-item">채용정보</a>
+                        <a href="#" class="dropdown-item">입사지원</a>
+                     </div>
+                </div>
+                
+                <a href="#" class="nav-item nav-link">고객센터</a>
+				<a href="#" class="nav-item nav-link">커뮤니티</a>
             </div>
            
         </div>
