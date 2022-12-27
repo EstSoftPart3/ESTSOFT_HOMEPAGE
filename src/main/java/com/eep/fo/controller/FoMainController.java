@@ -50,5 +50,12 @@ public class FoMainController extends BaseController {
 		return mv;
 	}
 	
+	//사업분야
+	@RequestMapping(value = "/eep/businessPage.do")
+	public ModelAndView openFoBusinessPage() { 
+		ModelAndView mv = new ModelAndView("/business");
+		return mv;
+	}
+	
 	
 }
