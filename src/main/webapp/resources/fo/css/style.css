@@ -99,12 +99,12 @@ h6,
 }
 
 .navbar .dropdown-toggle::after {
-    border: none;
-    content: "\f107";
-    font-family: "Font Awesome 5 Free";
-    font-weight: 900;
-    vertical-align: middle;
-    margin-left: 8px;
+/*     border: none; */
+/*     content: "\f107"; */
+/*     font-family: "Font Awesome 5 Free"; */
+/*     font-weight: 900; */
+/*     vertical-align: middle; */
+/*     margin-left: 8px; */
 }
 
 @media (max-width: 991.98px) {
@@ -221,7 +221,7 @@ h6,
 .roadmap-carousel .roadmap-item {
     position: relative;
     padding-top: 150px;
-    text-align: center;
+/*     text-align: center; */
 }
 
 .roadmap-carousel .roadmap-item::before {
@@ -251,6 +251,7 @@ h6,
     margin-top: 40px;
     display: flex;
     justify-content: center;
+    display:none;
 }
 
 .roadmap-carousel .owl-nav .owl-prev,
