@@ -57,5 +57,21 @@ public class FoMainController extends BaseController {
 		return mv;
 	}
 	
+	//컨설팅
+	@RequestMapping(value = "/eep/consultPage.do")
+	public ModelAndView openFoConsultPage() { 
+		ModelAndView mv = new ModelAndView("/consulting");
+		return mv;
+	}
+	
+	//컨설팅 의뢰
+	@RequestMapping(value = "/eep/consultRequestPage.do")
+	public ModelAndView openFoConsultRequestPage() { 
+		ModelAndView mv = new ModelAndView("/consultingRequest");
+		return mv;
+	}
+	
+	
+	
 	
 }
