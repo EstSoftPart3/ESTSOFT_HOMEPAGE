@@ -1,0 +1,27 @@
+ <%@ page language="java" contentType="text/html;charset=UTF-8" %>
+ <meta charset="utf-8">
+    <title>EST</title>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta content="" name="keywords">
+    <meta content="" name="description">
+
+    <!-- Favicon -->
+    <link href="/resources/fo/img/favicon.ico" rel="icon">
+
+    <!-- Google Web Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;700&family=Gugi&family=IBM+Plex+Sans+KR:wght@200&family=Nanum+Gothic:wght@700&display=swap" rel="stylesheet">
+
+	<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+
+    <!-- Libraries Stylesheet -->
+    <link href="/resources/fo/lib/animate/animate.min.css" rel="stylesheet">
+    <link href="/resources/fo/lib/owlcarousel/assets/owl.carousel.min.css" rel="stylesheet">
+
+    <!-- Customized Bootstrap Stylesheet -->
+    <link href="/resources/fo/css/bootstrap.css" rel="stylesheet">
+
+    <!-- Template Stylesheet -->
+    <link href="/resources/fo/css/style.css" rel="stylesheet">

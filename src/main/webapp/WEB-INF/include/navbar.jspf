@@ -1,0 +1,28 @@
+<%@ page language="java" contentType="text/html;charset=UTF-8" %>
+<nav class="navbar navbar-expand-lg bg-white navbar-light sticky-top p-0 px-4 px-lg-5">
+        <a href="/eep/mainPage.do" class="navbar-brand d-flex align-items-center">
+            <h2 class="m-0 text-primary"><img src="/resources/fo/img/est_logo.png" style="height:100px;"></h2>
+        </a>
+        <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarCollapse">
+            <div class="navbar-nav ms-auto py-4 py-lg-0 menu"><!--active-->
+               
+                <div class="nav-item dropdown">
+                    <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">회사소개</a>
+                    <div class="dropdown-menu shadow-sm m-0">
+                        <a href="/eep/historyPage.do" class="dropdown-item">연혁</a>
+                        <a href="/eep/organizationPage.do" class="dropdown-item">조직도</a>
+                        <a href="/eep/ceoPage.do" class="dropdown-item">CEO인사말</a>
+                        <a href="/eep/certiPage.do" class="dropdown-item">자격 및 인증</a>
+                    </div>
+                </div>
+                <a href="about.html" class="nav-item nav-link">사업분야</a>
+                <a href="service.html" class="nav-item nav-link">컨설팅</a>
+                <a href="contact.html" class="nav-item nav-link">고객센터</a>
+				<a href="contact.html" class="nav-item nav-link">커뮤니티</a>
+            </div>
+           
+        </div>
+    </nav>
