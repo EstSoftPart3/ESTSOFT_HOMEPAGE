@@ -5,9 +5,6 @@
 <head>
     <meta charset="utf-8">
     <title>EST</title>
-    
-    
-    
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <meta content="" name="keywords">
     <meta content="" name="description">
@@ -46,7 +43,7 @@
 
     <!-- Navbar Start -->
     <nav class="navbar navbar-expand-lg bg-white navbar-light sticky-top p-0 px-4 px-lg-5">
-        <a href="index.html" class="navbar-brand d-flex align-items-center">
+        <a href="/eep/mainPage.do" class="navbar-brand d-flex align-items-center">
             <h2 class="m-0 text-primary"><img src="/resources/fo/img/est_logo.png" style="height:100px;"></h2>
         </a>
         <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
@@ -54,21 +51,18 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarCollapse">
             <div class="navbar-nav ms-auto py-4 py-lg-0 menu"><!--active-->
-                <a href="index.html" class="nav-item nav-link">회사소개</a>
-                <a href="about.html" class="nav-item nav-link">사업분야</a>
-                <a href="service.html" class="nav-item nav-link">컨설팅</a>
-                <!--
-				<a href="roadmap.html" class="nav-item nav-link">채용정보</a>
+               
                 <div class="nav-item dropdown">
-                    <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">Pages</a>
+                    <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">회사소개</a>
                     <div class="dropdown-menu shadow-sm m-0">
-                        <a href="feature.html" class="dropdown-item">Feature</a>
-                        <a href="token.html" class="dropdown-item">Token Sale</a>
-                        <a href="faq.html" class="dropdown-item">FAQs</a>
-                        <a href="404.html" class="dropdown-item">404 Page</a>
+                        <a href="/eep/historyPage.do" class="dropdown-item">연혁</a>
+                        <a href="/eep/organizationPage.do" class="dropdown-item">조직도</a>
+                        <a href="/eep/ceoPage.do" class="dropdown-item">CEO인사말</a>
+                        <a href="/eep/certiPage.do" class="dropdown-item">자격 및 인증</a>
                     </div>
                 </div>
-				-->
+                <a href="about.html" class="nav-item nav-link">사업분야</a>
+                <a href="service.html" class="nav-item nav-link">컨설팅</a>
                 <a href="contact.html" class="nav-item nav-link">고객센터</a>
 				<a href="contact.html" class="nav-item nav-link">커뮤니티</a>
             </div>
@@ -437,8 +431,8 @@
         <div class="container-fluid copyright">
             <div class="container">
                 <div class="row">
-                    <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
-                        &copy; <a href="#">(주)이에티소프트</a>, All Right Reserved.
+                    <div class="col-md-6 text-center text-md-start mb-3 mb-md-0 menu">
+                        &copy; (주)이에스티 소프트 All Right Reserved.
                     </div>
                    
                 </div>
@@ -449,8 +443,7 @@
 
 
     <!-- Back to Top -->
-    <a href="#" class="btn btn-lg btn-primary btn-lg-square rounded-circle back-to-top"><i
-            class="bi bi-arrow-up"></i></a>
+    <!-- <a href="#" class="btn btn-lg btn-primary btn-lg-square rounded-circle back-to-top"><iclass="bi bi-arrow-up"></i></a> -->
 
 
     <!-- JavaScript Libraries -->
