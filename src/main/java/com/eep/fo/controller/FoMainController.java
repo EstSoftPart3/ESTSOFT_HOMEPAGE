@@ -50,5 +50,40 @@ public class FoMainController extends BaseController {
 		return mv;
 	}
 	
+	//사업분야
+	@RequestMapping(value = "/eep/businessPage.do")
+	public ModelAndView openFoBusinessPage() { 
+		ModelAndView mv = new ModelAndView("/business");
+		return mv;
+	}
+	
+	//컨설팅
+	@RequestMapping(value = "/eep/consultPage.do")
+	public ModelAndView openFoConsultPage() { 
+		ModelAndView mv = new ModelAndView("/consulting");
+		return mv;
+	}
+	
+	//컨설팅 의뢰
+	@RequestMapping(value = "/eep/consultRequestPage.do")
+	public ModelAndView openFoConsultRequestPage() { 
+		ModelAndView mv = new ModelAndView("/consultingRequest");
+		return mv;
+	}
+	
+	//채용정보
+	@RequestMapping(value = "/eep/employmentInfoPage.do")
+	public ModelAndView openFoEmploymentInfoPage() { 
+		ModelAndView mv = new ModelAndView("/employmentInfo");
+		return mv;
+	}
+	
+	//입사지원
+	@RequestMapping(value = "/eep/employmentRequestPage.do")
+	public ModelAndView openFoEmploymentRequstPage() { 
+		ModelAndView mv = new ModelAndView("/employmentRequest");
+		return mv;
+	}
+	
 	
 }
