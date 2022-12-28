@@ -85,5 +85,31 @@ public class FoMainController extends BaseController {
 		return mv;
 	}
 	
+	//FAQ(자주하는 질문)
+	@RequestMapping(value = "/eep/faqPage.do")
+	public ModelAndView openFoFaqPage() { 
+		ModelAndView mv = new ModelAndView("/faq");
+		return mv;
+	}
 	
+	//오시는길
+	@RequestMapping(value = "/eep/mapPage.do")
+	public ModelAndView openFoMapPage() { 
+		ModelAndView mv = new ModelAndView("/map");
+		return mv;
+	}
+	
+	//게시판 리스트
+	@RequestMapping(value = "/eep/boardList.do")
+	public ModelAndView openFoBoardListPage() { 
+		ModelAndView mv = new ModelAndView("/boardList");
+		return mv;
+	}
+	
+	//게시판 리스트
+	@RequestMapping(value = "/eep/boardContent.do")
+	public ModelAndView openFoBoardContentPage() { 
+		ModelAndView mv = new ModelAndView("/boardContent");
+		return mv;
+	}
 }
