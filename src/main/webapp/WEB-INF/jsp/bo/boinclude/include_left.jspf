@@ -60,8 +60,42 @@
         <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
          
           <li class="nav-header"></li>
-         
-          <li class="nav-item has-treeview menu-open">
+ 
+          	<li class="nav-item has-treeview menu-open">
+	            <a href="#" class="nav-link">
+	              <i class="nav-icon fas fa-table"></i>
+	              <p class="sTitle">게시판<i class="right fas fa-angle-left"></i>
+	              </p>
+	            </a>
+		            <ul class="nav nav-treeview">
+		              <li class="nav-item">
+		                <a href="/admin/board/notice/openNoticeBoardList.do" class="nav-link">
+		                  <i class="far fa-circle nav-icon sTitle"></i>
+		                  <p class="sTitle">공지사항 게시판</p>
+		                </a>
+		              </li>
+		              <li class="nav-item">
+		                <a href="/admin/board/boardList?brdTypCd=FA" class="nav-link">
+		                  <i class="far fa-circle nav-icon sTitle"></i>
+		                  <p class="sTitle">자유 게시판</p>
+		                </a>
+		              </li>
+		              <li class="nav-item">
+		                <a href="/admin/board/boardList?brdTypCd=FA" class="nav-link">
+		                  <i class="far fa-circle nav-icon sTitle"></i>
+		                  <p class="sTitle">기술문의 게시판</p>
+		                </a>
+		              </li>
+		              <li class="nav-item">
+		                <a href="/admin/board/education/openEducationBoardList.do" class="nav-link">
+		                  <i class="far fa-circle nav-icon sTitle"></i>
+		                  <p class="sTitle">교육일정 게시판</p>
+		                </a>
+		              </li>
+		           </ul>
+          	</li>
+          	
+          	<li class="nav-item has-treeview menu-open">
             <a href="#" class="nav-link">
               <i class="nav-icon fas fa-edit"></i>
               <p class="sTitle">직원<i class="right fas fa-angle-left"></i></p>
@@ -85,40 +119,6 @@
               
             </ul>
            </li>
-    	
-          	<li class="nav-item has-treeview menu-open">
-	            <a href="#" class="nav-link">
-	              <i class="nav-icon fas fa-table"></i>
-	              <p class="sTitle">게시판<i class="right fas fa-angle-left"></i>
-	              </p>
-	            </a>
-		            <ul class="nav nav-treeview">
-		              <li class="nav-item">
-		                <a href="/admin/board/boardList?brdTypCd=NT" class="nav-link">
-		                  <i class="far fa-circle nav-icon sTitle"></i>
-		                  <p class="sTitle">공지사항 게시판</p>
-		                </a>
-		              </li>
-		              <li class="nav-item">
-		                <a href="/admin/board/boardList?brdTypCd=FA" class="nav-link">
-		                  <i class="far fa-circle nav-icon sTitle"></i>
-		                  <p class="sTitle">자유 게시판</p>
-		                </a>
-		              </li>
-		              <li class="nav-item">
-		                <a href="/admin/board/boardList?brdTypCd=FA" class="nav-link">
-		                  <i class="far fa-circle nav-icon sTitle"></i>
-		                  <p class="sTitle">기술문의 게시판</p>
-		                </a>
-		              </li>
-		              <li class="nav-item">
-		                <a href="/admin/board/boardList?brdTypCd=FA" class="nav-link">
-		                  <i class="far fa-circle nav-icon sTitle"></i>
-		                  <p class="sTitle">교육일정 게시판</p>
-		                </a>
-		              </li>
-		           </ul>
-          	</li>
           	
           	<li class="nav-item has-treeview menu-open">
 	            <a href="#" class="nav-link">

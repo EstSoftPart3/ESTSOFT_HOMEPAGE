@@ -24,7 +24,9 @@
 
     </select>
     
-    <!-- 공지시항 게시판 Mapper -->
+    <!-- //////////////// -->
+	<!-- 공지시항 게시판 Mapper -->
+	<!-- ////////////////-->
     
     <!-- 공지사항 목록 및 조회 -->
 	<select id="noticeBoardListData" resultType="hashMap" parameterType="hashMap">
@@ -43,8 +45,8 @@
               , BRD_EDU_DT 									AS 		brdEduDt
               , DATE_FORMAT(BRD_REG_DT, '%Y-%m-%d %H:%i') 	AS 		brdRegDt
               , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
-              , USE_YN 										AS 		uesYn
-              , DEL_YN 										AS 		DelYn
+              , USE_YN 										AS 		useYn
+              , DEL_YN 										AS 		delYn
  		FROM 
  				TB_EEP_BRD_M 
  		WHERE
@@ -64,8 +66,11 @@
           			OR BRD_WRTR LIKE CONCAT('%',#{searchKeyword},'%')
           			OR BRD_CNTNT LIKE CONCAT('%',#{searchKeyword},'%')
           		</if>
-          		<if test='useYn != null'>
-          			AND USE_YN = #{useYn}
+          		<if test='useSearchOption != null and useSearchOption != ""'>
+          			AND USE_YN = #{useSearchOption}
+          		</if>
+          		<if test='delSearchOption != null and delSearchOption != ""'>
+          			AND DEL_YN = #{delSearchOption}
           		</if>
 		    
  		ORDER BY 
@@ -100,7 +105,7 @@
 	</insert>
     
     <!-- 공지시항 상세 -->
-    <select id="noticeBoardDeatilData" resultType="hashMap">
+    <select id="noticeBoardDetailData" resultType="hashMap">
         SELECT
         		BRD_SQ 										AS 		brdSq
               , EMPLY_SQ 									AS 		emplySq
@@ -115,13 +120,177 @@
               , BRD_EDU_DT 									AS 		brdEduDt
               , DATE_FORMAT(BRD_REG_DT, '%Y-%m-%d %H:%i') 	AS 		brdRegDt
               , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
-              , USE_YN 										AS 		uesYn
-              , DEL_YN 										AS 		DelYn
+              , USE_YN 										AS 		useYn
+              , DEL_YN 										AS 		delYn
  		FROM 
  				TB_EEP_BRD_M 
  		WHERE
          		1=1 AND BRD_TYP_CD = 'NT' AND BRD_SQ = #{brdSq}
     </select>
+    
+    <!-- 공지시항 수정 -->
+    <update id="noticeBoardUpdateData" parameterType="hashMap">
+   		UPDATE 
+   			TB_EEP_BRD_M
+		SET
+			 BRD_TTL        	= 	#{brdTtl}
+			,BRD_CNTNT     		= 	#{brdCntnt}
+			,BRD_UPDT_DT      	= 	NOW()
+			,USE_YN 			= 	#{useYn}
+			,DEL_YN 			= 	#{delYn}
+   		WHERE
+         	1=1 AND BRD_TYP_CD = 'NT' AND BRD_SQ = #{brdSq}
+	</update>
+	
+	<!-- 공지시항 삭제 -->
+    <update id="noticeBoardDeleteData" parameterType="hashMap">
+   		UPDATE 
+   			TB_EEP_BRD_M
+		SET
+			 DEL_YN	= 'Y'
+			,USE_YN	= 'N'
+   		WHERE
+         	1=1 AND BRD_TYP_CD = 'NT' AND BRD_SQ = #{brdSq}
+	</update>
+	
+    <!-- //////////////// -->
+	<!-- 교육 게시판 Mapper -->
+	<!-- ////////////////-->
+	
+	<!-- 교육 목록 및 조회 -->
+	<select id="educationBoardListData" resultType="hashMap" parameterType="hashMap">
+	
+        SELECT
+        		BRD_SQ 										AS 		brdSq
+              , EMPLY_SQ 									AS 		emplySq
+              , BRD_TYP_CD 									AS 		brdTypCd
+              , BRD_RE_REF 									AS 		brdReRep
+              , BRD_RE_LEV 									AS 		brdReLev
+              , BRD_RE_ORD 									AS 		brdReOrd
+              , BRD_TTL 									AS 		brdTtl
+              , BRD_CNTNT 									AS 		brdCntnt
+              , BRD_WRTR 									AS 		brdWrtr
+              , BRD_TCHR 									AS 		brdTchr
+              , BRD_EDU_DT 									AS 		brdEduDt
+              , DATE_FORMAT(BRD_REG_DT, '%Y-%m-%d %H:%i') 	AS 		brdRegDt
+              , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
+              , USE_YN 										AS 		useYn
+              , DEL_YN 										AS 		delYn
+ 		FROM 
+ 				TB_EEP_BRD_M 
+ 		WHERE
+ 				BRD_TYP_CD = 'ED'
+ 				
+ 				<if test='searchOption == "T" and searchOption != null'>
+          			AND BRD_TTL LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+           		<if test='searchOption == "W" and searchOption != null'>
+          			AND BRD_WRTR LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='searchOption == "C" and searchOption != null'>
+          			AND BRD_CNTNT LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='searchOption == "I" and searchOption != null'>
+          			AND BRD_TCHR LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='searchOption == "TWCI" and searchOption != null'>
+          			AND BRD_TTL LIKE CONCAT('%',#{searchKeyword},'%')
+          			OR BRD_WRTR LIKE CONCAT('%',#{searchKeyword},'%')
+          			OR BRD_CNTNT LIKE CONCAT('%',#{searchKeyword},'%')
+          			OR BRD_TCHR LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='useSearchOption != null and useSearchOption != ""'>
+          			AND USE_YN = #{useSearchOption}
+          		</if>
+          		<if test='delSearchOption != null and delSearchOption != ""'>
+          			AND DEL_YN = #{delSearchOption}
+          		</if>
+		    
+ 		ORDER BY 
+ 				BRD_SQ DESC
+
+    </select>
+
+	<!-- 교육 등록 -->
+	<insert id="educationBoardInsertData" parameterType="hashMap">
+    	INSERT INTO TB_EEP_BRD_M
+        (
+			 EMPLY_SQ
+			,BRD_TYP_CD
+			,BRD_TTL
+			,BRD_CNTNT
+			,BRD_WRTR
+			,BRD_TCHR
+			,BRD_EDU_DT
+			,BRD_REG_DT
+			,USE_YN 
+			,DEL_YN
+       	) 
+        VALUES
+        (
+			 #{emplySq}
+			,'ED'
+			,#{brdTtl}
+			,#{brdCntnt}
+			,#{brdWrtr}
+			,#{brdTchr}
+			,#{brdEduDt}
+			,default
+			,#{useYn}
+			,default
+        )
+	</insert>
+    
+    <!-- 교육 상세 -->
+    <select id="educationBoardDetailData" resultType="hashMap">
+        SELECT
+        		BRD_SQ 										AS 		brdSq
+              , EMPLY_SQ 									AS 		emplySq
+              , BRD_TYP_CD 									AS 		brdTypCd
+              , BRD_RE_REF 									AS 		brdReRep
+              , BRD_RE_LEV 									AS 		brdReLev
+              , BRD_RE_ORD 									AS 		brdReOrd
+              , BRD_TTL 									AS 		brdTtl
+              , BRD_CNTNT 									AS 		brdCntnt
+              , BRD_WRTR 									AS 		brdWrtr
+              , BRD_TCHR 									AS 		brdTchr
+              , BRD_EDU_DT 									AS 		brdEduDt
+              , DATE_FORMAT(BRD_REG_DT, '%Y-%m-%d %H:%i') 	AS 		brdRegDt
+              , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
+              , USE_YN 										AS 		useYn
+              , DEL_YN 										AS 		delYn
+ 		FROM 
+ 				TB_EEP_BRD_M 
+ 		WHERE
+         		1=1 AND BRD_TYP_CD = 'ED' AND BRD_SQ = #{brdSq}
+    </select>
+    
+    <!-- 교육 수정 -->
+    <update id="educationBoardUpdateData" parameterType="hashMap">
+   		UPDATE 
+   			TB_EEP_BRD_M
+		SET
+			 BRD_TTL        	= 	#{brdTtl}
+			,BRD_CNTNT     		= 	#{brdCntnt}
+			,BRD_TCHR 			= 	#{brdTchr}
+			,BRD_EDU_DT 		= 	#{brdEduDt}
+			,BRD_UPDT_DT      	= 	NOW()
+			,USE_YN 			= 	#{useYn}
+			,DEL_YN 			= 	#{delYn}
+   		WHERE
+         	1=1 AND BRD_TYP_CD = 'ED' AND BRD_SQ = #{brdSq}
+	</update>
+	
+	<!-- 교육 삭제 -->
+    <update id="educationBoardDeleteData" parameterType="hashMap">
+   		UPDATE 
+   			TB_EEP_BRD_M
+		SET
+			 DEL_YN	= 'Y'
+			,USE_YN	= 'N'
+   		WHERE
+         	1=1 AND BRD_TYP_CD = 'ED' AND BRD_SQ = #{brdSq}
+	</update>
     
     <!-- <select id="boBoardDetail" parameterType="com.eep.bo.board.vo.BoBoardVo" resultType="com.eep.bo.board.vo.BoBoardVo">
         

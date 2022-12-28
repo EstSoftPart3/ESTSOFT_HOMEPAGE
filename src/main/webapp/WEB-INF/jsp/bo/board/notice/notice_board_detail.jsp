@@ -115,17 +115,18 @@
  
                     				<div class="col-sm-6">
                       					<div id="toolbar-container" style="display:none"></div>
-                      					<div id="naverEditor" style="border: 1px solid #efefef;min-height:500px;padding:20px;">
-                      					</div>
+                      					<!-- <div id="naverEditor" style="border: 1px solid #efefef;min-height:500px;padding:20px;">
+                      					</div> -->
+                      					<textarea rows="20" cols="40" id="naverEditor" name="naverEditor" readonly ></textarea>
                     				</div>	
 					 			</div>
 
 					 			<div class="form-group row">
                     				
-                    				<div class="col-sm-6" style="text-align:right">
-                    					<button type="button" class="btn btn-info sTitle" onclick="boardList();">리스트로 돌아가기</button>
-                    					<button type="button" class="btn btn-info sTitle" onclick="fn_SubBrdUpdatePage();">수정</button>
-                    					<button type="button" class="btn btn-info sTitle" onclick="boardDelete();">삭제</button>
+                    				<div class="col-sm-4" style="text-align:right">
+                    					<button type="button" class="btn btn-primary sTitle" onclick="noticBoardList();">리스트로 돌아가기</button>
+                    					<button type="button" class="btn btn-info sTitle" onclick="noticeUpdatePage();">수정</button>
+                    					<button type="button" class="btn btn-danger sTitle" onclick="noticeBoardDelete();">삭제</button>
                     				</div>
                     				
                     			</div>
@@ -147,33 +148,8 @@
    <script>
 	
 
-   //네이버 에디터 임포트
-   var oEditors = [];
-   
-   $(function(){
-      nhn.husky.EZCreator.createInIFrame({
-         oAppRef: oEditors,
-         elPlaceHolder: "editor",
-         //SmartEditor2Skin.html 파일이 존재하는 경로
-         sSkinURI: "/resources/navereditor/SmartEditor2Skin.html",  
-         htParams : {
-             // 툴바 사용 여부 (true:사용/ false:사용하지 않음)
-             bUseToolbar : true,             
-             // 입력창 크기 조절바 사용 여부 (true:사용/ false:사용하지 않음)
-             bUseVerticalResizer : true,     
-             // 모드 탭(Editor | HTML | TEXT) 사용 여부 (true:사용/ false:사용하지 않음)
-             bUseModeChanger : true,         
-             fOnBeforeUnload : function(){
-                  
-             }
-         }, 
-         fOnAppLoad : function(){
-             //textarea 내용을 에디터상에 바로 뿌려주고자 할때 사용
-             oEditors.getById["naverEditor"].exec("PASTE_HTML", [""]);
-         },
-         fCreator: "createSEditor2"
-       })
-   });
+ 
+
 
    var emplySq     = $('#emplySq').val(); //직원순번
    var brdSq       = $('#brdSq').val();   //공지사항 순번
@@ -205,6 +181,9 @@
 	        	 var useYn 		= dataContent.useYn;
 	        	 var delYn 		= dataContent.delYn;
 	        	 
+	        	 
+
+	        	 
 	        	 //네이버 에디터 적용 전 유효성 체크 반영
 				 var castStr = brdCntnt;
 
@@ -215,9 +194,46 @@
 				 castStr = castStr.replaceAll("&amp;nbsp;"," ");
 				 castStr = castStr.replaceAll("&amp;amp;","&");
 				 castStr = castStr.replaceAll("\\","");
-				 castStr = castStr.replaceAll("true","false"); //Table 수정 금지
+				 
+				 
+				  //네이버 에디터 임포트
+				   var oEditors = [];
+				   
+				   $(function(){
+				      nhn.husky.EZCreator.createInIFrame({
+				         oAppRef: oEditors,
+				         elPlaceHolder: "naverEditor",
+				         //SmartEditor2Skin.html 파일이 존재하는 경로
+				         sSkinURI: "/resources/navereditor/SmartEditor2Skin.html",  
+				         htParams : {
+				             // 툴바 사용 여부 (true:사용/ false:사용하지 않음)
+				             bUseToolbar : false,             
+				             // 입력창 크기 조절바 사용 여부 (true:사용/ false:사용하지 않음)
+				             bUseVerticalResizer : false,     
+				             // 모드 탭(Editor | HTML | TEXT) 사용 여부 (true:사용/ false:사용하지 않음)
+				             bUseModeChanger : false,         
+				             fOnBeforeUnload : function(){
+				                  
+				             }
+				         }, 
+				         fOnAppLoad : function(){
+				             //textarea 내용을 에디터상에 바로 뿌려주고자 할때 사용
+				             //내용초기화
+				             oEditors.getById["naverEditor"].exec("SET_IR", [""]);
+				           	 //DB내용 표현
+				             oEditors.getById["naverEditor"].exec("PASTE_HTML", [castStr]);
+				           	 //수정 불가 지정
+				             oEditors.getById["naverEditor"].exec("DISABLE_WYSIWYG");
+				           	 //UI 비활성화
+				             oEditors.getById["naverEditor"].exec("DISABLE_ALL_UI");
 
-	        	 document.getElementById('naverEditor').innerHTML=castStr;
+				         },
+				         fCreator: "createSEditor2"
+				       })
+				   });
+				 
+
+	        	 /* document.getElementById('naverEditor').innerHTML=castStr; */
 	        	 $('#brdTtl').val(brdTtl);
 	        	 $('#brdWrtr').val(brdWrtr);
 	        	 $('#brdRegDt').val(brdRegDt);
@@ -241,16 +257,15 @@
 	}
    
   
-   function boardDelete() {
+   function noticeBoardDelete() {
    
 	   
 	   if(confirm('정말 삭제 하시겠습니까?')) {
 		   
 		   $.ajax({
 	           type: "post",
-	           url: "boardDeleteData",
+	           url: "/admin/board/notice/noticeBoardDeleteData.do",
 	           data: {
-	        	   brdTypCd : brdTypCd,
 	        	   brdSq : brdSq,
 
 	           },
@@ -259,14 +274,7 @@
 						 message: "삭제 되었습니다.",
 						 locale: 'kr',
 						 callback: function() {
-							 
-							 	if(brdTypCd == 'NT'){
-							 		location.href='/admin/board/boardList?brdTypCd=NT';
-							 	}else{
-							 		location.href='/admin/board/boardList?brdTypCd=FA';
-							 	}
-							 
-						 		
+							 location.href='/admin/board/notice/openNoticeBoardList.do';	
 					     } });
 			   },
 	           error: function(error) {
@@ -282,7 +290,7 @@
 	  
    }
    
-   function boardList() {
+   function noticBoardList() {
 	   location.href='/admin/board/notice/openNoticeBoardList.do';
    }
    
@@ -296,12 +304,9 @@
    }
 	 
 	 
-   function fn_SubBrdUpdatePage() {
+   function noticeUpdatePage() {
 	   
-	   var brdSq = '<c:out value="${param.brdSq}" />';
-	   var brdTypCd = '<c:out value="${param.brdTypCd}" />';
-	   
-	   location.href='/admin/board/boardUpdate?brdSq='+brdSq+'&brdTypCd='+brdTypCd;
+	   location.href='/admin/board/notice/openNoticeBoardUpdate.do?brdSq='+brdSq;
 	}
 	 
    

@@ -24,7 +24,7 @@
 	    			
 	    			<div class="card-header p-2" style="border: 1px solid rgba(0,0,0,.125);background-color:#efefef">
 	                 	<ul class="nav nav-pills">
-		               		<li class="nav-item"><a class="sTitle" href="#" data-toggle="tab"><b>공지사항 게시판 등록</b></a></li>
+		               		<li class="nav-item"><a class="sTitle" href="#" data-toggle="tab"><b>교육일정 게시판 등록</b></a></li>
 		               	</ul>
 					 </div>
 					 
@@ -45,6 +45,22 @@
 					 				<label class="col-form-label sTitle LabelStyle" style="text-align: center;">작성자</label>
                     				<div class="col-sm-5">
                       						<input type="text" class="form-control sTitle classname"  id="brdWrtr" name="brdWrtr" value="관리자" readonly>
+                    				</div>
+                    				
+					 			</div>
+					 			
+					 			<div class="form-group row">
+					 				<label class="col-form-label sTitle LabelStyle" style="text-align: center;">강&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;사</label>
+                    				<div class="col-sm-5">
+                      						<input type="text" class="form-control sTitle classname"  id="brdTchr" name="brdTchr" value="">
+                    				</div>
+                    				
+					 			</div>
+					 			
+					 			<div class="form-group row">
+					 				<label class="col-form-label sTitle LabelStyle" style="text-align: center;">교육일</label>
+                    				<div class="col-sm-5">
+                      						<input type="date" class="form-control sTitle classname"  id="brdEduDt" name="brdEduDt" value="">
                     				</div>
                     				
 					 			</div>
@@ -136,8 +152,7 @@
        })
    });
    
-   
-   
+
    function noticeboardInsert() {
 	
 	var emplySq     = '1'     							//회원 순번

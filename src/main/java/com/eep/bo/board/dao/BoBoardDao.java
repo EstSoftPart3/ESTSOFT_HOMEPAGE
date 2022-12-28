@@ -85,6 +85,81 @@ public class BoBoardDao {
 		
 		return result;
 	}
+	
+	//공지사항 삭제
+	public void noticeBoardDeleteData(Map<String, Object> param){
+		
+		System.out.println("DATA = " + param);
+		BoBoardMapper.noticeBoardDeleteData(param);
+		
+	}
+	
+	//공지사항 수정
+	public void noticeBoardUpdateData(Map<String, Object> param){
+		
+		System.out.println("DATA = " + param);
+		BoBoardMapper.noticeBoardUpdateData(param);
+		
+	}
+	
+	/**
+	 * 교육 DAO
+	 * 
+	 * **/
+
+	//교육 리스트
+	public Map<String, Object> educationBoardListData(Map<String, Object> param){
+		
+		Map<String, Object> result = new HashMap<>();
+				
+		System.out.println("param :" + param);
+		
+		@SuppressWarnings("unchecked")
+		List<Map<String, Object>> boardInfo = BoBoardMapper.educationBoardListData(param);
+		
+		result.put("educationBoardInfo", boardInfo);
+				
+		return result;
+	}
+	
+	//교육 등록
+	public void educationBoardInsertData(Map<String, Object> param){
+		
+		System.out.println("DATA = " + param);
+		BoBoardMapper.educationBoardInsertData(param);
+		
+	}
+	
+	//교육 상세
+	public Map<String, Object> educationBoardDetailData(Map<String, Object> param){
+		
+		Map<String, Object> result = new HashMap<>();
+		
+		//System.out.println("DATA = " + param);
+		
+		@SuppressWarnings("unchecked")
+		List<Map<String, Object>> educationBoardDetailData = BoBoardMapper.educationBoardDetailData(param);
+		
+		result.put("educationBoardDetailData", educationBoardDetailData);
+		
+		return result;
+	}
+	
+	//교육 삭제
+	public void educationBoardDeleteData(Map<String, Object> param){
+		
+		System.out.println("DATA = " + param);
+		BoBoardMapper.educationBoardDeleteData(param);
+		
+	}
+	
+	//교육 수정
+	public void educationBoardUpdateData(Map<String, Object> param){
+		
+		System.out.println("DATA = " + param);
+		BoBoardMapper.educationBoardUpdateData(param);
+		
+	}
 		
 		
 	 	/*게시판 - 상세 조회 */

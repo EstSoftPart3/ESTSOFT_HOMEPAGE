@@ -38,7 +38,13 @@ public class BoBoardServiceImpl implements BoBoardService {
 		return result;
 	}
 	
-	//게시판 리스트
+	
+	/**
+	 * 공지사항 ServiceImpl
+	 * 
+	 * **/
+	
+	//공지사항 리스트
 	@Override
 	public Map<String, Object> noticeBoardListData(Map<String, Object> param){
 		
@@ -55,7 +61,74 @@ public class BoBoardServiceImpl implements BoBoardService {
 		BoBoardDao.noticeBoardInsertData(param);
 	}
 	
-
+	//공지시항 상세
+	@Override
+	public Map<String, Object> noticeBoardDetailData(Map<String, Object> param){
+		
+		Map<String, Object> result = new HashMap<>();
+		
+		result = BoBoardDao.noticeBoardDetailData(param);
+		
+		return result;
+	}
+	
+	//공지사항 삭제
+	@Override
+	public void noticeBoardDeleteData(Map<String, Object> param){
+		BoBoardDao.noticeBoardDeleteData(param);
+	}
+	
+	//공지사항 수정
+	@Override
+	public void noticeBoardUpdateData(Map<String, Object> param){
+		BoBoardDao.noticeBoardUpdateData(param);
+	}
+	
+	/**
+	 * 교육 ServiceImpl
+	 * 
+	 * **/
+	
+	//교육 리스트
+	@Override
+	public Map<String, Object> educationBoardListData(Map<String, Object> param){
+		
+		Map<String, Object> result = new HashMap<>();
+		
+		result = BoBoardDao.educationBoardListData(param);
+		
+		return result;
+	}
+	
+	//교육 등록
+	@Override
+	public void educationBoardInsertData(Map<String, Object> param){
+		BoBoardDao.educationBoardInsertData(param);
+	}
+	
+	//교육 상세
+	@Override
+	public Map<String, Object> educationBoardDetailData(Map<String, Object> param){
+		
+		Map<String, Object> result = new HashMap<>();
+		
+		result = BoBoardDao.educationBoardDetailData(param);
+		
+		return result;
+	}
+	
+	//교육 삭제
+	@Override
+	public void educationBoardDeleteData(Map<String, Object> param){
+		BoBoardDao.educationBoardDeleteData(param);
+	}
+	
+	//교육 수정
+	@Override
+	public void educationBoardUpdateData(Map<String, Object> param){
+		BoBoardDao.educationBoardUpdateData(param);
+	}
+	
     /* 게시판 - 상세 조회 */
     /*@Override
     public BoBoardVo getBoardDetail(BoBoardVo BoBoardVo) throws Exception {
