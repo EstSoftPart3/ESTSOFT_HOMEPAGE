@@ -31,7 +31,7 @@
                 	<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">채용</a>
                 	<div class="dropdown-menu shadow-sm m-0">
                         <a href="/eep/employmentInfoPage.do" class="dropdown-item">채용정보</a>
-                        <a href="#" class="dropdown-item">입사지원</a>
+                        <a href="/eep/employmentRequestPage.do" class="dropdown-item">입사지원</a>
                      </div>
                 </div>
                 

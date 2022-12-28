@@ -53,52 +53,6 @@
     <!-- Start -->
     <div class="container-xxl py-5">
         <div class="container menu">
-        
-         <table class="table">
-		  	<thead style="background-color:#efefef">
-		  		<tr align="center" style="height:50px;">
-					<th style="vertical-align: middle;">모집분야</th>
-					<th style="vertical-align: middle;">담당업무</th>
-					<th style="vertical-align: middle;">지원자격</th>
-				</tr>
-			</thead>
-			<tbody style="font-weight:bold;">
-				<tr style="text-align:center;background-color:#ffffff;">
-					<td style="vertical-align: middle;">
-						웹개발자(신입,경력)
-						<br>
-						0명
-					</td>
-					<td style="vertical-align: middle;text-align:left;margin-left:100px;">
-					- SI / SM 파견업무
-					<br>
-					- 솔루션 유지보수
-					<br>
-					- 시스템 개발 / 운영 및 유지보수 등
-					</td>
-					<td style="vertical-align: middle;">
-						- 신입 / 경력 (년수 무관)
-					</td>
-				</tr>
-				<tr style="text-align:center;background-color:#ffffff">
-					<td>
-					</td>
-					<td>
-					</td>
-					<td>
-					</td>
-				</tr>
-				<tr style="text-align:center;background-color:#ffffff">
-					<td>
-					</td>
-					<td>
-					</td>
-					<td>
-					</td>
-				</tr>
-				
-			</tbody>
-		</table>
         	            
         </div>
     </div>
