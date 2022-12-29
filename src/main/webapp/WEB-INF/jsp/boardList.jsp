@@ -229,12 +229,23 @@
 				
 			</tbody>
 		</table>
+		
+			<div class="col-12 text-center" style="padding-top:15px;">
+         	 	<button type="button" class="btn btn-secondary btn-sm" onclick="fn_Reg_move();">게시판 작성</button>
+         	 </div>
            
         </div>
     </div>
     <!-- FAQs Start -->
     
     <%@ include file="/WEB-INF/include/footer.jspf" %>
+    
+     <script>
+		function fn_Reg_move(){
+			location.href = '/eep/boardReg.do';
+		}
+    </script>
+    
 </body>
 
 </html>

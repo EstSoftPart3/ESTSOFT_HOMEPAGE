@@ -112,4 +112,18 @@ public class FoMainController extends BaseController {
 		ModelAndView mv = new ModelAndView("/boardContent");
 		return mv;
 	}
+	
+	//게시판 수정
+	@RequestMapping(value = "/eep/boardUpdate.do")
+	public ModelAndView openFoBoardUpdatePage() { 
+		ModelAndView mv = new ModelAndView("/boardUpdate");
+		return mv;
+	}
+	
+	//게시판 입력
+	@RequestMapping(value = "/eep/boardReg.do")
+	public ModelAndView openFoBoardRedPage() { 
+		ModelAndView mv = new ModelAndView("/boardReg");
+		return mv;
+	}
 }

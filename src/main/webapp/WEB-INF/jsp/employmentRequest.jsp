@@ -140,7 +140,7 @@
                             </div>
                             
                             <div class="col-12">
-                                <button class="btn btn-primary py-3 px-4" type="submit">입사지원</button>
+                                <button class="btn btn-secondary btn-lg" type="submit">입사지원</button>
                             </div>
                         </div>
                     </form>

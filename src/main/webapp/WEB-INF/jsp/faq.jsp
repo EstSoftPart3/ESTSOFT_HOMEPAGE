@@ -103,7 +103,7 @@
                             <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree"
                                 data-bs-parent="#accordionExample">
                                 <div class="accordion-body" style="padding-left:20px;">
-                                    A.SI이란, 기업의 가치를 극대화시키는 정보시스템의 통합 구축으로 시스템의 기획 및 설계, 최적의 하드웨어 선정에서 발주 및 조달, 사용자의 필요에 맞춘 응용 소프트웨어의 개발, 시스템의 유지·보수 등을 포함한 시스템통합(system integration) 구축을 말합니다..
+                                    A.SI이란, 기업의 가치를 극대화시키는 정보시스템의 통합 구축으로 시스템의 기획 및 설계, 최적의 하드웨어 선정에서 발주 및 조달, 사용자의 필요에 맞춘 응용 소프트웨어의 개발, 시스템의 유지·보수 등을 포함한 시스템통합(system integration) 구축을 말합니다..
                                 </div>
                             </div>
                         </div>

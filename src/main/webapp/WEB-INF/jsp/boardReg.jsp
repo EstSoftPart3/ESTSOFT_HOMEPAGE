@@ -65,97 +65,56 @@ th, td {
     <div class="container-xxl py-5 menu">
         <div class="container">
             <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
-                <h1 class="display-3" style="font-size:20px;">공지사항 내용보기 </h1>
+                <h1 class="display-3" style="font-size:20px;">공지사항 작성하기 </h1>
             </div>
            
            <table class="table table-bordered" style="max-width: 900px;font-size:15px;border-color:#ced4da" align="center">
-		  	
+		  		
 				<tr style="text-align:center;background-color:#ffffff;">
 					<td style="width:15%;background-color:#efefef;">
 						<b>제목</b>
 					</td>
 					<td style="text-align:left;">
-						본사 이전 공지
+						<input type="text" class="form-control" id="subject" style="font-size:12px;" value="">
+					</td>
+				</tr>
+				<tr style="text-align:center;background-color:#ffffff;">
+					<td style="width:15%;background-color:#efefef;">
+						<b>성명</b>
+					</td>
+					<td style="text-align:left;">
+						<input type="text" class="form-control" id="name" style="font-size:12px;" value="홍길동" readonly>
+					</td>
+				</tr>
+				<tr style="text-align:center;background-color:#ffffff;">
+					<td style="width:15%;background-color:#efefef;">
+						<b>입력일</b>
+					</td>
+					<td style="text-align:left;">
+						<input type="text" class="form-control" id="regdate" style="font-size:12px;" value="2023-01-01" readonly>
 					</td>
 				</tr>
 				<tr style="text-align:center;background-color:#ffffff;">
 					<td style="width:15%;background-color:#efefef;vertical-align: middle;">
 						<b>내용</b>
 					</td>
-					<td style="text-align:left;">
-<pre>
- ㈜이에스티소프트 본사 이전 공지
- 안녕하세요. ㈜이에스티소프트 경영지원팀입니다.
- 
- 본사 이전 공지해 드립니다. 세부내용은 아래를 참고해 참고해주시기 바랍니다.
+					<td style="text-align:left;height:250px;">
+					
+					<textarea class="form-control" id="exampleFormControlTextarea2" rows="7" style="font-size:12px;height:350px;">
 
- 일시 : 2022년 11월 28일 월요일부터
- 현재주소 : 서울시 구로구 디지털로 242 현화비즈메트로 1차 1403호
- 이전 후 주소 : 서울 영등포구 당산로 28길 4, 송원빌딩 3층
- 
- 문의사항은 오민형 이사님에게로 연락바랍니다.
-</pre>
+					</textarea>
 					</td>
 				</tr>
 				
 				
 			</tbody>
 		</table>
-		
-		<br><br><br>
-		<!-- 댓글 리스트 -->
-		<div class="text-left mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 900px;">
-             <h1 class="display-3" style="font-size:14px;"><b>※ 댓글 리스트</b></h1>
-        </div>
-        
-		<table class="table table-bordered" style="max-width: 900px;font-size:14px;border-color:#ced4da" align="center">
-			<tr style="background-color:#efefef;">
-				<td colspan="3">
-					<div style="float:left;width:80%">
-						작성자 : 정서영
-					</div>
-					<div style="float:left">
-						작성일 : 2023월 01월 01일
-					</div>
-				</td>
-			</tr>
-			<tr>
-				<td colspan="2" style="height:70px;width:90%">
-					댓글 테스트중 입니다.
-				</td>
-				<td style="vertical-align: middle;text-align:center;">
-					<button type="button" class="btn btn-secondary btn-sm">수정</button>
-					<br><br>
-					<button type="button" class="btn btn-secondary btn-sm">삭제</button>
-				</td>
-			</tr>
-		</table>
-		<!-- 댓글 리스트 -->
-		
-		<!-- 댓글 입력 -->
-		<div class="text-left mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 900px;padding-top:30px;">
-             <h1 class="display-3" style="font-size:14px;"><b>※ 댓글 입력</b></h1>
-        </div>
-		<table class="table table-bordered" style="max-width: 900px;font-size:15px;border-color:#ced4da" align="center">
-			<tr>
-				<td style="width:90%">
-					<textarea class="form-control" id="exampleFormControlTextarea2" rows="7" style="font-size:12px;height:70px;">
-					</textarea>
-				</td>
-				<td style="vertical-align: middle;border-right-style: none;">
-					<button type="button" class="btn btn-secondary btn-lg">확인</button>
-				</td>
-			</tr>
-		</table>
-        <!-- 댓글 입력 -->
            
         </div>
         
          <div class="col-12 text-center" style="padding-top:15px;">
-         	 <button type="button" class="btn btn-secondary btn-sm">답글</button>
          	 <button type="button" class="btn btn-secondary btn-sm" onclick="fn_list_move();">리스트</button>
-         	 <button type="button" class="btn btn-secondary btn-sm" onclick="fn_list_update();">수정</button>
-         	 <button type="button" class="btn btn-secondary btn-sm">삭제</button>
+         	 <button type="button" class="btn btn-secondary btn-sm">작성하기</button>
          </div>
     </div>
     <!-- FAQs Start -->
@@ -165,10 +124,6 @@ th, td {
     <script>
 		function fn_list_move(){
 			location.href = '/eep/boardList.do';
-		}
-		
-		function fn_list_update(){
-			location.href = '/eep/boardUpdate.do';
 		}
     </script>
     
