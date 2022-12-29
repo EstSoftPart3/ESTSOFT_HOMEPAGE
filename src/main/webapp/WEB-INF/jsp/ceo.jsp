@@ -45,7 +45,11 @@
     <div class="container-xxl py-5">
         <div class="container">
             <div class="row g-5 align-items-center">
-               <div class="col-lg-12 wow fadeInUp" data-wow-delay="0.5s">
+              
+              <div class="col-lg-2">
+              </div>	
+            	
+               <div class="col-lg-9 wow fadeInUp" data-wow-delay="0.5s">
                     <div class="h-100">
                         <h1 class="display-6">
                         	<span class="menu" style="font-size:25px;"><b>CEO 인사말</b></span>

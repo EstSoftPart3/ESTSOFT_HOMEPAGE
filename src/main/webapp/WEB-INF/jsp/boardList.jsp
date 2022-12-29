@@ -6,6 +6,35 @@
 
 <head>
    <%@ include file="/WEB-INF/include/header.jspf" %>
+   
+    <style type="text/css">
+      	
+		.theadTh {
+			height : 40px;
+			font-size : 12px;
+			font-weight:bold;
+			background-color:#efefef;
+			
+		}
+		
+		tbody > tr > td {
+			height : 40px;
+			font-size : 12px;
+			background-color:#ffffff;
+			text-align : center;
+			vertical-align: middle;
+		}
+		
+		.tdColor {
+			background-color:#efefef;
+		}
+		
+		th, td {
+   		 border: 0px solid #e9ecef;
+		}
+		
+  	</style>
+   
 </head>
 
 <body>
@@ -53,23 +82,41 @@
     <!-- Header End -->
 
 
-    <!-- FAQs Start -->
+    <!-- Start -->
     <div class="container-xxl py-5 menu">
         <div class="container">
             <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
                 <h1 class="display-3" style="font-size:20px;">공지사항 리스트</h1>
             </div>
+           <table style="width:100%;max-width: 900px;" align="center">	
+           	<tr>
+           		<td style="text-align:left;border:0px;width:170px;">
+           			
+           			<select class="form-select" name="searchGubun" id="searchGubun" style="font-size:12px;">
+           				<option value="title">제목</option>
+           				<option value="content">내용</option>
+           			</select>
+           			
+           		</td>
+           		<td style="border:0px;width:70%">
+           			<input type="text" class="form-control" id="subject" placeholder="검색할 내용을 입력하세요" style="font-size:12px;">
+           		</td>
+           		<td style="border:0px;">
+           			<button type="button" class="form-control btn-secondary" style="font-size:12px">검색</button>
+           		</td>
+           	</tr>
+           </table>
            
-           <table class="table" style="max-width: 900px;" align="center">
-		  	<thead style="background-color:#efefef">
-		  		<tr align="center">
-					<th>번호</th>
-					<th style="width:70%">제목</th>
-					<th>입력일</th>
+           <table class="table table-bordered" style="max-width: 900px;border-color:#ced4da" align="center">
+		  	<thead>
+		  		<tr class="theadTh">
+					<th class="text-center">번호</th>
+					<th class="text-center" style="width:70%">제목</th>
+					<th class="text-center">입력일</th>
 				</tr>
 			</thead>
-			<tbody style="font-weight:bold;">
-				<tr style="text-align:center;background-color:#ffffff;">
+			<tbody>
+				<tr>
 					<td>
 						10
 					</td>
@@ -80,7 +127,7 @@
 						2022-10-20
 					</td>
 				</tr>
-				<tr style="text-align:center;background-color:#ffffff;">
+				<tr>
 					<td>
 						9
 					</td>
@@ -91,7 +138,7 @@
 						2022-10-20
 					</td>
 				</tr>
-				<tr style="text-align:center;background-color:#ffffff;">
+				<tr>
 					<td>
 						8
 					</td>
@@ -102,7 +149,7 @@
 						2022-10-20
 					</td>
 				</tr>
-				<tr style="text-align:center;background-color:#ffffff;">
+				<tr>
 					<td>
 						7
 					</td>
@@ -113,7 +160,7 @@
 						2022-10-20
 					</td>
 				</tr>
-				<tr style="text-align:center;background-color:#ffffff;">
+				<tr>
 					<td>
 						6
 					</td>
@@ -124,7 +171,7 @@
 						2022-10-20
 					</td>
 				</tr>
-				<tr style="text-align:center;background-color:#ffffff;">
+				<tr>
 					<td>
 						5
 					</td>
@@ -135,7 +182,7 @@
 						2022-10-20
 					</td>
 				</tr>
-				<tr style="text-align:center;background-color:#ffffff;">
+				<tr>
 					<td>
 						4
 					</td>
@@ -146,7 +193,7 @@
 						2022-10-20
 					</td>
 				</tr>
-				<tr style="text-align:center;background-color:#ffffff;">
+				<tr>
 					<td>
 						3
 					</td>
@@ -157,7 +204,7 @@
 						2022-10-20
 					</td>
 				</tr>
-				<tr style="text-align:center;background-color:#ffffff;">
+				<tr>
 					<td>
 						2
 					</td>
@@ -168,7 +215,7 @@
 						2022-10-20
 					</td>
 				</tr>
-				<tr style="text-align:center;background-color:#ffffff;">
+				<tr>
 					<td>
 						1
 					</td>

@@ -8,6 +8,14 @@
    <%@ include file="/WEB-INF/include/header.jspf" %>
 </head>
 
+<style type="text/css">
+
+th, td {
+  border: 0px solid #e9ecef;
+ }
+
+</style>
+
 <body>
     <!-- Spinner Start -->
     <div id="spinner"
@@ -53,14 +61,14 @@
     <!-- Header End -->
 
 
-    <!-- FAQs Start -->
+    <!--Start -->
     <div class="container-xxl py-5 menu">
         <div class="container">
             <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
                 <h1 class="display-3" style="font-size:20px;">공지사항 내용보기 </h1>
             </div>
            
-           <table class="table" style="max-width: 900px;font-size:15px;" align="center">
+           <table class="table table-bordered" style="max-width: 900px;font-size:15px;border-color:#ced4da" align="center">
 		  	
 				<tr style="text-align:center;background-color:#ffffff;">
 					<td style="width:15%;background-color:#efefef;">
@@ -97,9 +105,9 @@
         </div>
         
          <div class="col-12 text-center" style="padding-top:15px;">
-         	 <button class="btn btn-primary py-3 px-4" type="button" onclick="fn_list_move();">리스트</button>
-         	 <button class="btn btn-primary py-3 px-4" type="button">수정</button>
-         	 <button class="btn btn-primary py-3 px-4" type="button">삭제</button>
+         	 <button type="button" class="btn btn-secondary btn-sm" onclick="fn_list_move();">리스트</button>
+         	 <button type="button" class="btn btn-secondary btn-sm">수정</button>
+         	 <button type="button" class="btn btn-secondary btn-sm">삭제</button>
          </div>
     </div>
     <!-- FAQs Start -->
