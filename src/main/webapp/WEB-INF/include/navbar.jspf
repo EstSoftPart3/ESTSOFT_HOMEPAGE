@@ -35,8 +35,22 @@
                      </div>
                 </div>
                 
-                <a href="#" class="nav-item nav-link">고객센터</a>
-				<a href="#" class="nav-item nav-link">커뮤니티</a>
+                <div class="nav-item dropdown">
+                	<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">고객센터</a>
+                	<div class="dropdown-menu shadow-sm m-0">
+                        <a href="/eep/faqPage.do" class="dropdown-item">자주하는 질문</a>
+                        <a href="/eep/mapPage.do" class="dropdown-item">오시는길</a>
+                     </div>
+                </div>
+				<div class="nav-item dropdown">
+                	<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">커뮤니티</a>
+                	<div class="dropdown-menu shadow-sm m-0">
+                        <a href="/eep/boardList.do" class="dropdown-item">공지사항</a>
+                        <a href="#" class="dropdown-item">자유게시판</a>
+                        <a href="#" class="dropdown-item">기술문의</a>
+                        <a href="#" class="dropdown-item">교육일정</a>
+                    </div>
+                </div>
             </div>
            
         </div>

@@ -89,7 +89,7 @@
                                 </div>
                             </div>
                             <div class="col-12">
-                                <button class="btn btn-primary py-3 px-4" type="submit">의뢰요청</button>
+                                <button class="btn btn-secondary btn-sm" type="button">의뢰요청</button>
                             </div>
                         </div>
                     </form>

@@ -6,6 +6,12 @@
    <%@ include file="/WEB-INF/include/header.jspf" %>    
 </head>
 
+<style type="text/css">
+th, td {
+ border: 0px solid #e9ecef;
+}	
+</style>
+
 <body>
     <!-- Spinner Start -->
     <div id="spinner"
@@ -62,7 +68,7 @@
                             
                                <h5 class="mb-3 Gugi">NOTICE</h5>
                               
-                              <table class="table">
+                              <table class="table table-bordered" style="border-color:#ced4da">
 							   	<thead style="background-color:#efefef">
 							   		<tr align="center">
 										<th>제목</th>
@@ -104,7 +110,7 @@
                             
                                <h5 class="mb-3 Gugi">TECHNOLOGY</h5>
                               
-                              <table class="table">
+                              <table class="table table-bordered" style="border-color:#ced4da">
 							   	<thead style="background-color:#efefef">
 							   		<tr align="center">
 										<th>제목</th>
@@ -146,7 +152,7 @@
                             
                                <h5 class="mb-3 Gugi">EDUCATION</h5>
                               
-                              <table class="table">
+                              <table class="table table-bordered" style="border-color:#ced4da">
 							   	<thead style="background-color:#efefef">
 							   		<tr align="center">
 										<th>제목</th>
