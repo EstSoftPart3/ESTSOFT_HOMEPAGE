@@ -350,17 +350,7 @@
            return true;
        else
            return false ;
-   }
-	 
-	 
-   function fn_SubBrdUpdatePage() {
-	   
-	   var brdSq = '<c:out value="${param.brdSq}" />';
-	   var brdTypCd = '<c:out value="${param.brdTypCd}" />';
-	   
-	   location.href='/admin/board/boardUpdate?brdSq='+brdSq+'&brdTypCd='+brdTypCd;
-	}
-	 
+   } 
    
    </script>
  

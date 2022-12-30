@@ -75,13 +75,13 @@
 		                </a>
 		              </li>
 		              <li class="nav-item">
-		                <a href="/admin/board/boardList?brdTypCd=FA" class="nav-link">
+		                <a href="/admin/board/freedom/openFreedomBoardList.do" class="nav-link">
 		                  <i class="far fa-circle nav-icon sTitle"></i>
 		                  <p class="sTitle">자유 게시판</p>
 		                </a>
 		              </li>
 		              <li class="nav-item">
-		                <a href="/admin/board/boardList?brdTypCd=FA" class="nav-link">
+		                <a href="/admin/board/technology/openTechnologyBoardList.do" class="nav-link">
 		                  <i class="far fa-circle nav-icon sTitle"></i>
 		                  <p class="sTitle">기술문의 게시판</p>
 		                </a>

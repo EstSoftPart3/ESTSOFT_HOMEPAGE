@@ -78,6 +78,22 @@
                     				</div>
 					 			</div>
 					 			
+					 			<label class="col-form-label sTitle LabelStyle" style="text-align: center;">강사</label>
+					 			<div class="form-group row">
+					 				
+                    				<div class="col-sm-4">
+                      					<input type="text" class="form-control sTitle classname"  id="brdTchr" name="brdTchr">
+                    				</div>
+					 			</div>
+					 			
+					 			<label class="col-form-label sTitle LabelStyle" style="text-align: center;">교육일</label>
+					 			<div class="form-group row">
+					 				
+                    				<div class="col-sm-4">
+                      					<input type="date" class="form-control sTitle classname"  id="brdEduDt" name="brdEduDt">
+                    				</div>
+					 			</div>
+					 			
 					 			<label class="col-form-label sTitle LabelStyle" style="text-align: center;">등록일</label>
 					 			<div class="form-group row">
 					 				
@@ -132,9 +148,9 @@
 					 			<div class="form-group row">
                     				
                     				<div class="col-sm-4" style="text-align:right">
-                    					<button type="button" class="btn btn-primary sTitle" onclick="noticeBoardList();">리스트로 돌아가기</button>
-                    					<button type="button" class="btn btn-info sTitle" onclick="noticeUpdate();">수정</button>
-                    					<button type="button" class="btn btn-danger sTitle" onclick="noticeBoardDetail();">뒤로</button>
+                    					<button type="button" class="btn btn-primary sTitle" onclick="educationBoardList();">리스트로 돌아가기</button>
+                    					<button type="button" class="btn btn-info sTitle" onclick="educationUpdate();">수정</button>
+                    					<button type="button" class="btn btn-danger sTitle" onclick="educationBoardDetail();">뒤로</button>
                     				</div>
                     				
                     			</div>
@@ -165,25 +181,27 @@
    
    $(document).ready(function(){
 
-		noticeboardDetailtData(brdSq);
+	   educationBoardDetailtData(brdSq);
 		
    });
    
-   function noticeboardDetailtData(brdSq) {
+   function educationBoardDetailtData(brdSq) {
 		
 		$.ajax({
 	           type: "post",
-	           url: "/admin/board/notice/noticeBoardDetailData.do",
+	           url: "/admin/board/education/educationBoardDetailData.do",
 	           data: {
 	        	   brdSq : brdSq
 	            },
 	           success: function(data) {
 	        	    
-	        	 dataContent = data.noticeBoardDetailData.noticeBoardDetailData[0];
+	        	 dataContent = data.educationBoardDetailData.educationBoardDetailData[0];
 
 	        	 var brdCntnt 	= dataContent.brdCntnt;
 	        	 var brdTtl 	= dataContent.brdTtl;
 	        	 var brdWrtr 	= dataContent.brdWrtr;
+	        	 var brdTtl 	= dataContent.brdTchr;
+	        	 var brdWrtr 	= dataContent.brdEduDt;
 	        	 var brdRegDt	= dataContent.brdRegDt;
 	        	 var brdUpdtDt	= dataContent.brdUpdtDt;
 	        	 var useYn 		= dataContent.useYn;
@@ -241,6 +259,8 @@
 	        	 /* document.getElementById('naverEditor').innerHTML=castStr; */
 	        	 $('#brdTtl').val(brdTtl);
 	        	 $('#brdWrtr').val(brdWrtr);
+	        	 $('#brdTchr').val(brdTtl);
+	        	 $('#brdEduDt').val(brdWrtr);
 	        	 $('#brdRegDt').val(brdRegDt);
 	        	 
 	        	 if(useYn == "Y"){
@@ -272,18 +292,18 @@
 		})
 	}
    
-   function noticeUpdate() {
+   function educationUpdate() {
 		
 		var brdSq     = $("#brdSq").val();     
 		var brdTtl  = $("#brdTtl").val(); 
+		var brdTchr  = $("#brdTchr").val(); 
+		var brdEduDt  	= document.querySelector("#brdEduDt").value	//게시판 교육일
 		oEditors.getById["naverEditor"].exec("UPDATE_CONTENTS_FIELD", []);
 		var brdCntnt = document.getElementById("naverEditor").value;
 	    var useYn = $('input[name="useYn"]:checked').val();
 	    var delYn  = $('input[name="delYn"]:checked').val();
 
-	   	debugger;
-	    
-	   //잡지 제목
+	   	 //제목
 	   	 if(isEmpty(brdTtl)) {
 	   		bootbox.alert({
 					 message: "제목을 입력해 주세요.",
@@ -294,7 +314,29 @@
 				 return;
 	   	 }
 	   	 
-	   	 //잡지 설명
+	   	 //강사
+	   	 if(isEmpty(brdTchr)) {
+	   		bootbox.alert({
+					 message: "강사를 입력해 주세요.",
+					 locale: 'kr',
+					 callback: function() {
+					 		$("#brdTchr").focus();
+				     } });
+				 return;
+	   	 }
+	   
+	   	 //교육일
+	   	 if(isEmpty(brdEduDt)) {
+	   		bootbox.alert({
+					 message: "교육일을 입력해 주세요.",
+					 locale: 'kr',
+					 callback: function() {
+					 		$("#brdEduDt").focus();
+				     } });
+				 return;
+	   	 }
+	   	 
+	   	 //내용
 	   	 if(isEmpty(brdCntnt)) {
 	   		bootbox.alert({
 					 message: "설명을 입력해 주세요.",
@@ -310,10 +352,12 @@
 		
 		$.ajax({
 	           type: "post",
-	           url: "/admin/board/notice/noticeBoardUpdateData.do",
+	           url: "/admin/board/education/educationBoardUpdateData.do",
 	           data: {
 	        	   brdSq : brdSq,
 	        	   brdTtl : brdTtl,
+	        	   brdTchr : brdTchr,
+	        	   brdEduDt : brdEduDt,
 	        	   brdCntnt : brdCntnt,
 	        	   useYn : useYn,
 	        	   delYn : delYn
@@ -323,7 +367,7 @@
 						 message: "게시글이 수정 되었습니다.",
 						 locale: 'kr',
 						 callback: function() {
-							 	location.href='/admin/board/notice/openNoticeBoardDetail.do?brdSq='+brdSq;
+							 	location.href='/admin/board/education/openEducationBoardDetail.do?brdSq='+brdSq;
 					     } });
 			   },
 	           error: function(error) {
@@ -335,12 +379,12 @@
    
  
    
-   function noticeBoardList() {
-	   location.href='/admin/board/notice/openNoticeBoardList.do';
+   function educationBoardList() {
+	   location.href='/admin/board/education/openEducationBoardList.do';
    }
    
-   function noticeBoardDetail() {
-	   location.href='/admin/board/notice/openNoticeBoardDetail.do?brdSq='+brdSq;
+   function educationBoardDetail() {
+	   location.href='/admin/board/education/openEducationBoardDetail.do?brdSq='+brdSq;
    }
    
 	 //Input Box Null Check
@@ -351,16 +395,6 @@
        else
            return false ;
    }
-	 
-	 
-   function fn_SubBrdUpdatePage() {
-	   
-	   var brdSq = '<c:out value="${param.brdSq}" />';
-	   var brdTypCd = '<c:out value="${param.brdTypCd}" />';
-	   
-	   location.href='/admin/board/boardUpdate?brdSq='+brdSq+'&brdTypCd='+brdTypCd;
-	}
-	 
    
    </script>
  

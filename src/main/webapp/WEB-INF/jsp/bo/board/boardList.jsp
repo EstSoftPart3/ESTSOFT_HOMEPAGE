@@ -1,169 +1,174 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<% request.setCharacterEncoding("UTF-8"); %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>게시판 목록</title>
+ 
 
-<%@ include file="/WEB-INF/jsp/bo/boinclude/include_top.jspf"%>
-
-<%-- <%
-	//게시판 타입 : 공지사항 (NT), 일반(GN)
-	String brdTypCd = request.getParameter("brdTypCd"); 
-	
-	String brdName; 
-	
-	if(brdTypCd.equals("NT")) {
-		brdName = "공지사항"; 
-	} else {
-		brdName = "자주하는질문"; 
-	}
-
-%> --%>
-
-
-<body class="hold-transition sidebar-mini">
-
-	<div class="wrapper">
-	
-		<%@ include file="/WEB-INF/jsp/bo/boinclude/include_left.jspf"%>
-		
-		 <div class="content-wrapper">
-		    
-		     	<!-- Main content -->
-	    		<section class="content">
-	    			<%-- <input type="hidden" name="brdTypCd" id="brdTypCd" value="<%=brdTypCd%>"> --%>
-	    			
-	    			<div class="card-header p-2" style="border: 1px solid rgba(0,0,0,.125);background-color:#efefef">
-	                 	<ul class="nav nav-pills">
-		               		<%-- <li class="nav-item"><a class="sTitle" href="#" data-toggle="tab"><b><%=brdName%></b></a></li> --%>
-		               	</ul>
-					 </div>
-					 
-					 <div class="card">
-					 
-					 	<div class="card-body" style="background-color:#ffffff;">
-					 		<div class="col-sm-9">
-					 			<div id="boardList" style="font-size:12px;"></div>
-					 		</div>
-					 	</div>
-					 	
-					 	<div class="form-group row" >
-                    		<div class="col-sm-9" style="text-align:right;right:15px;">
-                    			<button type="button" class="btn btn-info sTitle" onclick="boardInput();">입력</button>
-					    	</div>
-                    	</div>
-					 		
-					 </div>
-	    			
-	    		</section>
-	    		
-		 </div>
-		
-	</div>
-<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
+<!-- 공통 JavaScript -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.12.4.min.js"></script>
+<script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
 <script type="text/javascript">
- 		
-        $(document).ready(function() {
-     	   boardList();
-        });
+ 
+    $(document).ready(function(){    
+        getBoardList();
+    });        
+    
+    /** 게시판 - 상세 페이지 이동 */
+    function goBoardDetail(boardSeq){                
+        location.href = "/board/boardDetail?boardSeq="+ boardSeq;
+    }
+    
+    /** 게시판 - 작성 페이지 이동 */
+    function goBoardWrite(){        
+        location.href = "/board/boardWrite";
+    }
+ 
+    /** 게시판 - 목록 조회  */
+    function getBoardList(currentPageNo){
+ 
+    	if(currentPageNo === undefined){
+			currentPageNo = "1";
+		}
+    	
+    	$("#current_page_no").val(currentPageNo);
+    	
+        $.ajax({    
         
-        /* 게시판 입력 */
-        function boardInput() {
-     	   var brdTypCd = $('#brdTypCd').val();
-     	   console.log("brdTypCd :"+brdTypCd);
-     	   
-     	   location.href = "/admin/board/boardWrite?brdTypCd="+brdTypCd;
-        }
+            url      : "/admin/board/boardListData.do",
+            data     : $("#boardForm").serialize(),
+            dataType : "JSON",
+            cache    : false,
+            async    : true,
+            type     : "POST",    
+            success  : function(data) {
+                getBoardListCallback(data);                
+            },           
+            error     : function(xhr, status, error) {}
+            
+         });
+    }
+    
+    /** 게시판 - 목록 조회  콜백 함수 */
+    function getBoardListCallback(data){
+     
+        var state = "SUCCESS";
         
-        
-        /* 게시판 리스트 */
-        function boardList(){
-        
-     	   var brdTypCd = $('#brdTypCd').val();
-     	   
-     	   console.log("brdTypCd :"+brdTypCd);
-     	   
-     	  
-     	  
-     	   
-     	   let params = {
-     			brdTypCd : brdTypCd
-     		}
-     	   
-     	   $("#boardList").jsGrid({
-     		   locale:"ko",
-     	       height: "700px",
-     	       width: "100%",
-     	       inserting: false,
-     	       editing: false,
-     	       sorting: false,
-     	       paging: false,
-     	       autoload: true,
-     	       pageSize: 10,
-     	       gridview : true,
-     	      
-     	       deleteConfirm: "정말 삭제 하시겠습니까?",
-     	       controller: {
-     	           loadData: function (filter) {
-     	        	   var d = $.Deferred();
-     	               $.ajax({
-     	      	    	 type: "post",
-     	    	    	 url: "/admin/board/boardListData.do",
-     	    	         data: params,
-     	    	         dataType: "json"
-     	    	      }).done(function(response) {
-     	    	    	 //d.resolve(response.boardData.boardInfo);
-     	    	    	
-     	    	    	 
-     	    	    	 d.resolve($.map(response.boardData.boardInfo, function (item, itemIndex) {
-                              
-     	    	    		 var rSize = response.boardData.boardInfo.length - itemIndex;
-     		    	    		    	    		 
-     	    	    		 return $.extend(item, { "Index": rSize });
-                          }));
-     	    	    	 
-     	    	      });
-     	               return d.promise();
-     	           }
-     	       },
-     	       fields: [
-     	    	   
-     	    	   { name: "brdSq", title: "글번호", type: "number", width: 30, align: "center", },
-     	    	   { name: "brdTtl",title:"제목", type: "text", width: 200,align:"center",width:100 , visible: true},
-     	    	   { name: "brdCntnt"	,title:"내용", type: "text", width: 150,align:"center" ,width:100, visible: true},
-     	    	   { name: "brdWrtr"	,title:"작성자", type: "text", width: 150,align:"center" ,width:100, visible: true}/* ,
-     	    	   { name: "brdTitle",id:"brdTitle", title:"제목", type: "text", width: 300,align:"left", visible: true, key:true},
-     	    	   { name: "brdTypCd",title:"게시판종류", type: "text", width: 200,align:"center",width:100 , visible: false},
-     	    	   { name: "regMbrSq",title:"등록회원순번", type: "text", width: 200,align:"center",width:100 , visible: false},
-     	    	   { name: "regDt",title:"등록일시", type: "text", width: 200,align:"center",width:100 , visible: true},
-     	    	   { name: "updtMbrSq",title:"수정회원순번", type: "text", width: 200,align:"center",width:100 , visible: false},
-     	    	   { name: "updtDt",title:"수정일시", type: "text", width: 200,align:"center",width:100 , visible: false},
-     	    	   { name: "delYn",title:"삭제여부", type: "text", width: 200,align:"center",width:100 , visible: false} */
-     	       ],
-     	       rowClick: function(args) {
-     	           //console.log(args)
-     	       	   var getData = args.item.brdSq;
-     	       	   console.log("getData :"+getData);
-     	           fn_SubBrdPage(getData);
+        if(state == "SUCCESS"){
+			
+            var list = data.boardData.boardInfo;
 
-                }
-     	       
-     	      
+            var listLen = list.length;        
+            var totalCount = data.totalCount;
+            var pagination = data.pagination;
+                
+            var str = "";
+            
+            if(listLen >  0){
+                
+                for(var a=0; a<listLen; a++){
+                    
+                    var boardSeq        = list[a].boardSeq; 
+                    var boardReRef      = list[a].boardReRef; 
+                    var boardReLev      = list[a].boardReLev; 
+                    var boardReSeq      = list[a].boardReSeq; 
+                    var boardWriter     = list[a].boardWriter; 
+                    var boardSubject	= list[a].boardSubject; 
+                    var boardContent    = list[a].boardContent; 
+                    var boardHits       = list[a].boardHits;
+                    var delYn           = list[a].delYn; 
+                    var insUserId       = list[a].insUserId;
+                    var insDate         = list[a].insDate; 
 
-     	   });
-     	   
-      		if(brdTypCd == "FA") {
-     		   
-     		   $("#boardList").jsGrid("fieldOption", "1", "visible", true);
-     		   $("#boardList").jsGrid("fieldOption", "2", "visible", false);
-     	   }
-        
-        }
-        
-        function fn_SubBrdPage(getData) {
-     	   var brdTypCd = $('#brdTypCd').val();
-     	   location.href='/admin/board/boardDetail?brdSq='+getData+'&brdTypCd='+brdTypCd;
-     	}
+                    
+                    str += "<tr>";
+                    str += "<td>"+ boardSeq +"</td>";
+                                        
+                    str += "<td onclick='javascript:goBoardDetail("+ boardSeq +");' style='cursor:Pointer'>";
+                    
+                    if(boardReLev > 0){
+                        
+                        for(var b=0; b<boardReLev; b++){
+                            
+                            str += "&nbsp;&nbsp;&nbsp;&nbsp;";
+                        }
+                        
+                        str += "└[답글]";
+                    }
+                    
+                    str += boardSubject +"</td>";
+                                        
+                    str += "<td>"+ boardHits +"</td>";
+                    str += "<td>"+ boardWriter +"</td>";    
+                    str += "<td>"+ insDate +"</td>";    
+                    str += "</tr>";
+                    
+                } 
+                
+            } else {
+                
+                str += "<tr>";
+                str += "<td colspan='5'>등록된 글이 존재하지 않습니다.</td>";
+                str += "<tr>";
+            }
+            
+            $("#tbody").html(str);
+            $("#total_count").text(totalCount);
+            $("#pagination").html(pagination);
+            
+        } else {
+            alert("관리자에게 문의하세요.");
+            return;
+        }        
+    }
     
 </script>
-
+</head>
+<body>
+<div id="wrap">
+    <div id="container">
+        <div class="inner">        
+            <h2>게시글 목록</h2>            
+            <form id="boardForm" name="boardForm">
+            	<input type="hidden" id="function_name" name="function_name" value="getBoardList" />
+				<input type="hidden" id="current_page_no" name="current_page_no" value="1" />
+				
+				<div class="page_info">
+					<span class="total_count"><strong>전체</strong> : <span id="total_count" class="t_red">0</span>개</span>
+				</div>
+				
+                <table width="100%" class="table01">
+                    <colgroup>
+                        <col width="10%" />
+                        <col width="25%" />
+                        <col width="10%" />
+                        <col width="15%" />
+                        <col width="20%" />
+                    </colgroup>
+                    <thead>        
+                        <tr>
+                            <th>글번호</th>
+                            <th>제목</th>
+                            <th>조회수</th>
+                            <th>작성자</th>
+                            <th>작성일</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody">
+                    
+                    </tbody>    
+                </table>
+            </form>            
+            <div class="btn_right mt15">
+                <button type="button" class="btn black mr5" onclick="javascript:goBoardWrite();">작성하기</button>
+            </div>
+        </div>
+        
+        <div id="pagination"></div>
+        
+    </div>
+</div>
 </body>
 </html>

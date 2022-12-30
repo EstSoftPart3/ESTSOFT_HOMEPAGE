@@ -23,10 +23,8 @@
         		TB_BOARD ORDER BY BOARD_RE_REF DESC, BOARD_RE_SEQ ASC
 
     </select>
-    
-    <!-- //////////////// -->
+	
 	<!-- 공지시항 게시판 Mapper -->
-	<!-- ////////////////-->
     
     <!-- 공지사항 목록 및 조회 -->
 	<select id="noticeBoardListData" resultType="hashMap" parameterType="hashMap">
@@ -152,10 +150,8 @@
    		WHERE
          	1=1 AND BRD_TYP_CD = 'NT' AND BRD_SQ = #{brdSq}
 	</update>
-	
-    <!-- //////////////// -->
+
 	<!-- 교육 게시판 Mapper -->
-	<!-- ////////////////-->
 	
 	<!-- 교육 목록 및 조회 -->
 	<select id="educationBoardListData" resultType="hashMap" parameterType="hashMap">
@@ -292,161 +288,411 @@
          	1=1 AND BRD_TYP_CD = 'ED' AND BRD_SQ = #{brdSq}
 	</update>
     
-    <!-- <select id="boBoardDetail" parameterType="com.eep.bo.board.vo.BoBoardVo" resultType="com.eep.bo.board.vo.BoBoardVo">
-        
-        SELECT BOARD_SEQ 
-             , BOARD_RE_REF 
-             , BOARD_RE_LEV 
-             , BOARD_RE_SEQ 
-             , BOARD_WRITER 
-             , BOARD_SUBJECT 
-             , BOARD_CONTENT 
-             , BOARD_HITS
-             , DEL_YN 
-             , INS_USER_ID
-             , CAST( DATE_FORMAT( INS_DATE, '%Y-%m-%d %H:%i:%s' ) AS CHAR(19) ) AS INS_DATE 
-        FROM TB_BOARD
-        WHERE BOARD_SEQ = #{boardSeq}        
-              
-    </select> -->
+    <!-- 쟈유 게시판 Mapper -->
     
-   <!--  <insert id="insertBoard" parameterType="com.eep.bo.board.vo.BoBoardVo">
-            
-        <selectKey resultType="int" keyProperty="board_re_ref" order="BEFORE">
-            
-            SELECT IFNULL(MAX(BOARD_RE_REF), 0) + 1 
-            FROM BOARD.TB_BOARD
-              
-        </selectKey>
-        
-        INSERT 
-        INTO BOARD.TB_BOARD 
-        (
-              BOARD_RE_REF
-            , BOARD_RE_LEV
-            , BOARD_RE_SEQ
-            , BOARD_WRITER
-            , BOARD_SUBJECT
-            , BOARD_CONTENT
-            , INS_USER_ID
-            , INS_DATE
-            , UPD_USER_ID
-            , UPD_DATE
-        ) 
-        VALUES 
-        (
-              #{board_re_ref}
-            , 0
-            , 0
-            , #{board_writer}
-            , #{board_subject}
-            , #{board_content}
-            , 'NONMEMBER'
-            , NOW() 
-            , 'NONMEMBER'
-            , NOW() 
-        )
-     
-    </insert>
-        
-    <insert id="insertBoardFail" parameterType="com.eep.bo.board.vo.BoBoardVo">
-    
-        INSERT 
-        INTO BOARD.TB_BOARD 
-        (
-                BOARD_RE_REF
-              , BOARD_RE_LEV
-              , BOARD_RE_SEQ
-              , BOARD_WRITER
-              , BOARD_SUBJECT
-              , BOARD_CONTENT
-              , INS_USER_ID
-              , INS_DATE
-              , UPD_USER_ID
-              , UPD_DATE
-        ) 
-        VALUES 
-        (
-              0
-            , 0
-            , 0
-            , #{board_writer1}
-            , #{board_subject}
-            , #{board_content}
-            , 'NONMEMBER'
-            , NOW() 
-            , 'NONMEMBER'
-            , NOW() 
-        )
-    
-    </insert>
-        
-    <delete id="deleteBoard" parameterType="com.eep.bo.board.vo.BoBoardVo">
-    
-        DELETE 
-        FROM BOARD.TB_BOARD 
-        WHERE BOARD_SEQ = #{board_seq}
-    
-    </delete>
-    
-    <delete id="updateBoard" parameterType="com.eep.bo.board.vo.BoBoardVo">
-    
-        UPDATE BOARD.TB_BOARD 
-           SET BOARD_SUBJECT = #{board_subject}
-             , BOARD_CONTENT = #{board_content}
-         WHERE BOARD_SEQ = #{board_seq}
-    
-    </delete>
-    
-    <select id="getBoardReplyInfo" parameterType="com.eep.bo.board.vo.BoBoardVo" resultType="com.eep.bo.board.vo.BoBoardVo">
-    
-        SELECT BOARD_SEQ
-             , BOARD_RE_REF
-             , BOARD_RE_LEV
-             , BOARD_RE_SEQ
-        FROM TB_BOARD
-        WHERE BOARD_SEQ = #{board_parent_seq}
-     
+    <!-- 자유 게시판 목록 및 조회 -->
+	<select id="freedomBoardListData" resultType="hashMap" parameterType="hashMap">
+	
+        SELECT
+        		BRD_SQ 										AS 		brdSq
+              , EMPLY_SQ 									AS 		emplySq
+              , BRD_TYP_CD 									AS 		brdTypCd
+              , BRD_RE_REF 									AS 		brdReRep
+              , BRD_RE_LEV 									AS 		brdReLev
+              , BRD_RE_ORD 									AS 		brdReOrd
+              , BRD_TTL 									AS 		brdTtl
+              , BRD_CNTNT 									AS 		brdCntnt
+              , BRD_WRTR 									AS 		brdWrtr
+              , BRD_TCHR 									AS 		brdTchr
+              , BRD_EDU_DT 									AS 		brdEduDt
+              , DATE_FORMAT(BRD_REG_DT, '%Y-%m-%d %H:%i') 	AS 		brdRegDt
+              , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
+              , USE_YN 										AS 		useYn
+              , DEL_YN 										AS 		delYn
+ 		FROM 
+ 				TB_EEP_BRD_M 
+ 		WHERE
+ 				BRD_TYP_CD = 'FD'
+ 				
+ 				<if test='searchOption == "T" and searchOption != null'>
+          			AND BRD_TTL LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+           		<if test='searchOption == "W" and searchOption != null'>
+          			AND BRD_WRTR LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='searchOption == "C" and searchOption != null'>
+          			AND BRD_CNTNT LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='searchOption == "TWC" and searchOption != null'>
+          			AND BRD_TTL LIKE CONCAT('%',#{searchKeyword},'%')
+          			OR BRD_WRTR LIKE CONCAT('%',#{searchKeyword},'%')
+          			OR BRD_CNTNT LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='reOption == "Rply" and reOption != null'>
+          			AND BRD_RE_LEV > 0 AND BRD_RE_ORD > 0 
+          		</if>
+          		<if test='reOption == "Orign" and reOption != null'>
+          			AND BRD_RE_LEV = 0 AND BRD_RE_ORD = 0 
+          		</if>
+          		<if test='useSearchOption != null and useSearchOption != ""'>
+          			AND USE_YN = #{useSearchOption}
+          		</if>
+          		<if test='delSearchOption != null and delSearchOption != ""'>
+          			AND DEL_YN = #{delSearchOption}
+          		</if>
+		    
+ 		ORDER BY 
+ 				BRD_RE_REF DESC, BRD_RE_ORD ASC
+
     </select>
     
-    <delete id="updateBoardReSeq" parameterType="com.eep.bo.board.vo.BoBoardVo">
+	<!-- 자유 게시판 원본 등록 -->
+	<insert id="freedomBoardInsertData" parameterType="hashMap">
+
+    	INSERT INTO TB_EEP_BRD_M
+        (
+			 EMPLY_SQ
+			,BRD_TYP_CD
+			,BRD_TTL
+			,BRD_CNTNT
+			,BRD_WRTR
+			,BRD_RE_REF
+			,BRD_RE_LEV
+			,BRD_RE_ORD
+			,BRD_REG_DT
+			,USE_YN 
+			,DEL_YN
+       	) 
+        VALUES
+        (
+			 #{emplySq}
+			,'FD'
+			,#{brdTtl}
+			,#{brdCntnt}
+			,#{brdWrtr}
+			,0
+			,0
+			,0
+			,default
+			,#{useYn}
+			,default
+        )
+	</insert>
+	
+	<!-- 원본 저장 후  BRD_RE_REF 컬럼에 현재 번호 조회해서 넣어주는 쿼리-->
+    <insert id="freedomBoardInsertUpdateData" parameterType="hashMap">
+    	
+		<selectKey resultType="int" keyProperty="brdReRep" order="BEFORE">
+            
+            SELECT IFNULL(MAX(BRD_SQ), 0)
+            FROM TB_EEP_BRD_M
+              
+        </selectKey>
     
-        UPDATE TB_BOARD
-           SET BOARD_RE_SEQ = BOARD_RE_SEQ + 1
-             , UPD_USER_ID = 'NONMEMBER'
-             , UPD_DATE = NOW()
-         WHERE BOARD_RE_REF = #{board_re_ref} 
-           AND BOARD_RE_SEQ > #{board_re_seq}
+   		UPDATE 
+   			TB_EEP_BRD_M
+		SET
+			BRD_RE_REF = #{brdReRep}
+   		WHERE
+         	1=1 AND BRD_TYP_CD = 'FD' AND BRD_SQ = #{brdReRep}
+	</insert>
+    
+    <!-- 자유게시판 상세 -->
+    <select id="freedomBoardDetailData" resultType="hashMap">
+        SELECT
+        		BRD_SQ 										AS 		brdSq
+              , EMPLY_SQ 									AS 		emplySq
+              , BRD_TYP_CD 									AS 		brdTypCd
+              , BRD_RE_REF 									AS 		brdReRep
+              , BRD_RE_LEV 									AS 		brdReLev
+              , BRD_RE_ORD 									AS 		brdReOrd
+              , BRD_TTL 									AS 		brdTtl
+              , BRD_CNTNT 									AS 		brdCntnt
+              , BRD_WRTR 									AS 		brdWrtr
+              , BRD_TCHR 									AS 		brdTchr
+              , BRD_EDU_DT 									AS 		brdEduDt
+              , DATE_FORMAT(BRD_REG_DT, '%Y-%m-%d %H:%i') 	AS 		brdRegDt
+              , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
+              , USE_YN 										AS 		useYn
+              , DEL_YN 										AS 		delYn
+ 		FROM 
+ 				TB_EEP_BRD_M 
+ 		WHERE
+         		1=1 AND BRD_TYP_CD = 'FD' AND BRD_SQ = #{brdSq}
+    </select>
+    
+    <!-- 자유 게시판 답변 업데이트 등록 -->
+    <delete id="freedomBoardReplyInsertUpdateData" parameterType="hashMap">
+    
+        UPDATE TB_EEP_BRD_M
+           SET BRD_RE_ORD = BRD_RE_ORD + 1
+         WHERE BRD_RE_REF = #{brdReRep} 
+           AND BRD_RE_ORD > #{brdReOrd}
      
     </delete>
- 
-    <insert id="insertBoardReply" parameterType="com.eep.bo.board.vo.BoBoardVo">
     
-        INSERT 
-        INTO BOARD.TB_BOARD 
+    <!-- 자유 게시판 답변 등록 -->
+   	<insert id="freedomBoardReplyInsertData" parameterType="hashMap">
+
+    	INSERT INTO TB_EEP_BRD_M
         (
-              BOARD_RE_REF
-            , BOARD_RE_LEV
-            , BOARD_RE_SEQ
-            , BOARD_WRITER
-            , BOARD_SUBJECT
-            , BOARD_CONTENT
-            , INS_USER_ID
-            , INS_DATE
-        ) 
-        VALUES 
+			 EMPLY_SQ
+			,BRD_TYP_CD
+			,BRD_TTL
+			,BRD_CNTNT
+			,BRD_WRTR
+			,BRD_RE_REF
+			,BRD_RE_LEV
+			,BRD_RE_ORD
+			,BRD_REG_DT
+			,USE_YN 
+			,DEL_YN
+       	) 
+        VALUES
         (
-              #{board_re_ref}
-            , #{board_re_lev} + 1
-            , #{board_re_seq} + 1
-            , #{board_writer}
-            , #{board_subject}
-            , #{board_content}
-            , 'NONMEMBER'
-            , NOW() 
+			 #{emplySq}
+			,'FD'
+			,#{brdTtl}
+			,#{brdCntnt}
+			,#{brdWrtr}
+			,#{brdReRep}
+			,#{brdReLev} + 1
+			,#{brdReOrd} + 1
+			,default
+			,#{useYn}
+			,default
         )
+	</insert>
+    
+    <!-- 자유 게시판 수정 -->
+    <update id="freedomBoardUpdateData" parameterType="hashMap">
+   		UPDATE 
+   			TB_EEP_BRD_M
+		SET
+			 BRD_TTL        	= 	#{brdTtl}
+			,BRD_CNTNT     		= 	#{brdCntnt}
+			,BRD_UPDT_DT      	= 	NOW()
+			,USE_YN 			= 	#{useYn}
+			,DEL_YN 			= 	#{delYn}
+   		WHERE
+         	1=1 AND BRD_TYP_CD = 'FD' AND BRD_SQ = #{brdSq}
+	</update>
+	
+	<!-- 자유 게시판 삭제 -->
+    <update id="freedomBoardDeleteData" parameterType="hashMap">
+   		UPDATE 
+   			TB_EEP_BRD_M
+		SET
+			 DEL_YN	= 'Y'
+			,USE_YN	= 'N'
+   		WHERE
+         	1=1 AND BRD_TYP_CD = 'FD' AND BRD_SQ = #{brdSq}
+	</update>
+    
+    <!-- 기술문의 게시판 Mapper -->
+    
+    <!-- 기술문의 게시판 목록 및 조회 -->
+	<select id="technologyBoardListData" resultType="hashMap" parameterType="hashMap">
+	
+        SELECT
+        		BRD_SQ 										AS 		brdSq
+              , EMPLY_SQ 									AS 		emplySq
+              , BRD_TYP_CD 									AS 		brdTypCd
+              , BRD_RE_REF 									AS 		brdReRep
+              , BRD_RE_LEV 									AS 		brdReLev
+              , BRD_RE_ORD 									AS 		brdReOrd
+              , BRD_TTL 									AS 		brdTtl
+              , BRD_CNTNT 									AS 		brdCntnt
+              , BRD_WRTR 									AS 		brdWrtr
+              , BRD_TCHR 									AS 		brdTchr
+              , BRD_EDU_DT 									AS 		brdEduDt
+              , DATE_FORMAT(BRD_REG_DT, '%Y-%m-%d %H:%i') 	AS 		brdRegDt
+              , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
+              , USE_YN 										AS 		useYn
+              , DEL_YN 										AS 		delYn
+ 		FROM 
+ 				TB_EEP_BRD_M 
+ 		WHERE
+ 				BRD_TYP_CD = 'TL'
+ 				
+ 				<if test='searchOption == "T" and searchOption != null'>
+          			AND BRD_TTL LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+           		<if test='searchOption == "W" and searchOption != null'>
+          			AND BRD_WRTR LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='searchOption == "C" and searchOption != null'>
+          			AND BRD_CNTNT LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='searchOption == "TWC" and searchOption != null'>
+          			AND BRD_TTL LIKE CONCAT('%',#{searchKeyword},'%')
+          			OR BRD_WRTR LIKE CONCAT('%',#{searchKeyword},'%')
+          			OR BRD_CNTNT LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='reOption == "Rply" and reOption != null'>
+          			AND BRD_RE_LEV > 0 AND BRD_RE_ORD > 0 
+          		</if>
+          		<if test='reOption == "Orign" and reOption != null'>
+          			AND BRD_RE_LEV = 0 AND BRD_RE_ORD = 0 
+          		</if>
+          		<if test='useSearchOption != null and useSearchOption != ""'>
+          			AND USE_YN = #{useSearchOption}
+          		</if>
+          		<if test='delSearchOption != null and delSearchOption != ""'>
+          			AND DEL_YN = #{delSearchOption}
+          		</if>
+		    
+ 		ORDER BY 
+ 				BRD_RE_REF DESC, BRD_RE_ORD ASC
+
+    </select>
+    
+	<!-- 기술문의 게시판 원본 등록 -->
+	<insert id="technologyBoardInsertData" parameterType="hashMap">
+
+    	INSERT INTO TB_EEP_BRD_M
+        (
+			 EMPLY_SQ
+			,BRD_TYP_CD
+			,BRD_TTL
+			,BRD_CNTNT
+			,BRD_WRTR
+			,BRD_RE_REF
+			,BRD_RE_LEV
+			,BRD_RE_ORD
+			,BRD_REG_DT
+			,USE_YN 
+			,DEL_YN
+       	) 
+        VALUES
+        (
+			 #{emplySq}
+			,'TL'
+			,#{brdTtl}
+			,#{brdCntnt}
+			,#{brdWrtr}
+			,0
+			,0
+			,0
+			,default
+			,#{useYn}
+			,default
+        )
+	</insert>
+	
+	<!-- 원본 저장 후  BRD_RE_REF 컬럼에 현재 번호 조회해서 넣어주는 쿼리-->
+    <insert id="technologyBoardInsertUpdateData" parameterType="hashMap">
+    	
+		<selectKey resultType="int" keyProperty="brdReRep" order="BEFORE">
+            
+            SELECT IFNULL(MAX(BRD_SQ), 0)
+            FROM TB_EEP_BRD_M
+              
+        </selectKey>
+    
+   		UPDATE 
+   			TB_EEP_BRD_M
+		SET
+			BRD_RE_REF = #{brdReRep}
+   		WHERE
+         	1=1 AND BRD_TYP_CD = 'TL' AND BRD_SQ = #{brdReRep}
+	</insert>
+    
+    <!-- 기술문의 게시판 상세 -->
+    <select id="technologyBoardDetailData" resultType="hashMap">
+        SELECT
+        		BRD_SQ 										AS 		brdSq
+              , EMPLY_SQ 									AS 		emplySq
+              , BRD_TYP_CD 									AS 		brdTypCd
+              , BRD_RE_REF 									AS 		brdReRep
+              , BRD_RE_LEV 									AS 		brdReLev
+              , BRD_RE_ORD 									AS 		brdReOrd
+              , BRD_TTL 									AS 		brdTtl
+              , BRD_CNTNT 									AS 		brdCntnt
+              , BRD_WRTR 									AS 		brdWrtr
+              , BRD_TCHR 									AS 		brdTchr
+              , BRD_EDU_DT 									AS 		brdEduDt
+              , DATE_FORMAT(BRD_REG_DT, '%Y-%m-%d %H:%i') 	AS 		brdRegDt
+              , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
+              , USE_YN 										AS 		useYn
+              , DEL_YN 										AS 		delYn
+ 		FROM 
+ 				TB_EEP_BRD_M 
+ 		WHERE
+         		1=1 AND BRD_TYP_CD = 'TL' AND BRD_SQ = #{brdSq}
+    </select>
+    
+    <!-- 기술문의 게시판 답변 업데이트 등록 -->
+    <delete id="technologyBoardReplyInsertUpdateData" parameterType="hashMap">
+    
+        UPDATE TB_EEP_BRD_M
+           SET BRD_RE_ORD = BRD_RE_ORD + 1
+         WHERE BRD_RE_REF = #{brdReRep} 
+           AND BRD_RE_ORD > #{brdReOrd}
      
-    </insert> -->
+    </delete>
+    
+    <!-- 기술문의 게시판 답변 등록 -->
+   	<insert id="technologyBoardReplyInsertData" parameterType="hashMap">
+
+    	INSERT INTO TB_EEP_BRD_M
+        (
+			 EMPLY_SQ
+			,BRD_TYP_CD
+			,BRD_TTL
+			,BRD_CNTNT
+			,BRD_WRTR
+			,BRD_RE_REF
+			,BRD_RE_LEV
+			,BRD_RE_ORD
+			,BRD_REG_DT
+			,USE_YN 
+			,DEL_YN
+       	) 
+        VALUES
+        (
+			 #{emplySq}
+			,'TL'
+			,#{brdTtl}
+			,#{brdCntnt}
+			,#{brdWrtr}
+			,#{brdReRep}
+			,#{brdReLev} + 1
+			,#{brdReOrd} + 1
+			,default
+			,#{useYn}
+			,default
+        )
+	</insert>
+    
+    <!-- 기술문의 게시판 수정 -->
+    <update id="technologyBoardUpdateData" parameterType="hashMap">
+   		UPDATE 
+   			TB_EEP_BRD_M
+		SET
+			 BRD_TTL        	= 	#{brdTtl}
+			,BRD_CNTNT     		= 	#{brdCntnt}
+			,BRD_UPDT_DT      	= 	NOW()
+			,USE_YN 			= 	#{useYn}
+			,DEL_YN 			= 	#{delYn}
+   		WHERE
+         	1=1 AND BRD_TYP_CD = 'TL' AND BRD_SQ = #{brdSq}
+	</update>
+	
+	<!-- 기술문의 게시판 삭제 -->
+    <update id="technologyBoardDeleteData" parameterType="hashMap">
+   		UPDATE 
+   			TB_EEP_BRD_M
+		SET
+			 DEL_YN	= 'Y'
+			,USE_YN	= 'N'
+   		WHERE
+         	1=1 AND BRD_TYP_CD = 'TL' AND BRD_SQ = #{brdSq}
+	</update>
+    
+    
+    
+  
 	
 	
 </mapper>

@@ -52,7 +52,7 @@
 	    			
 	    			<div class="card-header p-2" style="border: 1px solid rgba(0,0,0,.125);background-color:#efefef">
 	                 	<ul class="nav nav-pills">
-		               		<li class="nav-item"><a class="sTitle" href="#" data-toggle="tab"><b>공지시항 상세 페이지</b></a></li>
+		               		<li class="nav-item"><a class="sTitle" href="#" data-toggle="tab"><b>기술문의 게시판 수정 페이지</b></a></li>
 		               	</ul>
 					 </div>
 					 
@@ -66,7 +66,7 @@
 					 			<div class="form-group row">
 					 				
                     				<div class="col-sm-4">
-                      					<input type="text" class="form-control sTitle classname"  id="brdTtl" name="brdTtl" readonly >
+                      					<input type="text" class="form-control sTitle classname"  id="brdTtl" name="brdTtl">
                     				</div>
 					 			</div>
 
@@ -75,22 +75,6 @@
 					 				
                     				<div class="col-sm-4">
                       					<input type="text" class="form-control sTitle classname"  id="brdWrtr" name="brdWrtr" readonly >
-                    				</div>
-					 			</div>
-					 			
-					 			<label class="col-form-label sTitle LabelStyle" style="text-align: center;">강사</label>
-					 			<div class="form-group row">
-					 				
-                    				<div class="col-sm-4">
-                      					<input type="text" class="form-control sTitle classname"  id="brdTchr" name="brdTchr" readonly >
-                    				</div>
-					 			</div>
-					 			
-					 			<label class="col-form-label sTitle LabelStyle" style="text-align: center;">교육일</label>
-					 			<div class="form-group row">
-					 				
-                    				<div class="col-sm-4">
-                      					<input type="text" class="form-control sTitle classname"  id="brdEduDt" name="brdEduDt" readonly >
                     				</div>
 					 			</div>
 					 			
@@ -110,21 +94,29 @@
                     				</div>
 					 			</div>
 					 			
-					 			<label class="col-form-label sTitle LabelStyle" style="text-align: center;">사용유무</label>
-					 			<div class="form-group row">
-					 				
-                    				<div class="col-sm-4">
-                      					<input type="text" class="form-control sTitle classname"  id="useYn" name="useYn" readonly >
-                    				</div>
-					 			</div>
+					 			<label class="col-form-label sTitle LabelStyle" style="text-align: center;">사용여부</label>
+                   				<div class="form-group row">
+                     					<div style="padding-left:10px;float:left;">
+										<input type="radio" id="u1" name="useYn" class="useYn" value="Y">
+										<label for="u1" class="col-form-label sTitle">사용함</label>
+									</div>
+                     					<div style="padding-left:10px;float:left;">
+                     						<input type="radio" id="u2" name="useYn" class="useYn" value="N">
+										<label for="u2" class="col-form-label sTitle">사용안함</label>
+									</div>
+								</div>
 					 			
-					 			<label class="col-form-label sTitle LabelStyle" style="text-align: center;">삭제유무</label>
-					 			<div class="form-group row">
-					 				
-                    				<div class="col-sm-4">
-                      					<input type="text" class="form-control sTitle classname"  id="delYn" name="delYn" readonly >
-                    				</div>
-					 			</div>
+					 			<label class="col-form-label sTitle LabelStyle" style="text-align: center;">삭제여부</label>
+                   				<div class="form-group row">
+                     					<div style="padding-left:10px;float:left;">
+										<input type="radio" id="d1" name="delYn" class="delYn" value="Y">
+										<label for="d1" class="col-form-label sTitle">삭제함</label>
+									</div>
+                     					<div style="padding-left:10px;float:left;">
+                     						<input type="radio" id="d2" name="delYn" class="delYn" value="N">
+										<label for="d2" class="col-form-label sTitle">삭제안함</label>
+									</div>
+								</div>
 
 								<label class="col-form-label sTitle LabelStyle" style="text-align: center;">내용</label>
 					 			<div class="form-group row">
@@ -140,9 +132,9 @@
 					 			<div class="form-group row">
                     				
                     				<div class="col-sm-4" style="text-align:right">
-                    					<button type="button" class="btn btn-primary sTitle" onclick="educationBoardList();">리스트로 돌아가기</button>
-                    					<button type="button" class="btn btn-info sTitle" onclick="educationUpdatePage();">수정</button>
-                    					<button type="button" class="btn btn-danger sTitle" onclick="educationBoardDelete();">삭제</button>
+                    					<button type="button" class="btn btn-primary sTitle" onclick="technologyBoardList();">리스트로 돌아가기</button>
+                    					<button type="button" class="btn btn-info sTitle" onclick="technologyUpdate();">수정</button>
+                    					<button type="button" class="btn btn-danger sTitle" onclick="technologyBoardDetail();">뒤로</button>
                     				</div>
                     				
                     			</div>
@@ -164,7 +156,7 @@
    <script>
 	
 
- 
+   var oEditors = [];
 
 
    var emplySq     = $('#emplySq').val(); //직원순번
@@ -173,35 +165,30 @@
    
    $(document).ready(function(){
 
-		noticeboardDetailtData(brdSq);
+	   technologyBoardDetailtData(brdSq);
 		
    });
    
-   function noticeboardDetailtData(brdSq) {
+   function technologyBoardDetailtData(brdSq) {
 		
 		$.ajax({
 	           type: "post",
-	           url: "/admin/board/education/educationBoardDetailData.do",
+	           url: "/admin/board/technology/technologyBoardDetailData.do",
 	           data: {
 	        	   brdSq : brdSq
 	            },
 	           success: function(data) {
 	        	    
-	        	 dataContent = data.educationBoardDetailData.educationBoardDetailData[0];
+	        	 dataContent = data.technologyBoardDetailData.technologyBoardDetailData[0];
 
 	        	 var brdCntnt 	= dataContent.brdCntnt;
 	        	 var brdTtl 	= dataContent.brdTtl;
 	        	 var brdWrtr 	= dataContent.brdWrtr;
-	        	 var brdTchr 	= dataContent.brdTchr;
-	        	 var brdEduDt 	= dataContent.brdEduDt;
 	        	 var brdRegDt	= dataContent.brdRegDt;
 	        	 var brdUpdtDt	= dataContent.brdUpdtDt;
 	        	 var useYn 		= dataContent.useYn;
 	        	 var delYn 		= dataContent.delYn;
-	        	 
-	        	 
 
-	        	 
 	        	 //네이버 에디터 적용 전 유효성 체크 반영
 				 var castStr = brdCntnt;
 
@@ -215,7 +202,7 @@
 				 
 				 
 				  //네이버 에디터 임포트
-				   var oEditors = [];
+				  
 				   
 				   $(function(){
 				      nhn.husky.EZCreator.createInIFrame({
@@ -225,11 +212,11 @@
 				         sSkinURI: "/resources/navereditor/SmartEditor2Skin.html",  
 				         htParams : {
 				             // 툴바 사용 여부 (true:사용/ false:사용하지 않음)
-				             bUseToolbar : false,             
+				             bUseToolbar : true,             
 				             // 입력창 크기 조절바 사용 여부 (true:사용/ false:사용하지 않음)
-				             bUseVerticalResizer : false,     
+				             bUseVerticalResizer : true,     
 				             // 모드 탭(Editor | HTML | TEXT) 사용 여부 (true:사용/ false:사용하지 않음)
-				             bUseModeChanger : false,         
+				             bUseModeChanger : true,         
 				             fOnBeforeUnload : function(){
 				                  
 				             }
@@ -241,9 +228,9 @@
 				           	 //DB내용 표현
 				             oEditors.getById["naverEditor"].exec("PASTE_HTML", [castStr]);
 				           	 //수정 불가 지정
-				             oEditors.getById["naverEditor"].exec("DISABLE_WYSIWYG");
+				             //oEditors.getById["naverEditor"].exec("DISABLE_WYSIWYG");
 				           	 //UI 비활성화
-				             oEditors.getById["naverEditor"].exec("DISABLE_ALL_UI");
+				             //oEditors.getById["naverEditor"].exec("DISABLE_ALL_UI");
 
 				         },
 				         fCreator: "createSEditor2"
@@ -254,14 +241,23 @@
 	        	 /* document.getElementById('naverEditor').innerHTML=castStr; */
 	        	 $('#brdTtl').val(brdTtl);
 	        	 $('#brdWrtr').val(brdWrtr);
-	        	 $('#brdTchr').val(brdTchr);
-	        	 $('#brdEduDt').val(brdEduDt);
 	        	 $('#brdRegDt').val(brdRegDt);
-	        	 $('#useYn').val(useYn);
-	        	 $('#delYn').val(delYn);
+	        	 
+	        	 if(useYn == "Y"){
+	        		 $("#u1").prop("checked", true);
+	        	 }else{
+	        		 $("#u2").prop("checked", true);
+	        	 }
+	        	 
+	        	 if(delYn == "Y"){
+	        		 $("#d1").prop("checked", true);
+	        	 }else{
+	        		 $("#d2").prop("checked", true);
+	        	 }
+
 	        	 //수정 이력 없을 시 유효성 체크
 	        	 if(isEmpty(brdUpdtDt)){
-	        		 $('#brdUpdtDt').val("최근 수정한 이력 없음");
+	        		 $('#brdUpdtDt').val("자동 입력");
 	        	 }else{
 	        		 $('#brdUpdtDt').val(brdUpdtDt);
 	        	 }
@@ -276,25 +272,56 @@
 		})
 	}
    
-  
-   function educationBoardDelete() {
-   
-	   
-	   if(confirm('정말 삭제 하시겠습니까?')) {
-		   
-		   $.ajax({
+   function technologyUpdate() {
+		
+		var brdSq     = $("#brdSq").val();     
+		var brdTtl  = $("#brdTtl").val(); 
+		oEditors.getById["naverEditor"].exec("UPDATE_CONTENTS_FIELD", []);
+		var brdCntnt = document.getElementById("naverEditor").value;
+	    var useYn = $('input[name="useYn"]:checked').val();
+	    var delYn  = $('input[name="delYn"]:checked').val();
+
+	   //잡지 제목
+	   	 if(isEmpty(brdTtl)) {
+	   		bootbox.alert({
+					 message: "제목을 입력해 주세요.",
+					 locale: 'kr',
+					 callback: function() {
+					 		$("#brdTtl").focus();
+				     } });
+				 return;
+	   	 }
+	   	 
+	   	 //잡지 설명
+	   	 if(isEmpty(brdCntnt)) {
+	   		bootbox.alert({
+					 message: "내용을 입력해 주세요.",
+					 locale: 'kr',
+					 callback: function() {
+					 		$("#brdCntnt").focus();
+				     } });
+				 return;
+	   	 }
+
+		
+		
+		
+		$.ajax({
 	           type: "post",
-	           url: "/admin/board/education/educationBoardDeleteData.do",
+	           url: "/admin/board/technology/technologyBoardUpdateData.do",
 	           data: {
 	        	   brdSq : brdSq,
-
+	        	   brdTtl : brdTtl,
+	        	   brdCntnt : brdCntnt,
+	        	   useYn : useYn,
+	        	   delYn : delYn
 	           },
 	           success: function(data) {
 	        	   bootbox.alert({
-						 message: "삭제 되었습니다.",
+						 message: "게시글이 수정 되었습니다.",
 						 locale: 'kr',
 						 callback: function() {
-							 location.href='/admin/board/education/openEducationBoardList.do';	
+							 	location.href='/admin/board/technology/openTechnologyBoardDetail.do?brdSq='+brdSq;
 					     } });
 			   },
 	           error: function(error) {
@@ -302,16 +329,16 @@
 	               console.log(errorJson);
 	           }
 		})
-		   
-	   }else{
-		   return false;
-	   }
-	   
-	  
+	}
+   
+ 
+   
+   function technologyBoardList() {
+	   location.href='/admin/board/technology/openTechnologyBoardList.do';
    }
    
-   function educationBoardList() {
-	   location.href='/admin/board/education/openEducationBoardList.do';
+   function technologyBoardDetail() {
+	   location.href='/admin/board/technology/openTechnologyBoardDetail.do?brdSq='+brdSq;
    }
    
 	 //Input Box Null Check
@@ -322,12 +349,6 @@
        else
            return false ;
    }
-	 
-	 
-   function educationUpdatePage() {
-	   
-	   location.href='/admin/board/education/openEducationBoardUpdate.do?brdSq='+brdSq;
-	}
 	 
    
    </script>
