@@ -1,8 +1,5 @@
 <%@ page session="false" %>
 <%@ page language="java" contentType="text/html;charset=UTF-8" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
-<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>  
-<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <html lang="en">
 
 <head>
@@ -72,38 +69,36 @@ th, td {
                                <h5 class="mb-3 Gugi">NOTICE</h5>
                               
                               <table class="table table-bordered" style="border-color:#ced4da">
-								   	<thead style="background-color:#efefef">
-								   		<tr align="center">
-											<th>제목</th>
-											<th>등록일</th>
-										</tr>
-									</thead>
-									<tbody style="font-weight:bold;">
-										<c:choose>
-											<c:when test="${ fn:length(noticeData.mainNoticeBoardInfo) == 0 }">
-												<tr>
-													<td colspan="2">조회 결과가 없습니다</td>
-												</tr>
-											</c:when>
-											<c:otherwise>
-												<c:forEach var="noticeData" items="${noticeData.mainNoticeBoardInfo}">
-												<tr style="text-align:center;background-color:#ffffff">
-													<td>
-														<a style="text-decoration:none" 
-														   href='<c:url value='/eep/board/notice/openNoticeBoardDetail.do?brdSq=${noticeData.brdSq}'/>'>
-															<c:out value="${noticeData.brdTtl}" />
-														</a>
-													</td>
-													<td>
-														<c:out value="${noticeData.brdRegDt}" />
-													</td>
-												</tr>
-												</c:forEach>
-											</c:otherwise>
-										</c:choose>
-									</tbody>
+							   	<thead style="background-color:#efefef">
+							   		<tr align="center">
+										<th>제목</th>
+										<th>등록일</th>
+									</tr>
+								</thead>
+								<tbody style="font-weight:bold;">
+									<tr style="text-align:center;background-color:#ffffff">
+										<td>지금은 테스트중 입니다.</td>
+										<td>2022-12-14</td>
+									</tr>
+									<tr style="text-align:center;background-color:#ffffff">
+										<td>지금은 테스트중 입니다.</td>
+										<td>2022-12-14</td>
+									</tr>
+									<tr style="text-align:center;background-color:#ffffff">
+										<td>지금은 테스트중 입니다.</td>
+										<td>2022-12-14</td>
+									</tr>
+									<tr style="text-align:center;background-color:#ffffff">
+										<td>지금은 테스트중 입니다.</td>
+										<td>2022-12-14</td>
+									</tr>
+									<tr style="text-align:center;background-color:#ffffff">
+										<td>지금은 테스트중 입니다.</td>
+										<td>2022-12-14</td>
+									</tr>
+								</tbody>
 							 </table>
-							 
+                            
                             </span>
                         </div>
                     </div>
@@ -116,36 +111,34 @@ th, td {
                                <h5 class="mb-3 Gugi">TECHNOLOGY</h5>
                               
                               <table class="table table-bordered" style="border-color:#ced4da">
-								   	<thead style="background-color:#efefef">
-								   		<tr align="center">
-											<th>제목</th>
-											<th>등록일</th>
-										</tr>
-									</thead>
-									<tbody style="font-weight:bold;">
-										<c:choose>
-											<c:when test="${ fn:length(technologyData.mainTechnologyBoardInfo) == 0 }">
-												<tr>
-													<td colspan="2">조회 결과가 없습니다</td>
-												</tr>
-											</c:when>
-											<c:otherwise>
-												<c:forEach var="technologyData" items="${technologyData.mainTechnologyBoardInfo}">
-												<tr style="text-align:center;background-color:#ffffff">
-													<td>
-														<a style="text-decoration:none" 
-														   href='<c:url value='/eep/board/technology/openTechnologyBoardDetail.do?brdSq=${noticeData.brdSq}'/>'>
-															<c:out value="${technologyData.brdTtl}" />
-														</a>
-													</td>
-													<td>
-														<c:out value="${technologyData.brdRegDt}" />
-													</td>
-												</tr>
-												</c:forEach>
-											</c:otherwise>
-										</c:choose>
-									</tbody>
+							   	<thead style="background-color:#efefef">
+							   		<tr align="center">
+										<th>제목</th>
+										<th>등록일</th>
+									</tr>
+								</thead>
+								<tbody style="font-weight:bold;">
+									<tr style="text-align:center;background-color:#ffffff">
+										<td>지금은 테스트중 입니다.</td>
+										<td>2022-12-14</td>
+									</tr>
+									<tr style="text-align:center;background-color:#ffffff">
+										<td>지금은 테스트중 입니다.</td>
+										<td>2022-12-14</td>
+									</tr>
+									<tr style="text-align:center;background-color:#ffffff">
+										<td>지금은 테스트중 입니다.</td>
+										<td>2022-12-14</td>
+									</tr>
+									<tr style="text-align:center;background-color:#ffffff">
+										<td>지금은 테스트중 입니다.</td>
+										<td>2022-12-14</td>
+									</tr>
+									<tr style="text-align:center;background-color:#ffffff">
+										<td>지금은 테스트중 입니다.</td>
+										<td>2022-12-14</td>
+									</tr>
+								</tbody>
 							 </table>
                             
                             </span>
@@ -159,37 +152,35 @@ th, td {
                             
                                <h5 class="mb-3 Gugi">EDUCATION</h5>
                               
-                               <table class="table table-bordered" style="border-color:#ced4da">
-								   	<thead style="background-color:#efefef">
-								   		<tr align="center">
-											<th>제목</th>
-											<th>등록일</th>
-										</tr>
-									</thead>
-									<tbody style="font-weight:bold;">
-										<c:choose>
-											<c:when test="${ fn:length(educationData.mainEducationBoardInfo) == 0 }">
-												<tr>
-													<td colspan="2">조회 결과가 없습니다</td>
-												</tr>
-											</c:when>
-											<c:otherwise>
-												<c:forEach var="educationData" items="${educationData.mainEducationBoardInfo}">
-												<tr style="text-align:center;background-color:#ffffff">
-													<td>
-														<a style="text-decoration:none" 
-														   href='<c:url value='/eep/board/education/openEducationBoardDetail.do?brdSq=${noticeData.brdSq}'/>'>
-															<c:out value="${educationData.brdTtl}" />
-														</a>
-													</td>
-													<td>
-														<c:out value="${educationData.brdRegDt}" />
-													</td>
-												</tr>
-												</c:forEach>
-											</c:otherwise>
-										</c:choose>
-									</tbody>
+                              <table class="table table-bordered" style="border-color:#ced4da">
+							   	<thead style="background-color:#efefef">
+							   		<tr align="center">
+										<th>제목</th>
+										<th>등록일</th>
+									</tr>
+								</thead>
+								<tbody style="font-weight:bold;">
+									<tr style="text-align:center;background-color:#ffffff">
+										<td>지금은 테스트중 입니다.</td>
+										<td>2022-12-14</td>
+									</tr>
+									<tr style="text-align:center;background-color:#ffffff">
+										<td>지금은 테스트중 입니다.</td>
+										<td>2022-12-14</td>
+									</tr>
+									<tr style="text-align:center;background-color:#ffffff">
+										<td>지금은 테스트중 입니다.</td>
+										<td>2022-12-14</td>
+									</tr>
+									<tr style="text-align:center;background-color:#ffffff">
+										<td>지금은 테스트중 입니다.</td>
+										<td>2022-12-14</td>
+									</tr>
+									<tr style="text-align:center;background-color:#ffffff">
+										<td>지금은 테스트중 입니다.</td>
+										<td>2022-12-14</td>
+									</tr>
+								</tbody>
 							 </table>
                             
                             </span>
