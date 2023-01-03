@@ -27,7 +27,7 @@
         <div class="container py-5">
             <div class="row g-5 align-items-center">
                 <div class="col-lg-6">
-                    <h1 class="display-4 mb-3 animated slideInDown">EST CENTER</h1>
+                    <h1 class="display-4 mb-3 animated slideInDown menu" style="font-weight: 700;">EST 고객센터</h1>
                      <p class="animated slideInDown IBM">
                     	50여 명의 정직원 모두 성살함과 책임감으로 무장하고 있으며,
                     	<br>
@@ -43,7 +43,7 @@
                     
                 </div>
                 <div class="col-lg-6 animated fadeIn">
-                    <img class="img-fluid animated pulse infinite" style="animation-duration: 3s;border-radius: 5%;" src="/resources/fo/team/t13.jpg" alt="">
+                    <img class="img-fluid animated pulse infinite" style="animation-duration: 3s;border-radius: 5%;" src="/resources/fo/img/4220129.jpg" alt="">
                 </div>
             </div>
         </div>
