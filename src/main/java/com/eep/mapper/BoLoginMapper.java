@@ -5,7 +5,6 @@ import java.util.Map;
 
 import org.mybatis.spring.annotation.MapperScan;
 
-import com.eep.bo.login.vo.LoginVo;
 
 @MapperScan
 public interface BoLoginMapper {
