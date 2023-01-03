@@ -15,9 +15,9 @@
     <!-- Spinner End -->
 
 
-    <!-- Navbar Start -->
+  
     	<%@ include file="/WEB-INF/include/navbar.jspf" %>
-    <!-- Navbar End -->
+  
 
 
     <!-- Header Start -->
@@ -25,7 +25,7 @@
         <div class="container py-5">
             <div class="row g-5 align-items-center">
                 <div class="col-lg-6">
-                    <h1 class="display-4 mb-3 animated slideInDown"><span class="menu" style="font-weight: 700;"><b>연혁</b><span></h1>
+                    <h1 class="display-4 mb-3 animated slideInDown"><span class="menu" style="font-weight: 700;"><b>연혁</b></span></h1>
                     <p class="animated slideInDown IBM">
                     	e-Biz 구현을 위한 IT Consulting, System Integration 전문 회사로 다양한 <br>
 						서비스 기반의 최적화된 솔루션을 보유하고 있으며, 다수의 고객과 <br> 
@@ -50,7 +50,7 @@
                     <div class="roadmap-point"><span></span></div>
                     <h5 class="text-center"><b>2017</b></h5>
                     <span class="text-right" style="font-size:12px;">
-                    	1월 “이에스티” 설립
+                    	1월 "이에스티" 설립
                     	<br>
 						2월 ㈜MCS consulting 컨소시엄
 						<br>
@@ -71,11 +71,11 @@
                     <span class="text-right" style="font-size:12px;">
                     	1월 사내연구소 설립
   						<br>
-  						6월 사내벤처 “soso” 설립
+  						6월 사내벤처 "soso" 설립
  						<br>
  						7월 “에듀해시글로벌㈜”
  						<br> 
-         				컨소시엄 체결11월 합작법인
+         				컨소시엄 체결 11월 합작법인
          				<br>
          				“㈜베스텍글로벌” 설립
                     	<br>
@@ -125,7 +125,7 @@
                    <h5 class="text-center"><b>2020</b></h5>
                     <span class="text-right" style="font-size:12px;">
                     
-                    1월 “㈜이에스티소프트” 법인전환
+                    1월 "㈜이에스티소프트" 법인전환
                     <br>
 					1월 사내연구소설립 
                     <br>
