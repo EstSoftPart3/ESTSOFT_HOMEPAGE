@@ -30,7 +30,7 @@ th, td {
 
 
     <!-- Header Start -->
-    <div class="container-fluid hero-header bg-light  mb-5">
+    <div class="container-fluid hero-header bg-light">
         <div class="container py-5">
             <div class="row g-5 align-items-center">
                  <div class="col-lg-6">
@@ -384,6 +384,87 @@ th, td {
         </div>
     </div>
     <!--TEAM End -->
+    
+    
+     <div class="container-xxl bg-light">
+        <div class="container py-5">
+        
+        	<div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
+                <h1 class="display-6">OFFICE</h1>
+                <p class="text-primary fs-5 mb-5"></p>
+            </div>
+            
+             <div class="row g-3">
+                <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
+                    <div class="bg-white text-center p-3">
+                        <img src="/resources/fo/img/O001.jpg" style="width:200px;height:150px;">
+                    </div>
+                </div>
+                <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
+                    <div class="bg-white text-center p-3">
+                        <img src="/resources/fo/img/O002.jpg" style="width:200px;height:150px;">
+                    </div>
+                </div>
+                <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.3s">
+                    <div class="bg-white text-center p-3">
+                        <img src="/resources/fo/img/O003.jpg" style="width:200px;height:150px;">
+                    </div>
+                </div>
+                <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
+                   <div class="bg-white text-center p-3">
+                        <img src="/resources/fo/img/O004.jpg" style="width:200px;height:150px;">
+                    </div>
+                </div>
+                
+                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
+                   <div class="bg-white text-center p-3">
+                        <img src="/resources/fo/img/O005.jpg" style="width:200px;height:150px;">
+                    </div>
+                </div>
+                
+                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
+                   <div class="bg-white text-center p-3">
+                        <img src="/resources/fo/img/O006.jpg" style="width:200px;height:150px;">
+                    </div>
+                </div>
+                
+                
+                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
+                    <div class="bg-white text-center p-3">
+                        <img src="/resources/fo/img/O007.jpg" style="width:200px;height:150px;">
+                    </div>
+                </div>
+                <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
+                    <div class="bg-white text-center p-3">
+                        <img src="/resources/fo/img/O008.jpg" style="width:200px;height:150px;">
+                    </div>
+                </div>
+                <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.3s">
+                    <div class="bg-white text-center p-3">
+                        <img src="/resources/fo/img/O009.jpg" style="width:200px;height:150px;">
+                    </div>
+                </div>
+                <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
+                   <div class="bg-white text-center p-3">
+                        <img src="/resources/fo/img/O010.jpg" style="width:200px;height:150px;">
+                    </div>
+                </div>
+                
+                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
+                   <div class="bg-white text-center p-3">
+                        <img src="/resources/fo/img/O011.jpg" style="width:200px;height:150px;">
+                    </div>
+                </div>
+                
+                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
+                   <div class="bg-white text-center p-3">
+                        <img src="/resources/fo/img/O012.jpg" style="width:200px;height:150px;">
+                    </div>
+                </div>
+               
+            </div>
+        </div>
+    </div>
 
 
 

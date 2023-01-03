@@ -21,7 +21,7 @@
 
 
     <!-- Header Start -->
-    <div class="container-fluid hero-header bg-light py-5 mb-5">
+    <div class="container-fluid hero-header bg-light">
         <div class="container py-5">
             <div class="row g-5 align-items-center">
                 <div class="col-lg-6">
@@ -104,6 +104,40 @@
         </div>
     </div>
     <!-- End -->
+    
+    <!-- PARTNER Start -->
+    <div class="container-xxl bg-light py-5 my-5">
+        <div class="container py-5">
+            <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
+                <h1 class="display-6">PARTNER</h1>
+                <p class="text-primary fs-5 mb-5"></p>
+            </div>
+            <div class="row g-3">
+                <div class="col-6 col-md-3 wow fadeIn" data-wow-delay="0.1s">
+                    <div class="bg-white text-center p-3">
+                        <img src="/resources/fo/logo/L3.png">
+                    </div>
+                </div>
+                <div class="col-6 col-md-3 wow fadeIn" data-wow-delay="0.1s">
+                    <div class="bg-white text-center p-3">
+                        <img src="/resources/fo/logo/L99.png">
+                    </div>
+                </div>
+                <div class="col-6 col-md-3 wow fadeIn" data-wow-delay="0.3s">
+                    <div class="bg-white text-center p-3">
+                        <img src="/resources/fo/logo/L4.png">
+                    </div>
+                </div>
+                <div class="col-6 col-md-3 wow fadeIn" data-wow-delay="0.5s">
+                   <div class="bg-white text-center p-3">
+                        <img src="/resources/fo/logo/L7.png">
+                    </div>
+                </div>
+               
+            </div>
+        </div>
+    </div>
+    <!--PARTNER End -->
 
 
     
