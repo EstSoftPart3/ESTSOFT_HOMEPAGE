@@ -45,7 +45,7 @@ th, td {
                     -->
                 </div>
                 <div class="col-lg-6 animated fadeIn">
-                    <img class="img-fluid animated pulse infinite" style="animation-duration: 3s;border-radius: 5%;" src="/resources/fo/img/est000_v1.png" alt="">
+                    <img class="img-fluid animated pulse infinite" style="animation-duration: 3s;border-radius: 5%;" src="/resources/fo/img/est000_v0.png" alt="">
                 </div>
             </div>
         </div>
