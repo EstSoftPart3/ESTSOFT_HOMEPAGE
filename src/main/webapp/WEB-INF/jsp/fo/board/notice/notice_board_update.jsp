@@ -1,6 +1,7 @@
-<%@ page session="false" %>
 <%@ page language="java" contentType="text/html;charset=UTF-8" %>
-
+<%
+	String brdSq = request.getParameter("brdSq"); 
+%>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -68,14 +69,14 @@ th, td {
                 <h1 class="display-3" style="font-size:20px;">공지사항 수정하기 </h1>
             </div>
            
-           <table class="table table-bordered" style="max-width: 900px;font-size:15px;border-color:#ced4da" align="center">
+   			<table class="table table-bordered" style="max-width: 900px;font-size:15px;border-color:#ced4da" align="center">
 		  		
 				<tr style="text-align:center;background-color:#ffffff;">
 					<td style="width:15%;background-color:#efefef;">
 						<b>제목</b>
 					</td>
 					<td style="text-align:left;">
-						<input type="text" class="form-control" id="subject" style="font-size:12px;" value="본사 이전 공지">
+						<input type="text" class="form-control" id="brdTtl" style="font-size:12px;" value="">
 					</td>
 				</tr>
 				<tr style="text-align:center;background-color:#ffffff;">
@@ -83,15 +84,15 @@ th, td {
 						<b>성명</b>
 					</td>
 					<td style="text-align:left;">
-						<input type="text" class="form-control" id="name" style="font-size:12px;" value="홍길동" readonly>
+						<input type="text" class="form-control" id="brdWrtr" style="font-size:12px;" value="" readonly>
 					</td>
 				</tr>
 				<tr style="text-align:center;background-color:#ffffff;">
 					<td style="width:15%;background-color:#efefef;">
-						<b>입력일</b>
+						<b>수정일</b>
 					</td>
 					<td style="text-align:left;">
-						<input type="text" class="form-control" id="regdate" style="font-size:12px;" value="2023-01-01" readonly>
+						<input type="text" class="form-control" id="regdate" style="font-size:12px;" value="자동입력" readonly>
 					</td>
 				</tr>
 				<tr style="text-align:center;background-color:#ffffff;">
@@ -99,19 +100,10 @@ th, td {
 						<b>내용</b>
 					</td>
 					<td style="text-align:left;height:250px;">
-					
-					<textarea class="form-control" id="exampleFormControlTextarea2" rows="7" style="font-size:12px;height:350px;">
-㈜이에스티소프트 본사 이전 공지
- 안녕하세요. ㈜이에스티소프트 경영지원팀입니다.
- 
- 본사 이전 공지해 드립니다. 세부내용은 아래를 참고해 참고해주시기 바랍니다.
+					<div id="toolbar-container" style="z-index:9999"></div>
+                    
+					<textarea class="form-control" id="naverEditor" name="naverEditor" rows="7" style="height:350px; width: 100%;">
 
- 일시 : 2022년 11월 28일 월요일부터
- 현재주소 : 서울시 구로구 디지털로 242 현화비즈메트로 1차 1403호
- 이전 후 주소 : 서울 영등포구 당산로 28길 4, 송원빌딩 3층
- 
- 문의사항은 오민형 이사님에게로 연락바랍니다.
-					
 					</textarea>
 					</td>
 				</tr>
@@ -132,9 +124,122 @@ th, td {
     <%@ include file="/WEB-INF/include/footer.jspf" %>
     
     <script>
-		function fn_list_move(){
-			location.href = '/eep/boardList.do';
-		}
+
+    var oEditors = [];
+
+
+    var emplySq     = $('#emplySq').val(); //직원순번
+    var brdSq       = $('#brdSq').val();   //공지사항 순번
+    var dataContent = {};				  //데이터 처리 리스트
+    
+    $(document).ready(function(){
+
+ 		noticeboardDetailtData(brdSq);
+ 		
+    });
+    
+    function noticeboardDetailtData(brdSq) {
+ 		
+ 		$.ajax({
+ 	           type: "post",
+ 	           url: "/eep/board/notice/noticeBoardDetailData.do",
+ 	           data: {
+ 	        	   brdSq : brdSq
+ 	            },
+ 	           success: function(data) {
+ 	        	    
+ 	        	 dataContent = data.noticeBoardDetailData.noticeBoardDetailData[0];
+
+ 	        	 var brdCntnt 	= dataContent.brdCntnt;
+ 	        	 var brdTtl 	= dataContent.brdTtl;
+ 	        	 var brdWrtr 	= dataContent.brdWrtr;
+ 	        	 var brdRegDt	= dataContent.brdRegDt;
+ 	        	 var brdUpdtDt	= dataContent.brdUpdtDt;
+ 	        	 var useYn 		= dataContent.useYn;
+ 	        	 var delYn 		= dataContent.delYn;
+
+ 	        	 //네이버 에디터 적용 전 유효성 체크 반영
+ 				 var castStr = brdCntnt;
+
+ 				 castStr = castStr.replaceAll("&lt;","<");
+ 				 castStr = castStr.replaceAll("&gt;",">");
+ 				 castStr = castStr.replaceAll("&amp;lt;","<");
+ 				 castStr = castStr.replaceAll("&amp;gt;",">");
+ 				 castStr = castStr.replaceAll("&amp;nbsp;"," ");
+ 				 castStr = castStr.replaceAll("&amp;amp;","&");
+ 				 castStr = castStr.replaceAll("\\","");
+ 				 
+ 				 
+ 				  //네이버 에디터 임포트
+ 				  
+ 				   
+ 				   $(function(){
+ 				      nhn.husky.EZCreator.createInIFrame({
+ 				         oAppRef: oEditors,
+ 				         elPlaceHolder: "naverEditor",
+ 				         //SmartEditor2Skin.html 파일이 존재하는 경로
+ 				         sSkinURI: "/resources/navereditor/SmartEditor2Skin.html",  
+ 				         htParams : {
+ 				             // 툴바 사용 여부 (true:사용/ false:사용하지 않음)
+ 				             bUseToolbar : true,             
+ 				             // 입력창 크기 조절바 사용 여부 (true:사용/ false:사용하지 않음)
+ 				             bUseVerticalResizer : true,     
+ 				             // 모드 탭(Editor | HTML | TEXT) 사용 여부 (true:사용/ false:사용하지 않음)
+ 				             bUseModeChanger : true,         
+ 				             fOnBeforeUnload : function(){
+ 				                  
+ 				             }
+ 				         }, 
+ 				         fOnAppLoad : function(){
+ 				             //textarea 내용을 에디터상에 바로 뿌려주고자 할때 사용
+ 				             //내용초기화
+ 				             oEditors.getById["naverEditor"].exec("SET_IR", [""]);
+ 				           	 //DB내용 표현
+ 				             oEditors.getById["naverEditor"].exec("PASTE_HTML", [castStr]);
+ 				           	 //수정 불가 지정
+ 				             //oEditors.getById["naverEditor"].exec("DISABLE_WYSIWYG");
+ 				           	 //UI 비활성화
+ 				             //oEditors.getById["naverEditor"].exec("DISABLE_ALL_UI");
+
+ 				         },
+ 				         fCreator: "createSEditor2"
+ 				       })
+ 				   });
+ 				 
+
+ 	        	 /* document.getElementById('naverEditor').innerHTML=castStr; */
+ 	        	 $('#brdTtl').val(brdTtl);
+ 	        	 $('#brdWrtr').val(brdWrtr);
+ 	        	 $('#brdRegDt').val(brdRegDt);
+ 	        	 
+ 	        	 if(useYn == "Y"){
+ 	        		 $("#u1").prop("checked", true);
+ 	        	 }else{
+ 	        		 $("#u2").prop("checked", true);
+ 	        	 }
+ 	        	 
+ 	        	 if(delYn == "Y"){
+ 	        		 $("#d1").prop("checked", true);
+ 	        	 }else{
+ 	        		 $("#d2").prop("checked", true);
+ 	        	 }
+
+ 	        	 //수정 이력 없을 시 유효성 체크
+ 	        	 if(isEmpty(brdUpdtDt)){
+ 	        		 $('#brdUpdtDt').val("자동 입력");
+ 	        	 }else{
+ 	        		 $('#brdUpdtDt').val(brdUpdtDt);
+ 	        	 }
+
+ 	        	 
+
+ 	           },
+ 	           error: function(error) {
+ 	        	   var errorJson = JSON.stringify(error);
+ 	               console.log(errorJson);
+ 	           }
+ 		})
+ 	}
     </script>
     
     

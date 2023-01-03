@@ -1,4 +1,3 @@
-<%@ page session="false" %>
 <%@ page language="java" contentType="text/html;charset=UTF-8" %>
 
 <!DOCTYPE html>
@@ -28,9 +27,12 @@ th, td {
     <!-- Navbar Start -->
    	<%@ include file="/WEB-INF/include/navbar.jspf" %>
     <!-- Navbar End -->
-
-
+	
+	
     <!-- Header Start -->
+    
+    <input type="hidden" name="emplySq" id="emplySq" value="${loginInfo.loginInfo[0].emplySq}">
+    
     <div class="container-fluid hero-header bg-light py-5 mb-5">
         <div class="container py-5">
             <div class="row g-5 align-items-center">
@@ -75,7 +77,7 @@ th, td {
 						<b>제목</b>
 					</td>
 					<td style="text-align:left;">
-						<input type="text" class="form-control" id="subject" style="font-size:12px;" value="">
+						<input type="text" class="form-control" id="brdTtl" style="font-size:12px;" value="">
 					</td>
 				</tr>
 				<tr style="text-align:center;background-color:#ffffff;">
@@ -83,7 +85,7 @@ th, td {
 						<b>성명</b>
 					</td>
 					<td style="text-align:left;">
-						<input type="text" class="form-control" id="name" style="font-size:12px;" value="홍길동" readonly>
+						<input type="text" class="form-control" id="brdWrtr" style="font-size:12px;" value="${loginInfo.loginInfo[0].emplyNm}" readonly>
 					</td>
 				</tr>
 				<tr style="text-align:center;background-color:#ffffff;">
@@ -91,7 +93,7 @@ th, td {
 						<b>입력일</b>
 					</td>
 					<td style="text-align:left;">
-						<input type="text" class="form-control" id="regdate" style="font-size:12px;" value="2023-01-01" readonly>
+						<input type="text" class="form-control" id="regdate" style="font-size:12px;" value="자동입력" readonly>
 					</td>
 				</tr>
 				<tr style="text-align:center;background-color:#ffffff;">
@@ -99,8 +101,9 @@ th, td {
 						<b>내용</b>
 					</td>
 					<td style="text-align:left;height:250px;">
-					
-					<textarea class="form-control" id="exampleFormControlTextarea2" rows="7" style="font-size:12px;height:350px;">
+					<div id="toolbar-container" style="z-index:9999"></div>
+                    
+					<textarea class="form-control" id="naverEditor" name="naverEditor" rows="7" style="height:350px; width: 100%;">
 
 					</textarea>
 					</td>
@@ -113,8 +116,8 @@ th, td {
         </div>
         
          <div class="col-12 text-center" style="padding-top:15px;">
-         	 <button type="button" class="btn btn-secondary btn-sm" onclick="fn_list_move();">리스트</button>
-         	 <button type="button" class="btn btn-secondary btn-sm">작성하기</button>
+         	 <button type="button" class="btn btn-secondary btn-sm" onclick="noticeBoardList();">리스트</button>
+         	 <button type="button" class="btn btn-secondary btn-sm" onclick="noticeboardInsert();">작성하기</button>
          </div>
     </div>
     <!-- FAQs Start -->
@@ -122,9 +125,108 @@ th, td {
     <%@ include file="/WEB-INF/include/footer.jspf" %>
     
     <script>
-		function fn_list_move(){
-			location.href = '/eep/boardList.do';
-		}
+    
+    var oEditors = [];
+    
+    $(function(){
+        nhn.husky.EZCreator.createInIFrame({
+           oAppRef: oEditors,
+           elPlaceHolder: "naverEditor",
+           //SmartEditor2Skin.html 파일이 존재하는 경로
+           sSkinURI: "/resources/navereditor/SmartEditor2Skin.html",  
+           htParams : {
+               // 툴바 사용 여부 (true:사용/ false:사용하지 않음)
+               bUseToolbar : true,             
+               // 입력창 크기 조절바 사용 여부 (true:사용/ false:사용하지 않음)
+               bUseVerticalResizer : true,     
+               // 모드 탭(Editor | HTML | TEXT) 사용 여부 (true:사용/ false:사용하지 않음)
+               bUseModeChanger : true,         
+               fOnBeforeUnload : function(){
+                    
+               }
+           }, 
+           fOnAppLoad : function(){
+               //textarea 내용을 에디터상에 바로 뿌려주고자 할때 사용
+               oEditors.getById["naverEditor"].exec("PASTE_HTML", [""]);
+           },
+           fCreator: "createSEditor2"
+         })
+     });
+    
+    function noticeboardInsert() {
+    	
+    	var emplySq     = $("#emplySq").val();     							//회원 순번
+    	var brdTypCd 	= 'NT'  							//게시판 구분 코드
+       	var brdTtl  	= $("#brdTtl").val();  				//게시판 제목
+       	var brdWrtr  	= $("#brdWrtr").val();  			//게시판 작성자
+        oEditors.getById["naverEditor"].exec("UPDATE_CONTENTS_FIELD", [])
+       	var brdCntnt = document.getElementById("naverEditor").value
+        
+       	debugger;
+       	
+       	 //제목
+       	 if(isEmpty(brdTtl)) {
+       		bootbox.alert({
+    				 message: "제목을 입력해 주세요.",
+    				 locale: 'kr',
+    				 callback: function() {
+    				 		$("#brdTitle").focus();
+    			     } });
+    			 return;
+       	 }
+       	 
+         //내용
+       	 if(brdCntnt == "<p>&nbsp;</p>") {
+       		bootbox.alert({
+    				 message: "내용을 입력해 주세요.",
+    				 locale: 'kr',
+    				 callback: function() {
+    					 $("#brdCntnt").focus();
+    			     } });
+    			 return;
+       	 }
+       	        		
+         
+         
+    		
+    		$.ajax({
+    	           type: "post",
+    	           url: "/eep/board/notice/noticeBoardInsertData.do",
+    	           data: {
+    	        	   emplySq : emplySq,
+    	        	   brdTypCd : brdTypCd,
+    	        	   brdTtl : brdTtl,
+    	        	   brdCntnt : brdCntnt,
+    	        	   brdWrtr : brdWrtr
+    	           },
+    	           success: function(data) {
+    	        	   bootbox.alert({
+    						 message: "게시글이 저장 되었습니다.",
+    						 locale: 'kr',
+    						 callback: function() {
+    							 		location.href='/eep/board/notice/openNoticeBoardList.do';
+    					     } });
+    			   },
+    	           error: function(error) {
+    	        	   var errorJson = JSON.stringify(error);
+    	               console.log(errorJson);
+    	           }
+    		})
+    	}
+       
+       function noticeBoardList() {
+    	   location.href='/eep/board/notice/openNoticeBoardList.do';
+       }
+       
+      //Input Box Null Check
+       function isEmpty(str){
+           
+           if(typeof str == "undefined" || str == null || str == "")
+               return true;
+           else
+               return false ;
+       }
+    
     </script>
     
     

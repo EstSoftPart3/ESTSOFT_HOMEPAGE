@@ -118,4 +118,15 @@ public class FoBoardDao {
 		FoBoardMapper.noticeBoardUpdateData(param);
 		
 	}
+	
+	//공지사항 게시판 개수
+	public int noticeBoardListCountData(Map<String, Object> param){
+
+		System.out.println("param :" + param);
+		
+		@SuppressWarnings("unchecked")
+		int result = FoBoardMapper.noticeBoardListCountData(param);
+
+		return result;
+	}
 }

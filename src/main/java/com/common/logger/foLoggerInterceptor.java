@@ -20,9 +20,9 @@ import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
  * @Author SH KIM
  * 
  */
-public class LoggerInterceptor extends HandlerInterceptorAdapter {
+public class foLoggerInterceptor extends HandlerInterceptorAdapter {
 	
-	protected Log log = LogFactory.getLog(LoggerInterceptor.class);
+	protected Log log = LogFactory.getLog(foLoggerInterceptor.class);
 	
 	private final static String USER_SESSION_ID = "USER_SESSION_ID";
 
@@ -52,7 +52,7 @@ public class LoggerInterceptor extends HandlerInterceptorAdapter {
 		System.out.println("obj : " + obj);
 		
 		if(obj == null) {
-			response.sendRedirect("/admin/login/loginPage.do");
+			response.sendRedirect("/eep/login/loginPage.do");
 			return false;
 		}
 

@@ -23,5 +23,6 @@ public interface FoBoardService {
 	public Map<String, Object> noticeBoardDetailData(Map<String, Object> param);		//공지사항 게시판 상세
 	public void noticeBoardDeleteData(Map<String, Object> param); 						//공지사항 게시판 삭제
 	public void noticeBoardUpdateData(Map<String, Object> param);						//공지사항 게시판 수정
+	public int noticeBoardListCountData(Map<String, Object> param);						//공지사항 게시판 개수
 	
 }

@@ -19,8 +19,15 @@
 			<mvc:interceptor>
 				<!-- <mvc:mapping path="/**" /> -->
 				<mvc:mapping path="/admin/board/**" />
-				<!-- <mvc:mapping path="/eep/board/**" /> -->
-				<bean id="loggerInterceptor" class="com.common.logger.LoggerInterceptor"></bean>
+				<bean id="bologgerInterceptor" class="com.common.logger.boLoggerInterceptor"></bean>
+			</mvc:interceptor>
+		</mvc:interceptors>
+		
+		<mvc:interceptors>
+			<mvc:interceptor>
+				<!-- <mvc:mapping path="/**" /> -->
+				<mvc:mapping path="/eep/board/**" />
+				<bean id="fologgerInterceptor" class="com.common.logger.foLoggerInterceptor"></bean>
 			</mvc:interceptor>
 		</mvc:interceptors>
 		

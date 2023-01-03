@@ -97,4 +97,13 @@ public class FoBoardServiceImpl implements FoBoardService{
 		FoBoardDao.noticeBoardUpdateData(param);
 	}
 	
+	//공지사항 게시판 개수
+	@Override
+	public int noticeBoardListCountData(Map<String, Object> param){
+
+		int result = FoBoardDao.noticeBoardListCountData(param);
+		
+		return result;
+	}
+	
 }

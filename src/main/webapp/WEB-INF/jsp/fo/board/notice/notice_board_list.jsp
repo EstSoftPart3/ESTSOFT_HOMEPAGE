@@ -1,4 +1,3 @@
-<%@ page session="false" %>
 <%@ page language="java" contentType="text/html;charset=UTF-8" %>
 
 <!DOCTYPE html>
@@ -123,10 +122,17 @@
 			</tbody>
 		</table>
 		
+		<div class="row justify-content-center" style="padding-top:15px; margin: 0 auto;">
+			<ul class="pagination pagination-sm" id="pages">
+								
+			</ul>
+		</div>
+		
+		<c:if test="${loginInfo.loginInfo[0].emplyAuthTypCd eq 2}">
 			<div class="col-12 text-center" style="padding-top:15px;">
-         	 	<button type="button" class="btn btn-secondary btn-sm" onclick="fn_Reg_move();">게시판 작성</button>
+         	 	<button type="button" class="btn btn-secondary btn-sm" onclick="noticeBoardInsert();">게시판 작성</button>
          	 </div>
-           
+        </c:if>
         </div>
     </div>
     <!-- FAQs Start -->
@@ -199,7 +205,7 @@
 									"<td>" +
 										value.brdSq +
 									"</td>" +
-									"<td style='text-align:left;'>" +
+									"<td style='text-align:left;'><a style='text-decoration-line: none;' href='javascript:noticeDetail(" + value.brdSq + ")'>" + 
 										value.brdTtl +
 									"</td>" +
 									"<td>" +
@@ -222,6 +228,42 @@
 				} else {
 					body.append("<tr>" + "<td colspan='8'>조회 결과가 없습니다</td>" + "</tr>"); 
 				}
+	 			
+	 			//페이징 처리 -> Ajax로 자료 불러오는 것과 동시에 처리해야함
+				var boardPager = data.boardPager;
+				var ul = $("#pages");
+				ul.empty();			
+				//현재 블록이 1보다 클 경우에 이전과 처음 버튼을 생성한다
+				if(boardPager.curBlock > 1) {
+						
+					ul.append(
+					"<li class='page-item'><a class='page-link' href='javascript:noticeBoardList(1)'>[처음]</a></li>" +
+					"<li class='page-item'><a class='page-link' href='javascript:noticeBoardList(" + boardPager.prevPage + ")'>[이전]</a></li>"
+					);
+				}
+				//페이지 넘버가 시작번호부터 끝번호까지 계속 증가하면서 하나씩 만든다 (예: [1] [2] [3] [4] [5])
+				for(var pageNum = boardPager.curBlock*10-9; pageNum <= boardPager.blockEnd; pageNum++){
+					//현재 페이지와 같을 경우에는 하이퍼링크를 제거한다		
+					if(pageNum == boardPager.curPage){
+						ul.append(
+						"<li class='page-link' style='background: lightblue;'>[" + pageNum + "]</span></li>"
+						);
+					//그 외에는 하이퍼링크를 넣는다	
+					} else {
+						ul.append(
+						"<li class='page-item'><a class='page-link' href='javascript:noticeBoardList(" + pageNum + ")'>[" + pageNum + "]</a></li>"
+						);
+					}
+				}
+				
+				//현재 블록이 전체 블록보다 작을때에는 다음 버튼과 끝 버튼을 넣는다
+				if(boardPager.curBlock <= boardPager.totBlock){
+					ul.append(
+					"<li class='page-item'><a class='page-link' href='javascript:noticeBoardList(" + boardPager.nextPage + ")'>[다음]</a></li>" +
+					"<li class='page-item'><a class='page-link' href='javascript:noticeBoardList(" + boardPager.totPage + ")'>[끝]</a></li>"
+					);
+				}
+
 	         },
 		     error: function(error) {
 		     	   var errorJson = JSON.stringify(error);
@@ -230,6 +272,18 @@
  	   })
     }
 
+    /* 게시판 입력 */
+    function noticeBoardInsert() {
+ 	   
+ 	   location.href = "/eep/board/notice/openNoticeBoardInsert.do";
+    }
+    
+    
+    function noticeDetail(brdSq) {
+  	   
+  	   location.href = "/eep/board/notice/openNoticeBoardDetail.do?brdSq="+brdSq;
+     }
+    
     //Input Box Null Check
     function isEmpty(str){
         

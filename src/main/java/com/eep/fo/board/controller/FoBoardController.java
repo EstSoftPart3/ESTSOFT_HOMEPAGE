@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 
+import com.common.pager.pagerMaster;
 import com.eep.bo.board.service.BoBoardService;
 import com.eep.fo.board.service.FoBoardService;
 
@@ -34,16 +35,27 @@ public class FoBoardController {
 	//공지사항 게시판 목록 데이터
 	@RequestMapping("/eep/board/notice/noticeBoardListData.do")
 	@ResponseBody
-	public ModelAndView noticeBoardListData(@RequestParam Map<String, Object> param) {
+	public ModelAndView noticeBoardListData(@RequestParam Map<String, Object> param, 
+											@RequestParam(defaultValue="1") int curPage) {
 		
 		ModelAndView mv = new ModelAndView();
 		mv.setViewName("jsonView");
+		
+		int count = FoBoardService.noticeBoardListCountData(param);
+		
+		pagerMaster pagerMaster = new pagerMaster(count, curPage, 10, 10);
+		int start = pagerMaster.getPageBegin();
+		int end = pagerMaster.getPageEnd();
+		
+		param.put("start", start);
+		param.put("end", end);
 		
 		Map<String, Object> result = new HashMap<>();
 		
 		result = FoBoardService.noticeBoardListData(param);
 									
 		mv.addObject("noticeBoardData", result);
+		mv.addObject("boardPager", pagerMaster);
 		
 		return mv;
 	}

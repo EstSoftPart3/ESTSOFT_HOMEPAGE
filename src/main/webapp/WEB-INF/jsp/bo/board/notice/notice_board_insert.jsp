@@ -147,9 +147,7 @@
    	var useYn = $("input[name='useYn']:checked").val(); //사용여부
     oEditors.getById["naverEditor"].exec("UPDATE_CONTENTS_FIELD", [])
    	var brdCntnt = document.getElementById("naverEditor").value
-    
-   	debugger;
-   	
+
    	 //제목
    	 if(isEmpty(brdTtl)) {
    		bootbox.alert({

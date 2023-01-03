@@ -35,3 +35,6 @@
 
     <!-- Template Javascript -->
     <script src="/resources/fo/js/main.js"></script>
+    
+    <!-- 네이버 에디터 -->
+    <script type="text/javascript" src="/resources/navereditor/js/HuskyEZCreator.js" charset="utf-8"></script>

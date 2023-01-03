@@ -96,8 +96,39 @@
           		
  		ORDER BY 
  				BRD_SQ DESC
- 		<!-- LIMIT 
- 				#{start}, #{end} -->
+ 		LIMIT 
+ 				#{start}, #{end}
+
+    </select>
+    
+     <!-- 공지사항 게시판 개수 -->
+	<select id="noticeBoardListCountData" resultType="int" parameterType="hashMap">
+	
+        SELECT
+				COUNT(BRD_SQ)
+ 		FROM 
+ 				TB_EEP_BRD_M 
+ 		WHERE
+ 				BRD_TYP_CD = 'NT' AND USE_YN = 'Y' AND DEL_YN = 'N'
+ 				
+ 				<if test='searchOption == "T" and searchOption != null'>
+          			AND BRD_TTL LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+           		<if test='searchOption == "W" and searchOption != null'>
+          			AND BRD_WRTR LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='searchOption == "C" and searchOption != null'>
+          			AND BRD_CNTNT LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='searchOption == "TWC" and searchOption != null'>
+          			AND BRD_TTL LIKE CONCAT('%',#{searchKeyword},'%')
+          			OR BRD_WRTR LIKE CONCAT('%',#{searchKeyword},'%')
+          			OR BRD_CNTNT LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		
+ 		ORDER BY 
+ 				BRD_SQ DESC
+
 
     </select>
 
