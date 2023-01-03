@@ -26,7 +26,7 @@
             <div class="row g-5 align-items-center">
                 <div class="col-lg-6">
                     <h1 class="display-4 mb-3 animated slideInDown menu" style="font-weight: 700;">CEO 인사말</h1>
-                    <p class="animated slideInDown IBM">
+                    <p class="animated slideInDown IBM"> 
                     	50여 명의 정직원 모두 성살함과 책임감으로 무장하고 있으며,
                     	<br>
 						프로젝트 진행 시 소통이 뛰어난 진정한 전문가 그룹입니다.
