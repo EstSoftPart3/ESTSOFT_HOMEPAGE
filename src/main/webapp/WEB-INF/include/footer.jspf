@@ -29,6 +29,9 @@
     <script src="/resources/fo/lib/waypoints/waypoints.min.js"></script>
     <script src="/resources/fo/lib/owlcarousel/owl.carousel.min.js"></script>
     <script src="/resources/fo/lib/counterup/counterup.min.js"></script>
+    
+    <script src="/resources/bo/plugins/bootbox/bootbox.all.min.js"></script>
+	<script src="/resources/bo/plugins/bootbox/bootbox.locales.js"></script>
 
     <!-- Template Javascript -->
     <script src="/resources/fo/js/main.js"></script>
