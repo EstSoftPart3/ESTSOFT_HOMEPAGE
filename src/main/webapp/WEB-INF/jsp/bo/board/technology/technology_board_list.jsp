@@ -180,7 +180,7 @@
      	       },
      	       fields: [
      	    	   { name: "brdSq", title: "글번호", type: "number", width: 10, align: "center", },
-     	    	   { name: "brdTtl", title:"제목", type: "text", width: 100,align:"",width:100 , visible: true},
+     	    	   { name: "brdTtl", title:"제목", type: "text", width: 100,align:"center",width:100 , visible: true},
      	    	   { name: "brdRegDt"	,title:"작성일", type: "text", width: 30,align:"center" ,width:30, visible: true},
      	    	   { name: "brdWrtr"	,title:"작성자", type: "text", width: 30,align:"center" ,width:30, visible: true}
      	    	   /* { name: "brdCntnt"	,title:"내용", type: "text", width: 150,align:"center" ,width:100, visible: true},

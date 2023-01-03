@@ -20,7 +20,7 @@
 		     	<!-- Main content -->
 	    		<section class="content">
 
-	    			<input type="hidden" name="emplySq" id="emplySq" value="1">
+	    			<input type="hidden" name="emplySq" id="emplySq" value="${loginInfo.loginInfo[0].emplySq}">
 	    			
 	    			<div class="card-header p-2" style="border: 1px solid rgba(0,0,0,.125);background-color:#efefef">
 	                 	<ul class="nav nav-pills">
@@ -140,7 +140,7 @@
    
    function noticeboardInsert() {
 	
-	var emplySq     = '1'     							//회원 순번
+	var emplySq     = $("#emplySq").val();     							//회원 순번
 	var brdTypCd 	= 'NT'  							//게시판 구분 코드
    	var brdTtl  	= $("#brdTtl").val();  				//게시판 제목
    	var brdWrtr  	= $("#brdWrtr").val();  			//게시판 작성자

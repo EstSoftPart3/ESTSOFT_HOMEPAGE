@@ -20,7 +20,7 @@
 		     	<!-- Main content -->
 	    		<section class="content">
 
-	    			<input type="hidden" name="emplySq" id="emplySq" value="1">
+	    			<input type="hidden" name="emplySq" id="emplySq" value="${loginInfo.loginInfo[0].emplySq}">
 	    			
 	    			<div class="card-header p-2" style="border: 1px solid rgba(0,0,0,.125);background-color:#efefef">
 	                 	<ul class="nav nav-pills">
@@ -66,14 +66,10 @@
 					 			<div class="form-group row">
 					 			<label class="col-form-label sTitle LabelStyle" style="text-align: center;">내용</label>
                     				<div class="col-sm-12">
-                      						<!-- <input type="text" class="form-control sTitle classname"  id="brdContent" name="brdContent" value=""> -->
-                    					
+                      					<!-- <input type="text" class="form-control sTitle classname"  id="brdContent" name="brdContent" value=""> -->
                     					<div id="toolbar-container" style="z-index:9999"></div>
-                    					
                     					<textarea rows="20" cols="40" id="naverEditor" name="naverEditor"></textarea>
-
-                    				</div>
-                    			                    				
+                    				</div>            				
 					 			</div>
 		               		   	
 					 			<div class="form-group row">
@@ -140,7 +136,7 @@
    
    function freedomBoardInsert() {
 	
-	var emplySq     = '1'     							//회원 순번
+	var emplySq     = $("#emplySq").val();     							//회원 순번
 	var brdTypCd 	= 'FD'  							//게시판 구분 코드
    	var brdTtl  	= $("#brdTtl").val();  				//게시판 제목
    	var brdWrtr  	= $("#brdWrtr").val();  			//게시판 작성자

@@ -48,7 +48,7 @@
 		     	<!-- Main content -->
 	    		<section class="content">
 	    		
-	    			<input type="hidden" name="emplySq" id="emplySq" value="1">
+	    			<input type="hidden" name="emplySq" id="emplySq" value="${loginInfo.loginInfo[0].emplySq}">
 	    			<input type="hidden" name="brdSq" id="brdSq" value="<%=brdSq%>">
 	    			<input type="hidden" name="brdReRep" id="brdReRep" value="">
 	    			<input type="hidden" name="brdReLev" id="brdReLev" value="">
@@ -114,16 +114,25 @@
                     				</div>
 					 			</div>
 
-								<label class="col-form-label sTitle LabelStyle" style="text-align: center;">내용</label>
+								<div class="form-group row">
+					 			<label class="col-form-label sTitle LabelStyle" style="text-align: center;">내용</label>
+                    				<div class="col-sm-12">
+                      					<!-- <input type="text" class="form-control sTitle classname"  id="brdContent" name="brdContent" value=""> -->
+                    					<div id="toolbar-container" style="z-index:9999"></div>
+                    					<textarea rows="20" cols="40" id="naverEditor" name="naverEditor"></textarea>
+                    				</div>            				
+					 			</div>
+
+								<!-- <label class="col-form-label sTitle LabelStyle" style="text-align: center;">내용</label>
 					 			<div class="form-group row">
  
                     				<div class="col-sm-6">
                       					<div id="toolbar-container" style="display:none"></div>
-                      					<!-- <div id="naverEditor" style="border: 1px solid #efefef;min-height:500px;padding:20px;">
-                      					</div> -->
+                      					<div id="naverEditor" style="border: 1px solid #efefef;min-height:500px;padding:20px;">
+                      					</div>
                       					<textarea rows="20" cols="40" id="naverEditor" name="naverEditor" readonly ></textarea>
                     				</div>	
-					 			</div>
+					 			</div> -->
 
 					 			<div class="form-group row">
                     				

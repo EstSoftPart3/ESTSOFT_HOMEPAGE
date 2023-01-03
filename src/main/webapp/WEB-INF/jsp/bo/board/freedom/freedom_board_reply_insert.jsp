@@ -25,7 +25,7 @@
 		     	<!-- Main content -->
 	    		<section class="content">
 
-	    			<input type="hidden" name="emplySq" id="emplySq" value="1">
+	    			<input type="hidden" name="emplySq" id="emplySq" value="${loginInfo.loginInfo[0].emplySq}">
 	    			<input type="hidden" name="brdSq" id="brdSq" value="<%=brdSq%>">
 	    			<input type="hidden" name="brdReRep" id="brdReRep" value="<%=brdReRep%>">
 	    			<input type="hidden" name="brdReLev" id="brdReLev" value="<%=brdReLev%>">
@@ -152,7 +152,7 @@
    
    function freedomBoardInsert() {
 	
-	var emplySq     = '1'     							//회원 순번
+	var emplySq     = $("#emplySq").val();      							//회원 순번
 	var brdTypCd 	= 'FD'  							//게시판 구분 코드
    	var brdTtl  	= $("#brdTtl").val();  				//게시판 제목
    	var brdWrtr  	= $("#brdWrtr").val();  			//게시판 작성자

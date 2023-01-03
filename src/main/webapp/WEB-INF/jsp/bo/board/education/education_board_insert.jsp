@@ -20,7 +20,7 @@
 		     	<!-- Main content -->
 	    		<section class="content">
 
-	    			<input type="hidden" name="emplySq" id="emplySq" value="1">
+	    			<input type="hidden" name="emplySq" id="emplySq" value="${loginInfo.loginInfo[0].emplySq}">
 	    			
 	    			<div class="card-header p-2" style="border: 1px solid rgba(0,0,0,.125);background-color:#efefef">
 	                 	<ul class="nav nav-pills">
@@ -44,7 +44,7 @@
 					 			<div class="form-group row">
 					 				<label class="col-form-label sTitle LabelStyle" style="text-align: center;">작성자</label>
                     				<div class="col-sm-5">
-                      						<input type="text" class="form-control sTitle classname"  id="brdWrtr" name="brdWrtr" value="관리자" readonly>
+                      						<input type="text" class="form-control sTitle classname"  id="brdWrtr" name="brdWrtr" value="${loginInfo.loginInfo[0].emplyNm}" readonly>
                     				</div>
                     				
 					 			</div>
@@ -124,7 +124,7 @@
    
    <script>
  
-   
+  //네이버 에디터 2.0 연동
   var oEditors = [];
    
    $(function(){
@@ -151,11 +151,11 @@
          fCreator: "createSEditor2"
        })
    });
-   
 
+   //교율 일정 등록
    function educationBoardInsert() {
 	
-	var emplySq     = '1'     									//회원 순번
+	var emplySq     = $("#emplySq").val();     					//회원 순번
 	var brdTypCd 	= 'ED'  									//게시판 구분 코드
    	var brdTtl  	= $("#brdTtl").val();  						//게시판 제목
    	var brdWrtr  	= $("#brdWrtr").val();  					//게시판 작성자
@@ -208,36 +208,33 @@
 			     } });
 			 return;
    	 }
-   	        		
-     
-     
-		
-		$.ajax({
-	           type: "post",
-	           url: "/admin/board/education/educationBoardInsertData.do",
-	           data: {
-	        	   emplySq : emplySq,
-	        	   brdTypCd : brdTypCd,
-	        	   brdTtl : brdTtl,
-	        	   brdTchr : brdTchr,
-	        	   brdEduDt : brdEduDt,
-	        	   brdCntnt : brdCntnt,
-	        	   brdWrtr : brdWrtr,
-	        	   useYn : useYn
-	           },
-	           success: function(data) {
-	        	   bootbox.alert({
-						 message: "게시글이 저장 되었습니다.",
-						 locale: 'kr',
-						 callback: function() {
-							 		location.href='/admin/board/education/openEducationBoardList.do';
-					     } });
-			   },
-	           error: function(error) {
-	        	   var errorJson = JSON.stringify(error);
-	               console.log(errorJson);
-	           }
-		})
+
+	$.ajax({
+           type: "post",
+           url: "/admin/board/education/educationBoardInsertData.do",
+           data: {
+        	   emplySq : emplySq,
+        	   brdTypCd : brdTypCd,
+        	   brdTtl : brdTtl,
+        	   brdTchr : brdTchr,
+        	   brdEduDt : brdEduDt,
+        	   brdCntnt : brdCntnt,
+        	   brdWrtr : brdWrtr,
+        	   useYn : useYn
+           },
+           success: function(data) {
+        	   bootbox.alert({
+					 message: "게시글이 저장 되었습니다.",
+					 locale: 'kr',
+					 callback: function() {
+						 		location.href='/admin/board/education/openEducationBoardList.do';
+				     } });
+		   },
+           error: function(error) {
+        	   var errorJson = JSON.stringify(error);
+               console.log(errorJson);
+           }
+	})
 	}
    
    function educationBoardList() {
