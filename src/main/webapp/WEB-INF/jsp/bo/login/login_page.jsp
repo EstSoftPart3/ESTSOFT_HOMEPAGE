@@ -35,7 +35,7 @@
 
       <form action="#" method="post">
         <div class="input-group mb-3">
-          <input type="email" class="form-control" id="mbrId"  placeholder="Admin Id">
+          <input type="email" class="form-control" id="emplyId"  placeholder="Admin Id">
           <div class="input-group-append">
             <div class="input-group-text">
               <span class="fas fa-envelope"></span>
@@ -43,7 +43,7 @@
           </div>
         </div>
         <div class="input-group mb-3">
-          <input type="password" class="form-control" id="mbrPasswrd" placeholder="Password">
+          <input type="password" class="form-control" id="emplyPw" placeholder="Password">
           <div class="input-group-append">
             <div class="input-group-text">
               <span class="fas fa-lock"></span>
@@ -83,25 +83,25 @@
  <script>
  
   function memberLogin() {
-	 var mbrId = $("#mbrId").val();
-	 var mbrPasswrd = $("#mbrPasswrd").val();
+	 var emplyId = $("#emplyId").val();
+	 var emplyPw = $("#emplyPw").val();
 	 
-	 if(isEmpty(mbrId)) {
+	 if(isEmpty(emplyId)) {
 	  	bootbox.alert({
 			message: "아이디를 입력해 주세요.",
 			locale: 'kr',
 			callback: function() {
-				$("#mbrId").focus();
+				$("#emplyId").focus();
 			} });
 		return;
 	 }
 	 
-	 if(isEmpty(mbrPasswrd)) {
+	 if(isEmpty(emplyPw)) {
 		 bootbox.alert({
 			message: "비밀번호를 입력해 주세요.",
 			locale: 'kr',
 			callback: function() {
-				$("#mbrPasswrd").focus();
+				$("#emplyPw").focus();
 			} });
 		return;
 	 }
@@ -109,32 +109,31 @@
 	 
 	 $.ajax({
          type: "post",
-         url: "/admin/loginData",
+         url: "/admin/login/loginData.do",
          data: {
-        	 mbrId : mbrId,
-        	 mbrPasswrd : mbrPasswrd
-      	   
+        	 emplyId : emplyId,
+        	 emplyPw : emplyPw
           },
          success: function(data) {
         	 
         	 console.log(data);
-      	   
-      	 	if(data != "") {
+      	   	 var loginInfo = data.result.loginInfo;
+
+      	 	if(loginInfo.length == 1) {
       	 		
       	 		bootbox.alert({
       				message: "로그인 성공했습니다.",
       				locale: 'kr',
       				callback: function() {
-      					location.href = '/admin/member/memberList';
+      					location.href = '/admin/board/notice/openNoticeBoardList.do';
       				} });
-      	 		
-      	 		
+
       	 	} else {
       	 		bootbox.alert({
-      				message: "로그인 실패했습니다.",
+      				message: "관리자 계정이 아니거나, 계정이 알맞지 않습니다.",
       				locale: 'kr',
       				callback: function() {
-      					location.href = '/admin/';
+      					location.href = '/admin/login/loginPage.do';
       				} });
       	 	}
       	 	

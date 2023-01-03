@@ -57,11 +57,14 @@
   
 </head>
 
-<%
-/* String mbrSq = (String)session.getAttribute("mbrSq");
+<script type="text/javascript">
 
-if(mbrSq == null) {
-	response.sendRedirect("/admin/");	
-} */
-%>
+	function logout() {
+		if (!confirm("로그아웃 하시겠습니까?")) {
+	        return false;
+	    } else {
+	    	location.href='/admin/logout.do';
+	    }
+	}
 
+</script>

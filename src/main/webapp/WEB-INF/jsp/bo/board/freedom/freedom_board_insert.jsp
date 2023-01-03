@@ -24,7 +24,7 @@
 	    			
 	    			<div class="card-header p-2" style="border: 1px solid rgba(0,0,0,.125);background-color:#efefef">
 	                 	<ul class="nav nav-pills">
-		               		<li class="nav-item"><a class="sTitle" href="#" data-toggle="tab"><b>공지사항 게시판 등록</b></a></li>
+		               		<li class="nav-item"><a class="sTitle" href="#" data-toggle="tab"><b>자유 게시판 등록</b></a></li>
 		               	</ul>
 					 </div>
 					 
@@ -66,20 +66,16 @@
 					 			<div class="form-group row">
 					 			<label class="col-form-label sTitle LabelStyle" style="text-align: center;">내용</label>
                     				<div class="col-sm-12">
-                      						<!-- <input type="text" class="form-control sTitle classname"  id="brdContent" name="brdContent" value=""> -->
-                    					
+                      					<!-- <input type="text" class="form-control sTitle classname"  id="brdContent" name="brdContent" value=""> -->
                     					<div id="toolbar-container" style="z-index:9999"></div>
-                    					
                     					<textarea rows="20" cols="40" id="naverEditor" name="naverEditor"></textarea>
-
-                    				</div>
-                    			                    				
+                    				</div>            				
 					 			</div>
 		               		   	
 					 			<div class="form-group row">
                     				<div class="col-sm-6" style="text-align:right">
-                      						<button type="button" class="btn btn-primary sTitle" onclick="noticeBoardList();">리스트로 돌아가기</button>
-                      						<button type="button" class="btn btn-info sTitle" onclick="noticeboardInsert();">저장</button>
+                      						<button type="button" class="btn btn-primary sTitle" onclick="freedomBoardList();">리스트로 돌아가기</button>
+                      						<button type="button" class="btn btn-info sTitle" onclick="freedomBoardInsert();">저장</button>
                     				</div>
 
 					 			</div>
@@ -138,17 +134,15 @@
    
    
    
-   function noticeboardInsert() {
+   function freedomBoardInsert() {
 	
 	var emplySq     = $("#emplySq").val();     							//회원 순번
-	var brdTypCd 	= 'NT'  							//게시판 구분 코드
+	var brdTypCd 	= 'FD'  							//게시판 구분 코드
    	var brdTtl  	= $("#brdTtl").val();  				//게시판 제목
    	var brdWrtr  	= $("#brdWrtr").val();  			//게시판 작성자
    	var useYn = $("input[name='useYn']:checked").val(); //사용여부
     oEditors.getById["naverEditor"].exec("UPDATE_CONTENTS_FIELD", [])
    	var brdCntnt = document.getElementById("naverEditor").value
-    
-   	debugger;
    	
    	 //제목
    	 if(isEmpty(brdTtl)) {
@@ -177,7 +171,7 @@
 		
 		$.ajax({
 	           type: "post",
-	           url: "/admin/board/notice/noticeBoardInsertData.do",
+	           url: "/admin/board/freedom/freedomBoardInsertData.do",
 	           data: {
 	        	   emplySq : emplySq,
 	        	   brdTypCd : brdTypCd,
@@ -191,7 +185,7 @@
 						 message: "게시글이 저장 되었습니다.",
 						 locale: 'kr',
 						 callback: function() {
-							 		location.href='/admin/board/notice/openNoticeBoardList.do';
+							 		location.href='/admin/board/freedom/openFreedomBoardList.do';
 					     } });
 			   },
 	           error: function(error) {
@@ -201,8 +195,8 @@
 		})
 	}
    
-   function noticeBoardList() {
-	   location.href='/admin/board/notice/openNoticeBoardList.do';
+   function freedomBoardList() {
+	   location.href='/admin/board/freedom/openFreedomBoardList.do';
    }
    
   //Input Box Null Check

@@ -47,7 +47,7 @@
 		     	<!-- Main content -->
 	    		<section class="content">
 	    		
-	    			<input type="hidden" name="emplySq" id="emplySq" value="1">
+	    			<input type="hidden" name="emplySq" id="emplySq" value="${loginInfo.loginInfo[0].emplySq}">
 	    			<input type="hidden" name="brdSq" id="brdSq" value="<%=brdSq%>">
 	    			
 	    			<div class="card-header p-2" style="border: 1px solid rgba(0,0,0,.125);background-color:#efefef">
@@ -118,15 +118,13 @@
 									</div>
 								</div>
 
-								<label class="col-form-label sTitle LabelStyle" style="text-align: center;">내용</label>
-					 			<div class="form-group row">
- 
-                    				<div class="col-sm-6">
-                      					<div id="toolbar-container" style="display:none"></div>
-                      					<!-- <div id="naverEditor" style="border: 1px solid #efefef;min-height:500px;padding:20px;">
-                      					</div> -->
-                      					<textarea rows="20" cols="40" id="naverEditor" name="naverEditor" readonly ></textarea>
-                    				</div>	
+								<div class="form-group row">
+					 			<label class="col-form-label sTitle LabelStyle" style="text-align: center;">내용</label>
+                    				<div class="col-sm-12">
+                      					<!-- <input type="text" class="form-control sTitle classname"  id="brdContent" name="brdContent" value=""> -->
+                    					<div id="toolbar-container" style="z-index:9999"></div>
+                    					<textarea rows="20" cols="40" id="naverEditor" name="naverEditor"></textarea>
+                    				</div>            				
 					 			</div>
 
 					 			<div class="form-group row">
@@ -350,17 +348,7 @@
            return true;
        else
            return false ;
-   }
-	 
-	 
-   function fn_SubBrdUpdatePage() {
-	   
-	   var brdSq = '<c:out value="${param.brdSq}" />';
-	   var brdTypCd = '<c:out value="${param.brdTypCd}" />';
-	   
-	   location.href='/admin/board/boardUpdate?brdSq='+brdSq+'&brdTypCd='+brdTypCd;
-	}
-	 
+   } 
    
    </script>
  

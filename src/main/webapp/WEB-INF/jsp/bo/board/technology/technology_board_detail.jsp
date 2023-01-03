@@ -5,7 +5,8 @@
 <%@ include file="/WEB-INF/jsp/bo/boinclude/include_top.jspf"%>
 
 <%
-	String brdSq = request.getParameter("brdSq"); 
+	String brdSq = request.getParameter("brdSq");
+	String brdReReef = request.getParameter("brdReReef");
 %>
 
 <body class="hold-transition sidebar-mini">
@@ -49,10 +50,13 @@
 	    		
 	    			<input type="hidden" name="emplySq" id="emplySq" value="${loginInfo.loginInfo[0].emplySq}">
 	    			<input type="hidden" name="brdSq" id="brdSq" value="<%=brdSq%>">
+	    			<input type="hidden" name="brdReRep" id="brdReRep" value="">
+	    			<input type="hidden" name="brdReLev" id="brdReLev" value="">
+	    			<input type="hidden" name="brdReOrd" id="brdReOrd" value="">
 	    			
 	    			<div class="card-header p-2" style="border: 1px solid rgba(0,0,0,.125);background-color:#efefef">
 	                 	<ul class="nav nav-pills">
-		               		<li class="nav-item"><a class="sTitle" href="#" data-toggle="tab"><b>공지시항 상세 페이지</b></a></li>
+		               		<li class="nav-item"><a class="sTitle" href="#" data-toggle="tab"><b>기술문의 게시판 상세 페이지</b></a></li>
 		               	</ul>
 					 </div>
 					 
@@ -75,22 +79,6 @@
 					 				
                     				<div class="col-sm-4">
                       					<input type="text" class="form-control sTitle classname"  id="brdWrtr" name="brdWrtr" readonly >
-                    				</div>
-					 			</div>
-					 			
-					 			<label class="col-form-label sTitle LabelStyle" style="text-align: center;">강사</label>
-					 			<div class="form-group row">
-					 				
-                    				<div class="col-sm-4">
-                      					<input type="text" class="form-control sTitle classname"  id="brdTchr" name="brdTchr" readonly >
-                    				</div>
-					 			</div>
-					 			
-					 			<label class="col-form-label sTitle LabelStyle" style="text-align: center;">교육일</label>
-					 			<div class="form-group row">
-					 				
-                    				<div class="col-sm-4">
-                      					<input type="text" class="form-control sTitle classname"  id="brdEduDt" name="brdEduDt" readonly >
                     				</div>
 					 			</div>
 					 			
@@ -135,23 +123,13 @@
                     				</div>            				
 					 			</div>
 
-								<!-- <label class="col-form-label sTitle LabelStyle" style="text-align: center;">내용</label>
-					 			<div class="form-group row">
- 
-                    				<div class="col-sm-6">
-                      					<div id="toolbar-container" style="display:none"></div>
-                      					<div id="naverEditor" style="border: 1px solid #efefef;min-height:500px;padding:20px;">
-                      					</div>
-                      					<textarea rows="20" cols="40" id="naverEditor" name="naverEditor" readonly ></textarea>
-                    				</div>	
-					 			</div> -->
-
 					 			<div class="form-group row">
                     				
                     				<div class="col-sm-4" style="text-align:right">
-                    					<button type="button" class="btn btn-primary sTitle" onclick="educationBoardList();">리스트로 돌아가기</button>
-                    					<button type="button" class="btn btn-info sTitle" onclick="educationUpdatePage();">수정</button>
-                    					<button type="button" class="btn btn-danger sTitle" onclick="educationBoardDelete();">삭제</button>
+                    					<button type="button" class="btn btn-primary sTitle" onclick="technologyBoardList();">리스트로 돌아가기</button>
+                    					<button type="button" class="btn btn-primary sTitle" onclick="technologyBoardRplyInsertPage();">답글</button>
+                    					<button type="button" class="btn btn-info sTitle" onclick="technologyUpdatePage();">수정</button>
+                    					<button type="button" class="btn btn-danger sTitle" onclick="technologyBoardDelete();">삭제</button>
                     				</div>
                     				
                     			</div>
@@ -182,27 +160,28 @@
    
    $(document).ready(function(){
 
-		noticeboardDetailtData(brdSq);
+	   technologyBoardDetailData(brdSq);
 		
    });
    
-   function noticeboardDetailtData(brdSq) {
+   function technologyBoardDetailData(brdSq) {
 		
 		$.ajax({
 	           type: "post",
-	           url: "/admin/board/education/educationBoardDetailData.do",
+	           url: "/admin/board/technology/technologyBoardDetailData.do",
 	           data: {
 	        	   brdSq : brdSq
 	            },
 	           success: function(data) {
 	        	    
-	        	 dataContent = data.educationBoardDetailData.educationBoardDetailData[0];
+	        	 dataContent = data.technologyBoardDetailData.technologyBoardDetailData[0];
 
 	        	 var brdCntnt 	= dataContent.brdCntnt;
 	        	 var brdTtl 	= dataContent.brdTtl;
 	        	 var brdWrtr 	= dataContent.brdWrtr;
-	        	 var brdTchr 	= dataContent.brdTchr;
-	        	 var brdEduDt 	= dataContent.brdEduDt;
+	        	 var brdReRep 	= dataContent.brdReRep;
+	        	 var brdReLev 	= dataContent.brdReLev;
+	        	 var brdReOrd 	= dataContent.brdReOrd;
 	        	 var brdRegDt	= dataContent.brdRegDt;
 	        	 var brdUpdtDt	= dataContent.brdUpdtDt;
 	        	 var useYn 		= dataContent.useYn;
@@ -263,8 +242,9 @@
 	        	 /* document.getElementById('naverEditor').innerHTML=castStr; */
 	        	 $('#brdTtl').val(brdTtl);
 	        	 $('#brdWrtr').val(brdWrtr);
-	        	 $('#brdTchr').val(brdTchr);
-	        	 $('#brdEduDt').val(brdEduDt);
+	        	 $('#brdReRep').val(brdReRep);
+	        	 $('#brdReLev').val(brdReLev);
+	        	 $('#brdReOrd').val(brdReOrd);
 	        	 $('#brdRegDt').val(brdRegDt);
 	        	 $('#useYn').val(useYn);
 	        	 $('#delYn').val(delYn);
@@ -286,24 +266,23 @@
 	}
    
   
-   function educationBoardDelete() {
+   function technologyBoardDelete() {
    
 	   
 	   if(confirm('정말 삭제 하시겠습니까?')) {
 		   
 		   $.ajax({
 	           type: "post",
-	           url: "/admin/board/education/educationBoardDeleteData.do",
+	           url: "/admin/board/technology/technologyBoardDeleteData.do",
 	           data: {
 	        	   brdSq : brdSq,
-
 	           },
 	           success: function(data) {
 	        	   bootbox.alert({
 						 message: "삭제 되었습니다.",
 						 locale: 'kr',
 						 callback: function() {
-							 location.href='/admin/board/education/openEducationBoardList.do';	
+							 location.href='/admin/board/technology/openTechnologyBoardList.do';	
 					     } });
 			   },
 	           error: function(error) {
@@ -319,8 +298,8 @@
 	  
    }
    
-   function educationBoardList() {
-	   location.href='/admin/board/education/openEducationBoardList.do';
+   function technologyBoardList() {
+	   location.href='/admin/board/technology/openTechnologyBoardList.do';
    }
    
 	 //Input Box Null Check
@@ -333,9 +312,18 @@
    }
 	 
 	 
-   function educationUpdatePage() {
+   function technologyUpdatePage() {
 	   
-	   location.href='/admin/board/education/openEducationBoardUpdate.do?brdSq='+brdSq;
+	   location.href='/admin/board/technology/openTechnologyBoardUpdate.do?brdSq='+brdSq;
+	}
+   
+	function technologyBoardRplyInsertPage() {
+	   
+		var brdReRep = $('#brdReRep').val();
+   	 	var brdReLev = $('#brdReLev').val();
+   	 	var brdReOrd = $('#brdReOrd').val();
+		
+	   	location.href='/admin/board/technology/openTechnologyBoardReplyInsert.do?brdSq='+brdSq+'&brdReRep='+brdReRep+'&brdReLev='+brdReLev+'&brdReOrd='+brdReOrd;
 	}
 	 
    
