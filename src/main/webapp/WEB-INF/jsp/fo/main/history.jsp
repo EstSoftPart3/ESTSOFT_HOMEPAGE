@@ -25,7 +25,7 @@
         <div class="container py-5">
             <div class="row g-5 align-items-center">
                 <div class="col-lg-6">
-                    <h1 class="display-4 mb-3 animated slideInDown">EST <span class="menu" style="font-weight: 700;"><b>연혁</b><span></h1>
+                    <h1 class="display-4 mb-3 animated slideInDown"><span class="menu" style="font-weight: 700;"><b>연혁</b><span></h1>
                     <p class="animated slideInDown IBM">
                     	e-Biz 구현을 위한 IT Consulting, System Integration 전문 회사로 다양한 <br>
 						서비스 기반의 최적화된 솔루션을 보유하고 있으며, 다수의 고객과 <br> 
