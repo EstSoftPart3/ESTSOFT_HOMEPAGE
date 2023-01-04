@@ -3,9 +3,15 @@ package com.eep.fo.main.controller;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.mail.internet.MimeMessage;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.eep.fo.board.service.FoBoardService;
@@ -14,6 +20,8 @@ import common.base.controller.BaseController;
 
 @Controller
 public class FoMainController extends BaseController {
+	
+	
 	
 	@Autowired
 	private FoBoardService FoBoardService;
@@ -148,4 +156,62 @@ public class FoMainController extends BaseController {
 		ModelAndView mv = new ModelAndView("/fo/board/boardReg");
 		return mv;
 	}
+	
+	
+	@Autowired
+	private JavaMailSender mailSender;
+
+	@RequestMapping(value = "/eep/sendmail.do", method = RequestMethod.POST)
+	public String sendmail(@RequestParam("email")String email, @RequestParam("name")String name, @RequestParam("handphone")String handphone, @RequestParam("content")String content) throws Exception {
+	//public String sendmail() throws Exception {
+		
+		
+		
+//		String setfrom = "isonaki@naver.com"; //보내는 사람
+//		String settitle = name+"-입사지원"; // 제목
+//		String setcontent = "지금도 테스트중 입니다."; // 내용
+		
+		
+		String setfrom = email; //보내는 사람
+		String settitle = name+"-입사지원"; // 제목
+		String setcontent = "성명 :"+name+"\n 전화번호 : "+handphone+"\n"+content; // 내용
+		
+//		String setcontent = "<!DOCTYPE html>"
+//				+ "<html>"
+//				+ "<head><title></title></head>"
+//				+ "<body>"
+//				+ "<table>"
+//				+ "<tr>"
+//				+ "<td>"
+//				+ name +"입사지원"
+//				+ "<td>"
+//				+ "</td>"
+//				+ "</tr>"
+//				+ "</table>"
+//				+ "</body>"
+//				+ "</html>";
+		
+		
+		String tomail = "estsw.rnd@gmail.com"; // 받을 주소
+		
+
+		try {
+			MimeMessage message = mailSender.createMimeMessage();
+			MimeMessageHelper messageHelper = new MimeMessageHelper(message,true, "UTF-8");
+
+			messageHelper.setFrom(setfrom); // 보내는사람 (필수)
+			messageHelper.setTo(tomail); // 받는사람 이메일
+			messageHelper.setSubject(settitle); // 메일제목은
+			messageHelper.setText(setcontent); // 메일 내용
+
+			mailSender.send(message);
+			
+		} catch (Exception e) {
+			System.out.println(e);
+		}
+		
+		return "redirect:/eep/mainPage.do";
+	}
+	
+	
 }
