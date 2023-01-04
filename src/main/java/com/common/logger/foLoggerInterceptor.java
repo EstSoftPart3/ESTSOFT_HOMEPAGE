@@ -50,11 +50,15 @@ public class foLoggerInterceptor extends HandlerInterceptorAdapter {
 		
 		
 		System.out.println("obj : " + obj);
-		
+
 		if(obj == null) {
 			response.sendRedirect("/eep/login/loginPage.do");
 			return false;
 		}
+			
+
+		
+		
 
 		
 		if (log.isDebugEnabled()) {

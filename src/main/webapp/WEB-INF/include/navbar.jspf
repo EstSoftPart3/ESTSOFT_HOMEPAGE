@@ -61,6 +61,10 @@
 	                    </div>
 	                </div>
                 </c:if>
+                
+                <c:if test="${sessionScope.loginInfo.loginInfo[0] == null}">
+	                <a href="/eep/login/loginPage.do" class="nav-item nav-link" style="color: lightblue;"><b>LOGIN</b></a>
+                </c:if>
  
             </div>
            

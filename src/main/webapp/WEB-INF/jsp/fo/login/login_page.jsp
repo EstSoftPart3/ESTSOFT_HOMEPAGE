@@ -127,7 +127,7 @@
       				message: "로그인 성공했습니다.",
       				locale: 'kr',
       				callback: function() {
-      					location.href = '/eep/board/notice/openNoticeBoardList.do';
+      					location.href = '/eep/mainPage.do';
       				} });
 
       	 	} else {

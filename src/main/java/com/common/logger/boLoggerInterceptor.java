@@ -6,6 +6,8 @@ import javax.servlet.http.HttpSession;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
@@ -46,9 +48,10 @@ public class boLoggerInterceptor extends HandlerInterceptorAdapter {
 		
 		log.debug("reqUrl:" + reqUrl);
 		
+		System.out.println("reqUrl : " + reqUrl);
+		
 		Object obj = session.getAttribute("loginInfo");
-		
-		
+
 		System.out.println("obj : " + obj);
 		
 		if(obj == null) {

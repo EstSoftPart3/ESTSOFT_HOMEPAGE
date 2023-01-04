@@ -14,22 +14,23 @@
        http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.0.xsd">
 		
 		<context:component-scan base-package="com"></context:component-scan>
-
+		
+		<!-- 관리자  interceptor  -->
 		<mvc:interceptors>
 			<mvc:interceptor>
-				<!-- <mvc:mapping path="/**" /> -->
 				<mvc:mapping path="/admin/board/**" />
+				<mvc:exclude-mapping path="/admin/login/login.do"/>
 				<bean id="bologgerInterceptor" class="com.common.logger.boLoggerInterceptor"></bean>
 			</mvc:interceptor>
 		</mvc:interceptors>
 		
-		<mvc:interceptors>
+		<!-- 홈페이지  interceptor  -->
+		<!-- <mvc:interceptors>
 			<mvc:interceptor>
-				<!-- <mvc:mapping path="/**" /> -->
 				<mvc:mapping path="/eep/board/**" />
 				<bean id="fologgerInterceptor" class="com.common.logger.foLoggerInterceptor"></bean>
 			</mvc:interceptor>
-		</mvc:interceptors>
+		</mvc:interceptors> -->
 		
 		<mvc:annotation-driven/>
 		
