@@ -65,7 +65,6 @@ th, td {
     <!--Start -->
     <div class="container-xxl py-5 menu">
         <div class="container">
-        	<input type="hidden" name="emplySq" id="emplySq" value="${loginInfo.loginInfo[0].emplySq}">
 	    	<input type="hidden" name="brdSq" id="brdSq" value="<%=brdSq%>">
             <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
                 <h1 class="display-3" style="font-size:20px;">공지사항 내용보기 </h1>
@@ -79,6 +78,14 @@ th, td {
 					</td>
 					<td style="text-align:left;">
 						<input style="border:0 solid black; width:800px;" type="text" id="brdTtl" name="brdTtl" readonly>
+					</td>
+				</tr>
+				<tr style="text-align:center;background-color:#ffffff;">
+					<td style="width:15%;background-color:#efefef;">
+						<b>작성자</b>
+					</td>
+					<td style="text-align:left;">
+						<input style="border:0 solid black; width:800px;" type="text" id="brdWrtr" name="brdWrtr" readonly>
 					</td>
 				</tr>
 				<tr style="text-align:center;background-color:#ffffff;">
@@ -104,10 +111,8 @@ th, td {
         
          <div class="col-12 text-center" style="padding-top:15px;">
          	 <button type="button" class="btn btn-secondary btn-sm" onclick="noticBoardList();">리스트</button>
-         	 <c:if test="${loginInfo.loginInfo[0].emplyAuthTypCd eq 2}">
-	         	 <button type="button" class="btn btn-secondary btn-sm" onclick="noticeUpdatePage();">수정</button>
-	         	 <button type="button" class="btn btn-secondary btn-sm" onclick="noticeBoardDelete();">삭제</button>
-         	 </c:if>
+	         <button type="button" class="btn btn-secondary btn-sm" onclick="noticeUpdatePage();">수정</button>
+	         <button type="button" class="btn btn-secondary btn-sm" onclick="noticeBoardDelete();">삭제</button>
          </div>
     </div>
     <!-- FAQs Start -->
@@ -115,100 +120,102 @@ th, td {
     <%@ include file="/WEB-INF/include/footer.jspf" %>
     
     <script>
+   	   var emplyAuthTypCd = "<c:out value = '${loginInfo.loginInfo[0].emplyAuthTypCd}'/>";
+	   var emplySq     = $('#emplySq').val(); //직원순번
+	   var brdSq       = $('#brdSq').val();   //공지사항 순번
+	   var dataContent = {};				  //데이터 처리 리스트
+	   
+	   $(document).ready(function(){
 
-		   var emplySq     = $('#emplySq').val(); //직원순번
-		   var brdSq       = $('#brdSq').val();   //공지사항 순번
-		   var dataContent = {};				  //데이터 처리 리스트
+			noticeboardDetailtData(brdSq);
+			
+	   });
+	   
+	   function noticeboardDetailtData(brdSq) {
+			
+			$.ajax({
+		           type: "post",
+		           url: "/eep/board/notice/noticeBoardDetailData.do",
+		           data: {
+		        	   brdSq : brdSq
+		            },
+		           success: function(data) {
+		        	    
+		        	 dataContent = data.noticeBoardDetailData.noticeBoardDetailData[0];
+
+		        	 var brdCntnt 	= dataContent.brdCntnt;
+		        	 var brdTtl 	= dataContent.brdTtl;
+		        	 var brdWrtr 	= dataContent.brdWrtr;
+
+		        	 //네이버 에디터 적용 전 유효성 체크 반영
+					 var castStr = brdCntnt;
+
+					 castStr = castStr.replaceAll("&lt;","<");
+					 castStr = castStr.replaceAll("&gt;",">");
+					 castStr = castStr.replaceAll("&amp;lt;","<");
+					 castStr = castStr.replaceAll("&amp;gt;",">");
+					 castStr = castStr.replaceAll("&amp;nbsp;"," ");
+					 castStr = castStr.replaceAll("&amp;amp;","&");
+					 castStr = castStr.replaceAll("\\","");
+					 
+					 
+					  //네이버 에디터 임포트
+					   var oEditors = [];
+					   
+					   $(function(){
+					      nhn.husky.EZCreator.createInIFrame({
+					         oAppRef: oEditors,
+					         elPlaceHolder: "naverEditor",
+					         //SmartEditor2Skin.html 파일이 존재하는 경로
+					         sSkinURI: "/resources/navereditor/SmartEditor2Skin.html",  
+					         htParams : {
+					             // 툴바 사용 여부 (true:사용/ false:사용하지 않음)
+					             bUseToolbar : false,             
+					             // 입력창 크기 조절바 사용 여부 (true:사용/ false:사용하지 않음)
+					             bUseVerticalResizer : false,     
+					             // 모드 탭(Editor | HTML | TEXT) 사용 여부 (true:사용/ false:사용하지 않음)
+					             bUseModeChanger : false,         
+					             fOnBeforeUnload : function(){
+					                  
+					             }
+					         }, 
+					         fOnAppLoad : function(){
+					             //textarea 내용을 에디터상에 바로 뿌려주고자 할때 사용
+					             //내용초기화
+					             oEditors.getById["naverEditor"].exec("SET_IR", [""]);
+					           	 //DB내용 표현
+					             oEditors.getById["naverEditor"].exec("PASTE_HTML", [castStr]);
+					           	 //수정 불가 지정
+					             oEditors.getById["naverEditor"].exec("DISABLE_WYSIWYG");
+					           	 //UI 비활성화
+					             oEditors.getById["naverEditor"].exec("DISABLE_ALL_UI");
+
+					         },
+					         fCreator: "createSEditor2"
+					       })
+					   });
+					 
+		        	 /* document.getElementById('naverEditor').innerHTML=castStr; */
+		        	 $('#brdTtl').val(brdTtl);
+		        	 $('#brdWrtr').val(brdTtl);
+		        	 
+		           },
+		           error: function(error) {
+		        	   var errorJson = JSON.stringify(error);
+		               console.log(errorJson);
+		           }
+			})
+		}
+	   
+	  
+	   function noticeBoardDelete() {
+	   
 		   
-		   $(document).ready(function(){
-
-				noticeboardDetailtData(brdSq);
-				
-		   });
-		   
-		   function noticeboardDetailtData(brdSq) {
-				
-				$.ajax({
-			           type: "post",
-			           url: "/eep/board/notice/noticeBoardDetailData.do",
-			           data: {
-			        	   brdSq : brdSq
-			            },
-			           success: function(data) {
-			        	    
-			        	 dataContent = data.noticeBoardDetailData.noticeBoardDetailData[0];
-
-			        	 var brdCntnt 	= dataContent.brdCntnt;
-			        	 var brdTtl 	= dataContent.brdTtl;
-
-			        	 //네이버 에디터 적용 전 유효성 체크 반영
-						 var castStr = brdCntnt;
-
-						 castStr = castStr.replaceAll("&lt;","<");
-						 castStr = castStr.replaceAll("&gt;",">");
-						 castStr = castStr.replaceAll("&amp;lt;","<");
-						 castStr = castStr.replaceAll("&amp;gt;",">");
-						 castStr = castStr.replaceAll("&amp;nbsp;"," ");
-						 castStr = castStr.replaceAll("&amp;amp;","&");
-						 castStr = castStr.replaceAll("\\","");
-						 
-						 
-						  //네이버 에디터 임포트
-						   var oEditors = [];
-						   
-						   $(function(){
-						      nhn.husky.EZCreator.createInIFrame({
-						         oAppRef: oEditors,
-						         elPlaceHolder: "naverEditor",
-						         //SmartEditor2Skin.html 파일이 존재하는 경로
-						         sSkinURI: "/resources/navereditor/SmartEditor2Skin.html",  
-						         htParams : {
-						             // 툴바 사용 여부 (true:사용/ false:사용하지 않음)
-						             bUseToolbar : false,             
-						             // 입력창 크기 조절바 사용 여부 (true:사용/ false:사용하지 않음)
-						             bUseVerticalResizer : false,     
-						             // 모드 탭(Editor | HTML | TEXT) 사용 여부 (true:사용/ false:사용하지 않음)
-						             bUseModeChanger : false,         
-						             fOnBeforeUnload : function(){
-						                  
-						             }
-						         }, 
-						         fOnAppLoad : function(){
-						             //textarea 내용을 에디터상에 바로 뿌려주고자 할때 사용
-						             //내용초기화
-						             oEditors.getById["naverEditor"].exec("SET_IR", [""]);
-						           	 //DB내용 표현
-						             oEditors.getById["naverEditor"].exec("PASTE_HTML", [castStr]);
-						           	 //수정 불가 지정
-						             oEditors.getById["naverEditor"].exec("DISABLE_WYSIWYG");
-						           	 //UI 비활성화
-						             oEditors.getById["naverEditor"].exec("DISABLE_ALL_UI");
-
-						         },
-						         fCreator: "createSEditor2"
-						       })
-						   });
-						 
-
-			        	 /* document.getElementById('naverEditor').innerHTML=castStr; */
-			        	 $('#brdTtl').val(brdTtl);
-			        	 $('#brdWrtr').val(brdWrtr);
-			        	 
-
-			           },
-			           error: function(error) {
-			        	   var errorJson = JSON.stringify(error);
-			               console.log(errorJson);
-			           }
-				})
-			}
-		   
-		  
-		   function noticeBoardDelete() {
-		   
-			   
-			   if(confirm('정말 삭제 하시겠습니까?')) {
-				   
+		   var emplyAuthTypCd = $("#emplyAuthTypCd").val();
+			
+	    	if(emplyAuthTypCd == '2'){
+	    		if(confirm('정말 삭제 하시겠습니까?')) {
+	    			
 				   $.ajax({
 			           type: "post",
 			           url: "/eep/board/notice/noticeBoardDeleteData.do",
@@ -227,33 +234,52 @@ th, td {
 			        	   var errorJson = JSON.stringify(error);
 			               console.log(errorJson);
 			           }
-				})
-				   
-			   }else{
-				   return false;
+				   })
+					   
+				   }else{
+					   return false;
 			   }
-			   
-			  
-		   }
+	    	}else{
+	    		bootbox.alert({
+					 message: "해당 권한이 없습니다.",
+					 locale: 'kr',
+					 callback: function() {
+						 return;
+				     } });
+	    	}
+
+	   }
+	   
+	   function noticBoardList() {
+		   var emplyAuthTypCd = $("#emplyAuthTypCd").val();
+		   location.href='/eep/board/notice/openNoticeBoardList.do';
+	   }
+	   
+		 //Input Box Null Check
+	   function isEmpty(str){
+	       
+	       if(typeof str == "undefined" || str == null || str == "")
+	           return true;
+	       else
+	           return false ;
+	   }
+
+	   function noticeUpdatePage() {
+		   var emplyAuthTypCd = $("#emplyAuthTypCd").val();
+			
+	    	if(emplyAuthTypCd == '2'){
+	    		location.href='/eep/board/notice/openNoticeBoardUpdate.do?brdSq='+brdSq;
+	    	}else{
+	    		bootbox.alert({
+					 message: "해당 권한이 없습니다.",
+					 locale: 'kr',
+					 callback: function() {
+						 return;
+				     } });
+				 
+	    	}
 		   
-		   function noticBoardList() {
-			   location.href='/eep/board/notice/openNoticeBoardList.do';
-		   }
-		   
-			 //Input Box Null Check
-		   function isEmpty(str){
-		       
-		       if(typeof str == "undefined" || str == null || str == "")
-		           return true;
-		       else
-		           return false ;
-		   }
-			 
-			 
-		   function noticeUpdatePage() {
-			   
-			   location.href='/eep/board/notice/openNoticeBoardUpdate.do?brdSq='+brdSq;
-			}
+		}
     </script>
     
     

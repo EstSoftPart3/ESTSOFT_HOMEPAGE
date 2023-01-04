@@ -67,7 +67,14 @@
               , BRD_RE_ORD 									AS 		brdReOrd
               , BRD_TTL 									AS 		brdTtl
               , BRD_CNTNT 									AS 		brdCntnt
-              , BRD_WRTR 									AS 		brdWrtr
+              , CASE WHEN CHAR_LENGTH(BRD_WRTR) > 2 THEN CONCAT(
+            		 SUBSTRING(BRD_WRTR, 1, 1)
+            		,LPAD('*', CHAR_LENGTH(BRD_WRTR) - 2, '*')
+            		,SUBSTRING(BRD_WRTR, CHAR_LENGTH(BRD_WRTR), CHAR_LENGTH(BRD_WRTR))
+        		)ELSE CONCAT(
+            		SUBSTRING(BRD_WRTR, 1, 1)
+            		,LPAD('*', CHAR_LENGTH(BRD_WRTR) - 1, '*')
+        		)END 										AS 		brdWrtr
               , BRD_TCHR 									AS 		brdTchr
               , BRD_EDU_DT 									AS 		brdEduDt
               , DATE_FORMAT(BRD_REG_DT, '%Y-%m-%d %H:%i') 	AS 		brdRegDt
@@ -125,10 +132,6 @@
           			OR BRD_WRTR LIKE CONCAT('%',#{searchKeyword},'%')
           			OR BRD_CNTNT LIKE CONCAT('%',#{searchKeyword},'%')
           		</if>
-          		
- 		ORDER BY 
- 				BRD_SQ DESC
-
 
     </select>
 
@@ -169,7 +172,14 @@
               , BRD_RE_ORD 									AS 		brdReOrd
               , BRD_TTL 									AS 		brdTtl
               , BRD_CNTNT 									AS 		brdCntnt
-              , BRD_WRTR 									AS 		brdWrtr
+              , CASE WHEN CHAR_LENGTH(BRD_WRTR) > 2 THEN CONCAT(
+            		 SUBSTRING(BRD_WRTR, 1, 1)
+            		,LPAD('*', CHAR_LENGTH(BRD_WRTR) - 2, '*')
+            		,SUBSTRING(BRD_WRTR, CHAR_LENGTH(BRD_WRTR), CHAR_LENGTH(BRD_WRTR))
+        		)ELSE CONCAT(
+            		SUBSTRING(BRD_WRTR, 1, 1)
+            		,LPAD('*', CHAR_LENGTH(BRD_WRTR) - 1, '*')
+        		)END 										AS 		brdWrtr
               , BRD_TCHR 									AS 		brdTchr
               , BRD_EDU_DT 									AS 		brdEduDt
               , DATE_FORMAT(BRD_REG_DT, '%Y-%m-%d %H:%i') 	AS 		brdRegDt
@@ -203,6 +213,181 @@
 			,USE_YN	= 'N'
    		WHERE
          	1=1 AND BRD_TYP_CD = 'NT' AND BRD_SQ = #{brdSq}
+	</update>
+	
+	<!-- 교육 게시판 Mapper -->
+	
+	<!-- 교육 목록 및 조회 -->
+	<select id="educationBoardListData" resultType="hashMap" parameterType="hashMap">
+	
+        SELECT
+        		BRD_SQ 										AS 		brdSq
+              , EMPLY_SQ 									AS 		emplySq
+              , BRD_TYP_CD 									AS 		brdTypCd
+              , BRD_RE_REF 									AS 		brdReRep
+              , BRD_RE_LEV 									AS 		brdReLev
+              , BRD_RE_ORD 									AS 		brdReOrd
+              , BRD_TTL 									AS 		brdTtl
+              , BRD_CNTNT 									AS 		brdCntnt
+              , CASE WHEN CHAR_LENGTH(BRD_WRTR) > 2 THEN CONCAT(
+            		 SUBSTRING(BRD_WRTR, 1, 1)
+            		,LPAD('*', CHAR_LENGTH(BRD_WRTR) - 2, '*')
+            		,SUBSTRING(BRD_WRTR, CHAR_LENGTH(BRD_WRTR), CHAR_LENGTH(BRD_WRTR))
+        		)ELSE CONCAT(
+            		SUBSTRING(BRD_WRTR, 1, 1)
+            		,LPAD('*', CHAR_LENGTH(BRD_WRTR) - 1, '*')
+        		)END 										AS 		brdWrtr
+              , BRD_TCHR 									AS 		brdTchr
+              , BRD_EDU_DT 									AS 		brdEduDt
+              , DATE_FORMAT(BRD_REG_DT, '%Y-%m-%d %H:%i') 	AS 		brdRegDt
+              , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
+              , USE_YN 										AS 		useYn
+              , DEL_YN 										AS 		delYn
+ 		FROM 
+ 				TB_EEP_BRD_M 
+ 		WHERE
+ 				BRD_TYP_CD = 'ED' AND USE_YN = 'Y' AND DEL_YN = 'N'
+ 				
+ 				<if test='searchOption == "T" and searchOption != null'>
+          			AND BRD_TTL LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+           		<if test='searchOption == "W" and searchOption != null'>
+          			AND BRD_WRTR LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='searchOption == "C" and searchOption != null'>
+          			AND BRD_CNTNT LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='searchOption == "I" and searchOption != null'>
+          			AND BRD_TCHR LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='searchOption == "TWCI" and searchOption != null'>
+          			AND BRD_TTL LIKE CONCAT('%',#{searchKeyword},'%')
+          			OR BRD_WRTR LIKE CONCAT('%',#{searchKeyword},'%')
+          			OR BRD_CNTNT LIKE CONCAT('%',#{searchKeyword},'%')
+          			OR BRD_TCHR LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+ 		ORDER BY 
+ 				BRD_SQ DESC
+ 		LIMIT 
+ 				#{start}, #{end}
+
+    </select>
+
+	<!-- 교육 게시판 개수 -->
+	<select id="educationBoardListCountData" resultType="int" parameterType="hashMap">
+	
+        SELECT
+				COUNT(BRD_SQ)
+ 		FROM 
+ 				TB_EEP_BRD_M 
+ 		WHERE
+ 				BRD_TYP_CD = 'ED' AND USE_YN = 'Y' AND DEL_YN = 'N'
+ 				
+ 				<if test='searchOption == "T" and searchOption != null'>
+          			AND BRD_TTL LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+           		<if test='searchOption == "W" and searchOption != null'>
+          			AND BRD_WRTR LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='searchOption == "C" and searchOption != null'>
+          			AND BRD_CNTNT LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='searchOption == "I" and searchOption != null'>
+          			AND BRD_TCHR LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='searchOption == "TWCI" and searchOption != null'>
+          			AND BRD_TTL LIKE CONCAT('%',#{searchKeyword},'%')
+          			OR BRD_WRTR LIKE CONCAT('%',#{searchKeyword},'%')
+          			OR BRD_CNTNT LIKE CONCAT('%',#{searchKeyword},'%')
+          			OR BRD_TCHR LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+
+    </select>
+
+	<!-- 교육 등록 -->
+	<insert id="educationBoardInsertData" parameterType="hashMap">
+    	INSERT INTO TB_EEP_BRD_M
+        (
+			 EMPLY_SQ
+			,BRD_TYP_CD
+			,BRD_TTL
+			,BRD_CNTNT
+			,BRD_WRTR
+			,BRD_TCHR
+			,BRD_EDU_DT
+			,BRD_REG_DT
+			,USE_YN 
+			,DEL_YN
+       	) 
+        VALUES
+        (
+			 #{emplySq}
+			,'ED'
+			,#{brdTtl}
+			,#{brdCntnt}
+			,#{brdWrtr}
+			,#{brdTchr}
+			,#{brdEduDt}
+			,default
+			,default
+			,default
+        )
+	</insert>
+    
+    <!-- 교육 상세 -->
+    <select id="educationBoardDetailData" resultType="hashMap">
+        SELECT
+        		BRD_SQ 										AS 		brdSq
+              , EMPLY_SQ 									AS 		emplySq
+              , BRD_TYP_CD 									AS 		brdTypCd
+              , BRD_RE_REF 									AS 		brdReRep
+              , BRD_RE_LEV 									AS 		brdReLev
+              , BRD_RE_ORD 									AS 		brdReOrd
+              , BRD_TTL 									AS 		brdTtl
+              , BRD_CNTNT 									AS 		brdCntnt
+              , CASE WHEN CHAR_LENGTH(BRD_WRTR) > 2 THEN CONCAT(
+            		 SUBSTRING(BRD_WRTR, 1, 1)
+            		,LPAD('*', CHAR_LENGTH(BRD_WRTR) - 2, '*')
+            		,SUBSTRING(BRD_WRTR, CHAR_LENGTH(BRD_WRTR), CHAR_LENGTH(BRD_WRTR))
+        		)ELSE CONCAT(
+            		SUBSTRING(BRD_WRTR, 1, 1)
+            		,LPAD('*', CHAR_LENGTH(BRD_WRTR) - 1, '*')
+        		)END 										AS 		brdWrtr
+              , BRD_TCHR 									AS 		brdTchr
+              , BRD_EDU_DT 									AS 		brdEduDt
+              , DATE_FORMAT(BRD_REG_DT, '%Y-%m-%d %H:%i') 	AS 		brdRegDt
+              , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
+              , USE_YN 										AS 		useYn
+              , DEL_YN 										AS 		delYn
+ 		FROM 
+ 				TB_EEP_BRD_M 
+ 		WHERE
+         		1=1 AND BRD_TYP_CD = 'ED' AND BRD_SQ = #{brdSq}
+    </select>
+    
+    <!-- 교육 수정 -->
+    <update id="educationBoardUpdateData" parameterType="hashMap">
+   		UPDATE 
+   			TB_EEP_BRD_M
+		SET
+			 BRD_TTL        	= 	#{brdTtl}
+			,BRD_CNTNT     		= 	#{brdCntnt}
+			,BRD_TCHR 			= 	#{brdTchr}
+			,BRD_EDU_DT 		= 	#{brdEduDt}
+			,BRD_UPDT_DT      	= 	NOW()
+   		WHERE
+         	1=1 AND BRD_TYP_CD = 'ED' AND BRD_SQ = #{brdSq}
+	</update>
+	
+	<!-- 교육 삭제 -->
+    <update id="educationBoardDeleteData" parameterType="hashMap">
+   		UPDATE 
+   			TB_EEP_BRD_M
+		SET
+			 DEL_YN	= 'Y'
+			,USE_YN	= 'N'
+   		WHERE
+         	1=1 AND BRD_TYP_CD = 'ED' AND BRD_SQ = #{brdSq}
 	</update>
 	
 </mapper>

@@ -39,3 +39,16 @@
 	
 	<script src='/resources/navereditor/js/smarteditor2.min.js' charset='utf-8'></script>
 	<script src='/resources/navereditor/photo_uploader/plugin/hp_SE2M_AttachQuickPhoto.js' charset='utf-8'></script>
+	
+	<script type="text/javascript">
+
+	function logout() {
+		if (!confirm("로그아웃 하시겠습니까?")) {
+	        return false;
+	    } else {
+	    	location.href='/eep/logout.do';
+	    }
+	}
+
+	</script>
+	

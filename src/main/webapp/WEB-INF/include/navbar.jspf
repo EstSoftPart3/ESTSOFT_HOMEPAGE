@@ -45,12 +45,23 @@
 				<div class="nav-item dropdown">
                 	<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">커뮤니티</a>
                 	<div class="dropdown-menu shadow-sm m-0">
-                        <a href="/eep/boardList.do" class="dropdown-item">공지사항</a>
-                        <a href="#" class="dropdown-item">자유게시판</a>
-                        <a href="#" class="dropdown-item">기술문의</a>
-                        <a href="#" class="dropdown-item">교육일정</a>
+                        <a href="/eep/board/notice/openNoticeBoardList.do" class="dropdown-item">공지사항</a>
+                        <a href="/eep/board/freedom/openFreedomBoardList.do" class="dropdown-item">자유게시판</a>
+                        <a href="/eep/board/technology/openTechnologyBoardList.do" class="dropdown-item">기술문의</a>
+                        <a href="/eep/board/education/openEducationBoardList.do" class="dropdown-item">교육일정</a>
                     </div>
                 </div>
+
+				<c:if test="${sessionScope.loginInfo.loginInfo[0] != null}">
+	                <div class="nav-item dropdown">
+	                	<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown"><b>${loginInfo.loginInfo[0].emplyNm}</b>(${loginInfo.loginInfo[0].emplyId})님 안녕하세요</a>
+	                	<div class="dropdown-menu shadow-sm m-0">
+	                        <!-- <button type="button" class="btn-sm-sm btn-danger" onclick="logout();">logout</button> -->
+	                        <a class="dropdown-item" style="color: red;" href="javascript:logout()">로그아웃</a>
+	                    </div>
+	                </div>
+                </c:if>
+ 
             </div>
            
         </div>

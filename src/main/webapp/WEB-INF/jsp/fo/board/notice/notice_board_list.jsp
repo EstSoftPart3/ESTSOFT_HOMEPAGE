@@ -95,7 +95,7 @@
            				<option value="">- 선택 -</option>
            				<option value="T">제목</option>
            				<option value="C">내용</option>
-           				<option value="W">내용</option>
+           				<option value="W">작성자</option>
            				<option value="TCW">제목+내용+작성자</option>
            			</select>
            			
@@ -114,6 +114,7 @@
 		  		<tr class="theadTh">
 					<th class="text-center">번호</th>
 					<th class="text-center" style="width:70%">제목</th>
+					<th class="text-center">작성자</th>
 					<th class="text-center">입력일</th>
 				</tr>
 			</thead>
@@ -127,12 +128,11 @@
 								
 			</ul>
 		</div>
-		
-		<c:if test="${loginInfo.loginInfo[0].emplyAuthTypCd eq 2}">
-			<div class="col-12 text-center" style="padding-top:15px;">
-         	 	<button type="button" class="btn btn-secondary btn-sm" onclick="noticeBoardInsert();">게시판 작성</button>
-         	 </div>
-        </c:if>
+
+		<div class="col-12 text-center" style="padding-top:15px;">
+        	<button type="button" class="btn btn-secondary btn-sm" onclick="noticeBoardInsert();">게시판 작성</button>
+         </div>
+
         </div>
     </div>
     <!-- FAQs Start -->
@@ -141,10 +141,14 @@
     
      <script>
 		
+     var emplyAuthTypCd = "<c:out value = '${loginInfo.loginInfo[0].emplyAuthTypCd}'/>";
+
+     //첫 로딩시 리승트 호출
      $(document).ready(function() {
    	   	noticeBoardList(1);
      });
      
+     //검색 바인딩
 	$("#searchBtn").on('click', function(){
 
   		var searchOption = $("#searchOption :selected").val();
@@ -207,6 +211,9 @@
 									"</td>" +
 									"<td style='text-align:left;'><a style='text-decoration-line: none;' href='javascript:noticeDetail(" + value.brdSq + ")'>" + 
 										value.brdTtl +
+									"</td>" +
+									"<td>" +
+										value.brdWrtr +
 									"</td>" +
 									"<td>" +
 										value.brdRegDt +
@@ -274,8 +281,21 @@
 
     /* 게시판 입력 */
     function noticeBoardInsert() {
- 	   
- 	   location.href = "/eep/board/notice/openNoticeBoardInsert.do";
+    	var emplyAuthTypCd = $("#emplyAuthTypCd").val();
+		
+    	if(emplyAuthTypCd == '2'){
+    		location.href = "/eep/board/notice/openNoticeBoardInsert.do";
+    	}else{
+    		bootbox.alert({
+				 message: "해당 권한이 없습니다.",
+				 locale: 'kr',
+				 callback: function() {
+					 return;
+			     } });
+			 
+    	}
+    	
+ 	   	
     }
     
     

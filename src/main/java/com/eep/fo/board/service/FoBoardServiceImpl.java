@@ -106,4 +106,58 @@ public class FoBoardServiceImpl implements FoBoardService{
 		return result;
 	}
 	
+	/**
+	 * 교육일정 게시판 ServiceImpl
+	 * 
+	 * **/
+	
+	//교육일정 게시판 리스트
+	@Override
+	public Map<String, Object> educationBoardListData(Map<String, Object> param){
+		
+		Map<String, Object> result = new HashMap<>();
+		
+		result = FoBoardDao.educationBoardListData(param);
+		
+		return result;
+	}
+	
+	//교육일정 게시판 등록
+	@Override
+	public void educationBoardInsertData(Map<String, Object> param){
+		FoBoardDao.educationBoardInsertData(param);
+	}
+	
+	//교육일정 게시판 상세
+	@Override
+	public Map<String, Object> educationBoardDetailData(Map<String, Object> param){
+		
+		Map<String, Object> result = new HashMap<>();
+		
+		result = FoBoardDao.educationBoardDetailData(param);
+		
+		return result;
+	}
+	
+	//교육일정 게시판 삭제
+	@Override
+	public void educationBoardDeleteData(Map<String, Object> param){
+		FoBoardDao.educationBoardDeleteData(param);
+	}
+	
+	//교육일정 게시판 수정
+	@Override
+	public void educationBoardUpdateData(Map<String, Object> param){
+		FoBoardDao.educationBoardUpdateData(param);
+	}
+	
+	//교육일정 게시판 개수
+	@Override
+	public int educationBoardListCountData(Map<String, Object> param){
+
+		int result = FoBoardDao.educationBoardListCountData(param);
+		
+		return result;
+	}
+	
 }

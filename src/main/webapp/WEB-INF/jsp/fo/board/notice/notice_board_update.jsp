@@ -65,6 +65,8 @@ th, td {
     <!--Start -->
     <div class="container-xxl py-5 menu">
         <div class="container">
+            <input type="hidden" name="emplySq" id="emplySq" value="${loginInfo.loginInfo[0].emplySq}">
+	    	<input type="hidden" name="brdSq" id="brdSq" value="<%=brdSq%>">
             <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
                 <h1 class="display-3" style="font-size:20px;">공지사항 수정하기 </h1>
             </div>
@@ -89,10 +91,18 @@ th, td {
 				</tr>
 				<tr style="text-align:center;background-color:#ffffff;">
 					<td style="width:15%;background-color:#efefef;">
-						<b>수정일</b>
+						<b>등록일</b>
 					</td>
 					<td style="text-align:left;">
-						<input type="text" class="form-control" id="regdate" style="font-size:12px;" value="자동입력" readonly>
+						<input type="text" class="form-control" id="brdRegDt" style="font-size:12px;" value="" readonly>
+					</td>
+				</tr>
+				<tr style="text-align:center;background-color:#ffffff;">
+					<td style="width:15%;background-color:#efefef;">
+						<b>최근 수정일</b>
+					</td>
+					<td style="text-align:left;">
+						<input type="text" class="form-control" id="brdUpdtDt" style="font-size:12px;" value="자동입력" readonly>
 					</td>
 				</tr>
 				<tr style="text-align:center;background-color:#ffffff;">
@@ -107,16 +117,15 @@ th, td {
 					</textarea>
 					</td>
 				</tr>
-				
-				
+
 			</tbody>
 		</table>
            
         </div>
         
          <div class="col-12 text-center" style="padding-top:15px;">
-         	 <button type="button" class="btn btn-secondary btn-sm" onclick="fn_list_move();">리스트</button>
-         	 <button type="button" class="btn btn-secondary btn-sm">수정하기</button>
+         	 <button type="button" class="btn btn-secondary btn-sm" onclick="noticeBoardList();">리스트</button>
+         	 <button type="button" class="btn btn-secondary btn-sm" onclick="noticeUpdate();">수정하기</button>
          </div>
     </div>
     <!-- FAQs Start -->
@@ -135,7 +144,7 @@ th, td {
     $(document).ready(function(){
 
  		noticeboardDetailtData(brdSq);
- 		
+
     });
     
     function noticeboardDetailtData(brdSq) {
@@ -155,8 +164,6 @@ th, td {
  	        	 var brdWrtr 	= dataContent.brdWrtr;
  	        	 var brdRegDt	= dataContent.brdRegDt;
  	        	 var brdUpdtDt	= dataContent.brdUpdtDt;
- 	        	 var useYn 		= dataContent.useYn;
- 	        	 var delYn 		= dataContent.delYn;
 
  	        	 //네이버 에디터 적용 전 유효성 체크 반영
  				 var castStr = brdCntnt;
@@ -211,18 +218,6 @@ th, td {
  	        	 $('#brdTtl').val(brdTtl);
  	        	 $('#brdWrtr').val(brdWrtr);
  	        	 $('#brdRegDt').val(brdRegDt);
- 	        	 
- 	        	 if(useYn == "Y"){
- 	        		 $("#u1").prop("checked", true);
- 	        	 }else{
- 	        		 $("#u2").prop("checked", true);
- 	        	 }
- 	        	 
- 	        	 if(delYn == "Y"){
- 	        		 $("#d1").prop("checked", true);
- 	        	 }else{
- 	        		 $("#d2").prop("checked", true);
- 	        	 }
 
  	        	 //수정 이력 없을 시 유효성 체크
  	        	 if(isEmpty(brdUpdtDt)){
@@ -240,6 +235,74 @@ th, td {
  	           }
  		})
  	}
+    
+	function noticeUpdate() {
+		
+		var brdSq     = $("#brdSq").val();     
+		var brdTtl  = $("#brdTtl").val(); 
+		oEditors.getById["naverEditor"].exec("UPDATE_CONTENTS_FIELD", []);
+		var brdCntnt = document.getElementById("naverEditor").value;
+
+	   // 제목
+	   	 if(isEmpty(brdTtl)) {
+	   		bootbox.alert({
+					 message: "제목을 입력해 주세요.",
+					 locale: 'kr',
+					 callback: function() {
+					 		$("#brdTtl").focus();
+				     } });
+				 return;
+	   	 }
+	   	 
+	   	 // 설명
+	   	 if(brdCntnt == "<p>&nbsp;</p>" || brdCntnt == "" || isEmpty(brdCntnt)) {
+	   		bootbox.alert({
+					 message: "내용을 입력해 주세요.",
+					 locale: 'kr',
+					 callback: function() {
+					 		$("#brdCntnt").focus();
+				     } });
+				 return;
+	   	 }
+
+		
+		
+		
+		$.ajax({
+	           type: "post",
+	           url: "/eep/board/notice/noticeBoardUpdateData.do",
+	           data: {
+	        	   brdSq : brdSq,
+	        	   brdTtl : brdTtl,
+	        	   brdCntnt : brdCntnt
+	           },
+	           success: function(data) {
+	        	   bootbox.alert({
+						 message: "게시글이 수정 되었습니다.",
+						 locale: 'kr',
+						 callback: function() {
+							 	location.href='/eep/board/notice/openNoticeBoardDetail.do?brdSq='+brdSq;
+					     } });
+			   },
+	           error: function(error) {
+	        	   var errorJson = JSON.stringify(error);
+	               console.log(errorJson);
+	           }
+		})
+	}
+	
+	   function noticeBoardList() {
+		   location.href='/eep/board/notice/openNoticeBoardList.do';
+	   }
+
+		 //Input Box Null Check
+	   function isEmpty(str){
+	       
+	       if(typeof str == "undefined" || str == null || str == "")
+	           return true;
+	       else
+	           return false ;
+	   } 
     </script>
     
     
