@@ -25,4 +25,16 @@ public interface FoBoardService {
 	public void noticeBoardUpdateData(Map<String, Object> param);						//공지사항 게시판 수정
 	public int noticeBoardListCountData(Map<String, Object> param);						//공지사항 게시판 개수
 	
+	/**
+	 * 교육일정 게시판 Service Interface
+	 * 
+	 * **/
+	
+	public Map<String, Object> educationBoardListData(Map<String, Object> param); 		//교육일정 게시판 리스트
+	public void educationBoardInsertData(Map<String, Object> param);					//교육일정 게시판 등록
+	public Map<String, Object> educationBoardDetailData(Map<String, Object> param);		//교육일정 게시판 상세
+	public void educationBoardDeleteData(Map<String, Object> param); 					//교육일정 게시판 삭제
+	public void educationBoardUpdateData(Map<String, Object> param);					//교육일정 게시판 수정
+	public int educationBoardListCountData(Map<String, Object> param);					//교육일정 게시판 개수
+	
 }

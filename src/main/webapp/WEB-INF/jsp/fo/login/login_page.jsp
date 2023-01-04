@@ -25,8 +25,10 @@
 <body class="hold-transition login-page">
 <div class="login-box">
   <div class="login-logo">
-  	<img alt="" src="/resources/img/logo.png" style="width:100px; height:100px;"><br>
-    <a href="#" style="font-size: 20px;"><b>주식회사&nbsp;이에스티소프트 직원 로그인</b></a>
+  	<a href="/eep/mainPage.do" style="font-size: 20px;">
+  		<img alt="" src="/resources/img/logo.png" style="width:100px; height:100px;"><br>
+  		<b>주식회사&nbsp;이에스티소프트 직원 로그인</b>
+    </a>
   </div>
   <!-- /.login-logo -->
   <div class="card">

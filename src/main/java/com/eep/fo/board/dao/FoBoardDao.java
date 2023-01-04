@@ -129,4 +129,74 @@ public class FoBoardDao {
 
 		return result;
 	}
+	
+	/**
+	 * 교육일정 게시판 DAO
+	 * 
+	 * **/
+
+	//교육일정 게시판 리스트
+	public Map<String, Object> educationBoardListData(Map<String, Object> param){
+		
+		Map<String, Object> result = new HashMap<>();
+				
+		System.out.println("param :" + param);
+		
+		@SuppressWarnings("unchecked")
+		List<Map<String, Object>> boardInfo = FoBoardMapper.educationBoardListData(param);
+		
+		result.put("educationBoardInfo", boardInfo);
+				
+		return result;
+	}
+	
+	//교육일정 게시판 등록
+	public void educationBoardInsertData(Map<String, Object> param){
+		
+		System.out.println("DATA = " + param);
+		FoBoardMapper.educationBoardInsertData(param);
+		
+	}
+	
+	//교육일정 게시판 상세
+	public Map<String, Object> educationBoardDetailData(Map<String, Object> param){
+		
+		Map<String, Object> result = new HashMap<>();
+		
+		//System.out.println("DATA = " + param);
+		
+		@SuppressWarnings("unchecked")
+		List<Map<String, Object>> educationBoardDetailData = FoBoardMapper.educationBoardDetailData(param);
+		
+		result.put("educationBoardDetailData", educationBoardDetailData);
+		
+		return result;
+	}
+	
+	//교육일정 게시판 삭제
+	public void educationBoardDeleteData(Map<String, Object> param){
+		
+		System.out.println("DATA = " + param);
+		FoBoardMapper.educationBoardDeleteData(param);
+		
+	}
+	
+	//교육일정 수정
+	public void educationBoardUpdateData(Map<String, Object> param){
+		
+		System.out.println("DATA = " + param);
+		FoBoardMapper.educationBoardUpdateData(param);
+		
+	}
+	
+	//교육일정 게시판 개수
+	public int educationBoardListCountData(Map<String, Object> param){
+
+		System.out.println("param :" + param);
+		
+		@SuppressWarnings("unchecked")
+		int result = FoBoardMapper.educationBoardListCountData(param);
+
+		return result;
+	}
 }

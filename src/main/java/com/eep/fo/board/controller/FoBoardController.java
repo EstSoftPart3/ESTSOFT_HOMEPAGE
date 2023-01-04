@@ -153,4 +153,145 @@ public class FoBoardController {
 		
 	}
 	
+	/**
+	 * 교육일정 게시판 Controller
+	 * 
+	 * **/
+	
+	//교율일정 게시판 목록 페이지 이동
+	@RequestMapping("/eep/board/education/openEducationBoardList.do")
+	public String openEducationBoardList() {
+		
+		return "fo/board/education/education_board_list";
+	}
+	
+	//공지사항 게시판 목록 데이터
+	@RequestMapping("/eep/board/education/educationBoardListData.do")
+	@ResponseBody
+	public ModelAndView educationBoardListData(@RequestParam Map<String, Object> param, 
+											@RequestParam(defaultValue="1") int curPage) {
+		
+		ModelAndView mv = new ModelAndView();
+		mv.setViewName("jsonView");
+		
+		int count = FoBoardService.educationBoardListCountData(param);
+		
+		pagerMaster pagerMaster = new pagerMaster(count, curPage, 10, 10);
+		int start = pagerMaster.getPageBegin();
+		int end = pagerMaster.getPageEnd();
+		
+		param.put("start", start);
+		param.put("end", end);
+		
+		Map<String, Object> result = new HashMap<>();
+		
+		result = FoBoardService.educationBoardListData(param);
+									
+		mv.addObject("educationBoardData", result);
+		mv.addObject("boardPager", pagerMaster);
+		
+		return mv;
+	}
+	
+	//교육일정 게시판 등록 페이지 이동
+	@RequestMapping("/eep/board/education/openEducationBoardInsert.do")
+	public String openEducationBoardInsert() {
+		
+		return "fo/board/education/education_board_insert";
+	}
+	
+	//교육일정 게시판 등록 데이터
+	@RequestMapping("/eep/board/education/educationBoardInsertData.do")
+	@ResponseBody
+	public void educationBoardInsertData(@RequestParam Map<String, Object> param) {
+
+	    int emplySq = Integer.parseInt((String) param.get("emplySq"));
+		String brdTtl = (String) param.get("brdTtl");
+		String brdCntnt = (String) param.get("brdCntnt");
+		String brdWrtr = (String) param.get("brdWrtr");
+		String brdTchr = (String) param.get("brdTchr");
+		String brdEduDt = (String) param.get("brdEduDt");
+
+		param.put("emplySq", emplySq);
+		param.put("brdTtl", brdTtl);
+		param.put("brdCntnt", brdCntnt);
+		param.put("brdWrtr", brdWrtr);
+		param.put("brdTchr", brdTchr);
+		param.put("brdEduDt", brdEduDt);
+		
+		System.out.println(param);
+		
+		FoBoardService.educationBoardInsertData(param);
+
+	}
+	
+	//교육일정 게시판 상세 페이지 이동
+	@RequestMapping("/eep/board/education/openEducationBoardDetail.do")
+	public String openEducationBoardDetail() {
+		
+		return "fo/board/education/education_board_detail";
+	}
+	
+	//교육일정 게시판 상세 데이터
+	@RequestMapping("/eep/board/education/educationBoardDetailData.do")
+	@ResponseBody
+	public ModelAndView educationBoardDetailData(@RequestParam Map<String, Object> param) {
+		
+		ModelAndView mv = new ModelAndView();
+		
+		mv.setViewName("jsonView");
+		
+		Map<String, Object> result = new HashMap<>();
+		
+		result = FoBoardService.educationBoardDetailData(param);
+		
+		mv.addObject("educationBoardDetailData", result);
+		
+		return mv;
+	}
+	
+	//교육일정 게시판 삭제
+	@RequestMapping("/eep/board/education/educationBoardDeleteData.do")
+	@ResponseBody
+	public void educationBoardDeleteData(@RequestParam Map<String, Object> param) {
+		
+		int brdSq = Integer.parseInt((String) param.get("brdSq"));
+	
+		param.put("brdSq", brdSq);
+		
+		FoBoardService.educationBoardDeleteData(param);
+		
+	}
+	
+	//교육일정 게시판 수정 페이지 이동
+	@RequestMapping("/eep/board/education/openEducationBoardUpdate.do")
+	public String openEducationBoardUpdate() {
+		
+		return "fo/board/education/education_board_update";
+	}
+	
+	//교육일정 게시판 수정
+	@RequestMapping("/eep/board/educationeducationBoardUpdateData.do")
+	@ResponseBody
+	public void educationBoardUpdateData(@RequestParam Map<String, Object> param) {
+
+		
+	    int brdSq = Integer.parseInt((String) param.get("brdSq"));
+		String brdTtl = (String) param.get("brdTtl");
+		String brdCntnt = (String) param.get("brdCntnt");
+		String brdTchr = (String) param.get("brdTchr");
+		String brdEduDt = (String) param.get("brdEduDt");
+
+		param.put("brdSq", brdSq);
+		param.put("brdTtl", brdTtl);
+		param.put("brdCntnt", brdCntnt);
+		param.put("brdTchr", brdTchr);
+		param.put("brdEduDt", brdEduDt);
+
+		System.out.println(param);
+
+		FoBoardService.educationBoardUpdateData(param);
+		
+	}
+	
 }

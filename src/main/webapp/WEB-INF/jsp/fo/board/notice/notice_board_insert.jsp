@@ -126,6 +126,8 @@ th, td {
     
     <script>
     
+    var emplySq = "<c:out value = '${loginInfo.loginInfo[0].emplySq}'/>";
+    
     var oEditors = [];
     
     $(function(){
@@ -155,15 +157,12 @@ th, td {
     
     function noticeboardInsert() {
     	
-    	var emplySq     = $("#emplySq").val();     							//회원 순번
     	var brdTypCd 	= 'NT'  							//게시판 구분 코드
        	var brdTtl  	= $("#brdTtl").val();  				//게시판 제목
        	var brdWrtr  	= $("#brdWrtr").val();  			//게시판 작성자
         oEditors.getById["naverEditor"].exec("UPDATE_CONTENTS_FIELD", [])
        	var brdCntnt = document.getElementById("naverEditor").value
-        
-       	debugger;
-       	
+
        	 //제목
        	 if(isEmpty(brdTtl)) {
        		bootbox.alert({
@@ -176,7 +175,7 @@ th, td {
        	 }
        	 
          //내용
-       	 if(brdCntnt == "<p>&nbsp;</p>") {
+       	 if(brdCntnt == "<p>&nbsp;</p>" || brdCntnt == "" || isEmpty(brdCntnt)) {
        		bootbox.alert({
     				 message: "내용을 입력해 주세요.",
     				 locale: 'kr',
