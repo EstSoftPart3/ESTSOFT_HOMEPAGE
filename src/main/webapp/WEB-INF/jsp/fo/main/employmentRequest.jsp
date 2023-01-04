@@ -63,36 +63,36 @@
                         <div class="row g-3">
                             <div class="col-12">
                                 <div class="form-floating">
-                                    <input type="text" class="form-control" id="subject" placeholder="Subject">
-                                    <label for="subject">성명</label>
+                                    <input type="text" class="form-control" id="name" placeholder="name" autocomplete="off" value="홍길동">
+                                    <label for="name">성명</label>
                                 </div>
                             </div>
                             <div class="col-12">
                                 <div class="form-floating">
-                                    <input type="text" class="form-control" id="name" placeholder="Your Name">
-                                    <label for="name">휴대폰</label>
+                                    <input type="text" class="form-control" id="handphone" placeholder="handphone" autocomplete="off" value="010-1111-222">
+                                    <label for="handphone">휴대폰</label>
                                 </div>
                             </div>
                             <div class="col-12">
                                 <div class="form-floating">
-                                    <input type="email" class="form-control" id="email" placeholder="Your Email">
+                                    <input type="email" class="form-control" id="email" placeholder="email" autocomplete="off" value="swordbass.j3@gmail.com">
                                     <label for="email">이메일</label>
                                 </div>
                             </div>
                             
                             <div class="col-12">
                                 <div class="form-floating">
-                                    <textarea class="form-control" placeholder="Leave a message here" id="message" style="height: 250px"></textarea>
-                                    <label for="message">자기소개(간략히)</label>
+                                    <textarea class="form-control" placeholder="Leave a message here" id="content" style="height: 250px">지금은 테스트중 입니다.</textarea>
+                                    <label for="content">자기소개(간략히)</label>
                                 </div>
                             </div>
                             <div class="col-12">
                             	※ 개인정보 수집 및 이용동의
-                            	<input type="checkbox">
+                            	<input type="checkbox" id="box1" checked>
                             </div>
                              <div class="col-12">
                                 <div class="form-floating">
-                                    <textarea class="form-control" placeholder="Leave a message here" id="message" style="height: 150px;font-size:11px;">
+                                    <textarea class="form-control" style="height: 150px;font-size:11px;">
 1. 수집하는 개인정보 항목
 
 ​[입사지원-입사지원서 작성]
@@ -139,7 +139,7 @@
                             </div>
                             
                             <div class="col-12">
-                                <button class="btn btn-secondary btn-lg" type="submit">입사지원</button>
+                                <button class="btn btn-secondary btn-lg" type="button" onclick="fn_sendmail();">입사지원</button>
                             </div>
                         </div>
                     </form>
@@ -152,6 +152,65 @@
         </div>
     </div>
     <!-- End -->
+    
+    <script>
+    	function fn_sendmail(){
+    		
+    		//성명
+    		var name 		= $("#name").val();
+    		//휴대폰
+    		var handphone 	= $("#handphone").val();
+    		//이메일
+    		var email 		= $("#email").val();
+    		//자기소개
+    		var content 	= $("#content").val();
+    		
+    		
+    		if(name == ""){
+    			alert("성명을 입력해 주세요.");
+    			return false;
+    		}
+    		else if(handphone == ""){
+    			alert("휴대폰 번호를 입력해 주세요.");
+    			return false;
+    		}
+    		else if(email == ""){
+    			alert("이메일 주소를 입력해 주세요.");
+    			return false;
+    		}
+    		else if(content == ""){
+    			alert("자기소개를 간략히 입력해 주세요.");
+    			return false;
+    		} else if (!$("input:checked[id='box1']").is(":checked")){ 
+    			alert("개인정보 수집 및 이용동의에 체크해 주셔야 입사지원이 가능합니다.");
+    			return false;
+    		} else {
+    			
+    			var params = {
+    					name : name,
+    					handphone : handphone,
+    					email : email,
+    					content : content
+    			}
+    				
+    			$.ajax({
+    				url: "/eep/sendmail.do",
+    				type: "post",
+    				data: params,
+    				success: function(data){
+    					alert("입시지원 되었습니다. 감사합니다.");
+    		    		$("#name").val('');
+    		    		$("#handphone").val('');
+    		    		$("#email").val('');
+    		    		$("#content").val('');
+    		    		
+    		    		$("input:checkbox[id='box1']").prop("checked", false);
+    				}
+    			});   			
+    		}
+    		
+    	}
+    </script>
     
      <!-- TEAM Start -->
     <div class="container-xxl bg-light py-5 my-5">
