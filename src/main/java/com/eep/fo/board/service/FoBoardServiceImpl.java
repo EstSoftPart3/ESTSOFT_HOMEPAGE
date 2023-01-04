@@ -160,4 +160,67 @@ public class FoBoardServiceImpl implements FoBoardService{
 		return result;
 	}
 	
+	/**
+	 * 자유 게시판 ServiceImpl
+	 * 
+	 * **/
+	
+	//자유 게시판 리스트
+	@Override
+	public Map<String, Object> freedomBoardListData(Map<String, Object> param){
+		
+		Map<String, Object> result = new HashMap<>();
+		
+		result = FoBoardDao.freedomBoardListData(param);
+		
+		return result;
+	}
+	
+	//자유 게시판 등록
+	@Override
+	public void freedomBoardInsertData(Map<String, Object> param){
+		FoBoardDao.freedomBoardInsertData(param);
+	}
+	
+	//교육 게시판 상세
+	@Override
+	public Map<String, Object> freedomBoardDetailData(Map<String, Object> param){
+		
+		Map<String, Object> result = new HashMap<>();
+		
+		result = FoBoardDao.freedomBoardDetailData(param);
+		
+		return result;
+	}
+	
+	//자유 게시판 답변 등록
+	@Override
+	public void freedomBoardReplyInsertData(Map<String, Object> param){
+		
+		FoBoardDao.freedomBoardReplyInsertUpdateData(param);
+		
+		FoBoardDao.freedomBoardReplyInsertData(param);
+	}
+
+	//자유 게시판 삭제
+	@Override
+	public void freedomBoardDeleteData(Map<String, Object> param){
+		FoBoardDao.freedomBoardDeleteData(param);
+	}
+	
+	//자유 게시판 수정
+	@Override
+	public void freedomBoardUpdateData(Map<String, Object> param){
+		FoBoardDao.freedomBoardUpdateData(param);
+	}
+	
+	//자유 게시판 개수
+	@Override
+	public int freedomBoardListCountData(Map<String, Object> param){
+
+		int result = FoBoardDao.freedomBoardListCountData(param);
+		
+		return result;
+	}
+	
 }

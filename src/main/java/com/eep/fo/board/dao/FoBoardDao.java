@@ -199,4 +199,94 @@ public class FoBoardDao {
 
 		return result;
 	}
+	
+	/**
+	 * 자유 게시판 DAO
+	 * 
+	 * **/
+
+	//자유 게시판 리스트
+	public Map<String, Object> freedomBoardListData(Map<String, Object> param){
+		
+		Map<String, Object> result = new HashMap<>();
+				
+		System.out.println("param :" + param);
+		
+		@SuppressWarnings("unchecked")
+		List<Map<String, Object>> boardInfo = FoBoardMapper.freedomBoardListData(param);
+		
+		result.put("freedomBoardInfo", boardInfo);
+				
+		return result;
+	}
+	
+	//자유 게시판 등록
+	public void freedomBoardInsertData(Map<String, Object> param){
+		
+		System.out.println("DATA = " + param);
+		//원본 저장
+		FoBoardMapper.freedomBoardInsertData(param);
+		//원본 저장 후 BRD_RE_REF 컬럼에 원본 고유 번호 업데이트
+		FoBoardMapper.freedomBoardInsertUpdateData(param);
+		
+		
+	}
+	
+	//자유 게시판 상세
+	public Map<String, Object> freedomBoardDetailData(Map<String, Object> param){
+		
+		Map<String, Object> result = new HashMap<>();
+		
+		//System.out.println("DATA = " + param);
+		
+		@SuppressWarnings("unchecked")
+		List<Map<String, Object>> freedomBoardDetailData = FoBoardMapper.freedomBoardDetailData(param);
+		
+		result.put("freedomBoardDetailData", freedomBoardDetailData);
+		
+		return result;
+	}
+	
+	//자유 게시판 순서 수정
+	public void freedomBoardReplyInsertUpdateData(Map<String, Object> param){
+		
+		System.out.println("DATA = " + param);
+		FoBoardMapper.freedomBoardReplyInsertUpdateData(param);
+		
+	}
+	
+	//자유 게시판 답변 등록
+	public void freedomBoardReplyInsertData(Map<String, Object> param){
+		
+		System.out.println("DATA = " + param);
+		FoBoardMapper.freedomBoardReplyInsertData(param);
+		
+	}
+		
+	//자유 게시판 게시판 삭제
+	public void freedomBoardDeleteData(Map<String, Object> param){
+		
+		System.out.println("DATA = " + param);
+		FoBoardMapper.freedomBoardDeleteData(param);
+		
+	}
+	
+	//자유 게시판 수정
+	public void freedomBoardUpdateData(Map<String, Object> param){
+		
+		System.out.println("DATA = " + param);
+		FoBoardMapper.freedomBoardUpdateData(param);
+		
+	}
+	
+	//자유 게시판 개수
+	public int freedomBoardListCountData(Map<String, Object> param){
+
+		System.out.println("param :" + param);
+		
+		@SuppressWarnings("unchecked")
+		int result = FoBoardMapper.freedomBoardListCountData(param);
+
+		return result;
+	}
 }

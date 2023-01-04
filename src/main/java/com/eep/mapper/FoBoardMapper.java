@@ -41,4 +41,19 @@ public interface FoBoardMapper {
 	public void educationBoardUpdateData(Map<String, Object> param);				//교육일정 게시판 수정
 	public int educationBoardListCountData(Map<String, Object> param);				//교육일정 게시판 개수
 	
+	/**
+	 * 자유 게시판 Mapper Interface
+	 * 
+	 * **/
+
+	public List freedomBoardListData(Map<String, Object> param);					//자유 게시판 리스트
+	public void freedomBoardInsertData(Map<String, Object> param);					//자유 게시판 등록
+	public void freedomBoardInsertUpdateData(Map<String, Object> param);			//자유 게시판 등록
+	public List freedomBoardDetailData(Map<String, Object> param); 					//자유 게시판 상세
+	public void freedomBoardReplyInsertUpdateData(Map<String, Object> param); 		//자유 게시판 답변 순서 수정
+	public void freedomBoardReplyInsertData(Map<String, Object> param); 			//자유 게시판 답변 등록
+	public void freedomBoardDeleteData(Map<String, Object> param);   				//자유 게시판 삭제
+	public void freedomBoardUpdateData(Map<String, Object> param);					//자유 게시판 수정
+	public int freedomBoardListCountData(Map<String, Object> param);				//자유 게시판 개수
+	
 }

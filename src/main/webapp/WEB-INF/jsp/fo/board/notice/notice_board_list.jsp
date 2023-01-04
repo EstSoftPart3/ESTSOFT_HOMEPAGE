@@ -142,6 +142,7 @@
      <script>
 		
      var emplyAuthTypCd = "<c:out value = '${loginInfo.loginInfo[0].emplyAuthTypCd}'/>";
+     var emplyId = "<c:out value = '${loginInfo.loginInfo[0].emplyId}'/>";
 
      //첫 로딩시 리승트 호출
      $(document).ready(function() {
@@ -300,8 +301,19 @@
     
     
     function noticeDetail(brdSq) {
-  	   
-  	   location.href = "/eep/board/notice/openNoticeBoardDetail.do?brdSq="+brdSq;
+    	
+    	if(isEmpty(emplyId)){
+    		bootbox.alert({
+				 message: "로그인 상태에만 가능한 기능입니다.",
+				 locale: 'kr',
+				 callback: function() {
+					 return;
+			 } });
+    	}else{
+    		 location.href = "/eep/board/notice/openNoticeBoardDetail.do?brdSq="+brdSq;
+
+    	}
+
      }
     
     //Input Box Null Check

@@ -271,7 +271,7 @@ public class FoBoardController {
 	}
 	
 	//교육일정 게시판 수정
-	@RequestMapping("/eep/board/educationeducationBoardUpdateData.do")
+	@RequestMapping("/eep/board/education/educationBoardUpdateData.do")
 	@ResponseBody
 	public void educationBoardUpdateData(@RequestParam Map<String, Object> param) {
 
@@ -291,6 +291,175 @@ public class FoBoardController {
 		System.out.println(param);
 
 		FoBoardService.educationBoardUpdateData(param);
+		
+	}
+	
+	/**
+	 * 자유 게시판 Controller
+	 * 
+	 * **/
+	
+	//자유 게시판 목록 페이지 이동
+	@RequestMapping("/eep/board/freedom/openFreedomBoardList.do")
+	public String openFreedomBoardList() {
+		
+		return "fo/board/freedom/freedom_board_list";
+	}
+	
+	//자유 게시판 목록 데이터
+	@RequestMapping("/eep/board/freedom/freedomBoardListData.do")
+	@ResponseBody
+	public ModelAndView freedomBoardListData(@RequestParam Map<String, Object> param,
+											 @RequestParam(defaultValue="1") int curPage) {
+		
+		ModelAndView mv = new ModelAndView();
+		mv.setViewName("jsonView");
+		
+		int count = FoBoardService.freedomBoardListCountData(param);
+		
+		pagerMaster pagerMaster = new pagerMaster(count, curPage, 10, 10);
+		int start = pagerMaster.getPageBegin();
+		int end = pagerMaster.getPageEnd();
+		
+		param.put("start", start);
+		param.put("end", end);
+		
+		Map<String, Object> result = new HashMap<>();
+		
+		result = FoBoardService.freedomBoardListData(param);
+									
+		mv.addObject("freedomBoardData", result);
+		mv.addObject("boardPager", pagerMaster);
+		
+		return mv;
+	}
+	
+	//자유 게시판 등록 페이지 이동
+	@RequestMapping("/eep/board/freedom/openFreedomBoardInsert.do")
+	public String openFreedomBoardInsert() {
+		
+		return "fo/board/freedom/freedom_board_insert";
+	}
+	
+	//자유 게시판 등록 데이터
+	@RequestMapping("/eep/board/freedom/freedomBoardInsertData.do")
+	@ResponseBody
+	public void freedomBoardInsertData(@RequestParam Map<String, Object> param) {
+
+	    int emplySq = Integer.parseInt((String) param.get("emplySq"));
+		String brdTtl = (String) param.get("brdTtl");
+		String brdCntnt = (String) param.get("brdCntnt");
+		String brdWrtr = (String) param.get("brdWrtr");
+
+		param.put("emplySq", emplySq);
+		param.put("brdTtl", brdTtl);
+		param.put("brdCntnt", brdCntnt);
+		param.put("brdWrtr", brdWrtr);
+		
+		System.out.println(param);
+		
+		FoBoardService.freedomBoardInsertData(param);
+
+	}
+	
+	//자유  게시판 상세 페이지 이동
+	@RequestMapping("/eep/board/freedom/openFreedomBoardDetail.do")
+	public String openFreedomBoardDetail() {
+		
+		return "fo/board/freedom/freedom_board_detail";
+	}
+	
+	//자유 게시판 상세 데이터
+	@RequestMapping("/eep/board/freedom/freedomBoardDetailData.do")
+	@ResponseBody
+	public ModelAndView freedomBoardDetailData(@RequestParam Map<String, Object> param) {
+		
+		ModelAndView mv = new ModelAndView();
+		
+		mv.setViewName("jsonView");
+		
+		Map<String, Object> result = new HashMap<>();
+		
+		result = FoBoardService.freedomBoardDetailData(param);
+		
+		mv.addObject("freedomBoardDetailData", result);
+		
+		return mv;
+	}
+	
+	//자유  게시판 답글 등록 페이지 이동
+	@RequestMapping("/eep/board/freedom/openFeedomBoardReplyInsert.do")
+	public String openㄹreedomBoardReplyInsert() {
+		
+		return "fo/board/freedom/freedom_board_reply_insert";
+	}
+	
+	//자유 게시판 답글 등록 데이터
+	@RequestMapping("/eep/board/freedom/freedomBoardReplyInsertData.do")
+	@ResponseBody
+	public void freedomBoardReplyInsertData(@RequestParam Map<String, Object> param) {
+
+	    int emplySq = Integer.parseInt((String) param.get("emplySq"));
+		String brdTtl = (String) param.get("brdTtl");
+		String brdCntnt = (String) param.get("brdCntnt");
+		String brdWrtr = (String) param.get("brdWrtr");
+		int brdReRep = Integer.parseInt((String) param.get("brdReRep"));
+		int brdReLev = Integer.parseInt((String) param.get("brdReLev"));
+		int brdReOrd = Integer.parseInt((String) param.get("brdReOrd"));
+
+		
+		param.put("emplySq", emplySq);
+		param.put("brdTtl", brdTtl);
+		param.put("brdCntnt", brdCntnt);
+		param.put("brdWrtr", brdWrtr);
+		param.put("brdReRep", brdReRep);
+		param.put("brdReLev", brdReLev);
+		param.put("brdReOrd", brdReOrd);
+		
+		System.out.println(param);
+		
+		FoBoardService.freedomBoardReplyInsertData(param);
+
+	}
+
+	//자유 게시판 삭제
+	@RequestMapping("/eep/board/freedom/freedomBoardDeleteData.do")
+	@ResponseBody
+	public void freedomBoardDeleteData(@RequestParam Map<String, Object> param) {
+		
+		int brdSq = Integer.parseInt((String) param.get("brdSq"));
+	
+		param.put("brdSq", brdSq);
+		
+		FoBoardService.freedomBoardDeleteData(param);
+		
+	}
+	
+	//자유 게시판 수정 페이지 이동
+	@RequestMapping("/eep/board/freedom/openFreedomBoardUpdate.do")
+	public String openFreedomBoardUpdate() {
+		
+		return "fo/board/freedom/freedom_board_update";
+	}
+	
+	//자유 게시판 수정
+	@RequestMapping("/eep/board/freedom/freedomBoardUpdateData.do")
+	@ResponseBody
+	public void freedomBoardUpdateData(@RequestParam Map<String, Object> param) {
+
+		
+	    int brdSq = Integer.parseInt((String) param.get("brdSq"));
+		String brdTtl = (String) param.get("brdTtl");
+		String brdCntnt = (String) param.get("brdCntnt");
+
+		param.put("brdSq", brdSq);
+		param.put("brdTtl", brdTtl);
+		param.put("brdCntnt", brdCntnt);
+
+		System.out.println(param);
+
+		
+		FoBoardService.freedomBoardUpdateData(param);
 		
 	}
 	

@@ -1,7 +1,9 @@
 <%@ page language="java" contentType="text/html;charset=UTF-8" %>
 <%
 	String brdSq = request.getParameter("brdSq"); 
+	String brdReReef = request.getParameter("brdReReef");
 %>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -65,9 +67,13 @@ th, td {
     <!--Start -->
     <div class="container-xxl py-5 menu">
         <div class="container">
+        	<input type="hidden" name="brdWrtrSq" id="brdWrtrSq" value="">
 	    	<input type="hidden" name="brdSq" id="brdSq" value="<%=brdSq%>">
+  		    <input type="hidden" name="brdReRep" id="brdReRep" value="">
+  			<input type="hidden" name="brdReLev" id="brdReLev" value="">
+  			<input type="hidden" name="brdReOrd" id="brdReOrd" value="">
             <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
-                <h1 class="display-3" style="font-size:20px;">교육일정 내용보기 </h1>
+                <h1 class="display-3" style="font-size:20px;">자유게시판 내용보기 </h1>
             </div>
            
            <table class="table table-bordered" style="max-width: 900px;font-size:15px;border-color:#ced4da" align="center">
@@ -97,22 +103,6 @@ th, td {
 					</td>
 				</tr>
 				<tr style="text-align:center;background-color:#ffffff;">
-					<td style="width:15%;background-color:#efefef;">
-						<b>강사</b>
-					</td>
-					<td style="text-align:left;">
-						<input style="border:0 solid black; width:800px;" type="text" id="brdTchr" name="brdTchr" readonly>
-					</td>
-				</tr>
-				<tr style="text-align:center;background-color:#ffffff;">
-					<td style="width:15%;background-color:#efefef;">
-						<b>교육일</b>
-					</td>
-					<td style="text-align:left;">
-						<input style="border:0 solid black; width:800px;" type="text" id="brdEduDt" name="brdEduDt" readonly>
-					</td>
-				</tr>
-				<tr style="text-align:center;background-color:#ffffff;">
 					<td style="width:15%;background-color:#efefef;vertical-align: middle;">
 						<b>내용</b>
 					</td>
@@ -134,9 +124,10 @@ th, td {
         </div>
         
          <div class="col-12 text-center" style="padding-top:15px;">
-         	 <button type="button" class="btn btn-secondary btn-sm" onclick="educationBoardList();">리스트</button>
-	         <button type="button" class="btn btn-secondary btn-sm" onclick="educationUpdatePage();">수정</button>
-	         <button type="button" class="btn btn-secondary btn-sm" onclick="educationBoardDelete();">삭제</button>
+         	 <button type="button" class="btn btn-secondary btn-sm" onclick="freedomBoardList();">리스트</button>
+         	 <button type="button" class="btn btn-secondary btn-sm" onclick="freedomBoardRplyInsertPage();">답글</button>
+	         <button type="button" class="btn btn-secondary btn-sm" onclick="freedomUpdatePage();">수정</button>
+	         <button type="button" class="btn btn-secondary btn-sm" onclick="freedomBoardDelete();">삭제</button>
          </div>
     </div>
     <!-- FAQs Start -->
@@ -151,29 +142,31 @@ th, td {
 	   
 	   $(document).ready(function(){
 
-		   educationboardDetailtData(brdSq);
+		   freedomBoardDetailData(brdSq);
 			
 	   });
 	   
-	   function educationboardDetailtData(brdSq) {
+	   function freedomBoardDetailData(brdSq) {
 			
 			$.ajax({
 		           type: "post",
-		           url: "/eep/board/education/educationBoardDetailData.do",
+		           url: "/eep/board/freedom/freedomBoardDetailData.do",
 		           data: {
 		        	   brdSq : brdSq
 		            },
 		           success: function(data) {
 		        	    
-		        	 dataContent = data.educationBoardDetailData.educationBoardDetailData[0];
+		        	 dataContent = data.freedomBoardDetailData.freedomBoardDetailData[0];
 
+		        	 var brdWrtrSq 	= dataContent.emplySq;
 		        	 var brdCntnt 	= dataContent.brdCntnt;
 		        	 var brdTtl 	= dataContent.brdTtl;
 		        	 var brdWrtr 	= dataContent.brdWrtr;
+		        	 var brdReRep 	= dataContent.brdReRep;
+		        	 var brdReLev 	= dataContent.brdReLev;
+		        	 var brdReOrd 	= dataContent.brdReOrd;
 		        	 var brdRegDt 	= dataContent.brdRegDt;
-		        	 var brdTchr 	= dataContent.brdTchr;
-		        	 var brdEduDt 	= dataContent.brdEduDt;
-
+				
 		        	 //네이버 에디터 적용 전 유효성 체크 반영
 					 var castStr = brdCntnt;
 
@@ -225,9 +218,13 @@ th, td {
 		        	 /* document.getElementById('naverEditor').innerHTML=castStr; */
 		        	 $('#brdTtl').val(brdTtl);
 		        	 $('#brdWrtr').val(brdWrtr);
+		        	 $('#brdReRep').val(brdReRep);
+		        	 $('#brdReLev').val(brdReLev);
+		        	 $('#brdReOrd').val(brdReOrd);
 		        	 $('#brdRegDt').val(brdRegDt);
-		        	 $('#brdTchr').val(brdTchr);
-		        	 $('#brdEduDt').val(brdEduDt);
+		        	 $('#brdWrtrSq').val(brdWrtrSq);
+		        	
+
 		           },
 		           error: function(error) {
 		        	   var errorJson = JSON.stringify(error);
@@ -237,14 +234,17 @@ th, td {
 		}
 	   
 	  
-	   function educationBoardDelete() {
-			
-	    	if(emplyAuthTypCd == '2'){
+	   function freedomBoardDelete() {
+		   
+		   var brdWrtrSq = $('#brdWrtrSq').val();
+		   
+	    	if(emplySq == brdWrtrSq){
+	    		
 	    		if(confirm('정말 삭제 하시겠습니까?')) {
 	    			
 				   $.ajax({
 			           type: "post",
-			           url: "/eep/board/education/educationBoardDeleteData.do",
+			           url: "/eep/board/freedom/freedomBoardDeleteData.do",
 			           data: {
 			        	   brdSq : brdSq,
 			           },
@@ -253,7 +253,7 @@ th, td {
 								 message: "삭제 되었습니다.",
 								 locale: 'kr',
 								 callback: function() {
-									 location.href='/eep/board/education/openEducationBoardList.do';	
+									 location.href='/eep/board/freedom/openFreedomBoardList.do';	
 							     } });
 					   },
 			           error: function(error) {
@@ -267,7 +267,7 @@ th, td {
 			   }
 	    	}else{
 	    		bootbox.alert({
-					 message: "해당 권한이 없습니다.",
+					 message: "다른 계정의 게시판은 삭제 할 수 없습니다.",
 					 locale: 'kr',
 					 callback: function() {
 						 return;
@@ -276,18 +276,20 @@ th, td {
 
 	   }
 	   
-	   function educationBoardList() {
+	   function freedomBoardList() {
 
-		   location.href='/eep/board/education/openEducationBoardList.do';
+		   location.href='/eep/board/freedom/openFreedomBoardList.do';
 	   }
 	   
-	   function educationUpdatePage() {
-
-	    	if(emplyAuthTypCd == '2'){
-	    		location.href='/eep/board/education/openEducationBoardUpdate.do?brdSq='+brdSq;
+	   function freedomUpdatePage() {
+		   
+		   	var brdWrtrSq = $('#brdWrtrSq').val();
+		   
+	    	if(emplySq == brdWrtrSq){
+	    		location.href='/eep/board/freedom/openFreedomBoardUpdate.do?brdSq='+brdSq;
 	    	}else{
 	    		bootbox.alert({
-					 message: "해당 권한이 없습니다.",
+					 message: "다른 계정의 게시판은 수정 할 수 없습니다.",
 					 locale: 'kr',
 					 callback: function() {
 						 return;
@@ -295,6 +297,15 @@ th, td {
 				 
 	    	}
 		   
+		}
+	   
+		function freedomBoardRplyInsertPage() {
+			   
+			var brdReRep = $('#brdReRep').val();
+	   	 	var brdReLev = $('#brdReLev').val();
+	   	 	var brdReOrd = $('#brdReOrd').val();
+			
+		   	location.href='/eep/board/freedom/openFeedomBoardReplyInsert.do?brdSq='+brdSq+'&brdReRep='+brdReRep+'&brdReLev='+brdReLev+'&brdReOrd='+brdReOrd;
 		}
 	   
 		//Input Box Null Check

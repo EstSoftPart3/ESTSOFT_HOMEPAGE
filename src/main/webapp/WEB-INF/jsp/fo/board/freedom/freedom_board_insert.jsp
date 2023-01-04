@@ -65,7 +65,7 @@ th, td {
     <div class="container-xxl py-5 menu">
         <div class="container">
             <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
-                <h1 class="display-3" style="font-size:20px;">교육일정 작성하기 </h1>
+                <h1 class="display-3" style="font-size:20px;">자유게시판 작성하기 </h1>
             </div>
            
            <table class="table table-bordered" style="max-width: 900px;font-size:15px;border-color:#ced4da" align="center">
@@ -95,22 +95,6 @@ th, td {
 					</td>
 				</tr>
 				<tr style="text-align:center;background-color:#ffffff;">
-					<td style="width:15%;background-color:#efefef;">
-						<b>강사</b>
-					</td>
-					<td style="text-align:left;">
-						<input type="text" class="form-control" id="brdTchr" style="font-size:12px;" value="">
-					</td>
-				</tr>
-				<tr style="text-align:center;background-color:#ffffff;">
-					<td style="width:15%;background-color:#efefef;">
-						<b>교육일</b>
-					</td>
-					<td style="text-align:left;">
-						<input type="text" class="form-control" id="brdEduDt" style="font-size:12px;" value="">
-					</td>
-				</tr>
-				<tr style="text-align:center;background-color:#ffffff;">
 					<td style="width:15%;background-color:#efefef;vertical-align: middle;">
 						<b>내용</b>
 					</td>
@@ -130,8 +114,8 @@ th, td {
         </div>
         
          <div class="col-12 text-center" style="padding-top:15px;">
-         	 <button type="button" class="btn btn-secondary btn-sm" onclick="educationBoardList();">리스트</button>
-         	 <button type="button" class="btn btn-secondary btn-sm" onclick="educationBoardInsert();">작성하기</button>
+         	 <button type="button" class="btn btn-secondary btn-sm" onclick="freedomBoardList();">리스트</button>
+         	 <button type="button" class="btn btn-secondary btn-sm" onclick="freedomBoardInsert();">작성하기</button>
          </div>
     </div>
     <!-- FAQs Start -->
@@ -169,13 +153,11 @@ th, td {
          })
      });
     
-    function educationBoardInsert() {
+    function freedomBoardInsert() {
     	
-    	var brdTypCd 	= 'ED'  							//게시판 구분 코드
+    	var brdTypCd 	= 'FD'  							//게시판 구분 코드
        	var brdTtl  	= $("#brdTtl").val();  				//게시판 제목
        	var brdWrtr  	= $("#brdWrtr").val();  			//게시판 작성자
-       	var brdTchr  	= $("#brdTchr").val();  			//게시판 강사
-       	var brdEduDt  	= $("#brdEduDt").val();  			//게시판 교육일
         oEditors.getById["naverEditor"].exec("UPDATE_CONTENTS_FIELD", [])
        	var brdCntnt = document.getElementById("naverEditor").value
 
@@ -186,28 +168,6 @@ th, td {
     				 locale: 'kr',
     				 callback: function() {
     				 		$("#brdTitle").focus();
-    			     } });
-    			 return;
-       	 }
-       	
-      	  //강사
-      	 if(isEmpty(brdTchr)) {
-      		bootbox.alert({
-   				 message: "강사을 입력해 주세요.",
-   				 locale: 'kr',
-   				 callback: function() {
-   				 		$("#brdTchr").focus();
-   			     } });
-   			 return;
-      	 }
-      
-      	//교육일
-       	 if(isEmpty(brdEduDt)) {
-       		bootbox.alert({
-    				 message: "교육일을 입력해 주세요.",
-    				 locale: 'kr',
-    				 callback: function() {
-    				 		$("#brdEduDt").focus();
     			     } });
     			 return;
        	 }
@@ -228,22 +188,20 @@ th, td {
     		
     		$.ajax({
     	           type: "post",
-    	           url: "/eep/board/education/educationBoardInsertData.do",
+    	           url: "/eep/board/freedom/freedomBoardInsertData.do",
     	           data: {
     	        	   emplySq : emplySq,
     	        	   brdTypCd : brdTypCd,
     	        	   brdTtl : brdTtl,
     	        	   brdCntnt : brdCntnt,
     	        	   brdWrtr : brdWrtr,
-    	        	   brdTchr : brdTchr,
-    	        	   brdEduDt : brdEduDt
     	           },
     	           success: function(data) {
     	        	   bootbox.alert({
     						 message: "게시글이 저장 되었습니다.",
     						 locale: 'kr',
     						 callback: function() {
-    							 		location.href='/eep/board/education/openEducationBoardList.do';
+    							 		location.href='/eep/board/freedom/openFreedomBoardList.do';
     					     } });
     			   },
     	           error: function(error) {
@@ -253,8 +211,8 @@ th, td {
     		})
     	}
        
-       function educationBoardList() {
-    	   location.href='/eep/board/education/openEducationBoardList.do';
+       function freedomBoardList() {
+    	   location.href='/eep/board/freedom/openFreedomBoardList.do';
        }
        
       //Input Box Null Check

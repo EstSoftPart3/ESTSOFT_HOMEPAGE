@@ -105,22 +105,6 @@ th, td {
 					</td>
 				</tr>
 				<tr style="text-align:center;background-color:#ffffff;">
-					<td style="width:15%;background-color:#efefef;">
-						<b>강사</b>
-					</td>
-					<td style="text-align:left;">
-						<input type="text" class="form-control" id="brdTchr" style="font-size:12px;" value="">
-					</td>
-				</tr>
-				<tr style="text-align:center;background-color:#ffffff;">
-					<td style="width:15%;background-color:#efefef;">
-						<b>교육일</b>
-					</td>
-					<td style="text-align:left;">
-						<input type="text" class="form-control" id="brdEduDt" style="font-size:12px;" value="">
-					</td>
-				</tr>
-				<tr style="text-align:center;background-color:#ffffff;">
 					<td style="width:15%;background-color:#efefef;vertical-align: middle;">
 						<b>내용</b>
 					</td>
@@ -139,8 +123,8 @@ th, td {
         </div>
         
          <div class="col-12 text-center" style="padding-top:15px;">
-         	 <button type="button" class="btn btn-secondary btn-sm" onclick="educationBoardList();">리스트</button>
-         	 <button type="button" class="btn btn-secondary btn-sm" onclick="educationUpdate();">수정하기</button>
+         	 <button type="button" class="btn btn-secondary btn-sm" onclick="freedomBoardList();">리스트</button>
+         	 <button type="button" class="btn btn-secondary btn-sm" onclick="freedomUpdate();">수정하기</button>
          </div>
     </div>
     <!-- FAQs Start -->
@@ -158,29 +142,27 @@ th, td {
     
     $(document).ready(function(){
 
- 		educationBoardDetailtData(brdSq);
+    	freedomBoardDetailtData(brdSq);
 
     });
     
-    function educationBoardDetailtData(brdSq) {
+    function freedomBoardDetailtData(brdSq) {
  		
  		$.ajax({
  	           type: "post",
- 	           url: "/eep/board/education/educationBoardDetailData.do",
+ 	           url: "/eep/board/freedom/freedomBoardDetailData.do",
  	           data: {
  	        	   brdSq : brdSq
  	            },
  	           success: function(data) {
  	        	    
- 	        	 dataContent = data.educationBoardDetailData.educationBoardDetailData[0];
+ 	        	 dataContent = data.freedomBoardDetailData.freedomBoardDetailData[0];
 
  	        	 var brdCntnt 	= dataContent.brdCntnt;
  	        	 var brdTtl 	= dataContent.brdTtl;
  	        	 var brdWrtr 	= dataContent.brdWrtr;
  	        	 var brdRegDt	= dataContent.brdRegDt;
  	        	 var brdUpdtDt	= dataContent.brdUpdtDt;
- 	        	 var brdTchr	= dataContent.brdTchr;
- 	        	 var brdEduDt	= dataContent.brdEduDt;
 
  	        	 //네이버 에디터 적용 전 유효성 체크 반영
  				 var castStr = brdCntnt;
@@ -235,8 +217,6 @@ th, td {
  	        	 $('#brdTtl').val(brdTtl);
  	        	 $('#brdWrtr').val(brdWrtr);
  	        	 $('#brdRegDt').val(brdRegDt);
- 	        	 $('#brdTchr').val(brdTchr);
- 	        	 $('#brdEduDt').val(brdEduDt);
 
  	        	 //수정 이력 없을 시 유효성 체크
  	        	 if(isEmpty(brdUpdtDt)){
@@ -255,12 +235,10 @@ th, td {
  		})
  	}
     
-	function educationUpdate() {
+	function freedomUpdate() {
 		
 		var brdSq      = $("#brdSq").val();     
 		var brdTtl     = $("#brdTtl").val(); 
-		var brdTchr    = $("#brdTchr").val();
-		var brdEduDt   = $("#brdEduDt").val();
 		oEditors.getById["naverEditor"].exec("UPDATE_CONTENTS_FIELD", []);
 		var brdCntnt   = document.getElementById("naverEditor").value;
 
@@ -274,28 +252,6 @@ th, td {
 				     } });
 				 return;
 	   	 }
-	   	 
-     	  //강사
-      	 if(isEmpty(brdTchr)) {
-      		bootbox.alert({
-   				 message: "강사을 입력해 주세요.",
-   				 locale: 'kr',
-   				 callback: function() {
-   				 		$("#brdTchr").focus();
-   			     } });
-   			 return;
-      	 }
-      
-      	//교육일
-       	 if(isEmpty(brdEduDt)) {
-       		bootbox.alert({
-    				 message: "교육일을 입력해 주세요.",
-    				 locale: 'kr',
-    				 callback: function() {
-    				 		$("#brdEduDt").focus();
-    			     } });
-    			 return;
-       	 }
 	   
 	   	 // 설명
 	   	 if(brdCntnt == "<p>&nbsp;</p>" || brdCntnt == "" || isEmpty(brdCntnt)) {
@@ -308,25 +264,20 @@ th, td {
 				 return;
 	   	 }
 
-		
-		
-		
 		$.ajax({
 	           type: "post",
-	           url: "/eep/board/education/educationBoardUpdateData.do",
+	           url: "/eep/board/freedom/freedomBoardUpdateData.do",
 	           data: {
 	        	   brdSq : brdSq,
 	        	   brdTtl : brdTtl,
-	        	   brdCntnt : brdCntnt,
-	        	   brdTchr : brdTchr,
-	        	   brdEduDt : brdEduDt
+	        	   brdCntnt : brdCntnt
 	           },
 	           success: function(data) {
 	        	   bootbox.alert({
 						 message: "게시글이 수정 되었습니다.",
 						 locale: 'kr',
 						 callback: function() {
-							 	location.href='/eep/board/education/openEducationBoardDetail.do?brdSq='+brdSq;
+							 	location.href='/eep/board/freedom/openFreedomBoardDetail.do?brdSq='+brdSq;
 					     } });
 			   },
 	           error: function(error) {
@@ -336,8 +287,8 @@ th, td {
 		})
 	}
 	
-	   function noticeBoardList() {
-		   location.href='/eep/board/education/openEducationBoardList.do';
+	   function freedomBoardList() {
+		   location.href='/eep/board/freedom/openFreedomBoardList.do';
 	   }
 
 		 //Input Box Null Check

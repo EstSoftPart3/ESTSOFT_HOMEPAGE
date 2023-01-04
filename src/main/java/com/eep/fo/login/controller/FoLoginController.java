@@ -65,7 +65,7 @@ public class FoLoginController {
 		//접속중인지 확인하기 위해 세션의 mbrSq의 값이 null 혹은 공백인지 확인
 		if(session.getAttribute("loginInfo") != null && session.getAttribute("loginInfo") != "") {
 			session.invalidate();
-			mv.setViewName("redirect:/eep/login/loginPage.do");				
+			mv.setViewName("redirect:/eep/mainPage.do");				
 		}
 		return mv;
 	}
