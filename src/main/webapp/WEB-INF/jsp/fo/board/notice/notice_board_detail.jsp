@@ -218,9 +218,6 @@ th, td {
 	   
 	  
 	   function noticeBoardDelete() {
-	   
-		   
-		   var emplyAuthTypCd = $("#emplyAuthTypCd").val();
 			
 	    	if(emplyAuthTypCd == '2'){
 	    		if(confirm('정말 삭제 하시겠습니까?')) {
@@ -260,7 +257,7 @@ th, td {
 	   }
 	   
 	   function noticBoardList() {
-		   var emplyAuthTypCd = $("#emplyAuthTypCd").val();
+		   
 		   location.href='/eep/board/notice/openNoticeBoardList.do';
 	   }
 	   
@@ -274,7 +271,6 @@ th, td {
 	   }
 
 	   function noticeUpdatePage() {
-		   var emplyAuthTypCd = $("#emplyAuthTypCd").val();
 			
 	    	if(emplyAuthTypCd == '2'){
 	    		location.href='/eep/board/notice/openNoticeBoardUpdate.do?brdSq='+brdSq;

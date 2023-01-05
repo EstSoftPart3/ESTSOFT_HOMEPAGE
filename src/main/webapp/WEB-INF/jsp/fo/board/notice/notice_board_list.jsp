@@ -123,7 +123,7 @@
 			</tbody>
 		</table>
 		
-		<div class="row justify-content-center col-lg-3" style="padding-top:15px; margin: 0 auto;">
+		<div class="row justify-content-center col-5" style="padding-top:15px; margin: 0 auto;">
 			<ul class="pagination pagination-sm" id="pages">
 								
 			</ul>
@@ -282,7 +282,7 @@
 
     /* 게시판 입력 */
     function noticeBoardInsert() {
-    	var emplyAuthTypCd = $("#emplyAuthTypCd").val();
+
 		
     	if(emplyAuthTypCd == '2'){
     		location.href = "/eep/board/notice/openNoticeBoardInsert.do";

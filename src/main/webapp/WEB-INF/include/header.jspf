@@ -3,13 +3,14 @@
  <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>  
  <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
  <meta charset="utf-8">
-    <title>EST</title>
+    <title>주식회사 이에스티소프트</title>
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <meta content="" name="keywords">
     <meta content="" name="description">
 
     <!-- Favicon -->
-    <link href="/resources/fo/img/favicon.ico" rel="icon">
+    <link rel="shortcut icon" href="/resources/img/favicon.ico">
+  	<link rel="icon" href="/resources/img/favicon.ico">
 
     <!-- Google Web Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

@@ -89,7 +89,7 @@ th, td {
 												<tr style="text-align:center;background-color:#ffffff">
 													<td>
 														<a style="text-decoration:none" 
-														   href='<c:url value='/eep/board/notice/openNoticeBoardDetail.do?brdSq=${noticeData.brdSq}'/>'>
+														   href="javascript:noticeBoardList(${noticeData.brdSq})">
 															<c:out value="${noticeData.brdTtl}" />
 														</a>
 													</td>
@@ -133,7 +133,7 @@ th, td {
 												<tr style="text-align:center;background-color:#ffffff">
 													<td>
 														<a style="text-decoration:none" 
-														   href='<c:url value='/eep/board/technology/openTechnologyBoardDetail.do?brdSq=${noticeData.brdSq}'/>'>
+														   href="javascript:technologyBoardList(${technologyData.brdSq})">
 															<c:out value="${technologyData.brdTtl}" />
 														</a>
 													</td>
@@ -177,7 +177,7 @@ th, td {
 												<tr style="text-align:center;background-color:#ffffff">
 													<td>
 														<a style="text-decoration:none" 
-														   href='<c:url value='/eep/board/education/openEducationBoardDetail.do?brdSq=${noticeData.brdSq}'/>'>
+														   href="javascript:educationBoardList(${educationData.brdSq})">
 															<c:out value="${educationData.brdTtl}" />
 														</a>
 													</td>
@@ -470,5 +470,60 @@ th, td {
 	<%@ include file="/WEB-INF/include/footer.jspf" %>
    
 </body>
+	<script type="text/javascript">
+	
+	var emplyId = "<c:out value = '${loginInfo.loginInfo[0].emplyId}'/>";
+	
+	function noticeBoardList(brdSq){
+		if(isEmpty(emplyId)){
+    		bootbox.alert({
+				 message: "로그인 상태에만 가능한 기능입니다.",
+				 locale: 'kr',
+				 callback: function() {
+					 return;
+			 } });
+    	}else{
+    		 location.href = "/eep/board/notice/openNoticeBoardDetail.do?brdSq="+brdSq;
 
+    	}
+	}
+	
+	function technologyBoardList(brdSq){
+		if(isEmpty(emplyId)){
+    		bootbox.alert({
+				 message: "로그인 상태에만 가능한 기능입니다.",
+				 locale: 'kr',
+				 callback: function() {
+					 return;
+			 } });
+    	}else{
+    		 location.href = "/eep/board/technology/openTechnologyBoardDetail.do?brdSq="+brdSq;
+
+    	}
+	}
+	
+	function educationBoardList(brdSq){
+		if(isEmpty(emplyId)){
+    		bootbox.alert({
+				 message: "로그인 상태에만 가능한 기능입니다.",
+				 locale: 'kr',
+				 callback: function() {
+					 return;
+			 } });
+    	}else{
+    		 location.href = "/eep/board/education/openEducationBoardDetail.do?brdSq="+brdSq;
+
+    	}
+	}
+    
+    //Input Box Null Check
+    function isEmpty(str){
+        
+        if(typeof str == "undefined" || str == null || str == "")
+            return true;
+        else
+            return false ;
+    }
+	
+	</script>
 </html>
