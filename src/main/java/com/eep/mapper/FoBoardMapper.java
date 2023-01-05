@@ -56,4 +56,19 @@ public interface FoBoardMapper {
 	public void freedomBoardUpdateData(Map<String, Object> param);					//자유 게시판 수정
 	public int freedomBoardListCountData(Map<String, Object> param);				//자유 게시판 개수
 	
+	/**
+	 * 기술문의 게시판 Mapper Interface
+	 * 
+	 * **/
+
+	public List technologyBoardListData(Map<String, Object> param);					//기술문의 게시판 리스트
+	public void technologyBoardInsertData(Map<String, Object> param);				//기술문의 게시판 등록
+	public void technologyBoardInsertUpdateData(Map<String, Object> param);			//기술문의 게시판 등록
+	public List technologyBoardDetailData(Map<String, Object> param); 				//기술문의 게시판 상세
+	public void technologyBoardReplyInsertUpdateData(Map<String, Object> param); 	//기술문의 게시판 답변 순서 수정
+	public void technologyBoardReplyInsertData(Map<String, Object> param); 			//기술문의 게시판 답변 등록
+	public void technologyBoardDeleteData(Map<String, Object> param);   			//기술문의 게시판 삭제
+	public void technologyBoardUpdateData(Map<String, Object> param);				//기술문의 게시판 수정
+	public int technologyBoardListCountData(Map<String, Object> param);				//기술문의 게시판 개수
+	
 }

@@ -85,7 +85,7 @@
     <div class="container-xxl py-5 menu">
         <div class="container">
             <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
-                <h1 class="display-3" style="font-size:20px;">교육일정 리스트</h1>
+                <h1 class="display-3" style="font-size:20px;">기술문의 게시판 리스트</h1>
             </div>
            <table style="width:100%;max-width: 900px;" align="center">	
            	<tr>
@@ -96,8 +96,7 @@
            				<option value="T">제목</option>
            				<option value="C">내용</option>
            				<option value="W">작성자</option>
-           				<option value="I">강사</option>
-           				<option value="TWCI">제목+내용+작성자+강사</option>
+           				<option value="TWC">제목+내용+작성자</option>
            			</select>
            			
            		</td>
@@ -114,14 +113,12 @@
 		  	<thead>
 		  		<tr class="theadTh">
 					<th class="text-center">번호</th>
-					<th class="text-center" style="width:50%">제목</th>
-					<th class="text-center">강사</th>
-					<th class="text-center">교육일</th>
+					<th class="text-center" style="width:70%">제목</th>
 					<th class="text-center">작성자</th>
 					<th class="text-center">입력일</th>
 				</tr>
 			</thead>
-			<tbody>
+			<tbody id="tbody">
 				
 			</tbody>
 		</table>
@@ -133,7 +130,7 @@
 		</div>
 
 		<div class="col-12 text-center" style="padding-top:15px;">
-        	<button type="button" class="btn btn-secondary btn-sm" onclick="educationBoardInsert();">게시판 작성</button>
+        	<button type="button" class="btn btn-secondary btn-sm" onclick="technologyBoardInsert();">게시판 작성</button>
          </div>
 
         </div>
@@ -144,12 +141,11 @@
     
      <script>
 		
-     var emplyAuthTypCd = "<c:out value = '${loginInfo.loginInfo[0].emplyAuthTypCd}'/>";
      var emplyId = "<c:out value = '${loginInfo.loginInfo[0].emplyId}'/>";
 
      //첫 로딩시 리승트 호출
      $(document).ready(function() {
-    	 educationBoardList(1);
+    	 technologyBoardList(1);
      });
      
      //검색 바인딩
@@ -175,12 +171,12 @@
 				     } });
 				 return;
 	   	 }else{
-	   		educationBoardList(1);
+	   		technologyBoardList(1);
 		 }
 	});
 	
 	/* 게시판 리스트 */
-    function educationBoardList(curPage){
+    function technologyBoardList(curPage){
 
 		var searchOption = $("#searchOption :selected").val();
 		var searchKeyword = $("#searchKeyword").val();
@@ -193,58 +189,58 @@
     	
  	   	$.ajax({
  	    	 type: "post",
-	    	 url: "/eep/board/education/educationBoardListData.do",
+	    	 url: "/eep/board/technology/technologyBoardListData.do",
 	         data: params,
 	         dataType: "json",
 	         success: function(data) {
 	        	 
-	        	var List = data.educationBoardData.educationBoardInfo;
+	        	var List = data.technologyBoardData.technologyBoardInfo;
 	        	var body = $("#board>tbody");
 	 			body.empty();
 	 			
+	 			var str = "";
+	 			
 	 			if(List.length > 0) {
-
-	 				List.forEach(value => {
-
 						
-		                //현재 값을 가지고 와서 append(태그넣기)를 사용하여서 tbody안에 넣어줍니다.
-						body.append(
-								"<tr>" + 
-									"<td>" +
-										value.brdSq +
-									"</td>" +
-									"<td style='text-align:left;'><a style='text-decoration-line: none;' href='javascript:educationDetail(" + value.brdSq + ")'>" + 
-										value.brdTtl +
-									"</td>" +
-									"<td>" +
-										value.brdTchr +
-									"</td>" +
-									"<td>" +
-										value.brdEduDt +
-									"</td>" +
-									"<td>" +
-										value.brdWrtr +
-									"</td>" +
-									"<td>" +
-										value.brdRegDt +
-									"</td>" +
-								"</tr>"
-									
-									
-									/* "<td class='bno'>" + value.bno + "</td>" +
-									"<td id='detail'><a href='/erp/sample/sampleBoardDetail.do?bno=" + value.bno + "'>" + value.title + "</td>" +
-									/* "<td>" + value.content + "</td>" +
-									"<td>" + value.writer + "</td>" +
-									"<td>" + returnDate + "</td>" +
-									"<td>" + value.viewcnt + "</td>" +
-									"<td><button class='btn btn-primary btn-sm' onclick='showDetail(`" + value.title + "`,`" + value.content + "`,`" + value.writer + "`)'>바로보기</button></td>" +
-								"</tr>"  */
-								);
-							});
-				
-				} else {
-					body.append("<tr>" + "<td colspan='8'>조회 결과가 없습니다</td>" + "</tr>"); 
-				}
+	 				 for(var a=0; a<List.length; a++){
+	 						var brdSq           = List[a].brdSq; 
+	 						var brdTtl          = List[a].brdTtl; 
+	 	                    var brdReRef        = List[a].brdReRef; 
+	 	                    var brdReLev        = List[a].brdReLev; 
+	 	                    var brdReSeq        = List[a].brdReSeq; 
+	 	                    var brdWrtr         = List[a].brdWrtr;
+	 	                    var brdRegDt        = List[a].brdRegDt; 
+	 	                    
+	 	                    str += "<tr>";
+	 	                    str += "<td>"+ brdSq +"</td>";
+	 	                                        
+	 	                    str += "<td style='text-align:left;'><a style='text-decoration-line: none;' href='javascript:technologyDetail(" + brdSq + ")'>";
+	 	                    
+	 	                    if(brdReLev > 0){
+	 	                        
+	 	                        for(var b=0; b<brdReLev; b++){
+	 	                            
+	 	                            str += "&nbsp;&nbsp;&nbsp;&nbsp;";
+	 	                        }
+	 	                        
+	 	                        str += "└";
+	 	                    }
+	 	                    
+	 	                    str += brdTtl +"</td>";
+	 	                                        
+	 	                    str += "<td>"+ brdWrtr +"</td>";
+	 	                    str += "<td>"+ brdRegDt +"</td>";       
+	 	                    str += "</tr>";
+	 				 }
+	 	                    
+				 } else {
+	                
+	                str += "<tr>";
+	                str += "<td colspan='4'>등록된 글이 존재하지 않습니다.</td>";
+	                str += "<tr>";
+	             }
+	 			
+	 			body.html(str);
 	 			
 	 			//페이징 처리 -> Ajax로 자료 불러오는 것과 동시에 처리해야함
 				var boardPager = data.boardPager;
@@ -254,8 +250,8 @@
 				if(boardPager.curBlock > 1) {
 						
 					ul.append(
-					"<li class='page-item'><a class='page-link' href='javascript:educationBoardList(1)'>&#60;&#60;</a></li>" +
-					"<li class='page-item'><a class='page-link' href='javascript:educationBoardList(" + boardPager.prevPage + ")'>&#60;</a></li>"
+					"<li class='page-item'><a class='page-link' href='javascript:technologyBoardList(1)'>&#60;&#60;</a></li>" +
+					"<li class='page-item'><a class='page-link' href='javascript:technologyBoardList(" + boardPager.prevPage + ")'>&#60;</a></li>"
 					);
 				}
 				//페이지 넘버가 시작번호부터 끝번호까지 계속 증가하면서 하나씩 만든다 (예: [1] [2] [3] [4] [5])
@@ -268,7 +264,7 @@
 					//그 외에는 하이퍼링크를 넣는다	
 					} else {
 						ul.append(
-						"<li class='page-item'><a class='page-link' href='javascript:educationBoardList(" + pageNum + ")'>" + pageNum + "</a></li>"
+						"<li class='page-item'><a class='page-link' href='javascript:technologyBoardList(" + pageNum + ")'>" + pageNum + "</a></li>"
 						);
 					}
 				}
@@ -276,8 +272,8 @@
 				//현재 블록이 전체 블록보다 작을때에는 다음 버튼과 끝 버튼을 넣는다
 				if(boardPager.curBlock <= boardPager.totBlock){
 					ul.append(
-					"<li class='page-item'><a class='page-link' href='javascript:educationBoardList(" + boardPager.nextPage + ")'>&#62;</a></li>" +
-					"<li class='page-item'><a class='page-link' href='javascript:educationBoardList(" + boardPager.totPage + ")'>&#62;&#62;</a></li>"
+					"<li class='page-item'><a class='page-link' href='javascript:technologyBoardList(" + boardPager.nextPage + ")'>&#62;</a></li>" +
+					"<li class='page-item'><a class='page-link' href='javascript:technologyBoardList(" + boardPager.totPage + ")'>&#62;&#62;</a></li>"
 					);
 				}
 
@@ -290,24 +286,24 @@
     }
 
     /* 게시판 입력 */
-    function educationBoardInsert() {
+    function technologyBoardInsert() {
 
-    	if(emplyAuthTypCd == '2'){
-    		location.href = "/eep/board/education/openEducationBoardInsert.do";
-    	}else{
+    	if(isEmpty(emplyId)){
     		bootbox.alert({
-				 message: "해당 권한이 없습니다.",
+				 message: "로그인 상태에만 가능한 기능입니다.",
 				 locale: 'kr',
 				 callback: function() {
 					 return;
 			 } });
-    		
+    	}else{
+    		location.href = "/eep/board/technology/openTechnologyBoardInsert.do";
+
     	}
 
     }
     
     
-    function educationDetail(brdSq) {
+    function technologyDetail(brdSq) {
     	
     	if(isEmpty(emplyId)){
     		bootbox.alert({
@@ -317,8 +313,7 @@
 					 return;
 			 } });
     	}else{
-    		location.href = "/eep/board/education/openEducationBoardDetail.do?brdSq="+brdSq;
-
+    		location.href = "/eep/board/technology/openTechnologyBoardDetail.do?brdSq="+brdSq;
     	}
   	   
   	   

@@ -223,4 +223,67 @@ public class FoBoardServiceImpl implements FoBoardService{
 		return result;
 	}
 	
+	/**
+	 * 기술문의 게시판 ServiceImpl
+	 * 
+	 * **/
+	
+	//기술문의 게시판 리스트
+	@Override
+	public Map<String, Object> technologyBoardListData(Map<String, Object> param){
+		
+		Map<String, Object> result = new HashMap<>();
+		
+		result = FoBoardDao.technologyBoardListData(param);
+		
+		return result;
+	}
+	
+	//기술문의 게시판 등록
+	@Override
+	public void technologyBoardInsertData(Map<String, Object> param){
+		FoBoardDao.technologyBoardInsertData(param);
+	}
+	
+	//기술문의 게시판 상세
+	@Override
+	public Map<String, Object> technologyBoardDetailData(Map<String, Object> param){
+		
+		Map<String, Object> result = new HashMap<>();
+		
+		result = FoBoardDao.technologyBoardDetailData(param);
+		
+		return result;
+	}
+	
+	//기술문의 게시판 답변 등록
+	@Override
+	public void technologyBoardReplyInsertData(Map<String, Object> param){
+		
+		FoBoardDao.technologyBoardReplyInsertUpdateData(param);
+		
+		FoBoardDao.technologyBoardReplyInsertData(param);
+	}
+
+	//기술문의 게시판 삭제
+	@Override
+	public void technologyBoardDeleteData(Map<String, Object> param){
+		FoBoardDao.technologyBoardDeleteData(param);
+	}
+	
+	//기술문의 게시판 수정
+	@Override
+	public void technologyBoardUpdateData(Map<String, Object> param){
+		FoBoardDao.technologyBoardUpdateData(param);
+	}
+	
+	//기술문의 게시판 개수
+	@Override
+	public int technologyBoardListCountData(Map<String, Object> param){
+
+		int result = FoBoardDao.technologyBoardListCountData(param);
+		
+		return result;
+	}
+	
 }

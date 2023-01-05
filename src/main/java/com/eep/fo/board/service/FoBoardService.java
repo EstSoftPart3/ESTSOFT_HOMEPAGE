@@ -50,4 +50,17 @@ public interface FoBoardService {
 	public void freedomBoardUpdateData(Map<String, Object> param);						//자유 게시판 수정
 	public int freedomBoardListCountData(Map<String, Object> param);					//자유 게시판 개수
 	
+	/**
+	 * 기술문의 게시판 Service Interface
+	 * 
+	 * **/
+	
+	public Map<String, Object> technologyBoardListData(Map<String, Object> param); 		//기술문의 게시판 리스트
+	public void technologyBoardInsertData(Map<String, Object> param);					//기술문의 게시판 등록
+	public Map<String, Object> technologyBoardDetailData(Map<String, Object> param);	//기술문의 게시판 상세
+	public void technologyBoardReplyInsertData(Map<String, Object> param);				//기술문의 게시판 답변 등록
+	public void technologyBoardDeleteData(Map<String, Object> param); 					//기술문의 게시판 삭제
+	public void technologyBoardUpdateData(Map<String, Object> param);					//기술문의 게시판 수정
+	public int technologyBoardListCountData(Map<String, Object> param);					//기술문의 게시판 개수
+	
 }

@@ -463,4 +463,173 @@ public class FoBoardController {
 		
 	}
 	
+	/**
+	 * 기술문의 게시판 Controller
+	 * 
+	 * **/
+	
+	//기술문의 게시판 목록 페이지 이동
+	@RequestMapping("/eep/board/technology/openTechnologyBoardList.do")
+	public String openTechnologyBoardList() {
+		
+		return "fo/board/technology/technology_board_list";
+	}
+	
+	//기술문의 게시판 목록 데이터
+	@RequestMapping("/eep/board/technology/technologyBoardListData.do")
+	@ResponseBody
+	public ModelAndView technologyBoardListData(@RequestParam Map<String, Object> param,
+											 @RequestParam(defaultValue="1") int curPage) {
+		
+		ModelAndView mv = new ModelAndView();
+		mv.setViewName("jsonView");
+		
+		int count = FoBoardService.technologyBoardListCountData(param);
+		
+		pagerMaster pagerMaster = new pagerMaster(count, curPage, 10, 10);
+		int start = pagerMaster.getPageBegin();
+		int end = pagerMaster.getPageEnd();
+		
+		param.put("start", start);
+		param.put("end", end);
+		
+		Map<String, Object> result = new HashMap<>();
+		
+		result = FoBoardService.technologyBoardListData(param);
+									
+		mv.addObject("technologyBoardData", result);
+		mv.addObject("boardPager", pagerMaster);
+		
+		return mv;
+	}
+	
+	//기술문의 게시판 등록 페이지 이동
+	@RequestMapping("/eep/board/technology/openTechnologyBoardInsert.do")
+	public String openTechnologyBoardInsert() {
+		
+		return "fo/board/technology/technology_board_insert";
+	}
+	
+	//기술문의 게시판 등록 데이터
+	@RequestMapping("/eep/board/technology/technologyBoardInsertData.do")
+	@ResponseBody
+	public void technologyBoardInsertData(@RequestParam Map<String, Object> param) {
+
+	    int emplySq = Integer.parseInt((String) param.get("emplySq"));
+		String brdTtl = (String) param.get("brdTtl");
+		String brdCntnt = (String) param.get("brdCntnt");
+		String brdWrtr = (String) param.get("brdWrtr");
+
+		param.put("emplySq", emplySq);
+		param.put("brdTtl", brdTtl);
+		param.put("brdCntnt", brdCntnt);
+		param.put("brdWrtr", brdWrtr);
+		
+		System.out.println(param);
+		
+		FoBoardService.technologyBoardInsertData(param);
+
+	}
+	
+	//기술문의  게시판 상세 페이지 이동
+	@RequestMapping("/eep/board/technology/openTechnologyBoardDetail.do")
+	public String openTechnologyBoardDetail() {
+		
+		return "fo/board/technology/technology_board_detail";
+	}
+	
+	//기술문의 게시판 상세 데이터
+	@RequestMapping("/eep/board/technology/technologyBoardDetailData.do")
+	@ResponseBody
+	public ModelAndView technologyBoardDetailData(@RequestParam Map<String, Object> param) {
+		
+		ModelAndView mv = new ModelAndView();
+		
+		mv.setViewName("jsonView");
+		
+		Map<String, Object> result = new HashMap<>();
+		
+		result = FoBoardService.technologyBoardDetailData(param);
+		
+		mv.addObject("technologyBoardDetailData", result);
+		
+		return mv;
+	}
+	
+	//기술문의  게시판 답글 등록 페이지 이동
+	@RequestMapping("/eep/board/technology/openTechnologyBoardReplyInsert.do")
+	public String openTechnologyBoardReplyInsert() {
+		
+		return "fo/board/technology/technology_board_reply_insert";
+	}
+	
+	//기술문의 게시판 답글 등록 데이터
+	@RequestMapping("/eep/board/technology/technologyBoardReplyInsertData.do")
+	@ResponseBody
+	public void technologyBoardReplyInsertData(@RequestParam Map<String, Object> param) {
+
+	    int emplySq = Integer.parseInt((String) param.get("emplySq"));
+		String brdTtl = (String) param.get("brdTtl");
+		String brdCntnt = (String) param.get("brdCntnt");
+		String brdWrtr = (String) param.get("brdWrtr");
+		int brdReRep = Integer.parseInt((String) param.get("brdReRep"));
+		int brdReLev = Integer.parseInt((String) param.get("brdReLev"));
+		int brdReOrd = Integer.parseInt((String) param.get("brdReOrd"));
+
+		
+		param.put("emplySq", emplySq);
+		param.put("brdTtl", brdTtl);
+		param.put("brdCntnt", brdCntnt);
+		param.put("brdWrtr", brdWrtr);
+		param.put("brdReRep", brdReRep);
+		param.put("brdReLev", brdReLev);
+		param.put("brdReOrd", brdReOrd);
+		
+		System.out.println(param);
+		
+		FoBoardService.technologyBoardReplyInsertData(param);
+
+	}
+
+	//기술문의 게시판 삭제
+	@RequestMapping("/eep/board/technology/technologyBoardDeleteData.do")
+	@ResponseBody
+	public void technologyBoardDeleteData(@RequestParam Map<String, Object> param) {
+		
+		int brdSq = Integer.parseInt((String) param.get("brdSq"));
+	
+		param.put("brdSq", brdSq);
+		
+		FoBoardService.technologyBoardDeleteData(param);
+		
+	}
+	
+	//기술문의 게시판 수정 페이지 이동
+	@RequestMapping("/eep/board/technology/openTechnologyBoardUpdate.do")
+	public String openTechnologyBoardUpdate() {
+		
+		return "fo/board/technology/technology_board_update";
+	}
+	
+	//기술문의 게시판 수정
+	@RequestMapping("/eep/board/technology/technologyBoardUpdateData.do")
+	@ResponseBody
+	public void technologyBoardUpdateData(@RequestParam Map<String, Object> param) {
+
+		
+	    int brdSq = Integer.parseInt((String) param.get("brdSq"));
+		String brdTtl = (String) param.get("brdTtl");
+		String brdCntnt = (String) param.get("brdCntnt");
+
+		param.put("brdSq", brdSq);
+		param.put("brdTtl", brdTtl);
+		param.put("brdCntnt", brdCntnt);
+
+		System.out.println(param);
+
+		
+		FoBoardService.technologyBoardUpdateData(param);
+		
+	}
+	
 }

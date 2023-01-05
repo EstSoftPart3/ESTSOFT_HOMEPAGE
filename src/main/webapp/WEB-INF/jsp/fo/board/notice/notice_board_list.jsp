@@ -123,7 +123,7 @@
 			</tbody>
 		</table>
 		
-		<div class="row justify-content-center" style="padding-top:15px; margin: 0 auto;">
+		<div class="row justify-content-center col-lg-3" style="padding-top:15px; margin: 0 auto;">
 			<ul class="pagination pagination-sm" id="pages">
 								
 			</ul>
@@ -245,8 +245,8 @@
 				if(boardPager.curBlock > 1) {
 						
 					ul.append(
-					"<li class='page-item'><a class='page-link' href='javascript:noticeBoardList(1)'>[처음]</a></li>" +
-					"<li class='page-item'><a class='page-link' href='javascript:noticeBoardList(" + boardPager.prevPage + ")'>[이전]</a></li>"
+					"<li class='page-item'><a class='page-link' href='javascript:noticeBoardList(1)'>&#60;&#60;</a></li>" +
+					"<li class='page-item'><a class='page-link' href='javascript:noticeBoardList(" + boardPager.prevPage + ")'>&#60;</a></li>"
 					);
 				}
 				//페이지 넘버가 시작번호부터 끝번호까지 계속 증가하면서 하나씩 만든다 (예: [1] [2] [3] [4] [5])
@@ -259,7 +259,7 @@
 					//그 외에는 하이퍼링크를 넣는다	
 					} else {
 						ul.append(
-						"<li class='page-item'><a class='page-link' href='javascript:noticeBoardList(" + pageNum + ")'>[" + pageNum + "]</a></li>"
+						"<li class='page-item'><a class='page-link' href='javascript:noticeBoardList(" + pageNum + ")'>" + pageNum + "</a></li>"
 						);
 					}
 				}
@@ -267,8 +267,8 @@
 				//현재 블록이 전체 블록보다 작을때에는 다음 버튼과 끝 버튼을 넣는다
 				if(boardPager.curBlock <= boardPager.totBlock){
 					ul.append(
-					"<li class='page-item'><a class='page-link' href='javascript:noticeBoardList(" + boardPager.nextPage + ")'>[다음]</a></li>" +
-					"<li class='page-item'><a class='page-link' href='javascript:noticeBoardList(" + boardPager.totPage + ")'>[끝]</a></li>"
+					"<li class='page-item'><a class='page-link' href='javascript:noticeBoardList(" + boardPager.nextPage + ")'>&#62;</a></li>" +
+					"<li class='page-item'><a class='page-link' href='javascript:noticeBoardList(" + boardPager.totPage + ")'>&#62;&#62;</a></li>"
 					);
 				}
 

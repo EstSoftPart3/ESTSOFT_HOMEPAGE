@@ -289,4 +289,94 @@ public class FoBoardDao {
 
 		return result;
 	}
+	
+	/**
+	 * 기술문의 게시판 DAO
+	 * 
+	 * **/
+
+	//자유 게시판 리스트
+	public Map<String, Object> technologyBoardListData(Map<String, Object> param){
+		
+		Map<String, Object> result = new HashMap<>();
+				
+		System.out.println("param :" + param);
+		
+		@SuppressWarnings("unchecked")
+		List<Map<String, Object>> boardInfo = FoBoardMapper.technologyBoardListData(param);
+		
+		result.put("technologyBoardInfo", boardInfo);
+				
+		return result;
+	}
+	
+	//기술문의 게시판 등록
+	public void technologyBoardInsertData(Map<String, Object> param){
+		
+		System.out.println("DATA = " + param);
+		//원본 저장
+		FoBoardMapper.technologyBoardInsertData(param);
+		//원본 저장 후 BRD_RE_REF 컬럼에 원본 고유 번호 업데이트
+		FoBoardMapper.technologyBoardInsertUpdateData(param);
+		
+		
+	}
+	
+	//기술문의 게시판 상세
+	public Map<String, Object> technologyBoardDetailData(Map<String, Object> param){
+		
+		Map<String, Object> result = new HashMap<>();
+		
+		//System.out.println("DATA = " + param);
+		
+		@SuppressWarnings("unchecked")
+		List<Map<String, Object>> technologyBoardDetailData = FoBoardMapper.technologyBoardDetailData(param);
+		
+		result.put("technologyBoardDetailData", technologyBoardDetailData);
+		
+		return result;
+	}
+	
+	//기술문의 게시판 순서 수정
+	public void technologyBoardReplyInsertUpdateData(Map<String, Object> param){
+		
+		System.out.println("DATA = " + param);
+		FoBoardMapper.technologyBoardReplyInsertUpdateData(param);
+		
+	}
+	
+	//기술문의 게시판 답변 등록
+	public void technologyBoardReplyInsertData(Map<String, Object> param){
+		
+		System.out.println("DATA = " + param);
+		FoBoardMapper.technologyBoardReplyInsertData(param);
+		
+	}
+		
+	//기술문의 게시판 게시판 삭제
+	public void technologyBoardDeleteData(Map<String, Object> param){
+		
+		System.out.println("DATA = " + param);
+		FoBoardMapper.technologyBoardDeleteData(param);
+		
+	}
+	
+	//기술문의 게시판 수정
+	public void technologyBoardUpdateData(Map<String, Object> param){
+		
+		System.out.println("DATA = " + param);
+		FoBoardMapper.technologyBoardUpdateData(param);
+		
+	}
+	
+	//기술문의 게시판 개수
+	public int technologyBoardListCountData(Map<String, Object> param){
+
+		System.out.println("param :" + param);
+		
+		@SuppressWarnings("unchecked")
+		int result = FoBoardMapper.technologyBoardListCountData(param);
+
+		return result;
+	}
 }

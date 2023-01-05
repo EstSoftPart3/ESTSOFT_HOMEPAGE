@@ -620,4 +620,234 @@
          	1=1 AND BRD_TYP_CD = 'FD' AND BRD_SQ = #{brdSq}
 	</update>
 	
+	<!-- 기술문의 게시판 Mapper -->
+    
+    <!-- 기술문의 게시판 목록 및 조회 -->
+	<select id="technologyBoardListData" resultType="hashMap" parameterType="hashMap">
+	
+        SELECT
+        		BRD_SQ 										AS 		brdSq
+              , EMPLY_SQ 									AS 		emplySq
+              , BRD_TYP_CD 									AS 		brdTypCd
+              , BRD_RE_REF 									AS 		brdReRep
+              , BRD_RE_LEV 									AS 		brdReLev
+              , BRD_RE_ORD 									AS 		brdReOrd
+              , BRD_TTL 									AS 		brdTtl
+              , BRD_CNTNT 									AS 		brdCntnt
+              , CASE WHEN CHAR_LENGTH(BRD_WRTR) > 2 THEN CONCAT(
+            		 SUBSTRING(BRD_WRTR, 1, 1)
+            		,LPAD('*', CHAR_LENGTH(BRD_WRTR) - 2, '*')
+            		,SUBSTRING(BRD_WRTR, CHAR_LENGTH(BRD_WRTR), CHAR_LENGTH(BRD_WRTR))
+        		)ELSE CONCAT(
+            		SUBSTRING(BRD_WRTR, 1, 1)
+            		,LPAD('*', CHAR_LENGTH(BRD_WRTR) - 1, '*')
+        		)END 										AS 		brdWrtr
+              , BRD_TCHR 									AS 		brdTchr
+              , BRD_EDU_DT 									AS 		brdEduDt
+              , DATE_FORMAT(BRD_REG_DT, '%Y-%m-%d %H:%i') 	AS 		brdRegDt
+              , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
+              , USE_YN 										AS 		useYn
+              , DEL_YN 										AS 		delYn
+ 		FROM 
+ 				TB_EEP_BRD_M 
+ 		WHERE
+ 				BRD_TYP_CD = 'TL' AND USE_YN = 'Y' AND DEL_YN = 'N'
+ 				
+ 				<if test='searchOption == "T" and searchOption != null'>
+          			AND BRD_TTL LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+           		<if test='searchOption == "W" and searchOption != null'>
+          			AND BRD_WRTR LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='searchOption == "C" and searchOption != null'>
+          			AND BRD_CNTNT LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='searchOption == "TWC" and searchOption != null'>
+          			AND BRD_TTL LIKE CONCAT('%',#{searchKeyword},'%')
+          			OR BRD_WRTR LIKE CONCAT('%',#{searchKeyword},'%')
+          			OR BRD_CNTNT LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		
+ 		ORDER BY 
+ 				BRD_RE_REF DESC, BRD_RE_ORD ASC
+ 		LIMIT 
+ 				#{start}, #{end}
+
+    </select>
+    
+    <!-- 기술문의 게시판 개수 -->
+	<select id="technologyBoardListCountData" resultType="int" parameterType="hashMap">
+	
+        SELECT
+				COUNT(BRD_SQ)
+ 		FROM 
+ 				TB_EEP_BRD_M 
+ 		WHERE
+ 				BRD_TYP_CD = 'TL' AND USE_YN = 'Y' AND DEL_YN = 'N'
+ 				
+ 				<if test='searchOption == "T" and searchOption != null'>
+          			AND BRD_TTL LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+           		<if test='searchOption == "W" and searchOption != null'>
+          			AND BRD_WRTR LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='searchOption == "C" and searchOption != null'>
+          			AND BRD_CNTNT LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+          		<if test='searchOption == "TWC" and searchOption != null'>
+          			AND BRD_TTL LIKE CONCAT('%',#{searchKeyword},'%')
+          			OR BRD_WRTR LIKE CONCAT('%',#{searchKeyword},'%')
+          			OR BRD_CNTNT LIKE CONCAT('%',#{searchKeyword},'%')
+          		</if>
+
+    </select>
+    
+	<!-- 자유 게시판 원본 등록 -->
+	<insert id="technologyBoardInsertData" parameterType="hashMap">
+
+    	INSERT INTO TB_EEP_BRD_M
+        (
+			 EMPLY_SQ
+			,BRD_TYP_CD
+			,BRD_TTL
+			,BRD_CNTNT
+			,BRD_WRTR
+			,BRD_RE_REF
+			,BRD_RE_LEV
+			,BRD_RE_ORD
+			,BRD_REG_DT
+			,USE_YN 
+			,DEL_YN
+       	) 
+        VALUES
+        (
+			 #{emplySq}
+			,'TL'
+			,#{brdTtl}
+			,#{brdCntnt}
+			,#{brdWrtr}
+			,0
+			,0
+			,0
+			,default
+			,default
+			,default
+        )
+	</insert>
+	
+	<!-- 원본 저장 후  BRD_RE_REF 컬럼에 현재 번호 조회해서 넣어주는 쿼리-->
+    <insert id="technologyBoardInsertUpdateData" parameterType="hashMap">
+    	
+		<selectKey resultType="int" keyProperty="brdReRep" order="BEFORE">
+            
+            SELECT IFNULL(MAX(BRD_SQ), 0)
+            FROM TB_EEP_BRD_M
+              
+        </selectKey>
+    
+   		UPDATE 
+   			TB_EEP_BRD_M
+		SET
+			BRD_RE_REF = #{brdReRep}
+   		WHERE
+         	1=1 AND BRD_TYP_CD = 'TL' AND BRD_SQ = #{brdReRep}
+	</insert>
+    
+    <!-- 기술문의 게시판 상세 -->
+    <select id="technologyBoardDetailData" resultType="hashMap">
+        SELECT
+        		BRD_SQ 										AS 		brdSq
+              , EMPLY_SQ 									AS 		emplySq
+              , BRD_TYP_CD 									AS 		brdTypCd
+              , BRD_RE_REF 									AS 		brdReRep
+              , BRD_RE_LEV 									AS 		brdReLev
+              , BRD_RE_ORD 									AS 		brdReOrd
+              , BRD_TTL 									AS 		brdTtl
+              , BRD_CNTNT 									AS 		brdCntnt
+              , CASE WHEN CHAR_LENGTH(BRD_WRTR) > 2 THEN CONCAT(
+            		 SUBSTRING(BRD_WRTR, 1, 1)
+            		,LPAD('*', CHAR_LENGTH(BRD_WRTR) - 2, '*')
+            		,SUBSTRING(BRD_WRTR, CHAR_LENGTH(BRD_WRTR), CHAR_LENGTH(BRD_WRTR))
+        		)ELSE CONCAT(
+            		SUBSTRING(BRD_WRTR, 1, 1)
+            		,LPAD('*', CHAR_LENGTH(BRD_WRTR) - 1, '*')
+        		)END 										AS 		brdWrtr
+              , BRD_TCHR 									AS 		brdTchr
+              , BRD_EDU_DT 									AS 		brdEduDt
+              , DATE_FORMAT(BRD_REG_DT, '%Y-%m-%d %H:%i') 	AS 		brdRegDt
+              , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
+              , USE_YN 										AS 		useYn
+              , DEL_YN 										AS 		delYn
+ 		FROM 
+ 				TB_EEP_BRD_M 
+ 		WHERE
+         		1=1 AND BRD_TYP_CD = 'TL' AND BRD_SQ = #{brdSq}
+    </select>
+    
+    <!-- 기술문의 게시판 답변 업데이트 등록 -->
+    <delete id="technologyBoardReplyInsertUpdateData" parameterType="hashMap">
+    
+        UPDATE TB_EEP_BRD_M
+           SET BRD_RE_ORD = BRD_RE_ORD + 1
+         WHERE BRD_RE_REF = #{brdReRep} 
+           AND BRD_RE_ORD > #{brdReOrd}
+     
+    </delete>
+    
+    <!-- 기술문의 게시판 답변 등록 -->
+   	<insert id="technologyBoardReplyInsertData" parameterType="hashMap">
+
+    	INSERT INTO TB_EEP_BRD_M
+        (
+			 EMPLY_SQ
+			,BRD_TYP_CD
+			,BRD_TTL
+			,BRD_CNTNT
+			,BRD_WRTR
+			,BRD_RE_REF
+			,BRD_RE_LEV
+			,BRD_RE_ORD
+			,BRD_REG_DT
+			,USE_YN 
+			,DEL_YN
+       	) 
+        VALUES
+        (
+			 #{emplySq}
+			,'TL'
+			,#{brdTtl}
+			,#{brdCntnt}
+			,#{brdWrtr}
+			,#{brdReRep}
+			,#{brdReLev} + 1
+			,#{brdReOrd} + 1
+			,default
+			,default
+			,default
+        )
+	</insert>
+    
+    <!-- 기술문의 게시판 수정 -->
+    <update id="technologyBoardUpdateData" parameterType="hashMap">
+   		UPDATE 
+   			TB_EEP_BRD_M
+		SET
+			 BRD_TTL        	= 	#{brdTtl}
+			,BRD_CNTNT     		= 	#{brdCntnt}
+			,BRD_UPDT_DT      	= 	NOW()
+   		WHERE
+         	1=1 AND BRD_TYP_CD = 'TL' AND BRD_SQ = #{brdSq}
+	</update>
+	
+	<!-- 기술문의 게시판 삭제 -->
+    <update id="technologyBoardDeleteData" parameterType="hashMap">
+   		UPDATE 
+   			TB_EEP_BRD_M
+		SET
+			 DEL_YN	= 'Y'
+			,USE_YN	= 'N'
+   		WHERE
+         	1=1 AND BRD_TYP_CD = 'TL' AND BRD_SQ = #{brdSq}
+	</update>
+	
 </mapper>
