@@ -192,7 +192,7 @@ public class FoMainController extends BaseController {
 //				+ "</html>";
 		
 		
-		String tomail = "estsw.rnd@gmail.com"; // 받을 주소
+		String tomail = "est.part2@gmail.com"; // 받을 주소
 		
 
 		try {

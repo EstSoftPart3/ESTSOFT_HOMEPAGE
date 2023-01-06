@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.eep.bo.login.service.BoLoginService;
+import com.eep.mapper.BoLoginMapper;
 
 
 @Controller
@@ -23,6 +24,9 @@ public class BoLoginController {
 
 	@Autowired
 	private BoLoginService BoLoginService;
+	
+	@Autowired
+	private BoLoginMapper BoLoginMapper;
 	
 	@RequestMapping(value = "/admin/login/loginPage.do")
 	public String openLoginPage() {
@@ -52,7 +56,13 @@ public class BoLoginController {
 		mv.addObject("result", result);
 		
 		if(result.get("loginInfo").toString().length() != 2) {
+			//권한 체크 세션 생성
+			@SuppressWarnings({ "unchecked", "unused" })
+			List<Map<String, Object>> AuthCheck = BoLoginMapper.loginAdminData(param);
+			String emplyAuthCheck = (String) AuthCheck.get(0).get("emplyAuthTypCd");
+			
 			session.setAttribute("loginInfo", result);	
+			session.setAttribute("emplyAuthCheck", emplyAuthCheck);	
 		} 
 
 		return mv;

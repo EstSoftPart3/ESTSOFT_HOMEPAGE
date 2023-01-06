@@ -63,32 +63,32 @@
                         <div class="row g-3">
                             <div class="col-12">
                                 <div class="form-floating">
-                                    <input type="text" class="form-control" id="name" placeholder="name" autocomplete="off" value="홍길동">
+                                    <input type="text" class="form-control" id="name" placeholder="name" autocomplete="off" value="">
                                     <label for="name">성명</label>
                                 </div>
                             </div>
                             <div class="col-12">
                                 <div class="form-floating">
-                                    <input type="text" class="form-control" id="handphone" placeholder="handphone" autocomplete="off" value="010-1111-222">
+                                    <input type="text" class="form-control" id="handphone" placeholder="handphone" autocomplete="off" value="">
                                     <label for="handphone">휴대폰</label>
                                 </div>
                             </div>
                             <div class="col-12">
                                 <div class="form-floating">
-                                    <input type="email" class="form-control" id="email" placeholder="email" autocomplete="off" value="swordbass.j3@gmail.com">
+                                    <input type="email" class="form-control" id="email" placeholder="email" autocomplete="off" value="">
                                     <label for="email">이메일</label>
                                 </div>
                             </div>
                             
                             <div class="col-12">
                                 <div class="form-floating">
-                                    <textarea class="form-control" placeholder="Leave a message here" id="content" style="height: 250px">지금은 테스트중 입니다.</textarea>
+                                    <textarea class="form-control" placeholder="Leave a message here" id="content" style="height: 250px"></textarea>
                                     <label for="content">자기소개(간략히)</label>
                                 </div>
                             </div>
                             <div class="col-12">
                             	※ 개인정보 수집 및 이용동의
-                            	<input type="checkbox" id="box1" checked>
+                            	<input type="checkbox" id="box1">
                             </div>
                              <div class="col-12">
                                 <div class="form-floating">
@@ -186,27 +186,33 @@
     			return false;
     		} else {
     			
-    			var params = {
-    					name : name,
-    					handphone : handphone,
-    					email : email,
-    					content : content
-    			}
-    				
-    			$.ajax({
-    				url: "/eep/sendmail.do",
-    				type: "post",
-    				data: params,
-    				success: function(data){
-    					alert("입시지원 되었습니다. 감사합니다.");
-    		    		$("#name").val('');
-    		    		$("#handphone").val('');
-    		    		$("#email").val('');
-    		    		$("#content").val('');
-    		    		
-    		    		$("input:checkbox[id='box1']").prop("checked", false);
-    				}
-    			});   			
+    			
+    			 if (!confirm("확인버튼을 누르면 입사지원이 완료 됩니다. 확인버튼을 클릭 후 잠시만 기달려주세요.")) {
+    				 	return false;
+    			 } else {
+   			    	var params = {
+   	    					name : name,
+   	    					handphone : handphone,
+   	    					email : email,
+   	    					content : content
+   	    			}
+   	    				
+   	    			$.ajax({
+   	    				url: "/eep/sendmail.do",
+   	    				type: "post",
+   	    				data: params,
+   	    				success: function(data){
+   	    					alert("입시지원 되었습니다. 감사합니다.");
+   	    		    		$("#name").val('');
+   	    		    		$("#handphone").val('');
+   	    		    		$("#email").val('');
+   	    		    		$("#content").val('');
+   	    		    		
+   	    		    		$("input:checkbox[id='box1']").prop("checked", false);
+   	    				}
+   	    			});   			
+    			 }
+
     		}
     		
     	}

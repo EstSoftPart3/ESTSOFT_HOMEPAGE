@@ -1,6 +1,7 @@
 package com.eep.fo.login.controller;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
@@ -14,12 +15,16 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.eep.fo.login.service.FoLoginService;
+import com.eep.mapper.FoLoginMapper;
 
 @Controller
 public class FoLoginController {
 
 	@Autowired
 	private FoLoginService FoLoginService;
+	
+	@Autowired
+	private FoLoginMapper FoLoginMapper;
 	
 	@RequestMapping(value = "/eep/login/loginPage.do")
 	public String openLoginPage() {
@@ -47,9 +52,18 @@ public class FoLoginController {
 		result = FoLoginService.loginAdminData(param);
 		
 		mv.addObject("result", result);
-		
+
 		if(result.get("loginInfo").toString().length() != 2) {
+			
+			//권한 체크 세션 생성
+			@SuppressWarnings({ "unchecked", "unused" })
+			List<Map<String, Object>> AuthCheck = FoLoginMapper.loginAdminData(param);
+			String emplyAuthCheck = (String) AuthCheck.get(0).get("emplyAuthTypCd");
+			
+			System.out.println("emplyAuthCheck : : " + emplyAuthCheck);
+			
 			session.setAttribute("loginInfo", result);	
+			session.setAttribute("emplyAuthCheck", emplyAuthCheck);
 		} 
 
 		return mv;

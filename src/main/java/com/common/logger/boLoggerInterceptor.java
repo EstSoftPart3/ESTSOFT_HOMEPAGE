@@ -1,13 +1,14 @@
 package com.common.logger;
 
+import java.io.PrintWriter;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
+import org.json.simple.JSONArray;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
@@ -45,21 +46,38 @@ public class boLoggerInterceptor extends HandlerInterceptorAdapter {
 		
 		//2021-08-07 Session Check : Ctrl + Shift + O를 눌러 해당 Package를 Import한다.
 		HttpSession session = request.getSession();
-		
-		log.debug("reqUrl:" + reqUrl);
-		
+
 		System.out.println("reqUrl : " + reqUrl);
 		
 		Object obj = session.getAttribute("loginInfo");
-
-		System.out.println("obj : " + obj);
+		
+		String authCheck = (String) session.getAttribute("emplyAuthCheck");
+		
+		System.out.println("세션 IN 계정 정보 : " + obj);
+		
+		System.out.println("권한 체크 : " + authCheck);
+		
+		
 		
 		if(obj == null) {
+
 			response.sendRedirect("/admin/login/loginPage.do");
+			
+			return false;
+
+		}else if(authCheck.equals("1")) {
+			
+			response.setContentType("text/html; charset=UTF-8");
+            PrintWriter out = response.getWriter();
+            out.println("<script>alert('현재 계정은 관리자 계정이 아닙니다. 강제 로그아웃 후 관리자 로그인 페이지로 넘어갑니다.'); location.href='/admin/login/loginPage.do';</script>");
+            out.flush();
+			
+			session.invalidate();
+			
 			return false;
 		}
 
-		
+
 		if (log.isDebugEnabled()) {
 			log.debug(
 				"======================================          START 00        ======================================");
