@@ -124,10 +124,18 @@
       	 	if(loginInfo.length == 1) {
       	 		
       	 		bootbox.alert({
-      				message: "로그인 성공했습니다.",
+      				message: "로그인 성공했습니다. 로그인 이전 페이지로 되돌아갑니다.",
       				locale: 'kr',
       				callback: function() {
-      					location.href = '/eep/mainPage.do';
+      					
+						var referrer = document.referrer;
+
+      					if(referrer.indexOf("/eep/mainPage.do") != -1){
+      						location.href = '/eep/mainPage.do';
+      					}else{
+      						location.href = referrer;
+      					}
+      					
       				} });
 
       	 	} else {

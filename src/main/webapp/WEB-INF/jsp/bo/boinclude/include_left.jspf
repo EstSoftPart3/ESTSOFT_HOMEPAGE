@@ -38,8 +38,8 @@
            class="brand-image elevation-12">
       <span class="brand-text font-weight-light" style="font-size: 16px;">주식회사 이에스티소프트</span><br>
       <span class="brand-text font-weight-light" style="font-size: 12px;">&nbsp;&nbsp;&nbsp;&nbsp;
-      	${loginInfo.loginInfo[0].emplyNm}(${loginInfo.loginInfo[0].emplyId}) 님 어서오세요.
-      	&nbsp;&nbsp;&nbsp;<button type="button" class="btn-sm-sm btn-danger" onclick="logout();">logout</button>
+      	${loginInfo.loginInfo[0].emplyNm}(${loginInfo.loginInfo[0].emplyId})님 접속
+      	&nbsp;&nbsp;<button type="button" class="btn-sm-sm btn-danger" onclick="logout();">logout</button>
       </span>
     </a>
     

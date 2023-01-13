@@ -43,20 +43,17 @@ public class boLoggerInterceptor extends HandlerInterceptorAdapter {
 	public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
 
 		String reqUrl = request.getRequestURI().toString();
-		
-		//2021-08-07 Session Check : Ctrl + Shift + O를 눌러 해당 Package를 Import한다.
-		HttpSession session = request.getSession();
-
-		System.out.println("reqUrl : " + reqUrl);
-		
+		HttpSession session = request.getSession(); //2021-08-07 Session Check : Ctrl + Shift + O를 눌러 해당 Package를 Import한다.
 		Object obj = session.getAttribute("loginInfo");
-		
 		String authCheck = (String) session.getAttribute("emplyAuthCheck");
-		
-		System.out.println("세션 IN 계정 정보 : " + obj);
-		
+		String path = request.getServletPath(); 
+		String query = request.getQueryString(); //파라미터가 있는지 없는지
+
+		/*System.out.println("세션 IN 계정 정보 : " + obj);
 		System.out.println("권한 체크 : " + authCheck);
-		
+		System.out.println("reqUrl : " + reqUrl);
+		System.out.println("path : " + path);
+		System.out.println("query : " + query);*/
 		
 		
 		if(obj == null) {
