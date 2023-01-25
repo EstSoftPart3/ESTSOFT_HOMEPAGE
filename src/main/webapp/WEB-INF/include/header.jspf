@@ -30,7 +30,9 @@
     <!-- Template Stylesheet -->
     <link href="/resources/fo/css/style.css" rel="stylesheet">
     
-       	<!-- 네이버 에디터 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.8.2/css/all.min.css">
+    
+    <!-- 네이버 에디터 -->
 	<link href="/resources/navereditor/css/smart_editor2.css" rel="stylesheet" type="text/css">
 	<script type="text/javascript" src="/resources/navereditor/js/jindo.min.js" charset="utf-8"></script>
 	<script type="text/javascript" src="/resources/navereditor/js/jindo_component.js" charset="utf-8"></script>

@@ -54,10 +54,12 @@
 
 				<c:if test="${sessionScope.loginInfo.loginInfo[0] != null}">
 	                <div class="nav-item dropdown">
-	                	<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown"><b>${loginInfo.loginInfo[0].emplyNm}</b>(${loginInfo.loginInfo[0].emplyId})님 안녕하세요</a>
+	                	<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown"><i class="fa fa-network-wired"></i> <b>${loginInfo.loginInfo[0].emplyNm}</b>(${loginInfo.loginInfo[0].emplyId})님 안녕하세요</a>
 	                	<div class="dropdown-menu shadow-sm m-0">
 	                        <!-- <button type="button" class="btn-sm-sm btn-danger" onclick="logout();">logout</button> -->
-	                        <a class="dropdown-item" style="color: red;" href="javascript:logout()">로그아웃</a>
+
+	                        <a class="dropdown-item" style="color: blue;" href="#"><i class="fa fa-user"></i> 마이페이지</a>
+	                        <a class="dropdown-item" style="color: red;" href="javascript:logout()"><i class="fa fa-paper-plane"></i> 로그아웃</a>
 	                    </div>
 	                </div>
                 </c:if>

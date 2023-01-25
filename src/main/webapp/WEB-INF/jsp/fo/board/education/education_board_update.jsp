@@ -45,10 +45,26 @@ th, td {
 					
 					<nav aria-label="breadcrumb animated slideInDown">
                         <ol class="breadcrumb mb-0 menu">
-                            <li class="breadcrumb-item"><a href="#">공지사항</a></li>
-                            <li class="breadcrumb-item"><a href="#">자유게시판</a></li>
-                            <li class="breadcrumb-item"><a href="#">기술문의</a></li>
-                            <li class="breadcrumb-item"><a href="#">교육일정</a></li>
+                            <li class="breadcrumb-item">
+	                            <a style="text-decoration: none;" href="/eep/board/notice/openNoticeBoardList.do">
+	                            	<b>공지사항</b>
+	                            </a>
+                            </li>
+                            <li class="breadcrumb-item">
+	                            <a style="text-decoration: none;" href="/eep/board/freedom/openFreedomBoardList.do">
+	                            	<b>자유게시판</b>
+	                            </a>
+                            </li>
+                            <li class="breadcrumb-item">
+	                            <a style="text-decoration: none;" href="/eep/board/technology/openTechnologyBoardList.do">
+	                            	<b>기술문의</b>
+	                            </a>
+                            </li>
+                            <li class="breadcrumb-item">
+	                            <a style="text-decoration: none;" href="/eep/board/education/openEducationBoardList.do">
+	                            	<b>교육일정</b>
+	                            </a>
+                            </li>
                         </ol>
                     </nav>
                     

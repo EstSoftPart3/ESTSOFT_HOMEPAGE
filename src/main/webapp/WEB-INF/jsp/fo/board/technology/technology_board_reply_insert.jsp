@@ -41,7 +41,7 @@ th, td {
 		<input type="hidden" name="brdReRep" id="brdReRep" value="<%=brdReRep%>">
 		<input type="hidden" name="brdReLev" id="brdReLev" value="<%=brdReLev%>">
 		<input type="hidden" name="brdReOrd" id="brdReOrd" value="<%=brdReOrd%>">
-        <div class="container py-5">
+         <div class="container py-5">
             <div class="row g-5 align-items-center">
                 <div class="col-lg-6">
                     <h1 class="display-4 mb-3 animated slideInDown">EST COMMUNITY</h1>
@@ -53,10 +53,26 @@ th, td {
 					
 					<nav aria-label="breadcrumb animated slideInDown">
                         <ol class="breadcrumb mb-0 menu">
-                            <li class="breadcrumb-item"><a href="#">공지사항</a></li>
-                            <li class="breadcrumb-item"><a href="#">자유게시판</a></li>
-                            <li class="breadcrumb-item"><a href="#">기술문의</a></li>
-                            <li class="breadcrumb-item"><a href="#">교육일정</a></li>
+                            <li class="breadcrumb-item">
+	                            <a style="text-decoration: none;" href="/eep/board/notice/openNoticeBoardList.do">
+	                            	<b>공지사항</b>
+	                            </a>
+                            </li>
+                            <li class="breadcrumb-item">
+	                            <a style="text-decoration: none;" href="/eep/board/freedom/openFreedomBoardList.do">
+	                            	<b>자유게시판</b>
+	                            </a>
+                            </li>
+                            <li class="breadcrumb-item">
+	                            <a style="text-decoration: none;" href="/eep/board/technology/openTechnologyBoardList.do">
+	                            	<b>기술문의</b>
+	                            </a>
+                            </li>
+                            <li class="breadcrumb-item">
+	                            <a style="text-decoration: none;" href="/eep/board/education/openEducationBoardList.do">
+	                            	<b>교육일정</b>
+	                            </a>
+                            </li>
                         </ol>
                     </nav>
                     
