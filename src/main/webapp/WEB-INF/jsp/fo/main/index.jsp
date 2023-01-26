@@ -12,6 +12,42 @@
 th, td {
  border: 0px solid #e9ecef;
 }	
+.teamModal {
+	display: none;
+	z-index: 500;
+	width: 100%;
+	height: 100vh;
+	position: fixed;
+	top: 0;
+	left: 0;
+	background-color: rgba(0, 0, 0, 0.3);
+}
+
+.teamModal button {
+	position: absolute;
+	top: 3rem;
+	right: 3rem;
+	background: transparent;
+	border: 0;
+	color: #ffffff;
+	font-size: 3rem;
+}
+
+.teamModalBox {
+	position: relative;
+	top: 40%;
+	left: 50%;
+	transform: translate(-50%, -20%);
+	background-color: #555252;
+	width: 40%;
+	height: auto;
+	text-align: center;
+}
+
+.teamModalBox img {
+	width: 100%;
+}
+
 </style>
 
 <body>
@@ -314,77 +350,107 @@ th, td {
             <div class="row g-3">
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
                     <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/team/t7.jpg" style="width:200px;height:150px;">
+                    	<div class="imgC">
+                        	<img src="/resources/fo/team/t7.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
                     <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/team/t8.jpg" style="width:200px;height:150px;">
+                    	<div class="imgC">
+                        	<img src="/resources/fo/team/t8.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.3s">
                     <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/team/t9.jpg" style="width:200px;height:150px;">
+                    	<div class="imgC">
+                        	<img src="/resources/fo/team/t9.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/team/t10.jpg" style="width:200px;height:150px;">
+                   		<div class="imgC">
+                        	<img src="/resources/fo/team/t10.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
-                
-                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
-                   <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/team/t1.jpg" style="width:200px;height:150px;">
-                    </div>
-                </div>
-                
-                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
-                   <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/team/t2.jpg" style="width:200px;height:150px;">
-                    </div>
-                </div>
-                
-                
+
                  <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
                     <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/team/t10.jpg" style="width:200px;height:150px;">
+                    	<div class="imgC">
+                        	<img src="/resources/fo/team/t10.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
                     <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/team/t11.jpg" style="width:200px;height:150px;">
+                    	<div class="imgC">
+                        	<img src="/resources/fo/team/t11.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.3s">
                     <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/team/t12.jpg" style="width:200px;height:150px;">
+                    	<div class="imgC">
+                        	<img src="/resources/fo/team/t12.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/team/t13.jpg" style="width:200px;height:150px;">
+                   		<div class="imgC">
+                        	<img src="/resources/fo/team/t13.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
                 
                  <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/team/t14.jpg" style="width:200px;height:150px;">
+                   		<div class="imgC">
+                        	<img src="/resources/fo/team/t14.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
                 
                  <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/team/t15.jpg" style="width:200px;height:150px;">
+                   		<div class="imgC">
+                        	<img src="/resources/fo/team/t15.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
-               
+                
+               <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
+                   <div class="bg-white text-center p-3">
+                   		<div class="imgC">
+                        	<img src="/resources/fo/team/t17.jpg" style="width:200px;height:150px;">
+                        </div>
+                    </div>
+                </div>
+                
+                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
+                   <div class="bg-white text-center p-3">
+                   		<div class="imgC">
+                        	<img src="/resources/fo/team/t18.jpg" style="width:200px;height:150px;">
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
     <!--TEAM End -->
     
-    
+   	<!-- 팝업 될 곳 -->
+	<div class="teamModal">
+		<button>&times;</button>
+		<div class="teamModalBox">
+			<img src="" alt="">
+			<!-- <p></p> -->
+		</div>
+	</div>
+	
      <div class="container-xxl bg-light">
         <div class="container py-5">
         
@@ -396,68 +462,92 @@ th, td {
              <div class="row g-3">
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
                     <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/img/O001.jpg" style="width:200px;height:150px;">
+                    	<div class="imgC">
+                        	<img src="/resources/fo/img/O001.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
                     <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/img/O002.jpg" style="width:200px;height:150px;">
+                    	<div class="imgC">
+                        	<img src="/resources/fo/img/O002.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.3s">
                     <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/img/O003.jpg" style="width:200px;height:150px;">
+                   		<div class="imgC">
+                        	<img src="/resources/fo/img/O003.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/img/O004.jpg" style="width:200px;height:150px;">
+                   		<div class="imgC">
+                        	<img src="/resources/fo/img/O004.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
                 
                  <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/img/O005.jpg" style="width:200px;height:150px;">
+                   		<div class="imgC">
+                        	<img src="/resources/fo/img/O005.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
                 
                  <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/img/O006.jpg" style="width:200px;height:150px;">
+                   		<div class="imgC">
+                        	<img src="/resources/fo/img/O006.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
                 
                 
                  <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
                     <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/img/O007.jpg" style="width:200px;height:150px;">
+                    	<div class="imgC">
+                        	<img src="/resources/fo/img/O007.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
                     <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/img/O008.jpg" style="width:200px;height:150px;">
+                    	<div class="imgC">
+                        	<img src="/resources/fo/img/O008.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.3s">
                     <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/img/O009.jpg" style="width:200px;height:150px;">
+                    	<div class="imgC">
+                        	<img src="/resources/fo/img/O009.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/img/O010.jpg" style="width:200px;height:150px;">
+                   		<div class="imgC">
+                        	<img src="/resources/fo/img/O010.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
                 
                  <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/img/O011.jpg" style="width:200px;height:150px;">
+                   		<div class="imgC">
+                        	<img src="/resources/fo/img/O011.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
                 
                  <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
-                        <img src="/resources/fo/img/O012.jpg" style="width:200px;height:150px;">
+                   		<div class="imgC">
+                        	<img src="/resources/fo/img/O012.jpg" style="width:200px;height:150px;">
+                        </div>
                     </div>
                 </div>
                
@@ -515,6 +605,33 @@ th, td {
 
     	}
 	}
+
+	//이미지 클릭시 해당 이미지 모달
+ 	$(".imgC").click(function(){
+ 		$(".teamModal").show();
+ 		// 해당 이미지 가겨오기
+ 		var imgSrc = $(this).children("img").attr("src");
+ 		var imgAlt = $(this).children("img").attr("alt");
+ 		$(".teamModalBox img").attr("src", imgSrc);
+ 		$(".teamModalBox img").attr("alt", imgAlt);
+ 		
+    	// 해당 이미지에 alt값을 가져와 제목으로
+ 		//$(".modalBox p").text(imgAlt);
+ 	});
+ 	
+ 	//.modal안에 button을 클릭하면 .modal닫기
+ 	$(".teamModal button").click(function(){
+ 		$(".teamModal").hide();
+ 	});
+ 	
+ 	//.modal밖에 클릭시 닫힘
+ 	$(".teamModal").click(function (e) {
+     if (e.target.className != "teamModal") {
+       return false;
+     } else {
+       $(".teamModal").hide();
+     }
+   });
     
     //Input Box Null Check
     function isEmpty(str){
