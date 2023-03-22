@@ -58,7 +58,7 @@
 	                	<div class="dropdown-menu shadow-sm m-0">
 	                        <!-- <button type="button" class="btn-sm-sm btn-danger" onclick="logout();">logout</button> -->
 
-	                        <a class="dropdown-item" style="color: blue;" href="#"><i class="fa fa-user"></i> 마이페이지</a>
+	                        <!-- <a class="dropdown-item" style="color: blue;" href="#"><i class="fa fa-user"></i> 마이페이지</a> -->
 	                        <a class="dropdown-item" style="color: red;" href="javascript:logout()"><i class="fa fa-paper-plane"></i> 로그아웃</a>
 	                    </div>
 	                </div>

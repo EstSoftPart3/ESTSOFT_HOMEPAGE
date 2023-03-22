@@ -104,14 +104,14 @@
             <ul class="nav nav-treeview">
             
               <li class="nav-item">
-                <a href="/admin/member/memberList" class="nav-link">
+                <a href="/admin/member/memberList.do" class="nav-link">
                   <i class="far fa-circle nav-icon sTitle"></i>
                   <p class="sTitle">직원관리</p>
                 </a>
               </li>
             
               <li class="nav-item">
-                <a href="/admin/member/artistProList" class="nav-link">
+                <a href="/admin/member/outMemberList.do" class="nav-link">
                   <i class="far fa-circle nav-icon sTitle"></i>
                   <p class="sTitle">탈퇴관리</p>
                 </a>
@@ -129,7 +129,7 @@
 	            </a>
 		            <ul class="nav nav-treeview">
 		              <li class="nav-item">
-		                <a href="/admin/board/boardList?brdTypCd=NT" class="nav-link">
+		                <a href="/admin/code/openCodeBoardList.do" class="nav-link">
 		                  <i class="far fa-circle nav-icon sTitle"></i>
 		                  <p class="sTitle">공통코드</p>
 		                </a>

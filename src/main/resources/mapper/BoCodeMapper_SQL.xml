@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+            
+<mapper namespace="com.eep.mapper.BoCodeMapper">
+
+	<!-- 공통코드 리스트 -->
+	<select id="CodeList" resultType="hashMap">
+		SET @ROWNUM:=0;
+        SELECT
+        	  @ROWNUM:=@ROWNUM+1 AS ROWNUM
+          	, COMN_CD_SQ 
+          	, COMN_CD   
+			, COMN_CD_NM 	
+        FROM TB_EEP_COMN_CD_M
+        WHERE DEL_YN = 'N'
+    </select>
+    
+   <!-- 공통코드 등록 -->
+   <insert id="CodeInsert" parameterType="hashMap">
+    	INSERT INTO TB_EEP_COMN_CD_M
+        (
+        	  COMN_CD
+			, COMN_CD_NM
+			, COMN_CD_ORD
+			, NOTE
+			, REG_EMPLY_SQ
+			, REG_DT
+			, USE_YN
+			, DEL_YN
+		) 
+        VALUES
+        (
+        	  #{COMN_CD}
+			, #{COMN_CD_NM}
+			, #{COMN_CD_ORD}
+			, #{NOTE}
+			, #{REG_EMPLY_SQ}
+			, NOW()
+			, 'Y'
+			, 'N'
+		)
+    </insert>
+    
+    <!-- 공통코드 수정 -->
+    <update id="CodeUpdate" parameterType="hashMap">
+   		UPDATE TB_EEP_COMN_CD_M
+   		<trim prefix="SET" suffixOverrides=",">
+      		<if test="COMN_CD_NM         != null">COMN_CD_NM =#{COMN_CD_NM},</if>
+      		<if test="COMN_CD         != null">COMN_CD =#{COMN_CD},</if>
+      		UPDT_EMPLY_SQ = #{UPDT_EMPLY_SQ},
+			UPDT_DT = NOW()
+  		</trim>
+   		WHERE COMN_CD_SQ = #{COMN_CD_SQ}
+	</update>
+	
+   <!-- 공통코드 삭제 -->
+   <delete id="CodeDelete"> 
+   		UPDATE  TB_EEP_COMN_CD_M
+      	SET 	  DEL_YN = 'Y'
+      			, UPDT_EMPLY_SQ = #{UPDT_EMPLY_SQ}
+      			, UPDT_DT = NOW()
+   		WHERE COMN_CD_SQ = #{COMN_CD_SQ} 
+   </delete>
+   
+   <!-- 공통 서브코드 리스트 -->
+	<select id="SubCodeList" resultType="hashMap">
+        SELECT
+          	  COMN_CD_SQ 
+          	, COMN_DTL_CD_SQ  
+			, COMN_DTL_CD_NM 
+			, COMN_DTL_CD 
+			, NOTE 			
+        FROM TB_EEP_COMN_DTL_CD_S
+        WHERE COMN_CD_SQ = #{COMN_CD_SQ}
+        AND DEL_YN = 'N'
+    </select>
+    
+     <!-- 공통 서브코드 등록 -->
+   <insert id="SubCodeInsert" parameterType="hashMap">
+    	INSERT INTO TB_EEP_COMN_DTL_CD_S
+        (
+        	  COMN_CD_SQ
+			, COMN_DTL_CD
+			, COMN_DTL_CD_NM
+			, NOTE
+			, REG_EMPLY_SQ
+			, REG_DT
+			, USE_YN
+			, DEL_YN
+		) 
+        VALUES
+        (
+        	  #{COMN_CD_SQ}
+        	, #{COMN_DTL_CD}
+			, #{COMN_DTL_CD_NM}
+			, #{NOTE}
+			, #{REG_EMPLY_SQ}
+			, NOW()
+			, 'Y'
+			, 'N'
+		)
+    </insert>
+    
+    <!-- 공통 서브코드 수정 -->
+    <update id="SubCodeUpdate" parameterType="hashMap">
+   		UPDATE  TB_EEP_COMN_DTL_CD_S 
+   		<trim prefix="SET" suffixOverrides=",">
+      		<if test="COMN_DTL_CD  != null">COMN_DTL_CD =#{COMN_DTL_CD},</if>
+      		<if test="COMN_DTL_CD_NM != null">COMN_DTL_CD_NM =#{COMN_DTL_CD_NM},</if>
+      		<if test="NOTE != null">NOTE =#{NOTE},</if>
+      		UPDT_EMPLY_SQ = #{UPDT_EMPLY_SQ},
+			UPDT_DT = NOW()
+  		</trim>
+   		WHERE COMN_DTL_CD_SQ = #{COMN_DTL_CD_SQ}
+	</update>
+	
+   <!-- 공통 서브코드 삭제 -->
+   <delete id="SubCodeDelete"> 
+   		UPDATE  TB_EEP_COMN_DTL_CD_S 
+      	SET 	DEL_YN = 'Y'
+      		  , UPDT_EMPLY_SQ = #{UPDT_EMPLY_SQ}
+			  , UPDT_DT = NOW()
+   		WHERE COMN_DTL_CD_SQ = #{COMN_DTL_CD_SQ} 
+   </delete>
+ 
+</mapper>

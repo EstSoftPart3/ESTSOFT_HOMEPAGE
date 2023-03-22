@@ -137,14 +137,39 @@ th, td {
 		
 		<br>
 
+          <!-- 댓글 리스트 -->
+        <div class="text-left mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 900px;">
+             <h1 class="display-3" style="font-size:14px;"><b>※ 댓글 리스트</b></h1>
         </div>
-        
+         <div id="commentList">
+         </div>
+         
+         <!-- 댓글 입력 -->
+         <div class="text-left mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 900px;padding-top:30px;">
+             <h1 class="display-3" style="font-size:14px;"><b>※ 댓글 입력</b></h1>
+        </div>
+		<table class="table table-bordered" style="max-width: 900px;font-size:15px;border-color:#ced4da" align="center">
+			<tr>
+				<td style="width:90%">
+					<textarea class="form-control" id="commentTextarea" rows="7" style="font-size:12px;height:70px;"></textarea>
+				</td>
+				<td style="vertical-align: middle;border-right-style: none;">
+					<button type="button" class="btn btn-secondary btn-lg" onclick="commentInsert();">확인</button>
+				</td>
+			</tr>
+		</table>
+		
+		
+        </div>
+		
          <div class="col-12 text-center" style="padding-top:15px;">
          	 <button type="button" class="btn btn-secondary btn-sm" onclick="freedomBoardList();">리스트</button>
          	 <button type="button" class="btn btn-secondary btn-sm" onclick="freedomBoardRplyInsertPage();">답글</button>
 	         <button type="button" class="btn btn-secondary btn-sm" onclick="freedomUpdatePage();">수정</button>
 	         <button type="button" class="btn btn-secondary btn-sm" onclick="freedomBoardDelete();">삭제</button>
          </div>
+         
+       
     </div>
     <!-- FAQs Start -->
     
@@ -155,11 +180,12 @@ th, td {
    	   var emplySq = "<c:out value = '${loginInfo.loginInfo[0].emplySq}'/>"; //직원순번
 	   var brdSq       = $('#brdSq').val();   //공지사항 순번
 	   var dataContent = {};				  //데이터 처리 리스트
+	   var commentList = {};				  //댓글 리스트
 	   
 	   $(document).ready(function(){
 
 		   freedomBoardDetailData(brdSq);
-			
+			commentListData(brdSq); //댓글 조회
 	   });
 	   
 	   function freedomBoardDetailData(brdSq) {
@@ -332,7 +358,251 @@ th, td {
 	       else
 	           return false ;
 	   }
-
+		
+		//댓글 조회
+		function commentListData(brdSq){
+			
+			$.ajax({
+				type: "post",
+				url: "/eep/comment/commentListData.do",
+				data:{
+					brdSq : brdSq
+				},
+				success : function(data){
+					commentList = data.commentData.commentInfo;
+					var body = $("#commentList");
+					body.empty();
+					var str = "";
+					if(commentList.length > 0){
+						for(i = 0; i < commentList.length; i++){
+							var cmmntSq 		= commentList[i].cmmntSq; 		//댓글 번호
+							var cmmntEmplySq 	= commentList[i].emplySq;		//작성자 번호
+							var cmmntCntnt 		= commentList[i].cmmntCntnt;	//댓글 내용
+							var cmmntRegDt 		= commentList[i].cmmntRegDt.toString();	//댓글 작성일
+							var cmmntNm 		= commentList[i].emplyNm;		//작성자 이름
+							var cmmntUpdtDt		= commentList[i].cmmntUpdtDt;	//수정 날짜
+							console.log(cmmntSq);
+							str += '<table class="table table-bordered" style="max-width: 900px;font-size:14px;border-color:#ced4da" align="center">';
+							str += '<tr style="background-color:#efefef;">';
+							str += '<td colspan="3">';
+							str += '<div style="float:left;width:80%">';
+							str += '작성자 : ' + cmmntNm;
+							str += '</div>';
+							str += '<div style="float:left">';
+							//수정 날짜가 존재할 시 수정일로 표기
+							if(cmmntUpdtDt == null){
+								str += '작성일 : ' + cmmntRegDt.substr(0, 4) + '년' + cmmntRegDt.substr(5, 2) + '월' + cmmntRegDt.substr(8, 2) + '일';
+							}else{
+								str += '수정일 : ' + cmmntUpdtDt.substr(0, 4) + '년' + cmmntUpdtDt.substr(5, 2) + '월' + cmmntUpdtDt.substr(8, 2) + '일';
+							}
+							str += '</div>';
+							str += '</td>';
+							str += '</tr>';
+							str += '<tr>';
+							str += '<td colspan="2" style="height:70px;width:90%">';
+							//작성자일 경우 바로 수정 가능
+							if(cmmntEmplySq == emplySq){
+								str += '<textarea class="form-control" id="commentTextarea' + cmmntSq + '" rows="7" style="font-size:12px;height:70px;">';
+								str += cmmntCntnt;
+								str += '</textarea>'
+							}else{
+								str += cmmntCntnt;
+							}
+							str += '</td>';
+							str += '<td style="vertical-align: middle;text-align:center;">';
+							//작성자, 최고관리자일 경우 수정, 삭제 버튼 생성
+							if(cmmntEmplySq == emplySq){
+								str += '<button type="button" class="btn btn-secondary btn-sm" onclick="commentUpdate('+ cmmntSq + ');">수정</button>';
+								str += '<br><br>';
+								str += '<button type="button" class="btn btn-secondary btn-sm" onclick="commentDelete('+ cmmntSq + ');">삭제</button>';
+							}
+							str += '</td>';
+							str += '</tr>';
+							str += '</table>';
+							str += '<br>';
+						}
+					}else {
+						str += '<table class="table table-bordered" style="max-width: 900px;font-size:14px;border-color:#ced4da" align="center">';
+						str += "<tr>";
+		                str += "<td colspan='4'>등록된 글이 존재하지 않습니다.</td>";
+		                str += "<tr>";
+		                str += '</table>';
+					}
+					
+					body.html(str);
+					
+					console.log("ajax 조회 성공");
+				}
+			})
+		}
+		
+		//댓글 등록
+		function commentInsert(){
+			
+			var cmmntCntnt = $('#commentTextarea').val();
+			
+			if(emplySq == null){
+				bootbox.alert({
+					 message: "로그인 후 사용가능합니다.",
+					 locale: 'kr',
+					 callback: function() {
+					 		//$("#searchOption").focus();
+				     } });
+				return false;
+			}
+			if(cmmntCntnt == null || cmmntCntnt == ''){
+				bootbox.alert({
+					 message: "댓글을 입력해주세요.",
+					 locale: 'kr',
+					 callback: function() {
+					 		$("#commentTextarea").focus();
+				     } });
+				return false;
+			}
+			
+			$.ajax({
+				type: "post",
+				url: "/eep/comment/commentInsert.do",
+				data:{
+					brdSq : brdSq			//게시글 번호
+					,emplySq : emplySq		//작성자 번호
+					,cmmntCntnt : cmmntCntnt	//댓글 내용
+				},
+				success : function(data){
+					if(data == 1){
+						bootbox.alert({
+							 message: "댓글 입력이 완료됬습니다.",
+							 locale: 'kr',
+							 callback: function() {
+							 		//$("#commentTextarea").focus();
+								 	location.reload();
+						     } });	
+					}else{
+						bootbox.alert({
+							 message: "댓글 입력 중 오류사항이 발생했습니다. 관리자에게 문의하세요.",
+							 locale: 'kr',
+							 callback: function() {
+							 		//$("#commentTextarea").focus();
+						     } });
+						return false;
+					}
+					
+				}
+			}) 
+			
+			
+		}
+		
+		//댓글 수정
+		//response cmmntSq 댓글 번호
+		function commentUpdate(param){
+			cmmntCntnt = $('#commentTextarea' + param).val();
+			
+			if(cmmntCntnt == null || cmmntCntnt == ''){
+				bootbox.alert({
+					 message: "수정할 내용을 입력해주세요.",
+					 locale: 'kr',
+					 callback: function() {
+					 		$("#commentTextarea").focus();
+				     } });
+				return false;
+			}else{
+				//변경 사항이 있는지 확인
+				for(i = 0; i < commentList.length; i++){
+					if(commentList[i].cmmntSq == param){
+						if(commentList[i].cmmntCntnt == cmmntCntnt){
+							bootbox.alert({
+								 message: "수정할 내용이 없습니다. 수정사항을 입력해주세요.",
+								 locale: 'kr',
+								 callback: function() {
+								 		//$("#commentTextarea").focus();
+							     } });
+							
+							return false;
+						}
+					}
+				}
+			}
+				
+			
+			
+			
+			if(confirm('정말 수정하시겠습니까?')){
+				$.ajax({
+					type: "post",
+					url: "/eep/comment/commentUpdate.do",
+					data:{
+						cmmntSq : param				//댓글 번호
+						,brdSq : brdSq				//게시글 번호
+						,emplySq : emplySq			//작성자 번호
+						,cmmntCntnt : cmmntCntnt	//댓글 내용
+					},
+					success : function(data){
+						if(data == 2){
+							bootbox.alert({
+								 message: "댓글 수정이 완료됬습니다.",
+								 locale: 'kr',
+								 callback: function() {
+								 		//$("#commentTextarea").focus();
+									 	location.reload();
+							     } });
+							
+						}else{
+							bootbox.alert({
+								 message: "댓글 수정 중 오류사항이 발생했습니다. 관리자에게 문의하세요.",
+								 locale: 'kr',
+								 callback: function() {
+								 		//$("#commentTextarea").focus();
+							     } });
+							return false;
+						}
+						
+					}
+				})
+			}
+			
+			
+		}
+		
+		//댓글 삭제
+		//response cmmntSq 댓글 번호
+		function commentDelete(param){
+			cmmntCntnt = $('#commentTextarea' + param).val();
+			
+			if(confirm('정말 삭제하시겠습니까?')){
+				$.ajax({
+					type: "post",
+					url: "/eep/comment/commentDelete.do",
+					data:{
+						cmmntSq : param				//댓글 번호
+						,brdSq : brdSq				//게시글 번호
+						,emplySq : emplySq			//작성자 번호
+						,cmmntCntnt : cmmntCntnt	//댓글 내용
+						},
+					success : function(data){
+						if(data == 2){
+							bootbox.alert({
+								 message: "댓글 삭제이 완료됬습니다.",
+								 locale: 'kr',
+								 callback: function() {
+								 		//$("#commentTextarea").focus();
+										location.reload();
+							     } });
+							
+						}else{
+							bootbox.alert({
+								 message: "댓글 삭제 중 오류사항이 발생했습니다. 관리자에게 문의하세요.",
+								 locale: 'kr',
+								 callback: function() {
+								 		//$("#commentTextarea").focus();
+							     } });
+							return false;
+						}
+						
+					}
+				})
+			}
+		}
 
     </script>
     

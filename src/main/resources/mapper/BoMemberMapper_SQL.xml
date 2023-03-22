@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.eep.mapper.BoMemberMapper">
+	
+    <!-- 직원 목록 -->
+	<select id="memberList" resultType="hashMap">
+		SELECT
+			EMPLY_SQ	          AS mbrSq
+			,EMPLY_ID             AS mbrId
+			,EMPLY_EMAIL		  AS mbrEmail
+			,EMPLY_PW             AS mbrPasswrd
+			,EMPLY_NM             AS mbrNm
+			,(
+			
+				CASE 
+					WHEN EMPLY_AUTH_TYP_CD = '1' THEN '일반'
+					WHEN EMPLY_AUTH_TYP_CD = '2' THEN '관리자' 
+					WHEN EMPLY_AUTH_TYP_CD IS NULL THEN '-'
+				END
+			 ) AS mbrAuthCd
+			,(
+			
+				CASE 
+					WHEN EMPLY_SEX_TYP_CD = 'M' THEN '남'
+					WHEN EMPLY_SEX_TYP_CD = 'F' THEN '여' 
+					WHEN EMPLY_SEX_TYP_CD IS NULL THEN '-'
+				END
+			 ) AS mbrSexCd
+			,EMPLY_HOME_ADDR      AS mbrHomeAddr
+			,EMPLY_PH_NUM         AS mbrPhNum
+			,EMPLY_RRN			  AS mbrRrn	
+			,DATE_FORMAT(EMPLY_REG_DT,'%Y-%m-%d')  AS regDt
+			,DATE_FORMAT(EMPLY_UPDT_DT,'%Y-%m-%d')  AS updtDt
+			,USE_YN               AS useYn
+			,(
+				CASE 
+					WHEN DEL_YN			 = 'Y' THEN '탈퇴함'
+					WHEN DEL_YN			 = 'N' THEN '탈퇴안함' 
+					WHEN EMPLY_AUTH_TYP_CD IS NULL THEN '-'
+				END
+			 )AS delYn
+        FROM
+            TB_EEP_EMPLY_M A
+        WHERE 1=1
+         
+          <if test="memberGubun != '' and memberGubun != null">
+          	AND A.EMPLY_AUTH_TYP_CD = #{memberGubun}
+          </if>
+<!--           <if test="memberOut != '' and memberOut != null"> -->
+<!--           	AND A.DEL_YN = #{delYn} -->
+<!--           </if> -->
+          <if test="searchWord != null and searchWord !=''">
+	          <if test="searchGubun == 'mbrNm' and searchWord != null">
+	          	AND A.EMPLY_NM LIKE CONCAT('%',#{searchWord},'%')
+	          </if>
+	          <if test="searchGubun == 'mbrId' and searchWord != null">
+	          	AND A.EMPLY_ID LIKE CONCAT('%',#{searchWord},'%')
+	          </if>
+	          <if test="searchGubun == 'mbrEmail' and searchWord != null">
+	          	AND A.EMPLY_EMAIL LIKE CONCAT('%',#{searchWord},'%')
+	          </if>
+	          <if test="searchGubun == 'mbrPhNum' and searchWord != null">
+	          	AND A.EMPLY_PH_NUM LIKE CONCAT('%',#{searchWord},'%')
+	          </if>
+	       </if>
+	       <if test="delYn != null">
+	       		AND A.DEL_YN = #{delYn}
+	       </if>
+      	ORDER BY EMPLY_SQ DESC
+    </select>
+    
+    <!-- 직원 상세 -->
+    <select id="memberContent" resultType="hashMap">
+      	SELECT
+           EMPLY_SQ	          AS mbrSq
+			,EMPLY_ID             AS mbrId
+			,EMPLY_EMAIL		  AS mbrEmail
+			,EMPLY_PW             AS mbrPasswrd
+			,EMPLY_NM             AS mbrNm
+			,(
+				CASE 
+					WHEN EMPLY_AUTH_TYP_CD = '1' THEN '일반'
+					WHEN EMPLY_AUTH_TYP_CD = '2' THEN '관리자' 
+					WHEN EMPLY_AUTH_TYP_CD IS NULL THEN '-'
+				END
+			 ) AS mbrAuthCd
+			,(
+				CASE 
+					WHEN EMPLY_SEX_TYP_CD = 'M' THEN '남'
+					WHEN EMPLY_SEX_TYP_CD = 'F' THEN '여' 
+					WHEN EMPLY_SEX_TYP_CD IS NULL THEN '-'
+				END
+			 ) AS mbrSexCd
+			,EMPLY_HOME_ADDR      AS mbrHomeAddr
+			,EMPLY_PH_NUM         AS mbrPhNum
+			,EMPLY_RRN			  AS mbrRrn	
+			,DATE_FORMAT(EMPLY_REG_DT,'%Y-%m-%d')  AS regDt
+			,DATE_FORMAT(EMPLY_UPDT_DT,'%Y-%m-%d')  AS updtDt
+			,DEL_YN				  AS delYn
+			,(
+				CASE
+					WHEN USE_YN = 'Y' THEN '사용중'
+					WHEN USE_YN = 'N' THEN '사용중지'
+				END			
+			) AS useYn
+        FROM
+            TB_EEP_EMPLY_M A 
+        WHERE 1=1
+         AND A.EMPLY_SQ = #{mbrSq}
+    </select>
+  
+   <!-- 직원등록 -->
+   <insert id="memberInsert" parameterType="hashMap">
+    	INSERT INTO TB_EEP_EMPLY_M
+        (
+			EMPLY_ID
+			,EMPLY_PW
+			,EMPLY_NM
+			,EMPLY_AUTH_TYP_CD
+			,EMPLY_SEX_TYP_CD
+			,EMPLY_HOME_ADDR
+			,EMPLY_PH_NUM
+			,EMPLY_RRN
+			,EMPLY_EMAIL
+			,USE_YN
+			,EMPLY_REG_DT
+       	) 
+        VALUES
+        (
+			#{mbrId}
+			,#{mbrPasswrd}
+			,#{mbrNm}
+			,#{mbrAuthCd}
+			,#{mbrSexCd}
+			,#{mbrHomeAddr}
+			,#{mbrPhNum}
+			,#{mbrRrn}
+			,#{mbrEmail}
+			,#{useYn}
+			,NOW()
+        )
+    </insert>
+    
+    <!-- 직원 수정 -->
+    <update id="memberUpdate" parameterType="hashMap">
+   		UPDATE TB_EEP_EMPLY_M
+   		<trim prefix="SET" suffixOverrides=",">
+      		<if test="authSq         != null">EMPLY_AUTH_TYP_CD =#{authSq},</if>
+      		<if test="mbrId         != null">EMPLY_ID =#{mbrId},</if>
+      		<if test="mbrNm         != null">EMPLY_NM =#{mbrNm},</if>
+			<if test="mbrEmail       != null">EMPLY_EMAIL =#{mbrEmail},</if>
+<!-- 			<if test="mbrPasswrd     != null">MBR_PASSWRD =#{mbrPasswrd},</if> -->
+			<if test="mbrSexCd       != null">EMPLY_SEX_TYP_CD = #{mbrSexCd},</if>
+			<if test="mbrHomeAddr    != null">EMPLY_HOME_ADDR = #{mbrHomeAddr},</if>
+			<if test="mbrPhNum       != null">EMPLY_PH_NUM = #{mbrPhNum},</if>
+			<if test="mbrRrn       != null">EMPLY_RRN = #{mbrRrn},</if>
+			EMPLY_UPDT_DT = NOW(),
+			<if test="useYn          != null">USE_YN = #{useYn},</if>
+   		</trim>
+   		WHERE EMPLY_SQ = #{mbrSq}
+	</update>
+	
+	<!-- 직원 비밀번호 초기화 -->
+	<update id="memberPasswdClear" parameterType="hashMap">
+   		UPDATE TB_EEP_EMPLY_M
+   		<trim prefix="SET" suffixOverrides=",">
+			EMPLY_PW =#{mbrPasswrd},
+			EMPLY_UPDT_DT = NOW(),
+   		</trim>
+   		WHERE EMPLY_SQ = #{mbrSq}
+	</update>
+	
+	<!-- 직원 탈퇴, 복구 -->
+	<update id="outMember" parameterType="hashMap">
+   		UPDATE TB_EEP_EMPLY_M
+   		SET
+			DEL_YN = #{delYn},
+			EMPLY_UPDT_DT = NOW()
+   		WHERE EMPLY_SQ = #{mbrSq}
+	</update>
+	
+	
+</mapper>
