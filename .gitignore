@@ -1,6 +1,6 @@
-target/erp.war
-src/main/webapp/resources/fo/img/est000_v1.png
-target/classes/com/common/logger/LoggerInterceptor.class
-target/classes/com/common/pager/pagerMaster.class
-target/classes/com/eep/bo/login/vo/LoginVo.class
-target/classes/com/eep/mapper/BoLoginMapper.class
+target/*
+target/classes/config/spring/context-datasource.xml
+target/classes/mapper/FoBoardMapper_SQL.xml
+target/m2e-wtp/web-resources/META-INF/maven/com.eep/common/pom.properties
+target/m2e-wtp/web-resources/META-INF/maven/com.eep/common/pom.xml
+target/maven-archiver/pom.properties

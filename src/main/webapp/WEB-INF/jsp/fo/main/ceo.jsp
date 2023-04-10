@@ -26,7 +26,7 @@
                 <div class="col-lg-6">
                     <h1 class="display-4 mb-3 animated slideInDown menu" style="font-weight: 700;">CEO 인사말</h1>
                     <p class="animated slideInDown IBM"> 
-                    	50여 명의 정직원 모두 성살함과 책임감으로 무장하고 있으며,
+                    	저희 이에스티소프트는 성실함과 책임감으로 무장하고 있으며,
                     	<br>
 						프로젝트 진행 시 소통이 뛰어난 진정한 전문가 그룹입니다.
 					</p>
@@ -90,6 +90,7 @@
     <!-- CEO End -->
     
     <!-- TEAM Start -->
+    <!--
     <div class="container-xxl bg-light">
         <div class="container py-5">
             <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
@@ -166,9 +167,10 @@
             </div>
         </div>
     </div>
+    -->
     <!--TEAM End -->
-    
-     <div class="container-xxl bg-light">
+    <!-- 
+    <div class="container-xxl bg-light">
         <div class="container py-5">
              <div class="row g-3">
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
@@ -241,7 +243,7 @@
             </div>
         </div>
     </div>
-
+	-->
 
     
     <%@ include file="/WEB-INF/include/footer.jspf" %>

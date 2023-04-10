@@ -46,7 +46,7 @@ th, td {
                 <div class="col-lg-6">
                     <h1 class="display-4 mb-3 animated slideInDown">EST COMMUNITY</h1>
                      <p class="animated slideInDown IBM">
-                    	50여 명의 정직원 모두 성살함과 책임감으로 무장하고 있으며,
+                    	저희 이에스티소프트는 성실함과 책임감으로 무장하고 있으며,
                     	<br>
 						프로젝트 진행 시 소통이 뛰어난 진정한 전문가 그룹입니다.
 					</p>

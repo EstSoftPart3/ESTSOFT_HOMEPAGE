@@ -26,7 +26,7 @@
                 <div class="col-lg-6">
                     <h1 class="display-4 mb-3 animated slideInDown menu" style="font-weight: 700;">자격 및 인증</h1>
                     <p class="animated slideInDown IBM">
-                    	50여 명의 정직원 모두 성살함과 책임감으로 무장하고 있으며,
+                    	저희 이에스티소프트는 성실함과 책임감으로 무장하고 있으며,
                     	<br>
 						프로젝트 진행 시 소통이 뛰어난 진정한 전문가 그룹입니다.
 					</p>
@@ -46,27 +46,27 @@
         
         	<div class="row g-4">
         		
-        		<div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
+        		<div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="1.4s" style="filter:blur(1.5px)">
                     <div class="bg-light p-5">
-                       <img src="/resources/fo/img/c01.png">
+                       <img src="/resources/fo/img/c04.png">
                     </div>
                 </div>
                 
-                <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
-                    <div class="bg-light p-5">
-                       <img src="/resources/fo/img/c02.png">
-                    </div>
-                </div>
-                
-                <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
+                <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.3s" style="filter:blur(1.5px)">
                     <div class="bg-light p-5">
                        <img src="/resources/fo/img/c03.png">
                     </div>
                 </div>
                 
-                <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
+                <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.2s" style="filter:blur(1.5px)">
                     <div class="bg-light p-5">
-                       <img src="/resources/fo/img/c04.png">
+                       <img src="/resources/fo/img/c02.png">
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s" style="filter:blur(1.5px)">
+                    <div class="bg-light p-5">
+                       <img src="/resources/fo/img/c01.png">
                     </div>
                 </div>
         		
@@ -76,7 +76,7 @@
     </div>
     <!-- Content End -->
     
-    
+    <!--  
     <div class="container-xxl bg-light">
         <div class="container py-5">
              <div class="row g-3">
@@ -151,7 +151,7 @@
         </div>
     </div>
     
-
+	-->
 
     <%@ include file="/WEB-INF/include/footer.jspf" %>
     

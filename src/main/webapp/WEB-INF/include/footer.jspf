@@ -7,9 +7,11 @@
             <div class="container">
                 <div class="row">
                 	<div class="col-md-10 text-center text-md-start mb-3 mb-md-0 menu Gugi" style="font-family: 'Gugi', cursive;">
-                		MUTUAL : 주식회사 이에스티소프트 대표 - 임은수 <a href="#" style="text-decoration: none;">[사업자정보확인]</a><br>
-                        ADDRESS : 서울특별시 영등포구 당산로28길 4(당산동3가) 송암빌딩 3층<br>
-                        SERVICE : 월요일 - 금요일 AM 09:00 - PM 18:00<br>
+                		<h4>주식회사 이에스티소프트</h4> <br>
+<!--                 		<a href="#" style="text-decoration: none;">[사업자정보확인]</a><br> -->
+                                                      대표자 : 임은수 | 사업자등록번호 : 548-87-01744<br>                           
+                                                      주소 : 서울특별시 영등포구 당산로28길 4(당산동3가) 송암빌딩 3층<br>
+<!--                         SERVICE : 월요일 - 금요일 AM 09:00 - PM 18:00<br> -->
                         TEL : +82 070-7794-1123<br>
                         FEX : +82 02-2069-1123<br>
                         Copyright &copy; 주식회사 이에스티소프트 Co., Ltd. All Rights Reserved.

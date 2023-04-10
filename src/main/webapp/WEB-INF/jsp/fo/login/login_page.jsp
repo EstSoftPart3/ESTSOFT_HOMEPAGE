@@ -124,23 +124,23 @@
       	 	if(loginInfo.length == 1) {
       	 		
       	 		bootbox.alert({
-      				message: "로그인 성공했습니다. 로그인 이전 페이지로 되돌아갑니다.",
+      				message: "로그인 성공했습니다. 메인 페이지로 되돌아갑니다.",
       				locale: 'kr',
       				callback: function() {
       					
-						var referrer = document.referrer;
+// 						var referrer = document.referrer;
 
-      					if(referrer.indexOf("/eep/mainPage.do") != -1){
+//       					if(referrer.indexOf("/eep/mainPage.do") != -1){
       						location.href = '/eep/mainPage.do';
-      					}else{
-      						location.href = referrer;
-      					}
+//       					}else{
+//       						location.href = referrer;
+//       					}
       					
       				} });
 
       	 	} else {
       	 		bootbox.alert({
-      				message: "계정이 알맞지 않습니다.",
+      				message: "아이디 또는 비밀번호가 올바르지 않습니다.",
       				locale: 'kr',
       				callback: function() {
       					location.href = '/eep/login/loginPage.do';

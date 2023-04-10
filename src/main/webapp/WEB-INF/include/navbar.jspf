@@ -1,74 +1,90 @@
 <%@ page language="java" contentType="text/html;charset=UTF-8" %>
 <nav class="navbar navbar-expand-lg bg-white navbar-light sticky-top p-0 px-4 px-lg-5">
-        <a href="/eep/mainPage.do" class="navbar-brand d-flex align-items-center">
-            <h2 class="m-0 text-primary"><img src="/resources/fo/img/est_logo.png" style="height:100px;"></h2>
-        </a>
-        <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarCollapse">
-            <div class="navbar-nav ms-auto py-4 py-lg-0 menu"><!--active-->
-               
-                <div class="nav-item dropdown">
-                    <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">회사소개</a>
-                    <div class="dropdown-menu shadow-sm m-0">
-                        <a href="/eep/historyPage.do" class="dropdown-item">연혁</a>
-                        <a href="/eep/organizationPage.do" class="dropdown-item">조직도</a>
-                        <a href="/eep/ceoPage.do" class="dropdown-item">CEO인사말</a>
-                        <a href="/eep/certiPage.do" class="dropdown-item">자격 및 인증</a>
-                    </div>
-                </div>
-                <a href="/eep/businessPage.do" class="nav-item nav-link">사업분야</a>
-                <div class="nav-item dropdown">
-                	<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">컨설팅</a>
-                	<div class="dropdown-menu shadow-sm m-0">
-                        <a href="/eep/consultPage.do" class="dropdown-item">컨설팅</a>
-                        <a href="/eep/consultRequestPage.do" class="dropdown-item">컨설팅 의뢰</a>
-                     </div>
-                </div>
-                
-                <div class="nav-item dropdown">
-                	<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">채용</a>
-                	<div class="dropdown-menu shadow-sm m-0">
-                        <a href="/eep/employmentInfoPage.do" class="dropdown-item">채용정보</a>
-                        <a href="/eep/employmentRequestPage.do" class="dropdown-item">입사지원</a>
-                     </div>
-                </div>
-                
-                <div class="nav-item dropdown">
-                	<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">고객센터</a>
-                	<div class="dropdown-menu shadow-sm m-0">
-                        <a href="/eep/faqPage.do" class="dropdown-item">자주하는 질문</a>
-                        <a href="/eep/mapPage.do" class="dropdown-item">오시는길</a>
-                     </div>
-                </div>
-				<div class="nav-item dropdown">
-                	<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">커뮤니티</a>
-                	<div class="dropdown-menu shadow-sm m-0">
-                        <a href="/eep/board/notice/openNoticeBoardList.do" class="dropdown-item">공지사항</a>
-                        <a href="/eep/board/freedom/openFreedomBoardList.do" class="dropdown-item">자유게시판</a>
-                        <a href="/eep/board/technology/openTechnologyBoardList.do" class="dropdown-item">기술문의</a>
-                        <a href="/eep/board/education/openEducationBoardList.do" class="dropdown-item">교육일정</a>
-                    </div>
-                </div>
-
-				<c:if test="${sessionScope.loginInfo.loginInfo[0] != null}">
-	                <div class="nav-item dropdown">
-	                	<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown"><i class="fa fa-network-wired"></i> <b>${loginInfo.loginInfo[0].emplyNm}</b>(${loginInfo.loginInfo[0].emplyId})님 안녕하세요</a>
-	                	<div class="dropdown-menu shadow-sm m-0">
-	                        <!-- <button type="button" class="btn-sm-sm btn-danger" onclick="logout();">logout</button> -->
-
-	                        <!-- <a class="dropdown-item" style="color: blue;" href="#"><i class="fa fa-user"></i> 마이페이지</a> -->
-	                        <a class="dropdown-item" style="color: red;" href="javascript:logout()"><i class="fa fa-paper-plane"></i> 로그아웃</a>
-	                    </div>
-	                </div>
-                </c:if>
-                
-                <c:if test="${sessionScope.loginInfo.loginInfo[0] == null}">
-	                <a href="/eep/login/loginPage.do" class="nav-item nav-link" style="color: lightblue;"><b>LOGIN</b></a>
-                </c:if>
- 
-            </div>
+    <a href="/eep/mainPage.do" class="navbar-brand d-flex align-items-center">
+        <h2 class="m-0 text-primary"><img src="/resources/fo/img/est_logo.png" style="height:100px;"></h2>
+    </a>
+    <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarCollapse">
+        <div class="navbar-nav ms-auto py-4 py-lg-0 menu"><!--active-->
            
+            <div class="nav-item dropdown">
+                <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">회사소개</a>
+                <div class="dropdown-menu shadow-sm m-0">
+                    <a href="/eep/historyPage.do" class="dropdown-item">연혁</a>
+<!--                         <a href="/eep/organizationPage.do" class="dropdown-item">조직도</a> -->
+                    <a href="/eep/ceoPage.do" class="dropdown-item">CEO인사말</a>
+                    <a href="/eep/certiPage.do" class="dropdown-item">자격 및 인증</a>
+                </div>
+            </div>
+            <a href="/eep/businessPage.do" class="nav-item nav-link">사업분야</a>
+            <div class="nav-item dropdown">
+            	<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">컨설팅</a>
+            	<div class="dropdown-menu shadow-sm m-0">
+<!--                     <a href="/eep/consultPage.do" class="dropdown-item">컨설팅 사례</a> -->
+                    <a href="/eep/consultRequestPage.do" class="dropdown-item">컨설팅 문의</a>
+                 </div>
+            </div>
+            <div class="nav-item dropdown">
+            	<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">채용</a>
+            	<div class="dropdown-menu shadow-sm m-0">
+                    <a href="/eep/employmentInfoPage.do" class="dropdown-item">채용정보</a>
+                    <a href="/eep/employmentRequestPage.do" class="dropdown-item">입사지원</a>
+                 </div>
+            </div>
+            
+            <div class="nav-item dropdown">
+            	<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">고객센터</a>
+            	<div class="dropdown-menu shadow-sm m-0">
+                    <a href="/eep/faqPage.do" class="dropdown-item">자주하는 질문</a>
+                    <a href="/eep/mapPage.do" class="dropdown-item">오시는길</a>
+                 </div>
+            </div>
+			<div class="nav-item dropdown">
+            	<a href="javascript:void(0)" onclick="fn_moveBrd();" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">커뮤니티</a>
+            	<div class="dropdown-menu shadow-sm m-0">
+                    <a href="javascript:void(0)" onclick="fn_moveBrd();" class="dropdown-item">공지사항</a>
+                    <a href="javascript:void(0)" onclick="fn_moveBrd();" class="dropdown-item">자유게시판</a>
+                    <a href="javascript:void(0)" onclick="fn_moveBrd();" class="dropdown-item">기술문의</a>
+                    <a href="javascript:void(0)" onclick="fn_moveBrd();" class="dropdown-item">교육일정</a>
+<!--                     <a href="/eep/board/notice/openNoticeBoardList.do" class="dropdown-item">공지사항</a> -->
+<!--                     <a href="/eep/board/freedom/openFreedomBoardList.do" class="dropdown-item">자유게시판</a> -->
+<!--                     <a href="/eep/board/technology/openTechnologyBoardList.do" class="dropdown-item">기술문의</a> -->
+<!--                     <a href="/eep/board/education/openEducationBoardList.do" class="dropdown-item">교육일정</a> -->
+                </div>
+            </div>
+
+			<c:if test="${sessionScope.loginInfo.loginInfo[0] != null}">
+            	<div class="nav-item dropdown">
+	             	<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown"><i class="fa fa-network-wired"></i> <b>${loginInfo.loginInfo[0].emplyNm}</b>(${loginInfo.loginInfo[0].emplyId})님 안녕하세요</a>
+	             	<div class="dropdown-menu shadow-sm m-0">
+	                     <!-- <button type="button" class="btn-sm-sm btn-danger" onclick="logout();">logout</button> -->
+	
+	                     <!-- <a class="dropdown-item" style="color: blue;" href="#"><i class="fa fa-user"></i> 마이페이지</a> -->
+	                     <a class="dropdown-item" style="color: red;" href="javascript:logout()"><i class="fa fa-paper-plane"></i> 로그아웃</a>
+	                 </div>
+            	</div>
+            </c:if>
+            
+            <c:if test="${sessionScope.loginInfo.loginInfo[0] == null}">
+             <a href="/eep/login/loginPage.do" class="nav-item nav-link" style="color: lightblue;"><b>LOGIN</b></a>
+            </c:if>
+
         </div>
-    </nav>
+       
+    </div>
+</nav>
+
+<script>
+function fn_moveBrd() {
+	bootbox.alert({
+		message: "로그인 후 이용가능합니다.",
+		locale: 'kr',
+		callback: function() {
+			 return;
+		} 
+	});
+}
+
+</script>

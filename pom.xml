@@ -438,7 +438,7 @@
 	<build>
 		<defaultGoal>install</defaultGoal>
 		<directory>${basedir}/target</directory>
-		<finalName>erp</finalName>
+		<finalName>est_eep</finalName>
 
 		<plugins>
 

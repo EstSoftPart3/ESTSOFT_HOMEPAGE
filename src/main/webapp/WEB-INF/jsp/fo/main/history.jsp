@@ -192,7 +192,7 @@
         </div>
     </div>
     <!-- Roadmap End -->
-    
+    <!-- 
      <div class="container-xxl bg-light">
         <div class="container py-5">
              <div class="row g-3">
@@ -266,7 +266,7 @@
             </div>
         </div>
     </div>
-    
+     -->
    <%@ include file="/WEB-INF/include/footer.jspf" %>
    
 </body>

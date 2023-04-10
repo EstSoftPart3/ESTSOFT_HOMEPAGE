@@ -27,15 +27,15 @@
                     <h1 class="display-4 mb-3 animated slideInDown"> <span class="menu" style="font-weight: 700;"><b>컨설팅</b></h1>
                     
                     <p class="animated slideInDown IBM">
-                    	50여 명의 정직원 모두 성살함과 책임감으로 무장하고 있으며,
+                    	저희 이에스티소프트는 성실함과 책임감으로 무장하고 있으며,
                     	<br>
 						프로젝트 진행 시 소통이 뛰어난 진정한 전문가 그룹입니다.
 					</p>
 					
 					<nav aria-label="breadcrumb animated slideInDown">
                         <ol class="breadcrumb mb-0 menu">
-                            <li class="breadcrumb-item active" aria-current="page"><a href="/eep/consultPage.do">컨설팅</a></li>
-                            <li class="breadcrumb-item"><a href="/eep/consultRequestPage.do">컨설팅 의뢰</a></li>
+                            <li class="breadcrumb-item active" aria-current="page"><a href="/eep/consultPage.do">컨설팅 사례</a></li>
+                            <li class="breadcrumb-item"><a href="/eep/consultRequestPage.do">컨설팅 문의</a></li>
                         </ol>
                     </nav>
                     

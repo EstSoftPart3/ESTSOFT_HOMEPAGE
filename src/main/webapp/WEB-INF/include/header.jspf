@@ -2,6 +2,7 @@
  <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
  <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>  
  <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
+ 
  <meta charset="utf-8">
     <title>주식회사 이에스티소프트</title>
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
@@ -52,6 +53,7 @@
 	    	location.href='/eep/logout.do';
 	    }
 	}
+}
 
 	</script>
 	

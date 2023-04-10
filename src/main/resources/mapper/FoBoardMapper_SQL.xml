@@ -17,7 +17,7 @@
  		WHERE
  				BRD_TYP_CD = 'NT' AND USE_YN = 'Y' AND DEL_YN = 'N'
  		ORDER BY 
- 				BRD_SQ DESC LIMIT 5
+ 				BRD_REG_DT DESC LIMIT 5
  		 ]]>
     </select>
     
@@ -33,7 +33,7 @@
  		WHERE
  				BRD_TYP_CD = 'TL' AND USE_YN = 'Y' AND DEL_YN = 'N' 
  		ORDER BY 
- 				BRD_RE_REF DESC, BRD_RE_ORD ASC LIMIT 5
+ 				BRD_RE_REF DESC, BRD_REG_DT ASC LIMIT 5
  		]]>
     </select>
     
@@ -49,7 +49,7 @@
  		WHERE
  				BRD_TYP_CD = 'ED' AND USE_YN = 'Y' AND DEL_YN = 'N'
  		ORDER BY 
- 				BRD_SQ DESC LIMIT 5
+ 				BRD_REG_DT DESC LIMIT 5
  		]]>
     </select>
     
