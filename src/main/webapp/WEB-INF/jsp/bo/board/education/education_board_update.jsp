@@ -47,8 +47,8 @@
 		     	<!-- Main content -->
 	    		<section class="content">
 	    		
-	    			<input type="hidden" name="emplySq" id="emplySq" value="${loginInfo.loginInfo[0].emplySq}">
-	    			<input type="hidden" name="brdSq" id="brdSq" value="<%=brdSq%>">
+	    			<input type="hidden">
+	    			<input type="hidden">
 	    			
 	    			<div class="card-header p-2" style="border: 1px solid rgba(0,0,0,.125);background-color:#efefef">
 	                 	<ul class="nav nav-pills">
@@ -66,7 +66,7 @@
 					 			<div class="form-group row">
 					 				
                     				<div class="col-sm-4">
-                      					<input type="text" class="form-control sTitle classname"  id="brdTtl" name="brdTtl">
+                      					<input type="text" class="form-control sTitle classname">
                     				</div>
 					 			</div>
 
@@ -74,7 +74,7 @@
 					 			<div class="form-group row">
 					 				
                     				<div class="col-sm-4">
-                      					<input type="text" class="form-control sTitle classname"  id="brdWrtr" name="brdWrtr" readonly >
+                      					<input type="text" class="form-control sTitle classname" readonly >
                     				</div>
 					 			</div>
 					 			
@@ -82,7 +82,7 @@
 					 			<div class="form-group row">
 					 				
                     				<div class="col-sm-4">
-                      					<input type="text" class="form-control sTitle classname"  id="brdTchr" name="brdTchr">
+                      					<input type="text" class="form-control sTitle classname">
                     				</div>
 					 			</div>
 					 			
@@ -90,7 +90,7 @@
 					 			<div class="form-group row">
 					 				
                     				<div class="col-sm-4">
-                      					<input type="date" class="form-control sTitle classname"  id="brdEduDt" name="brdEduDt">
+                      					<input type="date" class="form-control sTitle classname">
                     				</div>
 					 			</div>
 					 			
@@ -98,7 +98,7 @@
 					 			<div class="form-group row">
 					 				
                     				<div class="col-sm-4">
-                      					<input type="text" class="form-control sTitle classname"  id="brdRegDt" name="brdRegDt" readonly >
+                      					<input type="text" class="form-control sTitle classname" readonly >
                     				</div>
 					 			</div>
 					 			
@@ -106,18 +106,18 @@
 					 			<div class="form-group row">
 					 				
                     				<div class="col-sm-4">
-                      					<input type="text" class="form-control sTitle classname"  id="brdUpdtDt" name="brdUpdtDt" readonly >
+                      					<input type="text" class="form-control sTitle classname" readonly >
                     				</div>
 					 			</div>
 					 			
 					 			<label class="col-form-label sTitle LabelStyle" style="text-align: center;">사용여부</label>
                    				<div class="form-group row">
                      					<div style="padding-left:10px;float:left;">
-										<input type="radio" id="u1" name="useYn" class="useYn" value="Y">
+										<input type="radio" id="u1" name="useYn" class="useYn">
 										<label for="u1" class="col-form-label sTitle">사용함</label>
 									</div>
                      					<div style="padding-left:10px;float:left;">
-                     						<input type="radio" id="u2" name="useYn" class="useYn" value="N">
+                     						<input type="radio" id="u2" name="useYn" class="useYn">
 										<label for="u2" class="col-form-label sTitle">사용안함</label>
 									</div>
 								</div>
@@ -125,11 +125,11 @@
 					 			<label class="col-form-label sTitle LabelStyle" style="text-align: center;">삭제여부</label>
                    				<div class="form-group row">
                      					<div style="padding-left:10px;float:left;">
-										<input type="radio" id="d1" name="delYn" class="delYn" value="Y">
+										<input type="radio" id="d1" name="delYn">
 										<label for="d1" class="col-form-label sTitle">삭제함</label>
 									</div>
                      					<div style="padding-left:10px;float:left;">
-                     						<input type="radio" id="d2" name="delYn" class="delYn" value="N">
+                     						<input type="radio" id="d2" name="delYn">
 										<label for="d2" class="col-form-label sTitle">삭제안함</label>
 									</div>
 								</div>
@@ -156,9 +156,9 @@
 					 			<div class="form-group row">
                     				
                     				<div class="col-sm-4" style="text-align:right">
-                    					<button type="button" class="btn btn-primary sTitle" onclick="educationBoardList();">리스트로 돌아가기</button>
-                    					<button type="button" class="btn btn-info sTitle" onclick="educationUpdate();">수정</button>
-                    					<button type="button" class="btn btn-danger sTitle" onclick="educationBoardDetail();">뒤로</button>
+                    					<button type="button" class="btn btn-primary sTitle">리스트로 돌아가기</button>
+                    					<button type="button" class="btn btn-info sTitle">수정</button>
+                    					<button type="button" class="btn btn-danger sTitle">뒤로</button>
                     				</div>
                     				
                     			</div>
@@ -177,234 +177,9 @@
    
    <%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
    
-   <script>
-	
+<script>
 
-   var oEditors = [];
-
-
-   var emplySq     = $('#emplySq').val(); //직원순번
-   var brdSq       = $('#brdSq').val();   //공지사항 순번
-   var dataContent = {};				  //데이터 처리 리스트
-   
-   $(document).ready(function(){
-
-	   educationBoardDetailtData(brdSq);
-		
-   });
-   
-   function educationBoardDetailtData(brdSq) {
-		
-		$.ajax({
-	           type: "post",
-	           url: "/admin/board/education/educationBoardDetailData.do",
-	           data: {
-	        	   brdSq : brdSq
-	            },
-	           success: function(data) {
-	        	    
-	        	 dataContent = data.educationBoardDetailData.educationBoardDetailData[0];
-
-	        	 var brdCntnt 	= dataContent.brdCntnt;
-	        	 var brdTtl 	= dataContent.brdTtl;
-	        	 var brdWrtr 	= dataContent.brdWrtr;
-	        	 var brdTtl 	= dataContent.brdTchr;
-	        	 var brdWrtr 	= dataContent.brdEduDt;
-	        	 var brdRegDt	= dataContent.brdRegDt;
-	        	 var brdUpdtDt	= dataContent.brdUpdtDt;
-	        	 var useYn 		= dataContent.useYn;
-	        	 var delYn 		= dataContent.delYn;
-
-	        	 //네이버 에디터 적용 전 유효성 체크 반영
-				 var castStr = brdCntnt;
-
-				 castStr = castStr.replaceAll("&lt;","<");
-				 castStr = castStr.replaceAll("&gt;",">");
-				 castStr = castStr.replaceAll("&amp;lt;","<");
-				 castStr = castStr.replaceAll("&amp;gt;",">");
-				 castStr = castStr.replaceAll("&amp;nbsp;"," ");
-				 castStr = castStr.replaceAll("&amp;amp;","&");
-				 castStr = castStr.replaceAll("\\","");
-				 
-				 
-				  //네이버 에디터 임포트
-				  
-				   
-				   $(function(){
-				      nhn.husky.EZCreator.createInIFrame({
-				         oAppRef: oEditors,
-				         elPlaceHolder: "naverEditor",
-				         //SmartEditor2Skin.html 파일이 존재하는 경로
-				         sSkinURI: "/resources/navereditor/SmartEditor2Skin.html",  
-				         htParams : {
-				             // 툴바 사용 여부 (true:사용/ false:사용하지 않음)
-				             bUseToolbar : true,             
-				             // 입력창 크기 조절바 사용 여부 (true:사용/ false:사용하지 않음)
-				             bUseVerticalResizer : true,     
-				             // 모드 탭(Editor | HTML | TEXT) 사용 여부 (true:사용/ false:사용하지 않음)
-				             bUseModeChanger : true,         
-				             fOnBeforeUnload : function(){
-				                  
-				             }
-				         }, 
-				         fOnAppLoad : function(){
-				             //textarea 내용을 에디터상에 바로 뿌려주고자 할때 사용
-				             //내용초기화
-				             oEditors.getById["naverEditor"].exec("SET_IR", [""]);
-				           	 //DB내용 표현
-				             oEditors.getById["naverEditor"].exec("PASTE_HTML", [castStr]);
-				           	 //수정 불가 지정
-				             //oEditors.getById["naverEditor"].exec("DISABLE_WYSIWYG");
-				           	 //UI 비활성화
-				             //oEditors.getById["naverEditor"].exec("DISABLE_ALL_UI");
-
-				         },
-				         fCreator: "createSEditor2"
-				       })
-				   });
-				 
-
-	        	 /* document.getElementById('naverEditor').innerHTML=castStr; */
-	        	 $('#brdTtl').val(brdTtl);
-	        	 $('#brdWrtr').val(brdWrtr);
-	        	 $('#brdTchr').val(brdTtl);
-	        	 $('#brdEduDt').val(brdWrtr);
-	        	 $('#brdRegDt').val(brdRegDt);
-	        	 
-	        	 if(useYn == "Y"){
-	        		 $("#u1").prop("checked", true);
-	        	 }else{
-	        		 $("#u2").prop("checked", true);
-	        	 }
-	        	 
-	        	 if(delYn == "Y"){
-	        		 $("#d1").prop("checked", true);
-	        	 }else{
-	        		 $("#d2").prop("checked", true);
-	        	 }
-
-	        	 //수정 이력 없을 시 유효성 체크
-	        	 if(isEmpty(brdUpdtDt)){
-	        		 $('#brdUpdtDt').val("자동 입력");
-	        	 }else{
-	        		 $('#brdUpdtDt').val(brdUpdtDt);
-	        	 }
-
-	        	 
-
-	           },
-	           error: function(error) {
-	        	   var errorJson = JSON.stringify(error);
-	               console.log(errorJson);
-	           }
-		})
-	}
-   
-   function educationUpdate() {
-		
-		var brdSq     = $("#brdSq").val();     
-		var brdTtl  = $("#brdTtl").val(); 
-		var brdTchr  = $("#brdTchr").val(); 
-		var brdEduDt  	= document.querySelector("#brdEduDt").value	//게시판 교육일
-		oEditors.getById["naverEditor"].exec("UPDATE_CONTENTS_FIELD", []);
-		var brdCntnt = document.getElementById("naverEditor").value;
-	    var useYn = $('input[name="useYn"]:checked').val();
-	    var delYn  = $('input[name="delYn"]:checked').val();
-
-	   	 //제목
-	   	 if(isEmpty(brdTtl)) {
-	   		bootbox.alert({
-					 message: "제목을 입력해 주세요.",
-					 locale: 'kr',
-					 callback: function() {
-					 		$("#brdTtl").focus();
-				     } });
-				 return;
-	   	 }
-	   	 
-	   	 //강사
-	   	 if(isEmpty(brdTchr)) {
-	   		bootbox.alert({
-					 message: "강사를 입력해 주세요.",
-					 locale: 'kr',
-					 callback: function() {
-					 		$("#brdTchr").focus();
-				     } });
-				 return;
-	   	 }
-	   
-	   	 //교육일
-	   	 if(isEmpty(brdEduDt)) {
-	   		bootbox.alert({
-					 message: "교육일을 입력해 주세요.",
-					 locale: 'kr',
-					 callback: function() {
-					 		$("#brdEduDt").focus();
-				     } });
-				 return;
-	   	 }
-	   	 
-	   	 //내용
-	   	 if(isEmpty(brdCntnt)) {
-	   		bootbox.alert({
-					 message: "설명을 입력해 주세요.",
-					 locale: 'kr',
-					 callback: function() {
-					 		$("#brdCntnt").focus();
-				     } });
-				 return;
-	   	 }
-
-		
-		
-		
-		$.ajax({
-	           type: "post",
-	           url: "/admin/board/education/educationBoardUpdateData.do",
-	           data: {
-	        	   brdSq : brdSq,
-	        	   brdTtl : brdTtl,
-	        	   brdTchr : brdTchr,
-	        	   brdEduDt : brdEduDt,
-	        	   brdCntnt : brdCntnt,
-	        	   useYn : useYn,
-	        	   delYn : delYn
-	           },
-	           success: function(data) {
-	        	   bootbox.alert({
-						 message: "게시글이 수정 되었습니다.",
-						 locale: 'kr',
-						 callback: function() {
-							 	location.href='/admin/board/education/openEducationBoardDetail.do?brdSq='+brdSq;
-					     } });
-			   },
-	           error: function(error) {
-	        	   var errorJson = JSON.stringify(error);
-	               console.log(errorJson);
-	           }
-		})
-	}
-   
- 
-   
-   function educationBoardList() {
-	   location.href='/admin/board/education/openEducationBoardList.do';
-   }
-   
-   function educationBoardDetail() {
-	   location.href='/admin/board/education/openEducationBoardDetail.do?brdSq='+brdSq;
-   }
-   
-	 //Input Box Null Check
-   function isEmpty(str){
-       
-       if(typeof str == "undefined" || str == null || str == "")
-           return true;
-       else
-           return false ;
-   }
-   
-   </script>
+</script>
  
  
  

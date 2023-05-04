@@ -14,18 +14,6 @@ public class BoLoginDao {
 
 	@Autowired
 	private BoLoginMapper BoLoginMapper;
-	
-	
-	public Map<String, Object> loginAdminData(Map<String, Object> param){
-		
-		Map<String, Object> result = new HashMap<>();
-				
-		@SuppressWarnings("unchecked")
-		List<Map<String, Object>> loginInfo = BoLoginMapper.loginAdminData(param);
-		
-		result.put("loginInfo", loginInfo);
-				
-		return result;
-	}
+
 	
 }

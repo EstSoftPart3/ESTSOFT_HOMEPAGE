@@ -20,7 +20,7 @@
 		     	<!-- Main content -->
 	    		<section class="content">
 
-	    			<input type="hidden" name="emplySq" id="emplySq" value="${loginInfo.loginInfo[0].emplySq}">
+	    			<input type="hidden">
 	    			
 	    			<div class="card-header p-2" style="border: 1px solid rgba(0,0,0,.125);background-color:#efefef">
 	                 	<ul class="nav nav-pills">
@@ -37,14 +37,14 @@
 					 			<div class="form-group row">
 					 				<label class="col-form-label sTitle LabelStyle" style="text-align: center;">제&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;목</label>
                     				<div class="col-sm-5">
-                      						<input type="text" class="form-control sTitle classname"  id="brdTtl" name="brdTtl" value="">
+                      						<input type="text" class="form-control sTitle classname">
                     				</div>
 					 			</div>
 					 			
 					 			<div class="form-group row">
 					 				<label class="col-form-label sTitle LabelStyle" style="text-align: center;">작성자</label>
                     				<div class="col-sm-5">
-                      						<input type="text" class="form-control sTitle classname"  id="brdWrtr" name="brdWrtr" value="관리자" readonly>
+                      						<input type="text" class="form-control sTitle classname" readonly>
                     				</div>
                     				
 					 			</div>
@@ -53,11 +53,11 @@
 					 				<label class="col-form-label sTitle LabelStyle" style="text-align: center;">사용여부</label>
                     				<div class="col-sm-3">
                       					<div style="padding-left:10px;float:left;">
-											<input type="radio" id="z1" name="useYn" class="useYn" value="Y" checked>
+											<input type="radio" id="z1" name="useYn">
 											<label for="z1" class="col-form-label sTitle">사용함</label>
 										</div>
                       					<div style="padding-left:10px;float:left;">
-                      						<input type="radio" id="z2" name="useYn" class="useYn" value="N">
+                      						<input type="radio" id="z2" name="useYn">
 											<label for="z2" class="col-form-label sTitle">사용안함</label>
 										</div>
 									</div>
@@ -78,8 +78,8 @@
 		               		   	
 					 			<div class="form-group row">
                     				<div class="col-sm-6" style="text-align:right">
-                      						<button type="button" class="btn btn-primary sTitle" onclick="noticeBoardList();">리스트로 돌아가기</button>
-                      						<button type="button" class="btn btn-info sTitle" onclick="noticeboardInsert();">저장</button>
+                      						<button type="button" class="btn btn-primary sTitle">리스트로 돌아가기</button>
+                      						<button type="button" class="btn btn-info sTitle">저장</button>
                     				</div>
 
 					 			</div>
@@ -106,113 +106,10 @@
 
   
    
-   <script>
+<script>
  
-   
-  var oEditors = [];
-   
-   $(function(){
-      nhn.husky.EZCreator.createInIFrame({
-         oAppRef: oEditors,
-         elPlaceHolder: "naverEditor",
-         //SmartEditor2Skin.html 파일이 존재하는 경로
-         sSkinURI: "/resources/navereditor/SmartEditor2Skin.html",  
-         htParams : {
-             // 툴바 사용 여부 (true:사용/ false:사용하지 않음)
-             bUseToolbar : true,             
-             // 입력창 크기 조절바 사용 여부 (true:사용/ false:사용하지 않음)
-             bUseVerticalResizer : true,     
-             // 모드 탭(Editor | HTML | TEXT) 사용 여부 (true:사용/ false:사용하지 않음)
-             bUseModeChanger : true,         
-             fOnBeforeUnload : function(){
-                  
-             }
-         }, 
-         fOnAppLoad : function(){
-             //textarea 내용을 에디터상에 바로 뿌려주고자 할때 사용
-             oEditors.getById["naverEditor"].exec("PASTE_HTML", [""]);
-         },
-         fCreator: "createSEditor2"
-       })
-   });
-   
-   
-   
-   function noticeboardInsert() {
-	
-	var emplySq     = $("#emplySq").val();     							//회원 순번
-	var brdTypCd 	= 'NT'  							//게시판 구분 코드
-   	var brdTtl  	= $("#brdTtl").val();  				//게시판 제목
-   	var brdWrtr  	= $("#brdWrtr").val();  			//게시판 작성자
-   	var useYn = $("input[name='useYn']:checked").val(); //사용여부
-    oEditors.getById["naverEditor"].exec("UPDATE_CONTENTS_FIELD", [])
-   	var brdCntnt = document.getElementById("naverEditor").value
-
-   	 //제목
-   	 if(isEmpty(brdTtl)) {
-   		bootbox.alert({
-				 message: "제목을 입력해 주세요.",
-				 locale: 'kr',
-				 callback: function() {
-				 		$("#brdTitle").focus();
-			     } });
-			 return;
-   	 }
-   	 
-     //내용
-   	 if(brdCntnt == "<p>&nbsp;</p>") {
-   		bootbox.alert({
-				 message: "내용을 입력해 주세요.",
-				 locale: 'kr',
-				 callback: function() {
-					 $("#brdCntnt").focus();
-			     } });
-			 return;
-   	 }
-   	        		
-     
-     
-		
-		$.ajax({
-	           type: "post",
-	           url: "/admin/board/notice/noticeBoardInsertData.do",
-	           data: {
-	        	   emplySq : emplySq,
-	        	   brdTypCd : brdTypCd,
-	        	   brdTtl : brdTtl,
-	        	   brdCntnt : brdCntnt,
-	        	   brdWrtr : brdWrtr,
-	        	   useYn : useYn
-	           },
-	           success: function(data) {
-	        	   bootbox.alert({
-						 message: "게시글이 저장 되었습니다.",
-						 locale: 'kr',
-						 callback: function() {
-							 		location.href='/admin/board/notice/openNoticeBoardList.do';
-					     } });
-			   },
-	           error: function(error) {
-	        	   var errorJson = JSON.stringify(error);
-	               console.log(errorJson);
-	           }
-		})
-	}
-   
-   function noticeBoardList() {
-	   location.href='/admin/board/notice/openNoticeBoardList.do';
-   }
-   
-  //Input Box Null Check
-   function isEmpty(str){
-       
-       if(typeof str == "undefined" || str == null || str == "")
-           return true;
-       else
-           return false ;
-   }
   
-   </script>
+</script>
 
  		
  	 

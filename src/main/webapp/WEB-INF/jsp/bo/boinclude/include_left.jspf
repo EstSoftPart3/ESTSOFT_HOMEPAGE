@@ -39,7 +39,7 @@
       <span class="brand-text font-weight-light" style="font-size: 16px;">주식회사 이에스티소프트</span><br>
       <span class="brand-text font-weight-light" style="font-size: 12px;">&nbsp;&nbsp;&nbsp;&nbsp;
       	${loginInfo.loginInfo[0].emplyNm}(${loginInfo.loginInfo[0].emplyId})님 접속
-      	&nbsp;&nbsp;<button type="button" class="btn-sm-sm btn-danger" onclick="logout();">logout</button>
+      	&nbsp;&nbsp;<button type="button" class="btn-sm-sm btn-danger">logout</button>
       </span>
     </a>
     
@@ -70,25 +70,25 @@
 	            </a>
 		            <ul class="nav nav-treeview">
 		              <li class="nav-item">
-		                <a href="/admin/board/notice/openNoticeBoardList.do" class="nav-link">
+		                <a href="" class="nav-link">
 		                  <i class="far fa-circle nav-icon sTitle"></i>
 		                  <p class="sTitle">공지사항 게시판</p>
 		                </a>
 		              </li>
 		              <li class="nav-item">
-		                <a href="/admin/board/freedom/openFreedomBoardList.do" class="nav-link">
+		                <a href="" class="nav-link">
 		                  <i class="far fa-circle nav-icon sTitle"></i>
 		                  <p class="sTitle">자유 게시판</p>
 		                </a>
 		              </li>
 		              <li class="nav-item">
-		                <a href="/admin/board/technology/openTechnologyBoardList.do" class="nav-link">
+		                <a href="" class="nav-link">
 		                  <i class="far fa-circle nav-icon sTitle"></i>
 		                  <p class="sTitle">기술문의 게시판</p>
 		                </a>
 		              </li>
 		              <li class="nav-item">
-		                <a href="/admin/board/education/openEducationBoardList.do" class="nav-link">
+		                <a href="" class="nav-link">
 		                  <i class="far fa-circle nav-icon sTitle"></i>
 		                  <p class="sTitle">교육일정 게시판</p>
 		                </a>
