@@ -37,7 +37,7 @@
 
       <form action="#" method="post">
         <div class="input-group mb-3">
-          <input type="email" class="form-control">
+          <input type="email" class="form-control" id="emplyId"  placeholder="Admin Id">
           <div class="input-group-append">
             <div class="input-group-text">
               <span class="fas fa-envelope"></span>
@@ -45,7 +45,7 @@
           </div>
         </div>
         <div class="input-group mb-3">
-          <input type="password" class="form-control">
+          <input type="password" class="form-control" id="emplyPw" placeholder="Password">
           <div class="input-group-append">
             <div class="input-group-text">
               <span class="fas fa-lock"></span>
@@ -60,7 +60,7 @@
           </div>
           <!-- /.col -->
           <div class="col-4">
-            <button type="button" class="btn btn-primary btn-block">Login In</button>
+            <button type="button" class="btn btn-primary btn-block" onclick="memberLogin();">Login In</button>
           </div>
           <!-- /.col -->
         </div>
@@ -82,10 +82,84 @@
 <!-- AdminLTE App -->
 <script src="/resources/bo/dist/js/adminlte.min.js"></script>
 
-<script>
-
+ <script>
  
-</script>
+  function memberLogin() {
+	 var emplyId = $("#emplyId").val();
+	 var emplyPw = $("#emplyPw").val();
+	 
+	 if(isEmpty(emplyId)) {
+	  	bootbox.alert({
+			message: "아이디를 입력해 주세요.",
+			locale: 'kr',
+			callback: function() {
+				$("#emplyId").focus();
+			} });
+		return;
+	 }
+	 
+	 if(isEmpty(emplyPw)) {
+		 bootbox.alert({
+			message: "비밀번호를 입력해 주세요.",
+			locale: 'kr',
+			callback: function() {
+				$("#emplyPw").focus();
+			} });
+		return;
+	 }
+	 
+	 
+	 $.ajax({
+         type: "post",
+         url: "/admin/login/loginData.do",
+         data: {
+        	 emplyId : emplyId,
+        	 emplyPw : emplyPw
+          },
+         success: function(data) {
+        	 
+        	 console.log(data);
+      	   	 var loginInfo = data.result.loginInfo;
+
+      	 	if(loginInfo.length == 1) {
+      	 		
+      	 		bootbox.alert({
+      				message: "로그인 성공했습니다.",
+      				locale: 'kr',
+      				callback: function() {
+      					location.href = '/admin/board/notice/openNoticeBoardList.do';
+      				} });
+
+      	 	} else {
+      	 		bootbox.alert({
+      				message: "관리자 계정이 아니거나, 계정이 알맞지 않습니다.",
+      				locale: 'kr',
+      				callback: function() {
+      					location.href = '/admin/login/loginPage.do';
+      				} });
+      	 	}
+      	 	
+      	    
+
+         },
+         error: function(error) {
+      	   var errorJson = JSON.stringify(error);
+             console.log(errorJson);
+         }
+	})
+	 
+  }
+  
+//Input Box Null Check
+  function isEmpty(str){
+      
+      if(typeof str == "undefined" || str == null || str == "")
+          return true;
+      else
+          return false ;
+  }
+ 
+ </script>
 
 <script src="/resources/bo/plugins/bootbox/bootbox.all.min.js"></script>
 <script src="/resources/bo/plugins/bootbox/bootbox.locales.js"></script>
