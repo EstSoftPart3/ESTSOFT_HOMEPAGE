@@ -17,5 +17,15 @@ public class BoLoginServiceImpl implements BoLoginService{
 	@Autowired
 	private BoLoginDao BoLoginDao;
 
+	
+	@Override
+	public Map<String, Object> loginAdminData(Map<String, Object> param){
 		
+		Map<String, Object> result = new HashMap<>();
+		
+		result = BoLoginDao.loginAdminData(param);
+		
+		return result;
+	}
+	
 }
