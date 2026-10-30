@@ -96,14 +96,15 @@
 	</details>
 </main>
 
-<script src="data.js"></script>
-<script src="pron.js"></script>
-<script src="pron_ko.js"></script>
-<script src="pron_en.js"></script>
-<script src="pron_vi.js"></script>
-<script src="pron_ja.js"></script>
-<script src="pron_zh.js"></script>
-<script src="pron_th.js"></script>
+<!-- ?v= 는 Cloudflare 가 .js 를 4시간 캐시해서 붙인다. 파일을 바꾸면 여기와 sw.js 의 VERSION 을 같이 올린다 -->
+<script src="data.js?v=5"></script>
+<script src="pron.js?v=5"></script>
+<script src="pron_ko.js?v=5"></script>
+<script src="pron_en.js?v=5"></script>
+<script src="pron_vi.js?v=5"></script>
+<script src="pron_ja.js?v=5"></script>
+<script src="pron_zh.js?v=5"></script>
+<script src="pron_th.js?v=5"></script>
 <script>
 var $ = function(id) { return document.getElementById(id); };
 var ICON_SPEAK = '<svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>';
@@ -519,7 +520,7 @@ fetch('stateData.do', { cache: 'no-store' }).then(function(r) { return r.json();
 }).catch(function() {});
 
 if ('serviceWorker' in navigator) {
-	navigator.serviceWorker.register('sw.js').catch(function() {});
+	navigator.serviceWorker.register('sw.js?v=5').catch(function() {});
 }
 </script>
 </body>
