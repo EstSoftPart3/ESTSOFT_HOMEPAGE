@@ -52,6 +52,12 @@
             </div>
 
 			<c:if test="${sessionScope.loginInfo.loginInfo[0] != null}">
+				<c:if test="${sessionScope.emplyAuthCheck == '2'}">
+					<div class="mode-switch ms-lg-3 my-2 my-lg-0" role="group" aria-label="화면 전환">
+						<a href="/eep/mainPage.do" class="mode-switch-item active" aria-current="page"><i class="fa fa-home"></i> 홈페이지</a>
+						<a href="/admin/board/notice/openNoticeBoardList.do" class="mode-switch-item"><i class="fa fa-cog"></i> 관리자</a>
+					</div>
+				</c:if>
             	<div class="nav-item dropdown">
 	             	<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown"><i class="fa fa-network-wired"></i> <b>${loginInfo.loginInfo[0].emplyNm}</b>(${loginInfo.loginInfo[0].emplyId})님 안녕하세요</a>
 	             	<div class="dropdown-menu shadow-sm m-0">
@@ -71,6 +77,15 @@
        
     </div>
 </nav>
+
+<style>
+/* 관리자 계정용 홈페이지/관리자 화면 전환 토글 (BO include_left.jspf 와 같은 모양) */
+.mode-switch { display: inline-flex; align-self: center; padding: 3px; gap: 2px; border-radius: 999px; background: #F2F8FE; border: 1px solid rgba(17,17,17,.08); white-space: nowrap; }
+.mode-switch-item { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; line-height: 1; color: #555; text-decoration: none; transition: background-color .15s, color .15s; }
+.mode-switch-item:hover { color: #111; background: rgba(22,213,255,.18); }
+.mode-switch-item.active { color: #fff; background: #111; box-shadow: 0 1px 3px rgba(0,0,0,.2); pointer-events: none; }
+.mode-switch-item:focus-visible { outline: 2px solid #16D5FF; outline-offset: 2px; }
+</style>
 
 <script>
 function fn_moveBrd(url) {

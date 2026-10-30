@@ -25,7 +25,20 @@
     </form>
 	
     <!-- Right navbar links -->
-    
+    <%-- 관리자 계정용 홈페이지/관리자 화면 전환 토글 (FO navbar.jspf 와 같은 모양). 이 include 엔 JSTL 이 보장되지 않아 EL 로만 숨긴다 --%>
+    <div class="mode-switch ml-auto" role="group" aria-label="화면 전환" ${sessionScope.emplyAuthCheck == '2' ? '' : 'hidden'}>
+      <a href="/eep/mainPage.do" class="mode-switch-item"><i class="fas fa-home"></i> 홈페이지</a>
+      <a href="/admin/board/notice/openNoticeBoardList.do" class="mode-switch-item active" aria-current="page"><i class="fas fa-cog"></i> 관리자</a>
+    </div>
+    <style>
+    .mode-switch { display: inline-flex; align-self: center; padding: 3px; gap: 2px; border-radius: 999px; background: #F2F8FE; border: 1px solid rgba(17,17,17,.08); white-space: nowrap; }
+    .mode-switch[hidden] { display: none; }
+    .mode-switch-item { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; line-height: 1; color: #555; text-decoration: none; transition: background-color .15s, color .15s; }
+    .mode-switch-item:hover { color: #111; background: rgba(22,213,255,.18); text-decoration: none; }
+    .mode-switch-item.active { color: #fff; background: #111; box-shadow: 0 1px 3px rgba(0,0,0,.2); pointer-events: none; }
+    .mode-switch-item:focus-visible { outline: 2px solid #16D5FF; outline-offset: 2px; }
+    </style>
+
   </nav>
   <!-- /.navbar -->
 
@@ -121,6 +134,35 @@
             </ul>
            </li>
           	
+          	<li class="nav-item has-treeview menu-open">
+	            <a href="#" class="nav-link">
+	              <i class="nav-icon fas fa-briefcase"></i>
+	              <p class="sTitle">업무툴<i class="right fas fa-angle-left"></i>
+	              </p>
+	            </a>
+		            <ul class="nav nav-treeview">
+		              <li class="nav-item">
+		                <a href="/admin/calendar/openCalendarSync.do" class="nav-link">
+		                  <i class="far fa-circle nav-icon sTitle"></i>
+		                  <p class="sTitle">캘린더 일정 가져오기·분류</p>
+		                </a>
+		              </li>
+		              <li class="nav-item">
+		                <a href="/admin/calendar/openCalendarList.do" class="nav-link">
+		                  <i class="far fa-circle nav-icon sTitle"></i>
+		                  <p class="sTitle">확정 일정 분류별 보기</p>
+		                </a>
+		              </li>
+		              <li class="nav-item">
+		                <%-- 로그인 없이 주소만 있으면 열리는 공개 페이지(정적 파일) --%>
+		                <a href="/travel/index.html" target="_blank" rel="noopener" class="nav-link">
+		                  <i class="far fa-circle nav-icon sTitle"></i>
+		                  <p class="sTitle">여행 대화 사전 <i class="fas fa-external-link-alt" style="font-size:10px;"></i></p>
+		                </a>
+		              </li>
+		           </ul>
+          	</li>
+
           	<li class="nav-item has-treeview menu-open">
 	            <a href="#" class="nav-link">
 	              <i class="nav-icon fas fa-file"></i>
