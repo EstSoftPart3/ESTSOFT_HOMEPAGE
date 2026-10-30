@@ -13,19 +13,20 @@
 <style>
 	:root {
 		--bg: #f4f6f9; --card: #ffffff; --text: #111111; --muted: #6b7280; --line: rgba(17,17,17,.08);
-		--accent: #16D5FF; --chip: #ffffff; --chip-active: #111111; --chip-active-text: #ffffff;
-		--overlay: #ffffff;
+		--accent: #16D5FF; --pron: #0e7490; --chip-active: #111111; --chip-active-text: #ffffff; --danger: #dc2626;
 	}
 	@media (prefers-color-scheme: dark) {
 		:root {
 			--bg: #0f1115; --card: #181b21; --text: #f3f4f6; --muted: #9ca3af; --line: rgba(255,255,255,.08);
-			--chip: #181b21; --chip-active: #f3f4f6; --chip-active-text: #111111; --overlay: #0f1115;
+			--pron: #67e8f9; --chip-active: #f3f4f6; --chip-active-text: #111111; --danger: #f87171;
 		}
 	}
 	* { box-sizing: border-box; }
 	html, body { margin: 0; background: var(--bg); color: var(--text); -webkit-text-size-adjust: 100%; }
 	body { font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
-	button, select { font: inherit; color: inherit; }
+	button, select, input { font: inherit; color: inherit; }
+	button { cursor: pointer; }
+	:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
 	header { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: calc(10px + env(safe-area-inset-top)) 16px 8px; border-bottom: 1px solid var(--line); }
 	h1 { font-size: 18px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
@@ -33,28 +34,42 @@
 	.langs { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: end; }
 	.langs label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
 	.langs select { width: 100%; padding: 10px 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); font-size: 15px; }
-	.swap { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); font-size: 18px; cursor: pointer; }
+	.swap { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); font-size: 18px; }
+	.search { position: relative; margin-top: 10px; }
+	.search input { width: 100%; padding: 11px 14px 11px 38px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); font-size: 16px; }
+	.search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); }
 	.chips { display: flex; gap: 6px; overflow-x: auto; padding: 10px 0 2px; scrollbar-width: none; }
 	.chips::-webkit-scrollbar { display: none; }
-	.chip { flex: none; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--chip); font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+	.chip { flex: none; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); font-size: 14px; font-weight: 600; white-space: nowrap; }
 	.chip[aria-pressed="true"] { background: var(--chip-active); color: var(--chip-active-text); border-color: var(--chip-active); }
 
 	main { padding: 12px 16px calc(24px + env(safe-area-inset-bottom)); max-width: 720px; margin: 0 auto; }
-	.hint { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
-	.phrase { display: block; width: 100%; text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; cursor: pointer; }
-	.phrase:active { transform: scale(.99); }
-	.phrase .mine { font-size: 14px; color: var(--muted); }
-	.phrase .theirs { font-size: 21px; font-weight: 700; margin-top: 4px; line-height: 1.35; word-break: keep-all; overflow-wrap: anywhere; }
-	.phrase:focus-visible, .chip:focus-visible, .swap:focus-visible, .ov button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+	.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px 10px; margin-bottom: 10px; }
+	.card .sit { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+	.card .mine { font-size: 14px; color: var(--muted); }
+	.card .theirs { font-size: 22px; font-weight: 700; margin-top: 3px; line-height: 1.35; word-break: keep-all; overflow-wrap: anywhere; }
+	.card .pron { font-size: 14px; color: var(--pron); margin-top: 3px; word-break: keep-all; overflow-wrap: anywhere; }
+	.card .badge { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 11px; background: var(--line); color: var(--muted); vertical-align: 1px; }
+	.slot { text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: .12em; text-underline-offset: .18em; }
+	.tools { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+	.tools .ctl { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; }
+	.tools .ctl button { width: 36px; height: 36px; flex: none; border-radius: 10px; border: 1px solid var(--line); background: transparent; font-size: 18px; font-weight: 700; }
+	.tools .ctl input, .tools .ctl select { min-width: 0; height: 36px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--line); background: transparent; font-size: 15px; font-weight: 600; }
+	.tools .ctl input { width: 100px; text-align: center; }
+	.tools .ctl select { flex: 1; max-width: 220px; }
+	.tools .spacer { flex: 1; }
+	.icon { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 36px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line); background: transparent; font-size: 13px; }
+	.icon.del { color: var(--danger); }
 
-	.ov { position: fixed; inset: 0; z-index: 10; background: var(--overlay); display: none; flex-direction: column; padding: calc(16px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom)); }
-	.ov.open { display: flex; }
-	.ov .please { font-size: 15px; color: var(--muted); }
-	.ov .big { flex: 1; display: flex; align-items: center; font-size: clamp(30px, 9vw, 64px); font-weight: 800; line-height: 1.3; word-break: keep-all; overflow-wrap: anywhere; }
-	.ov .small { font-size: 17px; color: var(--muted); margin-bottom: 18px; }
-	.ov .row { display: flex; gap: 10px; }
-	.ov .row button { flex: 1; padding: 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); font-size: 17px; font-weight: 700; cursor: pointer; }
-	.ov .row .primary { background: var(--chip-active); color: var(--chip-active-text); border-color: var(--chip-active); }
+	.empty { text-align: center; color: var(--muted); padding: 24px 8px; }
+	.addbox { background: var(--card); border: 1px dashed var(--accent); border-radius: 14px; padding: 16px; text-align: center; }
+	.addbox button { padding: 12px 18px; border-radius: 12px; border: 0; background: var(--chip-active); color: var(--chip-active-text); font-size: 15px; font-weight: 700; }
+	.addbox button:disabled { opacity: .6; }
+	.addbox p { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
+	details.hidden { margin-top: 18px; color: var(--muted); font-size: 14px; }
+	details.hidden summary { cursor: pointer; padding: 6px 0; }
+	details.hidden .row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
+	details.hidden .row span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 </style>
 </head>
 <body>
@@ -66,147 +81,32 @@
 		<button type="button" class="swap" id="swap" aria-label="⇄">⇄</button>
 		<div><label for="theirLang" id="lblThem"></label><select id="theirLang"></select></div>
 	</div>
+	<div class="search">
+		<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M10 2a8 8 0 0 1 6.32 12.9l5.39 5.4-1.41 1.4-5.4-5.39A8 8 0 1 1 10 2zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12z"/></svg>
+		<input type="search" id="q" autocomplete="off" enterkeyhint="search">
+	</div>
 	<nav class="chips" id="chips"></nav>
 </header>
 
 <main>
-	<p class="hint" id="hint"></p>
 	<div id="list"></div>
+	<details class="hidden" id="hiddenBox" hidden>
+		<summary id="hiddenTitle"></summary>
+		<div id="hiddenList"></div>
+	</details>
 </main>
 
-<div class="ov" id="ov" role="dialog" aria-modal="true" aria-labelledby="ovBig">
-	<div class="please" id="ovPlease"></div>
-	<div class="big" id="ovBig"></div>
-	<div class="small" id="ovSmall"></div>
-	<div class="row">
-		<button type="button" id="ovSpeak"></button>
-		<button type="button" class="primary" id="ovClose"></button>
-	</div>
-</div>
-
+<script src="data.js"></script>
+<script src="pron.js"></script>
 <script>
-// 언어 순서: 모든 문장 배열이 이 순서를 따른다
-var LANGS = ['ko', 'en', 'vi', 'ja', 'zh', 'th'];
-var FLAG = { ko: '🇰🇷', en: '🇺🇸', vi: '🇻🇳', ja: '🇯🇵', zh: '🇨🇳', th: '🇹🇭' };
-var VOICE = { ko: 'ko-KR', en: 'en-US', vi: 'vi-VN', ja: 'ja-JP', zh: 'zh-CN', th: 'th-TH' };
-
-// 각 언어로 쓴 언어 이름: NAME[보는 사람 언어] = [ko, en, vi, ja, zh, th 의 이름]
-var NAME = {
-	ko: ['한국어', '영어', '베트남어', '일본어', '중국어', '태국어'],
-	en: ['Korean', 'English', 'Vietnamese', 'Japanese', 'Chinese', 'Thai'],
-	vi: ['Tiếng Hàn', 'Tiếng Anh', 'Tiếng Việt', 'Tiếng Nhật', 'Tiếng Trung', 'Tiếng Thái'],
-	ja: ['韓国語', '英語', 'ベトナム語', '日本語', '中国語', 'タイ語'],
-	zh: ['韩语', '英语', '越南语', '日语', '中文', '泰语'],
-	th: ['ภาษาเกาหลี', 'ภาษาอังกฤษ', 'ภาษาเวียดนาม', 'ภาษาญี่ปุ่น', 'ภาษาจีน', 'ภาษาไทย']
-};
-
-var UI = {
-	title:  ['여행 대화 사전', 'Travel Phrasebook', 'Sổ tay hội thoại du lịch', '旅行会話帳', '旅行会话手册', 'สมุดวลีท่องเที่ยว'],
-	me:     ['나', 'Me', 'Tôi', '自分', '我', 'ฉัน'],
-	them:   ['상대', 'Them', 'Người kia', '相手', '对方', 'อีกฝ่าย'],
-	hint:   ['문장을 누르면 상대에게 보여줄 수 있게 크게 보여요.', 'Tap a phrase to show it large.', 'Chạm vào câu để hiện chữ lớn.', 'タップすると大きく表示します。', '点击句子即可放大显示。', 'แตะประโยคเพื่อแสดงตัวใหญ่'],
-	listen: ['🔊 듣기', '🔊 Listen', '🔊 Nghe', '🔊 聞く', '🔊 听', '🔊 ฟัง'],
-	close:  ['닫기', 'Close', 'Đóng', '閉じる', '关闭', 'ปิด'],
-	please: ['이 문장을 봐 주세요', 'Please read this', 'Xin hãy đọc câu này', 'こちらをご覧ください', '请看这句话', 'กรุณาอ่านข้อความนี้'],
-	noVoice:['이 기기에는 해당 언어 음성이 없어요.', 'This device has no voice for that language.', 'Thiết bị này không có giọng đọc cho ngôn ngữ đó.', 'この端末にはその言語の音声がありません。', '此设备没有该语言的语音。', 'อุปกรณ์นี้ไม่มีเสียงสำหรับภาษานั้น']
-};
-
-// 번역은 Claude 초안. 실사용 전 현지인 확인 권장
-var SITUATIONS = [
-	{ name: ['인사·기본', 'Basics', 'Cơ bản', '基本', '基本用语', 'พื้นฐาน'], phrases: [
-		['안녕하세요', 'Hello', 'Xin chào', 'こんにちは', '你好', 'สวัสดี'],
-		['감사합니다', 'Thank you', 'Cảm ơn', 'ありがとうございます', '谢谢', 'ขอบคุณ'],
-		['죄송합니다', "I'm sorry", 'Xin lỗi', 'すみません', '对不起', 'ขอโทษ'],
-		['네 / 아니요', 'Yes / No', 'Vâng / Không', 'はい / いいえ', '是 / 不是', 'ใช่ / ไม่ใช่'],
-		['천천히 말해 주세요', 'Please speak slowly', 'Xin hãy nói chậm lại', 'ゆっくり話してください', '请说慢一点', 'กรุณาพูดช้าๆ'],
-		['이해하지 못했어요', "I don't understand", 'Tôi không hiểu', 'わかりません', '我听不懂', 'ฉันไม่เข้าใจ'],
-		['여기에 적어 주세요', 'Please write it here', 'Xin hãy viết vào đây', 'ここに書いてください', '请写在这里', 'กรุณาเขียนตรงนี้'],
-		['영어 할 줄 아세요?', 'Do you speak English?', 'Bạn có nói được tiếng Anh không?', '英語を話せますか？', '你会说英语吗？', 'คุณพูดภาษาอังกฤษได้ไหม'],
-		['화장실이 어디예요?', 'Where is the restroom?', 'Nhà vệ sinh ở đâu?', 'トイレはどこですか？', '洗手间在哪里？', 'ห้องน้ำอยู่ที่ไหน'],
-		['사진 좀 찍어 주실 수 있나요?', 'Could you take a photo for me?', 'Bạn có thể chụp ảnh giúp tôi không?', '写真を撮っていただけますか？', '可以帮我拍张照吗？', 'ช่วยถ่ายรูปให้หน่อยได้ไหม']
-	]},
-	{ name: ['공항·입국', 'Airport', 'Sân bay', '空港', '机场', 'สนามบิน'], phrases: [
-		['여행하러 왔어요', "I'm here for travel", 'Tôi đến đây để du lịch', '観光で来ました', '我是来旅游的', 'ฉันมาท่องเที่ยว'],
-		['5일 동안 머물러요', "I'm staying for 5 days", 'Tôi ở lại 5 ngày', '5日間滞在します', '我待五天', 'ฉันจะอยู่ 5 วัน'],
-		['이 호텔에 묵어요', "I'm staying at this hotel", 'Tôi ở khách sạn này', 'このホテルに泊まります', '我住这家酒店', 'ฉันพักที่โรงแรมนี้'],
-		['짐 찾는 곳이 어디예요?', 'Where is baggage claim?', 'Nơi nhận hành lý ở đâu?', '手荷物受取所はどこですか？', '行李提取处在哪里？', 'จุดรับกระเป๋าอยู่ที่ไหน'],
-		['제 짐이 나오지 않았어요', "My luggage didn't come out", 'Hành lý của tôi chưa ra', '荷物が出てきません', '我的行李没有出来', 'กระเป๋าของฉันไม่ออกมา'],
-		['환전소가 어디예요?', 'Where can I exchange money?', 'Chỗ đổi tiền ở đâu?', '両替所はどこですか？', '哪里可以换钱？', 'ที่แลกเงินอยู่ที่ไหน'],
-		['유심카드는 어디서 사요?', 'Where can I buy a SIM card?', 'Mua SIM ở đâu?', 'SIMカードはどこで買えますか？', '在哪里买电话卡？', 'ซื้อซิมการ์ดได้ที่ไหน'],
-		['체크인 카운터가 어디예요?', 'Where is the check-in counter?', 'Quầy làm thủ tục ở đâu?', 'チェックインカウンターはどこですか？', '值机柜台在哪里？', 'เคาน์เตอร์เช็คอินอยู่ที่ไหน']
-	]},
-	{ name: ['교통·택시', 'Transport', 'Giao thông', '交通', '交通', 'การเดินทาง'], phrases: [
-		['이 주소로 가 주세요', 'Please take me to this address', 'Cho tôi đến địa chỉ này', 'この住所までお願いします', '请带我去这个地址', 'ช่วยไปที่อยู่นี้หน่อย'],
-		['얼마나 걸려요?', 'How long does it take?', 'Mất bao lâu?', 'どのくらいかかりますか？', '要多长时间？', 'ใช้เวลานานเท่าไหร่'],
-		['요금이 얼마예요?', 'How much is the fare?', 'Giá bao nhiêu?', '料金はいくらですか？', '多少钱？', 'ค่าโดยสารเท่าไหร่'],
-		['미터기를 켜 주세요', 'Please use the meter', 'Làm ơn bật đồng hồ tính tiền', 'メーターを使ってください', '请打表', 'กรุณาเปิดมิเตอร์'],
-		['여기서 세워 주세요', 'Please stop here', 'Dừng ở đây giúp tôi', 'ここで止めてください', '请在这里停车', 'จอดตรงนี้'],
-		['공항으로 가 주세요', 'To the airport, please', 'Cho tôi ra sân bay', '空港までお願いします', '请去机场', 'ไปสนามบิน'],
-		['가장 가까운 지하철역이 어디예요?', 'Where is the nearest subway station?', 'Ga tàu điện ngầm gần nhất ở đâu?', '一番近い駅はどこですか？', '最近的地铁站在哪里？', 'สถานีรถไฟฟ้าที่ใกล้ที่สุดอยู่ที่ไหน'],
-		['이 버스가 여기에 가나요?', 'Does this bus go here?', 'Xe buýt này có đi đến đây không?', 'このバスはここに行きますか？', '这辆公交车去这里吗？', 'รถเมล์คันนี้ไปที่นี่ไหม'],
-		['조금 천천히 가 주세요', 'Please drive more slowly', 'Làm ơn chạy chậm lại', 'もう少しゆっくり走ってください', '请开慢一点', 'ช่วยขับช้าลงหน่อย']
-	]},
-	{ name: ['숙소', 'Hotel', 'Khách sạn', 'ホテル', '酒店', 'โรงแรม'], phrases: [
-		['체크인할게요', "I'd like to check in", 'Tôi muốn nhận phòng', 'チェックインをお願いします', '我要办理入住', 'ฉันต้องการเช็คอิน'],
-		['예약했어요', 'I have a reservation', 'Tôi đã đặt phòng', '予約しています', '我有预订', 'ฉันจองไว้แล้ว'],
-		['체크아웃은 몇 시예요?', 'What time is check-out?', 'Mấy giờ trả phòng?', 'チェックアウトは何時ですか？', '几点退房？', 'เช็คเอาท์กี่โมง'],
-		['와이파이 비밀번호가 뭐예요?', "What's the Wi-Fi password?", 'Mật khẩu Wi-Fi là gì?', 'Wi-Fiのパスワードは何ですか？', 'Wi-Fi密码是多少？', 'รหัส Wi-Fi คืออะไร'],
-		['짐을 맡겨도 될까요?', 'Can I leave my luggage here?', 'Tôi gửi hành lý ở đây được không?', '荷物を預かってもらえますか？', '可以寄存行李吗？', 'ฝากกระเป๋าไว้ได้ไหม'],
-		['에어컨이 안 돼요', "The air conditioner doesn't work", 'Điều hòa không hoạt động', 'エアコンが動きません', '空调坏了', 'แอร์ไม่ทำงาน'],
-		['수건을 더 주세요', 'More towels, please', 'Cho tôi thêm khăn tắm', 'タオルをもう少しください', '请再给我几条毛巾', 'ขอผ้าเช็ดตัวเพิ่ม'],
-		['방을 청소해 주세요', 'Please clean my room', 'Làm ơn dọn phòng giúp tôi', '部屋の掃除をお願いします', '请打扫我的房间', 'ช่วยทำความสะอาดห้องด้วย'],
-		['택시를 불러 주세요', 'Please call a taxi', 'Gọi taxi giúp tôi', 'タクシーを呼んでください', '请帮我叫出租车', 'ช่วยเรียกแท็กซี่ให้หน่อย']
-	]},
-	{ name: ['식당', 'Restaurant', 'Nhà hàng', 'レストラン', '餐厅', 'ร้านอาหาร'], phrases: [
-		['두 명이에요', 'Table for two, please', 'Cho tôi bàn hai người', '2人です', '两位', 'สองคน'],
-		['메뉴판 주세요', 'The menu, please', 'Cho tôi xem thực đơn', 'メニューをください', '请给我菜单', 'ขอเมนูหน่อย'],
-		['이걸로 주세요', "I'll have this", 'Cho tôi món này', 'これをください', '我要这个', 'เอาอันนี้'],
-		['추천 메뉴가 뭐예요?', 'What do you recommend?', 'Bạn gợi ý món nào?', 'おすすめは何ですか？', '你推荐什么？', 'แนะนำเมนูอะไรดี'],
-		['맵지 않게 해 주세요', 'Not spicy, please', 'Đừng cho cay nhé', '辛くしないでください', '请不要放辣', 'ไม่เอาเผ็ด'],
-		['고수는 빼 주세요', 'No cilantro, please', 'Đừng cho rau mùi', 'パクチー抜きでお願いします', '请不要放香菜', 'ไม่ใส่ผักชี'],
-		['견과류 알레르기가 있어요', "I'm allergic to nuts", 'Tôi bị dị ứng với các loại hạt', 'ナッツアレルギーがあります', '我对坚果过敏', 'ฉันแพ้ถั่ว'],
-		['물 한 병 주세요', 'A bottle of water, please', 'Cho tôi một chai nước', '水を1本ください', '请给我一瓶水', 'ขอน้ำหนึ่งขวด'],
-		['계산서 주세요', 'The bill, please', 'Tính tiền giúp tôi', 'お会計お願いします', '买单', 'เช็คบิลด้วย'],
-		['카드로 계산할 수 있어요?', 'Can I pay by card?', 'Tôi trả bằng thẻ được không?', 'カードで払えますか？', '可以刷卡吗？', 'จ่ายด้วยบัตรได้ไหม']
-	]},
-	{ name: ['쇼핑', 'Shopping', 'Mua sắm', '買い物', '购物', 'ช้อปปิ้ง'], phrases: [
-		['이거 얼마예요?', 'How much is this?', 'Cái này bao nhiêu tiền?', 'これはいくらですか？', '这个多少钱？', 'อันนี้ราคาเท่าไหร่'],
-		['좀 깎아 주세요', 'Can you give me a discount?', 'Bớt cho tôi một chút được không?', '少し安くしてもらえますか？', '能便宜一点吗？', 'ลดหน่อยได้ไหม'],
-		['그냥 구경하는 거예요', "I'm just looking", 'Tôi chỉ xem thôi', '見ているだけです', '我只是看看', 'แค่ดูเฉยๆ'],
-		['다른 색 있어요?', 'Do you have another color?', 'Có màu khác không?', '他の色はありますか？', '有别的颜色吗？', 'มีสีอื่นไหม'],
-		['더 큰 사이즈 있어요?', 'Do you have a bigger size?', 'Có cỡ lớn hơn không?', 'もっと大きいサイズはありますか？', '有大一点的吗？', 'มีไซซ์ใหญ่กว่านี้ไหม'],
-		['입어 봐도 돼요?', 'Can I try it on?', 'Tôi mặc thử được không?', '試着してもいいですか？', '可以试穿吗？', 'ลองได้ไหม'],
-		['이걸로 할게요', "I'll take it", 'Tôi lấy cái này', 'これにします', '就要这个了', 'ตกลงเอาอันนี้'],
-		['영수증 주세요', 'A receipt, please', 'Cho tôi hóa đơn', 'レシートをください', '请给我收据', 'ขอใบเสร็จด้วย'],
-		['봉투 하나 주세요', 'A bag, please', 'Cho tôi một cái túi', '袋をください', '请给我一个袋子', 'ขอถุงหนึ่งใบ']
-	]},
-	{ name: ['길찾기', 'Directions', 'Hỏi đường', '道案内', '问路', 'ถามทาง'], phrases: [
-		['지도에서 지금 여기가 어디예요?', 'Where am I on this map?', 'Tôi đang ở đâu trên bản đồ này?', 'この地図で今どこですか？', '我现在在地图上的哪里？', 'ตอนนี้ฉันอยู่ตรงไหนบนแผนที่'],
-		['여기에 어떻게 가요?', 'How do I get here?', 'Đến chỗ này đi thế nào?', 'ここへはどう行けばいいですか？', '这里怎么走？', 'ไปที่นี่ยังไง'],
-		['걸어서 갈 수 있어요?', 'Can I walk there?', 'Đi bộ đến đó được không?', '歩いて行けますか？', '能走路过去吗？', 'เดินไปได้ไหม'],
-		['멀어요?', 'Is it far?', 'Có xa không?', '遠いですか？', '远吗？', 'ไกลไหม'],
-		['지도에 표시해 주세요', 'Please show me on the map', 'Chỉ giúp tôi trên bản đồ', '地図で教えてください', '请在地图上指给我看', 'ช่วยชี้บนแผนที่ให้หน่อย'],
-		['길을 잃었어요', "I'm lost", 'Tôi bị lạc đường', '道に迷いました', '我迷路了', 'ฉันหลงทาง'],
-		['가장 가까운 편의점이 어디예요?', 'Where is the nearest convenience store?', 'Cửa hàng tiện lợi gần nhất ở đâu?', '一番近いコンビニはどこですか？', '最近的便利店在哪里？', 'ร้านสะดวกซื้อที่ใกล้ที่สุดอยู่ที่ไหน'],
-		['ATM이 어디 있어요?', 'Where is an ATM?', 'Cây ATM ở đâu?', 'ATMはどこですか？', '哪里有ATM？', 'ตู้ ATM อยู่ที่ไหน']
-	]},
-	{ name: ['긴급·병원', 'Emergency', 'Khẩn cấp', '緊急', '紧急', 'ฉุกเฉิน'], phrases: [
-		['도와주세요!', 'Help!', 'Cứu tôi với!', '助けて！', '救命！', 'ช่วยด้วย'],
-		['경찰을 불러 주세요', 'Please call the police', 'Hãy gọi cảnh sát', '警察を呼んでください', '请叫警察', 'ช่วยเรียกตำรวจ'],
-		['구급차를 불러 주세요', 'Please call an ambulance', 'Hãy gọi xe cấp cứu', '救急車を呼んでください', '请叫救护车', 'ช่วยเรียกรถพยาบาล'],
-		['병원에 데려가 주세요', 'Please take me to a hospital', 'Hãy đưa tôi đến bệnh viện', '病院に連れて行ってください', '请带我去医院', 'ช่วยพาฉันไปโรงพยาบาล'],
-		['여기가 아파요', 'It hurts here', 'Tôi bị đau ở đây', 'ここが痛いです', '这里疼', 'เจ็บตรงนี้'],
-		['열이 나요', 'I have a fever', 'Tôi bị sốt', '熱があります', '我发烧了', 'ฉันมีไข้'],
-		['약국이 어디예요?', 'Where is a pharmacy?', 'Hiệu thuốc ở đâu?', '薬局はどこですか？', '药店在哪里？', 'ร้านขายยาอยู่ที่ไหน'],
-		['여권을 잃어버렸어요', 'I lost my passport', 'Tôi bị mất hộ chiếu', 'パスポートをなくしました', '我的护照丢了', 'ฉันทำหนังสือเดินทางหาย'],
-		['지갑을 도난당했어요', 'My wallet was stolen', 'Tôi bị mất cắp ví', '財布を盗まれました', '我的钱包被偷了', 'กระเป๋าสตางค์ของฉันถูกขโมย'],
-		['대사관에 연락해 주세요', 'Please contact my embassy', 'Hãy liên hệ đại sứ quán của tôi', '大使館に連絡してください', '请联系我国大使馆', 'ช่วยติดต่อสถานทูตของฉัน']
-	]}
-];
-
 var $ = function(id) { return document.getElementById(id); };
-var state = { me: 'ko', them: 'vi', sit: 0 };
-var openPhrase = null;
+var ICON_SPEAK = '<svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>';
+var ICON_DEL = '<svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M9 3h6l1 2h4v2H4V5h4l1-2zM6 9h12l-1 12H7L6 9z"/></svg>';
+var MT_LANG = { ko: 'ko', en: 'en', vi: 'vi', ja: 'ja', zh: 'zh-CN', th: 'th' };
+
+var state = { me: 'ko', them: 'vi', sit: 0, vals: {} };
+var shared = { added: [], hidden: [] }; // 서버의 공유 상태(추가한 문장, 숨긴 키)
+var query = '';
 
 function idx(lang) { return LANGS.indexOf(lang); }
 function t(key) { return UI[key][idx(state.me)]; }
@@ -215,8 +115,80 @@ function t(key) { return UI[key][idx(state.me)]; }
 function load() {
 	try { var s = JSON.parse(localStorage.getItem('phrasebook') || 'null'); if (s && idx(s.me) >= 0 && idx(s.them) >= 0) state = s; } catch (e) {}
 	if (!(state.sit >= 0 && state.sit < SITUATIONS.length)) state.sit = 0;
+	if (!state.vals || typeof state.vals !== 'object') state.vals = {};
+	try { var c = JSON.parse(localStorage.getItem('phrasebook-shared') || 'null'); if (c && c.added && c.hidden) shared = c; } catch (e) {}
 }
 function save() { try { localStorage.setItem('phrasebook', JSON.stringify(state)); } catch (e) {} }
+
+// 문장 항목은 배열(고정 문장) 또는 { t: 언어별 틀, n: 숫자 칸 {v,min,max} 또는 w: 단어 목록(단어마다 언어별 표기) }
+function tpl(p) { return Array.isArray(p) ? p : p.t; }
+
+function slotVal(p, k) {
+	var v = state.vals[k];
+	if (p.n) return (typeof v === 'number' && v >= p.n.min && v <= p.n.max) ? v : p.n.v;
+	if (p.w) return (v >= 0 && v < p.w.length) ? v : 0;
+	return null;
+}
+
+// 틀 s 를 [{text, slot}] 조각으로. {a|b} 는 숫자가 1이면 a, 아니면 b (영어 단·복수), {n}/{w} 는 fill
+function split(s, p, v, fill) {
+	if (p.n) s = s.replace(/\{([^{}|]*)\|([^{}]*)\}/g, function(_, one, many) { return v === 1 ? one : many; });
+	return s.split(/(\{[nw]\})/).filter(Boolean).map(function(x) {
+		return /^\{[nw]\}$/.test(x) ? { text: fill, slot: true } : { text: x };
+	});
+}
+function parts(p, li, v) {
+	return split(tpl(p)[li], p, v, p.n ? v.toLocaleString('en-US') : p.w ? p.w[v][li] : '');
+}
+function text(p, li, v) { return parts(p, li, v).map(function(x) { return x.text; }).join(''); }
+
+// 상대 언어 문장을 내 언어 글자로 적은 발음 (pron.js). 없으면 null
+function pronParts(e, v) {
+	if (e.added || typeof PRON === 'undefined') return null;
+	var ko = tpl(e.p)[0];
+	var s = PRON[ko] && PRON[ko][state.them] && PRON[ko][state.them][state.me];
+	if (!s) return null;
+	var fill = '';
+	if (e.p.n) fill = v.toLocaleString('en-US');
+	if (e.p.w) {
+		var w = PRON_W[ko] && PRON_W[ko][v] && PRON_W[ko][v][state.them] && PRON_W[ko][v][state.them][state.me];
+		if (!w) return null;
+		fill = w;
+	}
+	return split(s, e.p, v, fill);
+}
+
+// 바뀌는 칸은 밑줄로 표시해서 상대도 어디가 바뀐 말인지 알 수 있게 한다
+function paint(el, list) {
+	el.textContent = '';
+	list.forEach(function(x) {
+		if (!x.slot) { el.appendChild(document.createTextNode(x.text)); return; }
+		var s = document.createElement('span');
+		s.className = 'slot';
+		s.textContent = x.text;
+		el.appendChild(s);
+	});
+}
+
+// 화면에 올릴 문장 목록: 기본 문장 + 추가한 문장, 숨긴 것 제외
+function entries(sitIdx) {
+	var out = [];
+	SITUATIONS[sitIdx].phrases.forEach(function(p) { out.push({ p: p, k: 'b:' + tpl(p)[0], sit: sitIdx }); });
+	shared.added.forEach(function(a) {
+		if (a.SIT_IDX !== sitIdx) return;
+		out.push({ p: LANGS.map(function(l) { return a['TXT_' + l.toUpperCase()]; }), k: 'a:' + a.PHRASE_SQ, sit: sitIdx, added: true });
+	});
+	return out;
+}
+function isHidden(k) { return shared.hidden.indexOf(k) >= 0; }
+
+function norm(s) { return String(s).toLowerCase().replace(/\s+/g, ''); }
+function matches(e, q) {
+	var v = slotVal(e.p, e.k);
+	var hay = [text(e.p, idx(state.me), v), text(e.p, idx(state.them), v)];
+	if (e.p.w) e.p.w.forEach(function(w) { hay.push(w[idx(state.me)], w[idx(state.them)]); });
+	return hay.some(function(h) { return norm(h).indexOf(q) >= 0; });
+}
 
 function fillSelect(sel, value) {
 	sel.innerHTML = '';
@@ -235,7 +207,8 @@ function render() {
 	$('title').textContent = t('title');
 	$('lblMe').textContent = t('me');
 	$('lblThem').textContent = t('them');
-	$('hint').textContent = t('hint');
+	$('q').placeholder = t('search');
+	$('q').setAttribute('aria-label', t('search'));
 	fillSelect($('myLang'), state.me);
 	fillSelect($('theirLang'), state.them);
 
@@ -246,62 +219,261 @@ function render() {
 		b.type = 'button';
 		b.className = 'chip';
 		b.textContent = s.name[idx(state.me)];
-		b.setAttribute('aria-pressed', i === state.sit);
-		b.onclick = function() { state.sit = i; save(); render(); window.scrollTo(0, 0); };
+		b.setAttribute('aria-pressed', !query && i === state.sit);
+		b.onclick = function() { state.sit = i; query = ''; $('q').value = ''; save(); render(); window.scrollTo(0, 0); };
 		chips.appendChild(b);
 	});
-
-	var list = $('list');
-	list.innerHTML = '';
-	SITUATIONS[state.sit].phrases.forEach(function(p) {
-		var b = document.createElement('button');
-		b.type = 'button';
-		b.className = 'phrase';
-		b.lang = state.them;
-		var mine = document.createElement('div');
-		mine.className = 'mine';
-		mine.lang = state.me;
-		mine.textContent = p[idx(state.me)];
-		var theirs = document.createElement('div');
-		theirs.className = 'theirs';
-		theirs.textContent = p[idx(state.them)];
-		b.appendChild(mine);
-		b.appendChild(theirs);
-		b.onclick = function() { show(p); };
-		list.appendChild(b);
-	});
-
 	var active = chips.querySelector('[aria-pressed="true"]');
 	if (active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest', inline: 'center' });
+
+	renderList();
+	renderHidden();
 }
 
-function show(p) {
-	openPhrase = p;
-	$('ovPlease').textContent = UI.please[idx(state.them)];
-	$('ovPlease').lang = state.them;
-	$('ovBig').textContent = p[idx(state.them)];
-	$('ovBig').lang = state.them;
-	$('ovSmall').textContent = p[idx(state.me)];
-	$('ovSpeak').textContent = t('listen');
-	$('ovClose').textContent = t('close');
-	$('ov').classList.add('open');
-	$('ovClose').focus();
+function renderList() {
+	var list = $('list');
+	list.innerHTML = '';
+	var shown;
+	if (query) {
+		var q = norm(query);
+		shown = [];
+		SITUATIONS.forEach(function(s, i) {
+			// 상황 이름이 맞으면(예: '택시') 그 상황의 문장을 모두 보여준다
+			var all = norm(s.name[idx(state.me)]).indexOf(q) >= 0;
+			entries(i).forEach(function(e) { if (!isHidden(e.k) && (all || matches(e, q))) shown.push(e); });
+		});
+	} else {
+		shown = entries(state.sit).filter(function(e) { return !isHidden(e.k); });
+	}
+	shown.forEach(function(e) { list.appendChild(card(e)); });
+	if (query && !shown.length) list.appendChild(addBox());
 }
 
-function hide() {
-	$('ov').classList.remove('open');
-	openPhrase = null;
-	if (window.speechSynthesis) speechSynthesis.cancel();
+function card(e) {
+	var p = e.p, v = slotVal(p, e.k);
+	var div = document.createElement('div');
+	div.className = 'card';
+	if (query) {
+		var sit = document.createElement('div');
+		sit.className = 'sit';
+		sit.textContent = SITUATIONS[e.sit].name[idx(state.me)];
+		div.appendChild(sit);
+	}
+	var mine = document.createElement('div');
+	mine.className = 'mine';
+	mine.lang = state.me;
+	paint(mine, parts(p, idx(state.me), v));
+	if (e.added) {
+		var badge = document.createElement('span');
+		badge.className = 'badge';
+		badge.textContent = t('added');
+		mine.appendChild(badge);
+	}
+	var theirs = document.createElement('div');
+	theirs.className = 'theirs';
+	theirs.lang = state.them;
+	paint(theirs, parts(p, idx(state.them), v));
+	div.appendChild(mine);
+	div.appendChild(theirs);
+
+	var pp = pronParts(e, v);
+	if (pp) {
+		var pron = document.createElement('div');
+		pron.className = 'pron';
+		pron.lang = state.me;
+		paint(pron, pp);
+		div.appendChild(pron);
+	}
+
+	var tools = document.createElement('div');
+	tools.className = 'tools';
+	var ctl = slotControl(e, v, function() {
+		var nv = slotVal(p, e.k);
+		paint(mine, parts(p, idx(state.me), nv));
+		if (e.added) mine.appendChild(badge);
+		paint(theirs, parts(p, idx(state.them), nv));
+		var np = pronParts(e, nv);
+		if (np && pron) paint(pron, np);
+	});
+	tools.appendChild(ctl || Object.assign(document.createElement('span'), { className: 'spacer' }));
+
+	var speak = document.createElement('button');
+	speak.type = 'button';
+	speak.className = 'icon';
+	speak.innerHTML = ICON_SPEAK;
+	speak.appendChild(document.createTextNode(t('listen')));
+	speak.onclick = function() { say(text(p, idx(state.them), slotVal(p, e.k))); };
+	var del = document.createElement('button');
+	del.type = 'button';
+	del.className = 'icon del';
+	del.innerHTML = ICON_DEL;
+	del.setAttribute('aria-label', t('del'));
+	del.title = t('del');
+	del.onclick = function() { if (confirm(t('confirmDel'))) setHidden(e.k, true); };
+	tools.appendChild(speak);
+	tools.appendChild(del);
+	div.appendChild(tools);
+	return div;
 }
 
-function speak() {
-	if (!openPhrase) return;
+// 숫자 칸은 −/+ 와 직접 입력, 단어 칸은 내 언어로 된 목록에서 고른다. 고르면 바로 문장이 바뀐다
+function slotControl(e, v, repaint) {
+	var p = e.p;
+	if (!p.n && !p.w) return null;
+	var box = document.createElement('div');
+	box.className = 'ctl';
+	var set = function(x) { state.vals[e.k] = x; save(); repaint(); };
+	if (p.n) {
+		var input = document.createElement('input');
+		input.type = 'number';
+		input.inputMode = 'numeric';
+		input.min = p.n.min;
+		input.max = p.n.max;
+		input.value = v;
+		input.setAttribute('aria-label', '#');
+		var clamp = function(x) { return Math.min(p.n.max, Math.max(p.n.min, x)); };
+		var step = function(d) { var x = clamp(slotVal(p, e.k) + d); input.value = x; set(x); };
+		var minus = document.createElement('button');
+		minus.type = 'button';
+		minus.textContent = '−';
+		minus.setAttribute('aria-label', '-1');
+		minus.onclick = function() { step(-1); };
+		var plus = document.createElement('button');
+		plus.type = 'button';
+		plus.textContent = '+';
+		plus.setAttribute('aria-label', '+1');
+		plus.onclick = function() { step(1); };
+		// 입력 중에는 범위 안의 숫자일 때만 반영하고, 입력을 마치면 범위로 맞춘다
+		input.oninput = function() { var x = parseInt(input.value, 10); if (x >= p.n.min && x <= p.n.max) set(x); };
+		input.onchange = function() { var x = parseInt(input.value, 10); x = isNaN(x) ? slotVal(p, e.k) : clamp(x); input.value = x; set(x); };
+		box.appendChild(minus);
+		box.appendChild(input);
+		box.appendChild(plus);
+	} else {
+		var sel = document.createElement('select');
+		sel.setAttribute('aria-label', text(p, idx(state.me), v));
+		p.w.forEach(function(word, i) {
+			var o = document.createElement('option');
+			o.value = i;
+			o.textContent = word[idx(state.me)];
+			sel.appendChild(o);
+		});
+		sel.value = v;
+		sel.onchange = function() { set(Number(sel.value)); };
+		box.appendChild(sel);
+	}
+	return box;
+}
+
+function addBox() {
+	var box = document.createElement('div');
+	box.className = 'addbox';
+	var msg = document.createElement('div');
+	msg.className = 'empty';
+	msg.textContent = t('noHit');
+	var btn = document.createElement('button');
+	btn.type = 'button';
+	btn.textContent = t('addTr');
+	btn.onclick = function() { translateAndAdd(query.trim(), btn); };
+	var note = document.createElement('p');
+	note.textContent = t('trNote');
+	box.appendChild(msg);
+	box.appendChild(btn);
+	box.appendChild(note);
+	return box;
+}
+
+function decodeEntities(s) {
+	var ta = document.createElement('textarea');
+	ta.innerHTML = s;
+	return ta.value;
+}
+
+// MyMemory 무료 번역. 내 언어 → 나머지 5개 언어로 번역해 공유 목록에 추가한다
+function translateAndAdd(src, btn) {
+	if (!src) return;
+	src = src.slice(0, 300);
+	btn.disabled = true;
+	btn.textContent = t('adding');
+	var me = state.me;
+	var texts = {};
+	texts[me] = src;
+	var jobs = LANGS.filter(function(l) { return l !== me; }).map(function(l) {
+		var url = 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(src) + '&langpair=' + MT_LANG[me] + '|' + MT_LANG[l];
+		return fetch(url).then(function(r) { return r.json(); }).then(function(j) {
+			var out = j && j.responseStatus == 200 && j.responseData && j.responseData.translatedText;
+			if (!out) throw new Error('mt');
+			texts[l] = decodeEntities(out).slice(0, 300);
+		});
+	});
+	Promise.all(jobs).then(function() {
+		var body = new URLSearchParams({ sit: String(state.sit), src: me });
+		LANGS.forEach(function(l) { body.append(l, texts[l]); });
+		return post('addData.do', body).then(function(res) {
+			shared.added.push(res.phrase);
+			saveShared();
+			renderList();
+		});
+	}).catch(function(err) {
+		alert(err && err.message === 'rate' ? t('rate') : err && err.message === 'net' ? t('failNet') : t('failTr'));
+		btn.disabled = false;
+		btn.textContent = t('addTr');
+	});
+}
+
+function post(path, body) {
+	return fetch(path, { method: 'POST', body: body }).catch(function() { throw new Error('net'); }).then(function(r) {
+		if (!r.ok) throw new Error('net');
+		return r.json();
+	}).then(function(j) {
+		if (j.error) throw new Error(j.error === 'rate' ? 'rate' : 'net');
+		return j;
+	});
+}
+
+function saveShared() { try { localStorage.setItem('phrasebook-shared', JSON.stringify(shared)); } catch (e) {} }
+
+function setHidden(k, hide) {
+	post(hide ? 'hideData.do' : 'unhideData.do', new URLSearchParams({ key: k })).then(function() {
+		shared.hidden = shared.hidden.filter(function(x) { return x !== k; });
+		if (hide) shared.hidden.push(k);
+		saveShared();
+		renderList();
+		renderHidden();
+	}).catch(function(err) { alert(err.message === 'rate' ? t('rate') : t('failNet')); });
+}
+
+// 숨긴 문장(모든 상황) 되돌리기
+function renderHidden() {
+	var rows = [];
+	SITUATIONS.forEach(function(s, i) { entries(i).forEach(function(e) { if (isHidden(e.k)) rows.push(e); }); });
+	$('hiddenBox').hidden = !rows.length;
+	$('hiddenTitle').textContent = t('hiddenN') + ' (' + rows.length + ')';
+	var list = $('hiddenList');
+	list.innerHTML = '';
+	rows.forEach(function(e) {
+		var row = document.createElement('div');
+		row.className = 'row';
+		var label = document.createElement('span');
+		label.textContent = text(e.p, idx(state.me), slotVal(e.p, e.k));
+		var btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'icon';
+		btn.textContent = t('restore');
+		btn.onclick = function() { setHidden(e.k, false); };
+		row.appendChild(label);
+		row.appendChild(btn);
+		list.appendChild(row);
+	});
+}
+
+function say(s) {
 	var code = VOICE[state.them];
 	var voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
 	var voice = voices.filter(function(v) { return v.lang.replace('_', '-').toLowerCase().indexOf(code.slice(0, 2).toLowerCase()) === 0; })[0];
 	if (!voice) { alert(t('noVoice')); return; }
 	speechSynthesis.cancel();
-	var u = new SpeechSynthesisUtterance(openPhrase[idx(state.them)]);
+	var u = new SpeechSynthesisUtterance(s);
 	u.lang = code;
 	u.voice = voice;
 	u.rate = 0.9;
@@ -319,14 +491,26 @@ $('theirLang').onchange = function() {
 	save(); render();
 };
 $('swap').onclick = function() { var m = state.me; state.me = state.them; state.them = m; save(); render(); };
-$('ovClose').onclick = hide;
-$('ovSpeak').onclick = speak;
-document.addEventListener('keydown', function(e) { if (e.key === 'Escape') hide(); });
+$('q').oninput = function() {
+	query = this.value;
+	var on = !!query.trim();
+	Array.prototype.forEach.call(document.querySelectorAll('.chip'), function(c, i) { c.setAttribute('aria-pressed', !on && i === state.sit); });
+	renderList();
+};
 // 일부 브라우저는 음성 목록을 늦게 채운다
 if (window.speechSynthesis) speechSynthesis.getVoices();
 
 load();
 render();
+
+// 공유 상태는 마지막으로 받은 것을 먼저 보여주고, 서버에서 새로 받으면 다시 그린다
+fetch('stateData.do', { cache: 'no-store' }).then(function(r) { return r.json(); }).then(function(j) {
+	if (!j.added || !j.hidden) return;
+	shared = { added: j.added, hidden: j.hidden };
+	saveShared();
+	renderList();
+	renderHidden();
+}).catch(function() {});
 
 if ('serviceWorker' in navigator) {
 	navigator.serviceWorker.register('sw.js').catch(function() {});
