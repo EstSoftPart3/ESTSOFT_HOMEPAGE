@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.eep.mapper.BoCalendarMapper">
+
+	<!-- 사용 중인 분류 규칙 -->
+	<select id="selectRuleList" resultType="hashMap">
+		SELECT KEYWORD, CATE_CD, SUB_CATE_CD
+		FROM TB_EEP_CAL_RULE_M
+		WHERE USE_YN = 'Y'
+		ORDER BY RULE_ORD, RULE_SQ
+	</select>
+
+	<!-- 구글 OAuth 설정 -->
+	<select id="selectConfList" resultType="hashMap">
+		SELECT CONF_KEY, CONF_VAL FROM TB_EEP_CAL_CONF_M
+	</select>
+
+	<insert id="upsertConf" parameterType="hashMap">
+		INSERT INTO TB_EEP_CAL_CONF_M (CONF_KEY, CONF_VAL, UPDT_DT)
+		VALUES (#{CONF_KEY}, #{CONF_VAL}, NOW())
+		ON DUPLICATE KEY UPDATE CONF_VAL = VALUES(CONF_VAL), UPDT_DT = NOW()
+	</insert>
+
+	<!-- 임시 일정: 관리자별로 마지막 조회 결과만 둔다 -->
+	<delete id="deleteTmp" parameterType="hashMap">
+		DELETE FROM TB_EEP_CAL_EVT_TMP WHERE REG_EMPLY_ID = #{REG_EMPLY_ID}
+	</delete>
+
+	<insert id="insertTmpList" parameterType="hashMap">
+		INSERT INTO TB_EEP_CAL_EVT_TMP
+		(
+			  REG_EMPLY_ID, CAL_ID, GCAL_EVT_ID, EVT_TITLE, EVT_DESC, EVT_LOC
+			, START_DT, END_DT, ALL_DAY_YN, CATE_CD, SUB_CATE_CD, REG_DT
+		)
+		VALUES
+		<foreach collection="list" item="e" separator=",">
+		(
+			  #{REG_EMPLY_ID}, #{e.CAL_ID}, #{e.GCAL_EVT_ID}, #{e.EVT_TITLE}, #{e.EVT_DESC}, #{e.EVT_LOC}
+			, #{e.START_DT}, #{e.END_DT}, #{e.ALL_DAY_YN}, #{e.CATE_CD}, #{e.SUB_CATE_CD}, NOW()
+		)
+		</foreach>
+	</insert>
+
+	<!-- 이미 확정된 일정은 확정된 분류를 보여준다 -->
+	<select id="selectTmpList" parameterType="hashMap" resultType="hashMap">
+		SELECT
+			  T.EVT_TMP_SQ
+			, T.EVT_TITLE
+			, T.EVT_LOC
+			, DATE_FORMAT(T.START_DT, '%Y-%m-%d %H:%i')	AS START_DT
+			, DATE_FORMAT(T.END_DT,   '%Y-%m-%d %H:%i')	AS END_DT
+			, T.ALL_DAY_YN
+			, IFNULL(M.CATE_CD, T.CATE_CD)				AS CATE_CD
+			, IF(M.EVT_SQ IS NULL, T.SUB_CATE_CD, M.SUB_CATE_CD) AS SUB_CATE_CD
+			, IF(M.EVT_SQ IS NULL, 'N', 'Y')			AS CONFIRM_YN
+		FROM TB_EEP_CAL_EVT_TMP T
+		LEFT JOIN TB_EEP_CAL_EVT_M M
+			ON M.CAL_ID = T.CAL_ID AND M.GCAL_EVT_ID = T.GCAL_EVT_ID
+		WHERE T.REG_EMPLY_ID = #{REG_EMPLY_ID}
+		ORDER BY T.START_DT, T.EVT_TMP_SQ
+	</select>
+
+	<update id="updateTmpCate" parameterType="hashMap">
+		UPDATE TB_EEP_CAL_EVT_TMP
+		SET CATE_CD = #{CATE_CD}, SUB_CATE_CD = #{SUB_CATE_CD}
+		WHERE EVT_TMP_SQ = #{EVT_TMP_SQ} AND REG_EMPLY_ID = #{REG_EMPLY_ID}
+	</update>
+
+	<!-- 같은 구글 일정을 다시 확정하면 내용·분류를 덮어쓴다 -->
+	<insert id="confirmTmpList" parameterType="hashMap">
+		INSERT INTO TB_EEP_CAL_EVT_M
+		(
+			  CAL_ID, GCAL_EVT_ID, EVT_TITLE, EVT_DESC, EVT_LOC, START_DT, END_DT, ALL_DAY_YN
+			, CATE_CD, SUB_CATE_CD, CONFIRM_EMPLY_ID, CONFIRM_DT
+		)
+		SELECT
+			  CAL_ID, GCAL_EVT_ID, EVT_TITLE, EVT_DESC, EVT_LOC, START_DT, END_DT, ALL_DAY_YN
+			, CATE_CD, SUB_CATE_CD, #{REG_EMPLY_ID}, NOW()
+		FROM TB_EEP_CAL_EVT_TMP
+		WHERE REG_EMPLY_ID = #{REG_EMPLY_ID}
+		  AND EVT_TMP_SQ IN
+		<foreach collection="list" item="sq" open="(" separator="," close=")">#{sq}</foreach>
+		ON DUPLICATE KEY UPDATE
+			  EVT_TITLE = VALUES(EVT_TITLE), EVT_DESC = VALUES(EVT_DESC), EVT_LOC = VALUES(EVT_LOC)
+			, START_DT = VALUES(START_DT), END_DT = VALUES(END_DT), ALL_DAY_YN = VALUES(ALL_DAY_YN)
+			, CATE_CD = VALUES(CATE_CD), SUB_CATE_CD = VALUES(SUB_CATE_CD)
+			, CONFIRM_EMPLY_ID = VALUES(CONFIRM_EMPLY_ID), CONFIRM_DT = VALUES(CONFIRM_DT)
+	</insert>
+
+	<!-- 확정 일정: 기간은 시작일 기준, 종료일 포함 -->
+	<sql id="evtWhere">
+		WHERE START_DT &gt;= #{FROM_DT}
+		  AND START_DT &lt; DATE_ADD(#{TO_DT}, INTERVAL 1 DAY)
+	</sql>
+
+	<select id="selectEvtList" parameterType="hashMap" resultType="hashMap">
+		SELECT
+			  EVT_SQ
+			, EVT_TITLE
+			, EVT_LOC
+			, DATE_FORMAT(START_DT, '%Y-%m-%d %H:%i')	AS START_DT
+			, DATE_FORMAT(END_DT,   '%Y-%m-%d %H:%i')	AS END_DT
+			, ALL_DAY_YN
+			, CATE_CD
+			, SUB_CATE_CD
+			, CONFIRM_EMPLY_ID
+			, DATE_FORMAT(CONFIRM_DT, '%Y-%m-%d %H:%i')	AS CONFIRM_DT
+		FROM TB_EEP_CAL_EVT_M
+		<include refid="evtWhere"/>
+		<if test="CATE_CD != null and CATE_CD != ''">AND CATE_CD = #{CATE_CD}</if>
+		ORDER BY START_DT, EVT_SQ
+	</select>
+
+	<select id="selectEvtCateCount" parameterType="hashMap" resultType="hashMap">
+		SELECT CATE_CD, COUNT(*) AS CNT
+		FROM TB_EEP_CAL_EVT_M
+		<include refid="evtWhere"/>
+		GROUP BY CATE_CD
+	</select>
+
+</mapper>
