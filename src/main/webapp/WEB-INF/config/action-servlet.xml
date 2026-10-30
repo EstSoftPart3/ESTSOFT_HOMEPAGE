@@ -18,8 +18,9 @@
 		<!-- 관리자  interceptor  -->
 		<mvc:interceptors>
 			<mvc:interceptor>
-				<mvc:mapping path="/admin/board/**" />
-				<mvc:exclude-mapping path="/admin/login/login.do"/>
+				<mvc:mapping path="/admin/**" />
+				<mvc:exclude-mapping path="/admin/login/**"/>
+				<mvc:exclude-mapping path="/admin/logout.do"/>
 				<bean id="bologgerInterceptor" class="com.common.logger.boLoggerInterceptor"></bean>
 			</mvc:interceptor>
 		</mvc:interceptors>

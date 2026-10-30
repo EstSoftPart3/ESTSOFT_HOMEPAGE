@@ -62,7 +62,7 @@ public class boLoggerInterceptor extends HandlerInterceptorAdapter {
 			
 			return false;
 
-		}else if(authCheck.equals("1")) {
+		}else if(!"2".equals(authCheck)) { // 관리자(2)만 통과. BO 로그인 쿼리와 같은 기준
 			
 			response.setContentType("text/html; charset=UTF-8");
             PrintWriter out = response.getWriter();

@@ -8,10 +8,7 @@ import org.springframework.stereotype.Service;
 
 import com.eep.bo.code.dao.BoCodeDao;
 
-import lombok.AllArgsConstructor;
-
 @Service
-@AllArgsConstructor
 public class BoCodeServiceImpl implements BoCodeService{
 
 	@Autowired
