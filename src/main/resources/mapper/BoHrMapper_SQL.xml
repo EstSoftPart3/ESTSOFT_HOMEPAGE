@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.eep.mapper.BoHrMapper">
+
+	<!-- 셀렉트박스 코드: 공통코드관리 화면에서 HR_ 로 시작하는 그룹 -->
+	<select id="selectHrCodeList" resultType="hashMap">
+		SELECT C.COMN_CD AS GRP, D.COMN_DTL_CD AS CD, D.COMN_DTL_CD_NM AS NM
+		FROM TB_EEP_COMN_CD_M C
+		JOIN TB_EEP_COMN_DTL_CD_S D ON D.COMN_CD_SQ = C.COMN_CD_SQ
+		WHERE C.COMN_CD LIKE 'HR\_%'
+		  AND C.DEL_YN = 'N' AND C.USE_YN = 'Y'
+		  AND D.DEL_YN = 'N' AND D.USE_YN = 'Y'
+		ORDER BY C.COMN_CD, D.COMN_DTL_CD_ORD IS NULL, D.COMN_DTL_CD_ORD, D.COMN_DTL_CD_SQ
+	</select>
+
+	<!-- 면접자 -->
+	<select id="selectIntvList" resultType="hashMap">
+		SELECT
+			  I.INTV_SQ, I.SEQ_NO, I.APLY_NM, I.GENDER
+			, DATE_FORMAT(I.INTV_DT, '%Y-%m-%d') AS INTV_DT
+			, I.INTV_TM, I.APLY_TARGET, I.APLY_ROUTE, I.REFERRER, I.LANG_NOTE, I.PHONE, I.ATTEND_ST, I.EDU, I.AGE, I.ADDR, I.STATION
+			, I.CAREER, I.LANG, I.LOCAL_YN, I.MEMO, I.HOBBY, I.SPECIALTY, I.SALARY
+			, I.RESULT_ST, I.NOTICE_ST, I.JOIN_ST, I.JOIN_DT
+			, T.TRN_SQ
+		FROM TB_EEP_HR_INTV_M I
+		LEFT JOIN TB_EEP_HR_TRAINEE_M T ON T.INTV_SQ = I.INTV_SQ
+		ORDER BY I.INTV_DT DESC, I.INTV_TM DESC, I.INTV_SQ DESC
+	</select>
+
+	<!-- 순번은 엑셀에서 이어지던 번호. 다음 번호를 준다 -->
+	<insert id="insertIntv" parameterType="hashMap">
+		INSERT INTO TB_EEP_HR_INTV_M
+		(
+			  SEQ_NO, APLY_NM, GENDER, INTV_DT, INTV_TM, APLY_TARGET, APLY_ROUTE, PHONE, ATTEND_ST, EDU, AGE, ADDR, STATION
+			, CAREER, LANG, LOCAL_YN, MEMO, HOBBY, SPECIALTY, SALARY, RESULT_ST, NOTICE_ST, JOIN_ST, JOIN_DT
+			, REFERRER, LANG_NOTE, UPDT_EMPLY_ID, UPDT_DT
+		)
+		SELECT
+			  IFNULL(MAX(SEQ_NO), 0) + 1, #{APLY_NM}, #{GENDER}, NULLIF(#{INTV_DT}, ''), #{INTV_TM}, #{APLY_TARGET}, #{APLY_ROUTE}, #{PHONE}, #{ATTEND_ST}, #{EDU}, #{AGE}, #{ADDR}, #{STATION}
+			, #{CAREER}, #{LANG}, #{LOCAL_YN}, #{MEMO}, #{HOBBY}, #{SPECIALTY}, #{SALARY}, #{RESULT_ST}, #{NOTICE_ST}, #{JOIN_ST}, #{JOIN_DT}
+			, #{REFERRER}, #{LANG_NOTE}, #{UPDT_EMPLY_ID}, NOW()
+		FROM TB_EEP_HR_INTV_M
+	</insert>
+
+	<update id="updateIntv" parameterType="hashMap">
+		UPDATE TB_EEP_HR_INTV_M SET
+			  APLY_NM = #{APLY_NM}, GENDER = #{GENDER}, INTV_DT = NULLIF(#{INTV_DT}, ''), INTV_TM = #{INTV_TM}
+			, APLY_TARGET = #{APLY_TARGET}, APLY_ROUTE = #{APLY_ROUTE}, PHONE = #{PHONE}, ATTEND_ST = #{ATTEND_ST}
+			, EDU = #{EDU}, AGE = #{AGE}, ADDR = #{ADDR}, STATION = #{STATION}, CAREER = #{CAREER}, LANG = #{LANG}
+			, LOCAL_YN = #{LOCAL_YN}, MEMO = #{MEMO}, HOBBY = #{HOBBY}, SPECIALTY = #{SPECIALTY}, SALARY = #{SALARY}
+			, RESULT_ST = #{RESULT_ST}, NOTICE_ST = #{NOTICE_ST}, JOIN_ST = #{JOIN_ST}, JOIN_DT = #{JOIN_DT}
+			, REFERRER = #{REFERRER}, LANG_NOTE = #{LANG_NOTE}
+			, UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE INTV_SQ = #{INTV_SQ}
+	</update>
+
+	<delete id="deleteIntv" parameterType="hashMap">
+		DELETE FROM TB_EEP_HR_INTV_M WHERE INTV_SQ = #{INTV_SQ}
+	</delete>
+
+	<!-- 출근일이 날짜 형식이면 교육 시작일로 쓴다. 이미 등록된 면접자는 넣지 않는다 -->
+	<insert id="insertTraineeFromIntv" parameterType="hashMap">
+		INSERT INTO TB_EEP_HR_TRAINEE_M
+		(
+			  SEQ_NO, STATUS_CD, TRN_NM, GENDER, EDU, AGE, ADDR, STATION, CAREER, LANG, LANG_NOTE, LOCAL_YN, MEMO, EDU_START_DT
+			, INTV_SQ, UPDT_EMPLY_ID, UPDT_DT
+		)
+		SELECT
+			  (SELECT IFNULL(MAX(SEQ_NO), 0) + 1 FROM TB_EEP_HR_TRAINEE_M), 'ING', I.APLY_NM, I.GENDER, I.EDU, I.AGE, I.ADDR, I.STATION, I.CAREER, I.LANG, I.LANG_NOTE, I.LOCAL_YN, I.MEMO
+			, IF(I.JOIN_DT REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$', I.JOIN_DT, NULL)
+			, I.INTV_SQ, #{UPDT_EMPLY_ID}, NOW()
+		FROM TB_EEP_HR_INTV_M I
+		WHERE I.INTV_SQ = #{INTV_SQ}
+		  AND NOT EXISTS (SELECT 1 FROM TB_EEP_HR_TRAINEE_M T WHERE T.INTV_SQ = I.INTV_SQ)
+	</insert>
+
+	<!-- 교육생 -->
+	<select id="selectTraineeList" resultType="hashMap">
+		SELECT
+			  TRN_SQ, SEQ_NO, STATUS_CD, LEAVE_NOTE, TRN_NM, GENDER, EDU, AGE, ADDR, STATION, CAREER, LANG, LANG_NOTE
+			, LOCAL_YN, EARLY_YN, SPECIAL_YN, MEMO
+			, DATE_FORMAT(EDU_START_DT, '%Y-%m-%d') AS EDU_START_DT
+			, EDU_WEEK, INTERVIEW_YN, INTERVIEW_AVAIL
+			, SK_JSP, SK_THYMELEAF, SK_VUE, SK_REACT, SK_NODE_FE, SK_SPRING, SK_JAVA, SK_NODE_BE, SK_NEXACRO, SK_WEBSQUARE, SK_EXBUILDER
+		FROM TB_EEP_HR_TRAINEE_M
+		ORDER BY EDU_START_DT DESC, TRN_SQ DESC
+	</select>
+
+	<insert id="insertTrainee" parameterType="hashMap">
+		INSERT INTO TB_EEP_HR_TRAINEE_M
+		(
+			  SEQ_NO, STATUS_CD, LEAVE_NOTE, TRN_NM, GENDER, EDU, AGE, ADDR, STATION, CAREER, LANG, LANG_NOTE, LOCAL_YN, EARLY_YN, SPECIAL_YN, MEMO
+			, EDU_START_DT, INTERVIEW_YN, INTERVIEW_AVAIL, UPDT_EMPLY_ID, UPDT_DT
+		)
+		SELECT
+			  IFNULL(MAX(SEQ_NO), 0) + 1, #{STATUS_CD}, #{LEAVE_NOTE}, #{TRN_NM}, #{GENDER}, #{EDU}, #{AGE}, #{ADDR}, #{STATION}, #{CAREER}, #{LANG}, #{LANG_NOTE}, #{LOCAL_YN}, #{EARLY_YN}, #{SPECIAL_YN}, #{MEMO}
+			, NULLIF(#{EDU_START_DT}, ''), #{INTERVIEW_YN}, #{INTERVIEW_AVAIL}, #{UPDT_EMPLY_ID}, NOW()
+		FROM TB_EEP_HR_TRAINEE_M
+	</insert>
+
+	<update id="updateTrainee" parameterType="hashMap">
+		UPDATE TB_EEP_HR_TRAINEE_M SET
+			  STATUS_CD = #{STATUS_CD}, LEAVE_NOTE = #{LEAVE_NOTE}, TRN_NM = #{TRN_NM}, GENDER = #{GENDER}, EDU = #{EDU}, AGE = #{AGE}
+			, ADDR = #{ADDR}, STATION = #{STATION}, CAREER = #{CAREER}, LANG = #{LANG}, LANG_NOTE = #{LANG_NOTE}, LOCAL_YN = #{LOCAL_YN}
+			, EARLY_YN = #{EARLY_YN}, SPECIAL_YN = #{SPECIAL_YN}, MEMO = #{MEMO}, EDU_START_DT = NULLIF(#{EDU_START_DT}, '')
+			, INTERVIEW_YN = #{INTERVIEW_YN}, INTERVIEW_AVAIL = #{INTERVIEW_AVAIL}
+			, UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE TRN_SQ = #{TRN_SQ}
+	</update>
+
+	<!-- FIELD 는 서비스에서 허용 목록으로 검사한 컬럼명만 들어온다 -->
+	<update id="updateTraineeField" parameterType="hashMap">
+		UPDATE TB_EEP_HR_TRAINEE_M SET
+			  ${FIELD} = NULLIF(#{VALUE}, ''), UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE TRN_SQ = #{TRN_SQ}
+	</update>
+
+	<update id="updateIntvField" parameterType="hashMap">
+		UPDATE TB_EEP_HR_INTV_M SET
+			  ${FIELD} = NULLIF(#{VALUE}, ''), UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE INTV_SQ = #{INTV_SQ}
+	</update>
+
+	<update id="clearIntvReferrer" parameterType="hashMap">
+		UPDATE TB_EEP_HR_INTV_M SET REFERRER = NULL WHERE INTV_SQ = #{INTV_SQ}
+	</update>
+
+	<!-- SKILL_COL 은 서비스에서 허용 목록으로 검사한 컬럼명만 들어온다 -->
+	<update id="updateTraineeSkill" parameterType="hashMap">
+		UPDATE TB_EEP_HR_TRAINEE_M SET
+			  ${SKILL_COL} = NULLIF(#{SKILL_VAL}, ''), UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE TRN_SQ = #{TRN_SQ}
+	</update>
+
+	<delete id="deleteTrainee" parameterType="hashMap">
+		DELETE FROM TB_EEP_HR_TRAINEE_M WHERE TRN_SQ = #{TRN_SQ}
+	</delete>
+
+</mapper>

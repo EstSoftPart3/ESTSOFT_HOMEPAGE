@@ -1,0 +1,76 @@
+-- 업무툴: 면접·교육생 관리 (2026-11-02)
+-- 되돌리기: DROP TABLE TB_EEP_HR_TRAINEE_M, TB_EEP_HR_INTV_M;
+-- 상태·출근일 등은 엑셀에서 자유 입력으로 쓰던 값이라 코드로 바꾸지 않고 글자 그대로 둔다
+-- 주민등록번호는 일부러 저장하지 않는다
+
+-- 면접자
+CREATE TABLE TB_EEP_HR_INTV_M (
+	INTV_SQ       INT          NOT NULL AUTO_INCREMENT,
+	SEQ_NO        INT              NULL,
+	APLY_NM       VARCHAR(100) NOT NULL,
+	GENDER        VARCHAR(10)      NULL,
+	INTV_DT       DATE             NULL,
+	INTV_TM       VARCHAR(20)      NULL,
+	APLY_TARGET   VARCHAR(100)     NULL,
+	APLY_ROUTE    VARCHAR(100)     NULL,
+	PHONE         VARCHAR(50)      NULL,
+	ATTEND_ST     VARCHAR(100)     NULL,
+	EDU           VARCHAR(200)     NULL,
+	AGE           VARCHAR(20)      NULL,
+	ADDR          VARCHAR(200)     NULL,
+	STATION       VARCHAR(200)     NULL,
+	CAREER        VARCHAR(500)     NULL,
+	LANG          VARCHAR(200)     NULL,
+	LOCAL_YN      VARCHAR(100)     NULL,
+	MEMO          TEXT             NULL,
+	HOBBY         VARCHAR(200)     NULL,
+	SPECIALTY     VARCHAR(200)     NULL,
+	SALARY        VARCHAR(200)     NULL,
+	RESULT_ST     VARCHAR(100)     NULL,
+	NOTICE_ST     VARCHAR(200)     NULL,
+	JOIN_ST       VARCHAR(200)     NULL,
+	JOIN_DT       VARCHAR(100)     NULL,
+	UPDT_EMPLY_ID VARCHAR(50)      NULL,
+	UPDT_DT       DATETIME         NULL,
+	PRIMARY KEY (INTV_SQ),
+	KEY IX_HR_INTV_DT (INTV_DT)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 교육생. STATUS_CD: ING(교육진행중), END(교육종료), DROP(중도이탈). 교육일수·경과일은 저장하지 않고 화면에서 계산한다
+CREATE TABLE TB_EEP_HR_TRAINEE_M (
+	TRN_SQ          INT          NOT NULL AUTO_INCREMENT,
+	SEQ_NO          INT              NULL,
+	STATUS_CD       VARCHAR(10)  NOT NULL,
+	LEAVE_NOTE      VARCHAR(100)     NULL,
+	TRN_NM          VARCHAR(100) NOT NULL,
+	GENDER          VARCHAR(10)      NULL,
+	EDU             VARCHAR(200)     NULL,
+	AGE             VARCHAR(20)      NULL,
+	ADDR            VARCHAR(200)     NULL,
+	STATION         VARCHAR(200)     NULL,
+	CAREER          VARCHAR(500)     NULL,
+	LANG            VARCHAR(200)     NULL,
+	LOCAL_YN        VARCHAR(100)     NULL,
+	EARLY_YN        VARCHAR(100)     NULL,
+	SPECIAL_YN      VARCHAR(100)     NULL,
+	MEMO            TEXT             NULL,
+	EDU_START_DT    DATE             NULL,
+	INTERVIEW_YN    VARCHAR(100)     NULL,
+	INTERVIEW_AVAIL VARCHAR(100)     NULL,
+	SK_JSP          VARCHAR(20)      NULL,
+	SK_THYMELEAF    VARCHAR(20)      NULL,
+	SK_VUE          VARCHAR(20)      NULL,
+	SK_REACT        VARCHAR(20)      NULL,
+	SK_NODE_FE      VARCHAR(20)      NULL,
+	SK_SPRING       VARCHAR(20)      NULL,
+	SK_JAVA         VARCHAR(20)      NULL,
+	SK_NODE_BE      VARCHAR(20)      NULL,
+	SK_NEXACRO      VARCHAR(20)      NULL,
+	SK_WEBSQUARE    VARCHAR(20)      NULL,
+	SK_EXBUILDER    VARCHAR(20)      NULL,
+	INTV_SQ         INT              NULL,
+	UPDT_EMPLY_ID   VARCHAR(50)      NULL,
+	UPDT_DT         DATETIME         NULL,
+	PRIMARY KEY (TRN_SQ),
+	UNIQUE KEY UX_HR_TRAINEE_INTV (INTV_SQ)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

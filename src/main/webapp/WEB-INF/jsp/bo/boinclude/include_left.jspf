@@ -116,6 +116,18 @@
             </a>
             <ul class="nav nav-treeview">
             
+		              <li class="nav-item">
+		                <a href="/admin/hr/openInterviewList.do" class="nav-link">
+		                  <i class="far fa-circle nav-icon sTitle"></i>
+		                  <p class="sTitle">면접관리</p>
+		                </a>
+		              </li>
+		              <li class="nav-item">
+		                <a href="/admin/hr/openTraineeList.do" class="nav-link">
+		                  <i class="far fa-circle nav-icon sTitle"></i>
+		                  <p class="sTitle">교육생관리</p>
+		                </a>
+		              </li>
               <li class="nav-item">
                 <a href="/admin/member/memberList.do" class="nav-link">
                   <i class="far fa-circle nav-icon sTitle"></i>
@@ -126,7 +138,7 @@
               <li class="nav-item">
                 <a href="/admin/member/outMemberList.do" class="nav-link">
                   <i class="far fa-circle nav-icon sTitle"></i>
-                  <p class="sTitle">탈퇴관리</p>
+                  <p class="sTitle">퇴사자 관리</p>
                 </a>
               </li>
               
@@ -215,4 +227,23 @@
 	</div>
 	<!-- /.sidebar -->
 </aside>
+
+<%-- 현재 화면의 메뉴 동그라미를 채우고 그 그룹만 펼친다. 게시글 상세처럼 메뉴에 없는 화면은 같은 폴더의 메뉴를 쓴다 --%>
+<script>
+(function() {
+	[].forEach.call(document.querySelectorAll('aside .has-treeview.menu-open'), function(li) { li.classList.remove('menu-open'); });
+	var links = [].slice.call(document.querySelectorAll('aside .nav-treeview a.nav-link'));
+	var path = location.pathname, dir = path.substring(0, path.lastIndexOf('/') + 1);
+	var current = links.filter(function(a) { return a.pathname + a.search === path + location.search; })[0]
+		|| links.filter(function(a) { return a.pathname === path; })[0]
+		|| links.filter(function(a) { return a.pathname.indexOf(dir) === 0; })[0];
+	if (current) {
+		var icon = current.querySelector('.nav-icon');
+		icon.classList.remove('far');
+		icon.classList.add('fas');
+		current.setAttribute('aria-current', 'page');
+		current.closest('.has-treeview').classList.add('menu-open');
+	}
+})();
+</script>
 

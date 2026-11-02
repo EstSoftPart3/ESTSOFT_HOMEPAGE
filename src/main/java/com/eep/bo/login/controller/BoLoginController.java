@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import org.apache.commons.collections4.MapUtils;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 
+import com.eep.bo.login.service.BoLoginRememberService;
 import com.eep.bo.login.service.BoLoginService;
 import com.eep.mapper.BoLoginMapper;
 
@@ -27,9 +29,17 @@ public class BoLoginController {
 	
 	@Autowired
 	private BoLoginMapper BoLoginMapper;
+
+	@Autowired
+	private BoLoginRememberService BoLoginRememberService;
 	
 	@RequestMapping(value = "/admin/login/loginPage.do")
-	public String openLoginPage() {
+	public String openLoginPage(HttpServletRequest request, HttpServletResponse response) {
+		if(BoLoginRememberService.restore(request, response)) {
+			return "redirect:/admin/board/notice/openNoticeBoardList.do";
+		}
+		request.setAttribute("savedId", BoLoginRememberService.savedId(request));
+		request.setAttribute("savedAutoCheck", BoLoginRememberService.savedAutoCheck(request));
 
 		return "/bo/login/login_page";
 	}
@@ -38,7 +48,7 @@ public class BoLoginController {
 	//LOGIN DATA
 	@RequestMapping("/admin/login/loginData.do")
 	@ResponseBody
-	public ModelAndView loginData(@RequestParam Map<String, Object> param,HttpServletRequest request) {
+	public ModelAndView loginData(@RequestParam Map<String, Object> param,HttpServletRequest request,HttpServletResponse response) {
 		
 		HttpSession session = request.getSession();
 		ModelAndView mv = new ModelAndView("jsonView");	
@@ -62,7 +72,17 @@ public class BoLoginController {
 			String emplyAuthCheck = (String) AuthCheck.get(0).get("emplyAuthTypCd");
 			
 			session.setAttribute("loginInfo", result);	
-			session.setAttribute("emplyAuthCheck", emplyAuthCheck);	
+			session.setAttribute("emplyAuthCheck", emplyAuthCheck);
+
+			if("Y".equals(param.get("saveId"))) {
+				BoLoginRememberService.saveId(emplyId, request, response);
+			} else {
+				BoLoginRememberService.forgetId(request, response);
+			}
+			BoLoginRememberService.saveAutoCheck("Y".equals(param.get("autoLogin")), request, response);
+			if("Y".equals(param.get("autoLogin"))) {
+				BoLoginRememberService.issue(emplyId, request, response);
+			}	
 		} 
 
 		return mv;
@@ -72,9 +92,12 @@ public class BoLoginController {
 	//관리자 계정 로그아웃
 	@RequestMapping("/admin/logout.do")
 	//@ResponseBody
-	public ModelAndView adminLogout (HttpSession session) {		
+	public ModelAndView adminLogout (HttpSession session,HttpServletRequest request,HttpServletResponse response) {		
 		
 		ModelAndView mv = new ModelAndView();
+		//세션이 이미 끊긴 상태에서 눌러도 자동로그인을 지우고 로그인 화면으로 보낸다
+		BoLoginRememberService.clear(request, response);
+		mv.setViewName("redirect:/admin/login/loginPage.do");
 		//접속중인지 확인하기 위해 세션의 mbrSq의 값이 null 혹은 공백인지 확인
 		if(session.getAttribute("loginInfo") != null && session.getAttribute("loginInfo") != "") {
 			session.invalidate();

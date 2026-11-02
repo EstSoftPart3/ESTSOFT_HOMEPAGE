@@ -92,7 +92,7 @@
 						<td id="mbrEmail" class="col-sm-2 dataValue" colspan="3"></td>						
 					</tr>
 					<tr class="col-form-label sTitle LabelStyle"  >
-						<td class="col-sm-1" align="center">탈퇴 여부</td>
+						<td class="col-sm-1" align="center">퇴사 여부</td>
 						<td id="delYn" class="col-sm-2 dataValue"></td>
 					</tr>				
                 </table>
@@ -103,7 +103,7 @@
                 	
                   	<button type="button" class="btn btn-primary sTitle" onclick="location.href='/admin/member/memberList.do';">목록</button>
                   	<button type="button" class="btn btn-info sTitle" onclick="memberUpdate();">수정</button>
-                  	<button type="button" class="btn btn-danger sTitle" onclick="outMember();">탈퇴 처리</button>
+                  	<button type="button" class="btn btn-danger sTitle" onclick="outMember();">퇴사 처리</button>
                   	
                 </div>
                 
@@ -158,7 +158,7 @@
 		        	 var authSq = dataContent.mbrAuthCd					//권한
 		        	 var mbrRrn = dataContent.mbrRrn					//주민등록번호
 		        	 var updtDt = dataContent.updtDt					//수정일시
-		        	 var delYn = dataContent.delYn						//탈퇴여부
+		        	 var delYn = dataContent.delYn						//퇴사여부
 		        	 
 		        	 $("#authSq").text(authSq);
 		        	 $("#mbrNm").text(mbrNm);
@@ -219,13 +219,13 @@
 	    form.submit();
 	}
 	
-	//직원 탈퇴 복구
+	//직원 퇴사 복구
 	function outMember(){
 		let mbrSq = '<c:out value="${param.mbrSqParam}" />';
 		
 		console.log(mbrSq);
 		
-		if(confirm('해당 직원을 탈퇴 처리 하시겠습니까?')) {
+		if(confirm('해당 직원을 퇴사 처리 하시겠습니까?')) {
 			$.ajax({
 		           type: "post",
 		           url: "/admin/member/outMember.do",
@@ -235,13 +235,13 @@
 		           },
 		           success: function(data) {
 				        	bootbox.alert({
-									 message: "직원 탈퇴가 정상적으로 처리 되었습니다.",
+									 message: "직원 퇴사가 정상적으로 처리 되었습니다.",
 									 locale: 'kr',
 									 callback: function() {
 										 	location.href="/admin/member/memberList.do";
 								     } });
 		           }, error: function(error) {
-		        	   alert("직원 탈퇴가 실패 하였습니다. 다시 시도 해주세요.");
+		        	   alert("직원 퇴사가 실패 하였습니다. 다시 시도 해주세요.");
 		        	   var errorJson = JSON.stringify(error);
 		               console.log(errorJson);
 		           }

@@ -46,7 +46,7 @@
 		     	<!-- Main content -->
 	    		<section class="content">
     			 <div class="card-header">
-	               	<h3 class="card-title bTitle">탈퇴 직원 상세정보</h3>
+	               	<h3 class="card-title bTitle">퇴사 직원 상세정보</h3>
 				</div>
 				
 				<form class="form-horizontal">
@@ -92,7 +92,7 @@
 						<td id="mbrEmail" class="col-sm-2 dataValue" colspan="3"></td>						
 					</tr>				
 					<tr class="col-form-label sTitle LabelStyle"  >
-						<td class="col-sm-1" align="center">탈퇴 여부</td>
+						<td class="col-sm-1" align="center">퇴사 여부</td>
 						<td id="delYn" class="col-sm-2 dataValue"></td>
 					</tr>				
                 </table>
@@ -102,7 +102,7 @@
                 <div class="card-footer" style="text-align:right;background-color:#ffffff">
                 	
                   	<button type="button" class="btn btn-primary sTitle" onclick="location.href='/admin/member/outMemberList.do';">목록</button>
-                  	<button type="button" class="btn btn-info sTitle" onclick="outMember();">탈퇴 복구</button>
+                  	<button type="button" class="btn btn-info sTitle" onclick="outMember();">퇴사 복구</button>
                   	
                 </div>
                 
@@ -157,7 +157,7 @@
 		        	 var authSq = dataContent.mbrAuthCd					//권한
 		        	 var mbrRrn = dataContent.mbrRrn					//주민등록번호
 		        	 var updtDt = dataContent.updtDt					//수정일시
-		        	 var delYn = dataContent.delYn						//탈퇴여부
+		        	 var delYn = dataContent.delYn						//퇴사여부
 		        	 
 		        	 $("#authSq").text(authSq);
 		        	 $("#mbrNm").text(mbrNm);
@@ -184,7 +184,7 @@
 		})
 	}
 	
-	//직원 탈퇴 복구
+	//직원 퇴사 복구
 	function outMember(){
 		let mbrSq = '<c:out value="${param.mbrSqParam}" />';
 		

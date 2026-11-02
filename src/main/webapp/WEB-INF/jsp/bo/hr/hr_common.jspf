@@ -1,0 +1,43 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%-- 면접·교육생 관리 공통 스타일 (캘린더 스타일에 더한다) --%>
+<style>
+	.hr-row { cursor: pointer; }
+	.hr-row:focus { outline: 2px solid #16d5ff; outline-offset: -2px; }
+	.hr-memo { font-size: 12px; color: #666; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.hr-skill { width: 52px; padding: 0 2px; height: 26px; font-size: 12px; }
+	#editModal label { font-size: 12px; color: #555; margin-bottom: 2px; }
+	.hr-cell { cursor: text; }
+	.hr-cell:hover { background: rgba(22,213,255,.1); }
+	.hr-cell:focus { outline: 2px solid #16d5ff; outline-offset: -2px; }
+	.hr-cell .form-control { height: 26px; padding: 0 4px; font-size: 12px; min-width: 70px; }
+	.hr-cell textarea.form-control { height: auto; min-width: 240px; padding: 4px; }
+	.hr-new th { padding: 4px; background: #f6fbfd !important; font-weight: normal; }
+	.hr-new .form-control { height: 26px; padding: 0 4px; font-size: 11px; min-width: 60px; }
+	/* 날짜 입력칸이 좁으면 값이 잘려 비어 보인다 */
+	.hr-new input[type=date], .hr-cell input[type=date] { min-width: 125px; }
+	.hr-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+	.hr-card-row { display: flex; gap: 6px; align-items: flex-start; margin-top: 2px; }
+	.hr-card-label { flex: 0 0 56px; color: #888; font-size: 11px; line-height: 20px; }
+	.hr-card-row .hr-cell { flex: 1 1 auto; min-width: 0; min-height: 20px; line-height: 20px; border-radius: 3px; padding: 0 3px; color: #222; }
+	.hr-card-row .hr-cell:empty::before { content: '-'; color: #bbb; }
+	.hr-card-row .hr-cell .form-control { min-width: 0; width: 100%; }
+	.hr-card-row .hr-cell textarea.form-control { min-width: 0; }
+	.hr-card-name-row .hr-cell { font-size: 13px; font-weight: 600; color: #111; }
+	.hr-card-info { margin-top: 2px; }
+	#skillArea { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(17,17,17,.1); }
+	.hr-sort { background: none; border: 0; padding: 0; font-weight: 600; color: inherit; white-space: nowrap; cursor: pointer; }
+	.hr-sort-mark { font-size: 9px; color: #16a0c4; }
+	.hr-filter th { padding: 4px; background: #fff !important; font-weight: normal; }
+	.hr-filter .form-control { height: 26px; padding: 0 4px; font-size: 11px; min-width: 60px; }
+	.hr-board { display: flex; gap: 12px; overflow-x: auto; align-items: flex-start; }
+	.hr-lane { flex: 1 1 0; min-width: 270px; background: #eef1f4; border-radius: 10px; padding: 10px; }
+	.hr-lane.is-over { outline: 2px dashed #16a0c4; outline-offset: -2px; background: #e3f6fb; }
+	.hr-lane-head { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+	.hr-lane-body { display: flex; flex-direction: column; gap: 8px; min-height: 80px; max-height: 70vh; overflow-y: auto; }
+	.hr-card { background: #fff; border-radius: 8px; padding: 9px 10px; box-shadow: 0 1px 2px rgba(0,0,0,.1); cursor: grab; font-size: 12px; color: #555; }
+	.hr-card:focus { outline: 2px solid #16d5ff; }
+	.hr-card.is-dragging { opacity: .45; }
+	.hr-card-name { font-size: 13px; font-weight: 600; color: #111; }
+	.hr-section { font-size: 13px; font-weight: 700; color: #111; margin: 14px 0 8px; padding-top: 12px; border-top: 1px solid rgba(17,17,17,.1); }
+	.hr-section:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+</style>

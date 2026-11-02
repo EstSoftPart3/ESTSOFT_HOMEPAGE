@@ -1,0 +1,159 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%-- 면접·교육생 관리 공통 스크립트 --%>
+<script>
+$(document).ajaxError(function() { bootbox.alert('처리하지 못했습니다. 입력 길이를 줄이거나 다시 로그인한 뒤 시도해 주세요.'); });
+
+// 공통코드관리의 HR_ 그룹. { 그룹: [{CD, NM}] }
+var HR_CODES = null;
+
+function hrSetCodes(list) {
+	HR_CODES = {};
+	(list || []).forEach(function(c) { (HR_CODES[c.GRP] = HR_CODES[c.GRP] || []).push(c); });
+}
+
+function hrCodeName(grp, cd) {
+	if (!cd) return '';
+	var found = (HR_CODES[grp] || []).filter(function(c) { return c.CD === cd; })[0];
+	return found ? found.NM : cd;
+}
+
+function hrPost(url, data, done, failed) {
+	$.post(url, data, function(res) {
+		if (res.error) { bootbox.alert(res.error); if (failed) failed(); return; }
+		done(res);
+	}).fail(function() { if (failed) failed(); });
+}
+
+// 종류에 맞는 입력칸. 종류: 'text', 'date', 'textarea', { code: 코드 그룹 }, { values: {값: 이름} }, { list: [[값, 이름]] }
+function hrControl(type, val) {
+	var $c;
+	if (type === 'textarea') {
+		$c = $('<textarea rows="3" class="form-control form-control-sm">');
+	} else if (type && (type.code || type.values || type.list)) {
+		$c = $('<select class="form-control form-control-sm">');
+		if (type.code) {
+			$c.append('<option value=""></option>');
+			(HR_CODES[type.code] || []).forEach(function(o) { $c.append($('<option>').val(o.CD).text(o.NM)); });
+		} else if (type.list) {
+			type.list.forEach(function(o) { $c.append($('<option>').val(o[0]).text(o[1])); });
+		} else {
+			$.each(type.values, function(k, v) { $c.append($('<option>').val(k).text(v)); });
+		}
+		// 공통코드에서 삭제된 값도 빈칸으로 보이지 않게 넣는다
+		if (val && !$c.find('option').filter(function() { return this.value === String(val); }).length) {
+			$c.append($('<option>').val(val).text(val));
+		}
+	} else {
+		$c = $('<input class="form-control form-control-sm">').attr('type', type || 'text');
+	}
+	return $c.val(val === undefined || val === null ? '' : val);
+}
+
+// 표 칸을 눌러 바로 고친다. opts: url, key: {키 이름: 값}, field, type, label, show(), value(), saved(새 값)
+function hrEditable($td, opts) {
+	function paint() { $td.empty().text(opts.show() || ''); }
+	function edit() {
+		if ($td.find('.form-control').length) return;
+		var before = opts.value(), $c = hrControl(opts.type, before).attr('aria-label', opts.label), closed = false;
+		function finish(save) {
+			if (closed) return;
+			closed = true;
+			var val = $.trim($c.val());
+			if (!save || val === String(before === undefined || before === null ? '' : before)) { paint(); return; }
+			$c.prop('disabled', true);
+			hrPost(opts.url, $.extend({ FIELD: opts.field, VALUE: val }, opts.key), function() {
+				opts.saved(val);
+				paint();
+			}, paint);
+		}
+		$td.empty().append($c);
+		$c.on('blur', function() { finish(true); });
+		$c.on('keydown', function(e) {
+			if (e.key === 'Escape') { finish(false); $td.focus(); }
+			else if (e.key === 'Enter' && opts.type !== 'textarea') { e.preventDefault(); finish(true); $td.focus(); }
+		});
+		if ($c.is('select')) $c.on('change', function() { finish(true); });
+		$c.focus();
+	}
+	paint();
+	$td.addClass('hr-cell').attr({ tabindex: 0, title: '눌러서 바로 수정' }).on('click', edit)
+		.on('keydown', function(e) { if (e.key === 'Enter' && e.target === this) { e.preventDefault(); edit(); } });
+	return $td;
+}
+
+function hrTab(key, label, cnt, active) {
+	return $('<button type="button" class="cate-tab" role="tab">').attr('data-tab', key).attr('aria-selected', active).toggleClass('active', active)
+		.append($('<span>').text(label)).append($('<span class="cnt">').text(cnt));
+}
+
+function hrMultiOption(id, val, label, extra) {
+	var boxId = id + '_' + val;
+	return $('<div class="form-check form-check-inline">').toggleClass('hr-extra', !!extra)
+		.append($('<input type="checkbox" class="form-check-input">').attr('id', boxId).val(val))
+		.append($('<label class="form-check-label">').attr('for', boxId).text(label));
+}
+
+// FIELDS: [이름, 라벨, 칸 너비, 종류, 라벨 숨김]. 종류: 'textarea', 'date', { code: 코드 그룹 }, { multi: 코드 그룹 }, { values: {값: 이름} }, 없으면 글자 입력
+function hrBuildFields(target, fields) {
+	var $t = $(target);
+	fields.forEach(function(f) {
+		var id = 'f_' + f[0], type = f[3], $input;
+		var $label = $('<label>').attr('for', id).toggleClass('sr-only', !!f[4]).text(f[1]);
+		if (type && type.multi) {
+			$input = $('<div role="group">').attr('aria-label', f[1]).attr('data-multi', f[0]).attr('id', id);
+			(HR_CODES[type.multi] || []).forEach(function(c) { $input.append(hrMultiOption(id, c.CD, c.NM)); });
+			$label.removeAttr('for');
+		} else {
+			if (type === 'textarea') {
+				$input = $('<textarea rows="4" class="form-control form-control-sm">');
+			} else if (type && type.code) {
+				$input = $('<select class="form-control form-control-sm">').append('<option value=""></option>');
+				(HR_CODES[type.code] || []).forEach(function(c) { $input.append($('<option>').val(c.CD).text(c.NM)); });
+			} else if (type && type.values) {
+				$input = $('<select class="form-control form-control-sm">');
+				$.each(type.values, function(k, v) { $input.append($('<option>').val(k).text(v)); });
+			} else {
+				$input = $('<input class="form-control form-control-sm">').attr('type', type || 'text');
+			}
+			$input.attr({ id: id, name: f[0] });
+		}
+		$('<div class="mb-2">').addClass('col-md-' + f[2]).append($label).append($input).appendTo($t);
+	});
+}
+
+function hrFillForm(form, fields, row) {
+	$(form)[0].reset();
+	// 지난번에 덧붙인 임시 선택지를 지운다
+	$(form).find('.hr-extra').remove();
+	fields.forEach(function(f) {
+		var val = row[f[0]];
+		if (val === undefined || val === null) return;
+		var $multi = $(form).find('[data-multi=' + f[0] + ']');
+		if ($multi.length) {
+			String(val).split(',').forEach(function(v) {
+				var $box = $multi.find('input').filter(function() { return this.value === v; });
+				// 공통코드에서 삭제된 값도 저장 때 지워지지 않게 선택지에 넣는다
+				if (!$box.length) { $multi.append(hrMultiOption($multi.attr('id'), v, v, true)); $box = $multi.find('input').last(); }
+				$box.prop('checked', true);
+			});
+			return;
+		}
+		var $el = $(form).find('[name=' + f[0] + ']');
+		// 공통코드에서 삭제된 값도 빈칸으로 보여 저장 때 지워지지 않게 선택지에 넣는다
+		if ($el.is('select') && !$el.find('option').filter(function() { return this.value === String(val); }).length) {
+			$el.append($('<option class="hr-extra">').val(val).text(val));
+		}
+		$el.val(val);
+	});
+}
+
+// 일반 입력값 + 여러 개 고르는 칸(코드를 쉼표로 이어 한 값으로 보낸다)
+function hrFormData(form) {
+	var data = $(form).serializeArray();
+	$(form).find('[data-multi]').each(function() {
+		var vals = $(this).find('input:checked').map(function() { return this.value; }).get();
+		data.push({ name: $(this).attr('data-multi'), value: vals.join(',') });
+	});
+	return data;
+}
+</script>

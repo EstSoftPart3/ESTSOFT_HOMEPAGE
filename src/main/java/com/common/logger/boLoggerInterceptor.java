@@ -9,8 +9,11 @@ import javax.servlet.http.HttpSession;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.json.simple.JSONArray;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
+
+import com.eep.bo.login.service.BoLoginRememberService;
 
 /**
  * <pre>
@@ -29,6 +32,9 @@ public class boLoggerInterceptor extends HandlerInterceptorAdapter {
 	
 	private final static String USER_SESSION_ID = "USER_SESSION_ID";
 
+	@Autowired
+	private BoLoginRememberService BoLoginRememberService;
+
 	/**
 	 * 
 	 * 서버 요청 전처리 핸들러
@@ -46,7 +52,13 @@ public class boLoggerInterceptor extends HandlerInterceptorAdapter {
 		HttpSession session = request.getSession(); //2021-08-07 Session Check : Ctrl + Shift + O를 눌러 해당 Package를 Import한다.
 		Object obj = session.getAttribute("loginInfo");
 		String authCheck = (String) session.getAttribute("emplyAuthCheck");
-		String path = request.getServletPath(); 
+		// 세션이 끊겼으면 자동로그인 쿠키로 다시 만든다
+		if(obj == null && BoLoginRememberService.restore(request, response)) {
+			session = request.getSession();
+			obj = session.getAttribute("loginInfo");
+			authCheck = (String) session.getAttribute("emplyAuthCheck");
+		}
+		String path = request.getServletPath();
 		String query = request.getQueryString(); //파라미터가 있는지 없는지
 
 		/*System.out.println("세션 IN 계정 정보 : " + obj);

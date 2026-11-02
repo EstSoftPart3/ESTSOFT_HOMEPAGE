@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 
+import com.eep.bo.login.service.BoLoginRememberService;
 import com.eep.fo.login.service.FoLoginService;
 import com.eep.mapper.FoLoginMapper;
 
@@ -25,6 +27,9 @@ public class FoLoginController {
 	
 	@Autowired
 	private FoLoginMapper FoLoginMapper;
+
+	@Autowired
+	private BoLoginRememberService BoLoginRememberService;
 	
 	@RequestMapping(value = "/eep/login/loginPage.do")
 	public String openLoginPage() {
@@ -73,9 +78,11 @@ public class FoLoginController {
 	//직원 계정 로그아웃
 	@RequestMapping("/eep/logout.do")
 	//@ResponseBody
-	public ModelAndView adminLogout (HttpSession session) {		
+	public ModelAndView adminLogout (HttpSession session,HttpServletRequest request,HttpServletResponse response) {		
 		
 		ModelAndView mv = new ModelAndView();
+		//홈페이지 쪽에서 로그아웃해도 관리자 자동로그인이 남지 않게 한다
+		BoLoginRememberService.clear(request, response);
 		//접속중인지 확인하기 위해 세션의 mbrSq의 값이 null 혹은 공백인지 확인
 		if(session.getAttribute("loginInfo") != null && session.getAttribute("loginInfo") != "") {
 			session.invalidate();

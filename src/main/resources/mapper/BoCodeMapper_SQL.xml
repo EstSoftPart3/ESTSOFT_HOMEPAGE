@@ -70,11 +70,13 @@
           	  COMN_CD_SQ 
           	, COMN_DTL_CD_SQ  
 			, COMN_DTL_CD_NM 
+			, COMN_DTL_CD_ORD
 			, COMN_DTL_CD 
 			, NOTE 			
         FROM TB_EEP_COMN_DTL_CD_S
         WHERE COMN_CD_SQ = #{COMN_CD_SQ}
         AND DEL_YN = 'N'
+        ORDER BY COMN_DTL_CD_ORD IS NULL, COMN_DTL_CD_ORD, COMN_DTL_CD_SQ
     </select>
     
      <!-- 공통 서브코드 등록 -->
@@ -84,6 +86,7 @@
         	  COMN_CD_SQ
 			, COMN_DTL_CD
 			, COMN_DTL_CD_NM
+			, COMN_DTL_CD_ORD
 			, NOTE
 			, REG_EMPLY_SQ
 			, REG_DT
@@ -95,6 +98,7 @@
         	  #{COMN_CD_SQ}
         	, #{COMN_DTL_CD}
 			, #{COMN_DTL_CD_NM}
+			, NULLIF(#{COMN_DTL_CD_ORD}, '')
 			, #{NOTE}
 			, #{REG_EMPLY_SQ}
 			, NOW()
@@ -109,6 +113,7 @@
    		<trim prefix="SET" suffixOverrides=",">
       		<if test="COMN_DTL_CD  != null">COMN_DTL_CD =#{COMN_DTL_CD},</if>
       		<if test="COMN_DTL_CD_NM != null">COMN_DTL_CD_NM =#{COMN_DTL_CD_NM},</if>
+      		<if test="COMN_DTL_CD_ORD != null">COMN_DTL_CD_ORD = NULLIF(#{COMN_DTL_CD_ORD}, ''),</if>
       		<if test="NOTE != null">NOTE =#{NOTE},</if>
       		UPDT_EMPLY_SQ = #{UPDT_EMPLY_SQ},
 			UPDT_DT = NOW()

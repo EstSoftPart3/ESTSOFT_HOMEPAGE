@@ -16,16 +16,16 @@
 	    		<section class="content">
 	    			
 					<div class="card-header">
-	                	<h3 class="card-title bTitle"><b>탈퇴 직원 목록</b></h3>
+	                	<h3 class="card-title bTitle"><b>퇴사 직원 목록</b></h3>
 	                	
 		                <div class="card-tools">
 		                  
 		                  <div class="input-group input-group-sm" style="width: 700px;">
 							
 <!-- 		                    <select class="custom-select bTitle" id="memberOut"> -->
-<!-- 	                          <option value="" selected>-- 탈퇴여부 --</option> -->
-<!-- 	                          <option value="Y">탈퇴 O</option> -->
-<!-- 	                          <option value="N">탈퇴 X</option> -->
+<!-- 	                          <option value="" selected>-- 퇴사여부 --</option> -->
+<!-- 	                          <option value="Y">퇴사 O</option> -->
+<!-- 	                          <option value="N">퇴사 X</option> -->
 <!-- 	                        </select> -->
 	                        
 	                        <select class="custom-select bTitle" id="searchGubun">
@@ -60,7 +60,7 @@
 												<th>이메일</th>
 												<th>휴대전화</th>
 												<th>등록일</th>
-												<th>탈퇴여부</th>
+												<th>퇴사여부</th>
 											</tr>
 										</thead>
 										<tbody id="dataList" >

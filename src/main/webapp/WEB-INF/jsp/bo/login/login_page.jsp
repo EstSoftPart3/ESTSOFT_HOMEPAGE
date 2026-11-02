@@ -37,7 +37,7 @@
 
       <form action="#" method="post">
         <div class="input-group mb-3">
-          <input type="email" class="form-control" id="emplyId"  placeholder="Admin Id">
+          <input type="email" class="form-control" id="emplyId"  placeholder="Admin Id" value="<c:out value='${savedId}'/>">
           <div class="input-group-append">
             <div class="input-group-text">
               <span class="fas fa-envelope"></span>
@@ -55,7 +55,12 @@
         <div class="row">
           <div class="col-8">
             <div class="icheck-primary">
-              
+              <input type="checkbox" id="saveId" ${empty savedId ? '' : 'checked'}>
+              <label for="saveId" style="font-weight:normal; font-size:14px;">아이디 저장</label>
+            </div>
+            <div class="icheck-primary">
+              <input type="checkbox" id="autoLogin" ${savedAutoCheck ? 'checked' : ''}>
+              <label for="autoLogin" style="font-weight:normal; font-size:14px;">자동로그인 (7일)</label>
             </div>
           </div>
           <!-- /.col -->
@@ -114,11 +119,12 @@
          url: "/admin/login/loginData.do",
          data: {
         	 emplyId : emplyId,
-        	 emplyPw : emplyPw
+        	 emplyPw : emplyPw,
+        	 saveId : $("#saveId").is(":checked") ? "Y" : "N",
+        	 autoLogin : $("#autoLogin").is(":checked") ? "Y" : "N"
           },
          success: function(data) {
         	 
-        	 console.log(data);
       	   	 var loginInfo = data.result.loginInfo;
 
       	 	if(loginInfo.length == 1) {

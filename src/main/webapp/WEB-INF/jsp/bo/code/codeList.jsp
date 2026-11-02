@@ -195,6 +195,7 @@
 	  	{ name: "COMN_DTL_CD_SQ"	,title:"상세코드순번", type: "text", width: 150,align:"center" ,width:100, visible: false},
       	{ name: "COMN_DTL_CD"	,title:"상세코드", type: "text", width: 200,align:"center",width:100 ,validate: "required"},
 	  	{ name: "COMN_DTL_CD_NM"	,title:"상세코드명", type: "text", width: 200,align:"center",width:100 ,validate: "required"},
+	  	{ name: "COMN_DTL_CD_ORD"	,title:"순서", type: "number", align:"center", width:50},
 	  	{ name: "NOTE"	,title:"비고", type: "text", width: 200,align:"center",width:100},
 	  	{ type: "control",deleteButton: true }
   	]
@@ -234,6 +235,7 @@
 		        insertItem: function (item) {
 		       	   	var comnCdSqValue =	$('#COMN_CD_SQ').val();
 		       	   	let iParam = {
+		       	   		COMN_DTL_CD_ORD : item.COMN_DTL_CD_ORD,
 		       	   		COMN_CD_SQ : comnCdSqValue,   
 		       	   		REG_EMPLY_SQ : id,
 		       	   		COMN_DTL_CD : item.COMN_DTL_CD,
@@ -254,6 +256,7 @@
 		        updateItem: function (item) {
 		       		var comnCdSqValue =	$('#COMN_CD_SQ').val();
 		       	   	let uParam = {
+		       	   		COMN_DTL_CD_ORD : item.COMN_DTL_CD_ORD,
 		       			COMN_CD_SQ : comnCdSqValue,
 		       			UPDT_EMPLY_SQ : id,
 		       			COMN_DTL_CD_SQ : item.COMN_DTL_CD_SQ,

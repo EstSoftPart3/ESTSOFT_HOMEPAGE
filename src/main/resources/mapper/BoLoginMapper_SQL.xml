@@ -9,7 +9,6 @@
         SELECT
         	   EMPLY_SQ				AS emplySq
            	 , EMPLY_ID				AS emplyId
-           	 , EMPLY_PW				AS emplyPw
            	 , EMPLY_NM				AS emplyNm
            	 , EMPLY_AUTH_TYP_CD	AS emplyAuthTypCd
         FROM
@@ -20,4 +19,35 @@
          	AND EMPLY_AUTH_TYP_CD IN ('2')
     </select>
 	
+	<!-- 자동로그인 토큰. 관리자 계정에만 발급한다 -->
+	<insert id="insertLoginToken" parameterType="hashmap">
+		INSERT INTO TB_EEP_EMPLY_LOGIN_TKN (TOKEN_HASH, EMPLY_SQ, PW_HASH, EXPIRE_DT, REG_DT)
+		SELECT #{TOKEN_HASH}, EMPLY_SQ, SHA2(EMPLY_PW, 256), DATE_ADD(NOW(), INTERVAL #{DAYS} DAY), NOW()
+		FROM TB_EEP_EMPLY_M
+		WHERE EMPLY_ID = #{EMPLY_ID} AND EMPLY_AUTH_TYP_CD IN ('2')
+	</insert>
+
+	<!-- 만료, 비밀번호 변경, 관리자 권한 해제 중 하나라도 해당하면 나오지 않는다 -->
+	<select id="selectLoginToken" parameterType="hashmap" resultType="hashmap">
+		SELECT
+			   E.EMPLY_SQ			AS emplySq
+			 , E.EMPLY_ID			AS emplyId
+			 , E.EMPLY_NM			AS emplyNm
+			 , E.EMPLY_AUTH_TYP_CD	AS emplyAuthTypCd
+		FROM TB_EEP_EMPLY_LOGIN_TKN T
+		JOIN TB_EEP_EMPLY_M E ON E.EMPLY_SQ = T.EMPLY_SQ
+		WHERE T.TOKEN_HASH = #{TOKEN_HASH}
+			AND T.EXPIRE_DT &gt; NOW()
+			AND T.PW_HASH = SHA2(E.EMPLY_PW, 256)
+			AND E.EMPLY_AUTH_TYP_CD IN ('2')
+	</select>
+
+	<delete id="deleteLoginToken" parameterType="hashmap">
+		DELETE FROM TB_EEP_EMPLY_LOGIN_TKN WHERE TOKEN_HASH = #{TOKEN_HASH}
+	</delete>
+
+	<delete id="deleteExpiredLoginToken">
+		DELETE FROM TB_EEP_EMPLY_LOGIN_TKN WHERE EXPIRE_DT &lt;= NOW()
+	</delete>
+
 </mapper>
