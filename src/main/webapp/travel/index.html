@@ -97,14 +97,15 @@
 </main>
 
 <!-- ?v= 는 Cloudflare 가 .js 를 4시간 캐시해서 붙인다. 파일을 바꾸면 여기와 sw.js 의 VERSION 을 같이 올린다 -->
-<script src="data.js?v=5"></script>
-<script src="pron.js?v=5"></script>
-<script src="pron_ko.js?v=5"></script>
-<script src="pron_en.js?v=5"></script>
-<script src="pron_vi.js?v=5"></script>
-<script src="pron_ja.js?v=5"></script>
-<script src="pron_zh.js?v=5"></script>
-<script src="pron_th.js?v=5"></script>
+<script src="data.js?v=6"></script>
+<script src="pron.js?v=6"></script>
+<script src="pron_ko.js?v=6"></script>
+<script src="pron_en.js?v=6"></script>
+<script src="pron_vi.js?v=6"></script>
+<script src="pron_ja.js?v=6"></script>
+<script src="pron_zh.js?v=6"></script>
+<script src="pron_th.js?v=6"></script>
+<script src="pron_auto.js?v=6"></script>
 <script>
 var $ = function(id) { return document.getElementById(id); };
 var ICON_SPEAK = '<svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>';
@@ -149,9 +150,13 @@ function parts(p, li, v) {
 }
 function text(p, li, v) { return parts(p, li, v).map(function(x) { return x.text; }).join(''); }
 
-// 상대 언어 문장을 내 언어 글자로 적은 발음 (pron.js). 없으면 null
+// 상대 언어 문장을 내 언어 글자로 적은 발음 (기본 문장은 pron.js, 추가한 문장은 pron_auto.js). 없으면 null
 function pronParts(e, v) {
-	if (e.added || typeof PRON === 'undefined') return null;
+	if (e.added) {
+		var s = typeof autoPron === 'function' && autoPron(state.them, state.me, e.p[idx(state.them)], e.roma);
+		return s ? [{ text: s }] : null;
+	}
+	if (typeof PRON === 'undefined') return null;
 	var ko = tpl(e.p)[0];
 	var s = PRON[ko] && PRON[ko][state.them] && PRON[ko][state.them][state.me];
 	if (!s) return null;
@@ -183,7 +188,8 @@ function entries(sitIdx) {
 	SITUATIONS[sitIdx].phrases.forEach(function(p) { out.push({ p: p, k: 'b:' + tpl(p)[0], sit: sitIdx }); });
 	shared.added.forEach(function(a) {
 		if (a.SIT_IDX !== sitIdx) return;
-		out.push({ p: LANGS.map(function(l) { return a['TXT_' + l.toUpperCase()]; }), k: 'a:' + a.PHRASE_SQ, sit: sitIdx, added: true });
+		out.push({ p: LANGS.map(function(l) { return a['TXT_' + l.toUpperCase()]; }), k: 'a:' + a.PHRASE_SQ, sit: sitIdx, added: true,
+			roma: { ko: a.ROMA_KO, ja: a.ROMA_JA, zh: a.ROMA_ZH } });
 	});
 	return out;
 }
@@ -413,9 +419,16 @@ function translateAndAdd(src, btn) {
 			texts[l] = decodeEntities(out).slice(0, 300);
 		});
 	});
+	var roma = {};
 	Promise.all(jobs).then(function() {
+		// 한글·가나·한자 문장의 로마자 발음. 못 받아도 문장은 추가한다(발음 줄만 빠진다)
+		return Promise.all(['ko', 'ja', 'zh'].map(function(l) {
+			return romanize(l, texts[l]).then(function(r) { if (r) roma[l] = r.slice(0, 600); }, function() {});
+		}));
+	}).then(function() {
 		var body = new URLSearchParams({ sit: String(state.sit), src: me });
 		LANGS.forEach(function(l) { body.append(l, texts[l]); });
+		Object.keys(roma).forEach(function(l) { body.append('roma_' + l, roma[l]); });
 		return post('addData.do', body).then(function(res) {
 			shared.added.push(res.phrase);
 			saveShared();
@@ -425,6 +438,15 @@ function translateAndAdd(src, btn) {
 		alert(err && err.message === 'rate' ? t('rate') : err && err.message === 'net' ? t('failNet') : t('failTr'));
 		btn.disabled = false;
 		btn.textContent = t('addTr');
+	});
+}
+
+// 구글 번역 공개 주소(키 없음, 비공식)가 주는 원문의 로마자 표기. 응답 구조: [[..., [null, null, 번역문 표기, 원문 표기]], ...]
+function romanize(lang, s) {
+	var url = 'https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&dt=rm&sl=' + MT_LANG[lang] + '&tl=' + (lang === 'en' ? 'ko' : 'en') + '&q=' + encodeURIComponent(s);
+	return fetch(url).then(function(r) { return r.json(); }).then(function(j) {
+		var seg = (j && j[0] || []).filter(function(x) { return x && x[0] == null && x[1] == null && typeof x[3] === 'string'; })[0];
+		return seg ? seg[3] : null;
 	});
 }
 
@@ -520,7 +542,7 @@ fetch('stateData.do', { cache: 'no-store' }).then(function(r) { return r.json();
 }).catch(function() {});
 
 if ('serviceWorker' in navigator) {
-	navigator.serviceWorker.register('sw.js?v=5').catch(function() {});
+	navigator.serviceWorker.register('sw.js?v=6').catch(function() {});
 }
 </script>
 </body>

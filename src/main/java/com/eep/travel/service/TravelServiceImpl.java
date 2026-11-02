@@ -19,6 +19,9 @@ public class TravelServiceImpl implements TravelService {
 	/** 화면의 SITUATIONS 개수 */
 	public static final int SITUATION_COUNT = 8;
 	public static final int MAX_TEXT = 300;
+	/** 글자만으로 읽는 법을 알 수 없어 로마자 발음을 함께 받는 언어 */
+	public static final List<String> ROMA_LANGS = Arrays.asList("ko", "ja", "zh");
+	public static final int MAX_ROMA = 600;
 
 	// 기본 문장은 'b:' + 한국어 문장, 추가한 문장은 'a:' + 번호
 	private static final Pattern KEY = Pattern.compile("^(b:.{1," + MAX_TEXT + "}|a:\\d{1,10})$", Pattern.DOTALL);
@@ -40,6 +43,12 @@ public class TravelServiceImpl implements TravelService {
 			String txt = texts.get(lang) == null ? "" : texts.get(lang).trim();
 			if (txt.isEmpty() || txt.length() > MAX_TEXT) throw new IllegalArgumentException("bad text: " + lang);
 			param.put("TXT_" + lang.toUpperCase(), txt);
+		}
+		// 로마자 발음은 없어도 된다(번역기가 못 주면 화면에서 발음 줄만 빠진다)
+		for (String lang : ROMA_LANGS) {
+			String roma = texts.get("roma_" + lang) == null ? "" : texts.get("roma_" + lang).trim();
+			if (roma.length() > MAX_ROMA) throw new IllegalArgumentException("bad roma: " + lang);
+			param.put("ROMA_" + lang.toUpperCase(), roma.isEmpty() ? null : roma);
 		}
 		param.put("SIT_IDX", sitIdx);
 		param.put("SRC_LANG", srcLang);

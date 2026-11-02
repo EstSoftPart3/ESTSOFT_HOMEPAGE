@@ -43,7 +43,7 @@ public class TravelController {
 		return mv;
 	}
 
-	// 번역한 문장 추가. 파라미터: sit, src, ko/en/vi/ja/zh/th
+	// 번역한 문장 추가. 파라미터: sit, src, ko/en/vi/ja/zh/th, 로마자 발음 roma_ko/roma_ja/roma_zh(없어도 됨)
 	@RequestMapping(value = "/travel/addData.do", method = RequestMethod.POST)
 	@ResponseBody
 	public ModelAndView addData(@RequestParam Map<String, String> param, HttpServletRequest request) {
@@ -52,6 +52,9 @@ public class TravelController {
 		Map<String, String> texts = new HashMap<>();
 		for (String lang : TravelServiceImpl.LANGS) {
 			texts.put(lang, param.get(lang));
+		}
+		for (String lang : TravelServiceImpl.ROMA_LANGS) {
+			texts.put("roma_" + lang, param.get("roma_" + lang));
 		}
 		try {
 			return json("phrase", TravelService.PhraseAdd(Integer.parseInt(param.get("sit")), param.get("src"), texts, ip));

@@ -6,16 +6,17 @@
 <mapper namespace="com.eep.mapper.TravelMapper">
 
 	<select id="selectPhraseList" resultType="hashMap">
-		SELECT PHRASE_SQ, SIT_IDX, SRC_LANG, TXT_KO, TXT_EN, TXT_VI, TXT_JA, TXT_ZH, TXT_TH
+		SELECT PHRASE_SQ, SIT_IDX, SRC_LANG, TXT_KO, TXT_EN, TXT_VI, TXT_JA, TXT_ZH, TXT_TH, ROMA_KO, ROMA_JA, ROMA_ZH
 		FROM TB_EEP_TRAVEL_PHRASE_M
 		ORDER BY PHRASE_SQ
 	</select>
 
 	<insert id="insertPhrase" parameterType="hashMap" useGeneratedKeys="true" keyProperty="PHRASE_SQ">
 		INSERT INTO TB_EEP_TRAVEL_PHRASE_M
-			(SIT_IDX, SRC_LANG, TXT_KO, TXT_EN, TXT_VI, TXT_JA, TXT_ZH, TXT_TH, REG_IP, REG_DT)
+			(SIT_IDX, SRC_LANG, TXT_KO, TXT_EN, TXT_VI, TXT_JA, TXT_ZH, TXT_TH, ROMA_KO, ROMA_JA, ROMA_ZH, REG_IP, REG_DT)
 		VALUES
-			(#{SIT_IDX}, #{SRC_LANG}, #{TXT_KO}, #{TXT_EN}, #{TXT_VI}, #{TXT_JA}, #{TXT_ZH}, #{TXT_TH}, #{REG_IP}, NOW())
+			(#{SIT_IDX}, #{SRC_LANG}, #{TXT_KO}, #{TXT_EN}, #{TXT_VI}, #{TXT_JA}, #{TXT_ZH}, #{TXT_TH},
+			 #{ROMA_KO, jdbcType=VARCHAR}, #{ROMA_JA, jdbcType=VARCHAR}, #{ROMA_ZH, jdbcType=VARCHAR}, #{REG_IP}, NOW())
 	</insert>
 
 	<select id="selectHideKeyList" resultType="string">
