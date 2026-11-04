@@ -24,6 +24,8 @@
 						</button>
 						<div id="dashBox" class="collapse show">
 							<div class="cal-panel-body">
+								<div class="hr-dash-title" id="dashTitle"></div>
+								<div class="hr-dash-cond" id="dashCond"></div>
 								<div class="hr-dash" id="dashStats"></div>
 								<div class="text-right mb-2">
 									<button type="button" class="btn btn-sm btn-outline-primary" id="btnCopyDash" onclick="copyDash();"><i class="far fa-copy"></i> <span>보고 내용 복사</span></button>
@@ -162,8 +164,24 @@
 		ATTEND_ST: { ATTEND: 'good', CANCEL: 'mute', ABSENT: 'bad', CHANGE: 'warn' },
 		RESULT_ST: { PASS: 'good', FAIL: 'bad', HOLD: 'warn', CANCEL: 'mute' },
 		NOTICE_ST: { WAIT: 'mute', NOTIFIED: 'info', REPLY_WAIT: 'warn', CONFIRM: 'good', REJECT: 'bad' },
-		JOIN_ST: { JOIN: 'good', REJECT: 'bad', JOIN_CANCEL: 'bad', NO_REPLY: 'warn', UNDECIDED: 'mute' }
+		JOIN_ST: { JOIN: 'good', REJECT: 'bad', JOIN_CANCEL: 'bad', NO_REPLY: 'warn', UNDECIDED: 'mute' },
+		JOIN_DT: {}
 	};
+	// 불참이나 불합격이면 뒤 칸은 쓸 필요가 없어 회색, 보류면 아직 써야 하므로 노란색
+	function toneOf(r, field) {
+		if (field !== 'ATTEND_ST' && r.ATTEND_ST !== 'ATTEND') return 'mute';
+		if (field !== 'ATTEND_ST' && field !== 'RESULT_ST') {
+			if (r.RESULT_ST === 'FAIL') return 'mute';
+			if (r.RESULT_ST === 'HOLD') return 'warn';
+		}
+		if (field === 'JOIN_DT') return r.JOIN_DT ? 'good' : r.RESULT_ST === 'PASS' && r.JOIN_ST === 'JOIN' ? 'warn' : 'mute';
+		return TONES[field][r[field]];
+	}
+	function paintTones($tr, r) {
+		COLS.forEach(function(c, i) {
+			if (TONES[c.field]) $tr.children().eq(i).attr('data-tone', toneOf(r, c.field) || null);
+		});
+	}
 	var rows = [], shown = [], current = '', editing = null, sortCol = 0, sortDir = -1;
 
 	$(function() {
@@ -173,60 +191,85 @@
 		$('#keyword').on('input', render);
 	});
 
-	// 월요일에 시작하는 달력 주. 그 달의 날짜만 담아 [시작일, 끝일] 로 돌려준다
+	// 월~일 한 주는 날짜가 더 많이 든 달의 주차다. 목요일이 든 달과 같다
 	function monthWeeks(y, mon) {
-		var last = new Date(y, mon, 0).getDate(), offset = (new Date(y, mon - 1, 1).getDay() + 6) % 7, weeks = [];
-		for (var d = 1; d <= last; d++) {
-			var i = Math.floor((d - 1 + offset) / 7);
-			weeks[i] = weeks[i] || [d, d];
-			weeks[i][1] = d;
+		var thu = moment([y, mon - 1, 1]), weeks = [];
+		thu.add((4 - thu.day() + 7) % 7, 'days');
+		while (thu.month() === mon - 1) {
+			weeks.push([thu.clone().subtract(3, 'days'), thu.clone().add(3, 'days')]);
+			thu.add(7, 'days');
 		}
 		return weeks;
+	}
+
+	// 주가 다른 달에 걸치면 달까지 적는다
+	function weekRange(w) {
+		var format = w[0].month() === w[1].month() ? 'D일' : 'M월 D일';
+		return w[0].format(format) + '~' + w[1].format(format);
 	}
 
 	function fillWeeks() {
 		var y = $('#yearSel').val(), mon = $('#monthSel').val();
 		var $w = $('#weekSel').empty().append('<option value="">전체</option>').prop('disabled', !y || !mon);
 		if (y && mon) monthWeeks(+y, +mon).forEach(function(w, i) {
-			$w.append($('<option>').val(w.join('-')).text((i + 1) + '주차 (' + (w[0] === w[1] ? w[0] : w[0] + '~' + w[1]) + '일)'));
+			$w.append($('<option>').val(w[0].format('YYYY-MM-DD') + '|' + w[1].format('YYYY-MM-DD')).text((i + 1) + '주차 (' + weekRange(w) + ')'));
 		});
 	}
 
 	function inWeek(dt, week) {
-		if (!week) return true;
-		var d = +(dt || '').substr(8, 2), w = week.split('-');
-		return d >= +w[0] && d <= +w[1];
+		var w = week.split('|');
+		return !!dt && dt >= w[0] && dt <= w[1];
+	}
+
+	// 보고 제목과 그 밖의 검색 조건. 검색어가 있으면 render 처럼 연도·월·주차를 보지 않는다
+	function dashTitle() {
+		var kw = $.trim($('#keyword').val()), y = $('#yearSel').val(), mon = $('#monthSel').val(), week = $('#weekSel').val();
+		var title = kw ? '' : [y && y + '년', mon && +mon + '월', week && $('#weekSel option:selected').text()].filter(Boolean).join(' ');
+		var conds = kw ? ['검색어: ' + kw] : [];
+		FILTERS.forEach(function(f) {
+			if ($(f[0]).val()) conds.push($('label[for=' + f[0].substr(1) + ']').text() + ': ' + $(f[0]).find('option:selected').text());
+		});
+		return { title: title || '전체 기간', conds: conds.join(' / ') };
+	}
+
+	// 코드별 인원. 코드가 없거나 지워진 값은 미입력으로 묶어 합계를 맞춘다
+	function breakdown(list, field, grp, rename) {
+		if (!list.length) return '';
+		var parts = [], counted = 0;
+		(HR_CODES[grp] || []).forEach(function(o) {
+			var n = list.filter(function(r) { return r[field] === o.CD; }).length;
+			counted += n;
+			if (n) parts.push(((rename || {})[o.CD] || o.NM) + n);
+		});
+		if (list.length > counted) parts.push('미입력' + (list.length - counted));
+		return parts.join(', ');
 	}
 
 	function dashCounts(list) {
 		function count(test) { return list.filter(test).length; }
-		var pass = list.filter(function(r) { return r.RESULT_ST === 'PASS'; }), parts = [], counted = 0;
-		if (pass.length) {
-			// 합격자의 입사여부별 인원. 코드가 없거나 지워진 값은 미입력으로 묶어 합계를 맞춘다
-			(HR_CODES.HR_JOIN || []).forEach(function(o) {
-				var n = pass.filter(function(r) { return r.JOIN_ST === o.CD; }).length;
-				counted += n;
-				if (n) parts.push((o.CD === 'JOIN' ? '출근확정' : o.NM) + n);
-			});
-			if (pass.length > counted) parts.push('미입력' + (pass.length - counted));
-		}
+		var pass = list.filter(function(r) { return r.RESULT_ST === 'PASS'; });
+		var absent = list.filter(function(r) { return r.ATTEND_ST !== 'ATTEND'; });
 		return {
 			total: list.length,
-			attend: count(function(r) { return r.ATTEND_ST === 'ATTEND'; }),
+			attend: list.length - absent.length,
+			attendDetail: breakdown(absent, 'ATTEND_ST', 'HR_ATTEND'),
 			pass: pass.length,
-			detail: parts.join(', '),
+			detail: breakdown(pass, 'JOIN_ST', 'HR_JOIN', { JOIN: '출근확정' }),
 			hold: count(function(r) { return r.RESULT_ST === 'HOLD'; }),
 			join: count(function(r) { return r.JOIN_ST === 'JOIN'; })
 		};
 	}
 
-	function dashText(s) {
-		return ['총원 : ' + s.total, '참석 : ' + s.attend, '합격 : ' + s.pass + (s.detail ? '(' + s.detail + ')' : ''), '보류 : ' + s.hold, '출근확정 : ' + s.join].join('\n');
+	function dashText(s, t) {
+		function withDetail(n, detail) { return n + (detail ? '(' + detail + ')' : ''); }
+		return [t.title].concat(t.conds ? ['(' + t.conds + ')'] : [], ['총원 : ' + s.total, '참석 : ' + withDetail(s.attend, s.attendDetail), '합격 : ' + withDetail(s.pass, s.detail), '보류 : ' + s.hold, '출근확정 : ' + s.join]).join('\n');
 	}
 
 	function renderDash() {
-		var s = dashCounts(shown), $box = $('#dashStats').empty();
-		[['총원', s.total], ['참석', s.attend], ['합격', s.pass, s.detail], ['보류', s.hold], ['출근확정', s.join]].forEach(function(t) {
+		var s = dashCounts(shown), t = dashTitle(), $box = $('#dashStats').empty();
+		$('#dashTitle').text(t.title);
+		$('#dashCond').text(t.conds);
+		[['총원', s.total], ['참석', s.attend, s.attendDetail], ['합격', s.pass, s.detail], ['보류', s.hold], ['출근확정', s.join]].forEach(function(t) {
 			$('<div class="hr-dash-item">').append($('<div class="hr-dash-label">').text(t[0])).append($('<div class="hr-dash-num">').text(t[1]))
 				.append($('<div class="hr-dash-sub">').text(t[2] || '')).appendTo($box);
 		});
@@ -234,7 +277,7 @@
 
 	// http 로 접속해도 되도록 clipboard API 대신 execCommand 를 쓴다
 	function copyDash() {
-		var $btn = $('#btnCopyDash'), $t = $('<textarea aria-hidden="true" style="position:fixed;top:0;left:-9999px;">').val(dashText(dashCounts(shown))).appendTo('body');
+		var $btn = $('#btnCopyDash'), $t = $('<textarea aria-hidden="true" style="position:fixed;top:0;left:-9999px;">').val(dashText(dashCounts(shown), dashTitle())).appendTo('body');
 		$t[0].select();
 		var ok = false;
 		try { ok = document.execCommand('copy'); } catch (e) {}
@@ -362,7 +405,9 @@
 		// 검색어가 있으면 연도·월과 상관없이 찾는다
 		var base = rows.filter(function(r) {
 			if (kw) return [r.APLY_NM, r.PHONE, r.MEMO].join(' ').toLowerCase().indexOf(kw) >= 0;
-			return (!year || (r.INTV_DT || '').substr(0, 4) === year) && (!month || (r.INTV_DT || '').substr(5, 2) === month) && inWeek(r.INTV_DT, week);
+			// 주차는 앞뒤 달 날짜를 포함할 수 있어 연도·월 대신 기간으로 본다
+			if (week) return inWeek(r.INTV_DT, week);
+			return (!year || (r.INTV_DT || '').substr(0, 4) === year) && (!month || (r.INTV_DT || '').substr(5, 2) === month);
 		}).filter(passFilters);
 		shown = base;
 		renderDash();
@@ -382,15 +427,16 @@
 					url: '/admin/hr/saveInterviewFieldData.do', key: { INTV_SQ: r.INTV_SQ }, field: c.field, type: c.type, label: r.APLY_NM + ' ' + c.t,
 					value: function() { return r[c.field]; },
 					show: function() { return (c.show || c.v)(r); },
-					tone: TONES[c.field] && function() { return TONES[c.field][r[c.field]]; },
 					saved: function(val) {
 						r[c.field] = val;
 						if (c.field === 'APLY_ROUTE' && val !== 'REFERRAL') r.REFERRER = null;
+						paintTones($tr, r);
 						renderDash();
 					}
 				});
 			});
 			$('<td>').append($('<button type="button" class="btn btn-xs btn-outline-secondary">상세</button>').on('click', function() { openEdit(r); })).appendTo($tr);
+			paintTones($tr, r);
 			$body.append($tr);
 		});
 	}
