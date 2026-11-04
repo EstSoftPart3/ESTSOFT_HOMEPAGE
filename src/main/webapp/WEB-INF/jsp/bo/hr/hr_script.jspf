@@ -24,6 +24,11 @@ function hrPost(url, data, done, failed) {
 	}).fail(function() { if (failed) failed(); });
 }
 
+// 날짜 입력칸은 날짜가 아닌 값을 빈칸으로 만들어 저장 때 지운다. 그런 값은 글자 입력으로 둔다
+function hrInputType(type, val) {
+	return type === 'date' && val && !/^\d{4}-\d{2}-\d{2}$/.test(val) ? 'text' : type || 'text';
+}
+
 // 종류에 맞는 입력칸. 종류: 'text', 'date', 'textarea', { code: 코드 그룹 }, { values: {값: 이름} }, { list: [[값, 이름]] }
 function hrControl(type, val) {
 	var $c;
@@ -44,7 +49,7 @@ function hrControl(type, val) {
 			$c.append($('<option>').val(val).text(val));
 		}
 	} else {
-		$c = $('<input class="form-control form-control-sm">').attr('type', type || 'text');
+		$c = $('<input class="form-control form-control-sm">').attr('type', hrInputType(type, val));
 	}
 	return $c.val(val === undefined || val === null ? '' : val);
 }
@@ -127,6 +132,7 @@ function hrFillForm(form, fields, row) {
 	$(form).find('.hr-extra').remove();
 	fields.forEach(function(f) {
 		var val = row[f[0]];
+		if (f[3] === 'date') $(form).find('[name=' + f[0] + ']').attr('type', hrInputType('date', val));
 		if (val === undefined || val === null) return;
 		var $multi = $(form).find('[data-multi=' + f[0] + ']');
 		if ($multi.length) {

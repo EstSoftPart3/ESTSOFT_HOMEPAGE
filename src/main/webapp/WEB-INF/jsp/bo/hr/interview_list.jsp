@@ -121,7 +121,7 @@
 			['LOCAL_YN', '지방 가능', 4, { code: 'HR_LOCAL' }], ['SALARY', '계약 예정 연봉', 8]
 		]],
 		['채용 진행', [
-			['NOTICE_ST', '합격통보', 4, { code: 'HR_NOTICE' }], ['JOIN_ST', '입사여부', 4, { code: 'HR_JOIN' }], ['JOIN_DT', '출근일자', 4]
+			['NOTICE_ST', '합격통보', 4, { code: 'HR_NOTICE' }], ['JOIN_ST', '입사여부', 4, { code: 'HR_JOIN' }], ['JOIN_DT', '출근일자', 4, 'date']
 		]],
 		['비고', [
 			['MEMO', '비고', 12, 'textarea', true]
@@ -153,7 +153,7 @@
 		codeCol('결과', 80, 'RESULT_ST', 'HR_RESULT'),
 		codeCol('통보', 90, 'NOTICE_ST', 'HR_NOTICE'),
 		codeCol('입사', 90, 'JOIN_ST', 'HR_JOIN'),
-		textCol('출근일', 100, 'JOIN_DT', true),
+		textCol('출근일', 135, 'JOIN_DT', true, 'date'),
 		textCol('비고', null, 'MEMO', false, 'textarea')
 	];
 	var NONE = '__NONE';
@@ -247,6 +247,14 @@
 		return parts.join(', ');
 	}
 
+	// 특이사항은 비고 첫 줄이다. 가져오기 때 붙은 [원본 …] 줄은 건너뛴다
+	function rosterLine(r, i) {
+		var who = [hrCodeName('HR_GENDER', r.GENDER), r.AGE].filter(Boolean).join(',');
+		var info = [who, r.PHONE, hrCodeName('HR_ROUTE', r.APLY_ROUTE)].filter(Boolean).join(', ');
+		var memo = (r.MEMO || '').split('\n').map(function(l) { return $.trim(l); }).filter(function(l) { return l && l.indexOf('[원본 ') !== 0; })[0];
+		return (i + 1) + '. ' + r.APLY_NM + (info ? '(' + info + ')' : '') + '\n\n특이사항 : ' + (memo || '없음');
+	}
+
 	function dashCounts(list) {
 		var pass = list.filter(function(r) { return r.RESULT_ST === 'PASS'; });
 		var absent = list.filter(function(r) { return r.ATTEND_ST !== 'ATTEND'; });
@@ -261,13 +269,14 @@
 			detail: [passJoined && '출근확정' + passJoined, breakdown(pass.filter(function(r) { return !r.JOIN_DT; }), 'JOIN_ST', 'HR_JOIN')].filter(Boolean).join(', '),
 			hold: list.filter(function(r) { return r.RESULT_ST === 'HOLD'; }).length,
 			join: joined.length,
-			joinNames: joined.map(function(r) { return r.APLY_NM; }).join(', ')
+			joinNames: joined.map(function(r) { return r.APLY_NM; }).join(', '),
+			roster: joined.map(rosterLine).join('\n\n')
 		};
 	}
 
 	function dashText(s, t) {
 		function withDetail(n, detail) { return n + (detail ? '(' + detail + ')' : ''); }
-		return [t.title].concat(t.conds ? ['(' + t.conds + ')'] : [], ['총원 : ' + s.total, '참석 : ' + withDetail(s.attend, s.attendDetail), '합격 : ' + withDetail(s.pass, s.detail), '보류 : ' + s.hold, '출근확정 : ' + withDetail(s.join, s.joinNames)]).join('\n');
+		return [t.title].concat(t.conds ? ['(' + t.conds + ')'] : [], ['총원 : ' + s.total, '참석 : ' + withDetail(s.attend, s.attendDetail), '합격 : ' + withDetail(s.pass, s.detail), '보류 : ' + s.hold, '출근확정 : ' + withDetail(s.join, s.joinNames)]).join('\n') + (s.roster ? '\n\n' + s.roster : '');
 	}
 
 	function renderDash() {
