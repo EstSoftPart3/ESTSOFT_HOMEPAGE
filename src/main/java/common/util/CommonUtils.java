@@ -1,7 +1,6 @@
 package common.util;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
@@ -15,11 +14,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.InvalidParameterSpecException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -36,21 +31,9 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
-import javax.servlet.http.HttpServletRequest;
 
 import org.apache.log4j.Logger;
 import org.json.simple.JSONObject;
-import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.multipart.MultipartHttpServletRequest;
-
-import com.amazonaws.ClientConfiguration;
-import com.amazonaws.Protocol;
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3Client;
-import com.amazonaws.services.s3.model.CannedAccessControlList;
-import com.amazonaws.services.s3.model.PutObjectRequest;
 
 
 @SuppressWarnings("all")
@@ -259,83 +242,6 @@ public class CommonUtils {
         return jsonObject;
     }
     
-    /**
-     * S3 업로드 API
-     *
-     * @param map Map<String, Object>.
-     * @return StringBuffer.
-     */
-    private static String bucketNm = "eduhash-upload"; // 버킷명
-	private static String accessKey = "AKIAI3ZWXVNITEP44JFQ"; // 엑세스 키
-	private static String secretKey = "RhHPpp5khRv+mzhbn/fqMJKtKUXdz/hyjo+lPgk1"; // 보안 엑세스 키
-	private static AmazonS3 conn;
-    
-	public static List<Map<String,Object>> parseInsertFileInfo(Map<String,Object> map, HttpServletRequest request) throws Exception{
-		
-		MultipartHttpServletRequest multipartHttpServletRequest = (MultipartHttpServletRequest)request;
-    	Iterator<String> iterator = multipartHttpServletRequest.getFileNames();
-    	
-    	MultipartFile multipartFile = null;
-    	File file = null;
-    	String fileName = null;
-    	String fileExt = null;
-    	
-    	AWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
-		ClientConfiguration clientConfig = new ClientConfiguration();
-		clientConfig.setProtocol(Protocol.HTTP);
-		conn = new AmazonS3Client(credentials, clientConfig);
-		conn.setEndpoint("s3.ap-northeast-2.amazonaws.com"); // 엔드포인트 설정 [ 아시아 태평양 서울 ]
-    	
-    	List<Map<String,Object>> list = new ArrayList<Map<String,Object>>();
-        Map<String, Object> listMap = null; 
-        
-        while(iterator.hasNext()){
-        	
-        	long time = System.currentTimeMillis(); 
-        	SimpleDateFormat dayTime = new SimpleDateFormat("yyyyMMddHHmmssSSS"); 
-        	String strDT = dayTime.format(new Date(time)); 
-        	
-        	multipartFile = multipartHttpServletRequest.getFile(iterator.next());
-        	file = new File(multipartFile.getOriginalFilename());
-        	
-        	log.debug("################### file = " + multipartFile.getOriginalFilename());
-        	
-        	file.getParentFile().mkdirs(); // correct!
-        	file.mkdirs(); // correct!
-        	if (!file.exists()) {
-        	    file.createNewFile();
-        	} 
-        	multipartFile.transferTo(file);
-        	
-        	if(!multipartFile.isEmpty()){
-        		fileName = multipartFile.getOriginalFilename();
-        		fileExt = fileName.substring(fileName.lastIndexOf("."));
-        		
-        		log.debug("FILE_NM : " + multipartFile.getName());
-        		log.debug("LGCL_FILE_NM : " + fileName);
-        		log.debug("PHSC_FILE_NM : " + strDT + fileExt);
-        		
-        		listMap = new HashMap<String,Object>();
-        		listMap.put("FILE_NM", multipartFile.getName());
-        		listMap.put("LGCL_FILE_NM", fileName);
-        		listMap.put("PHSC_FILE_NM", strDT + fileExt);
-        		list.add(listMap);
-        		
-        		// 파일 업로드를 위한 request 객체를 생성 하였다.
-                PutObjectRequest putObjectRequest =
-        	        // request 객체 안에 BUCKET_NAME + "생성 될 폴더 이름", 파일 원본이름, File 바이너리 데이터 를 설정하였다.
-        	        new PutObjectRequest(bucketNm+"/upload", strDT + fileExt, file);
-
-                // Access List 를 설정 하는 부분이다. 공개 조회가 가능 하도록 public Read 로 설정 하였다.
-                putObjectRequest.setCannedAcl(CannedAccessControlList.PublicRead);
-
-                // 실제로 업로드 할 액션이다.
-                conn.putObject(putObjectRequest);
-        	}
-        }
-		return list;
-	}
-	
 	/**
      * 네이버 검색엔진 API
      *
@@ -406,77 +312,4 @@ public class CommonUtils {
         return sb.toString();
 
     }
-
-    /**
-     * S3 업로드 API NoMap
-     * 네이버스마트에디터2 업로드
-     *
-     * @param HttpServletRequest
-     * @return StringBuffer
-     */
-    public static List<Map<String,Object>> parseInsertFileInfoNoMap(HttpServletRequest request) throws Exception{
-		
-		MultipartHttpServletRequest multipartHttpServletRequest = (MultipartHttpServletRequest)request;
-    	Iterator<String> iterator = multipartHttpServletRequest.getFileNames();
-    	
-    	MultipartFile multipartFile = null;
-    	File file = null;
-    	String fileName = null;
-    	String fileExt = null;
-    	
-    	AWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
-		ClientConfiguration clientConfig = new ClientConfiguration();
-		clientConfig.setProtocol(Protocol.HTTP);
-		conn = new AmazonS3Client(credentials, clientConfig);
-		conn.setEndpoint("s3.ap-northeast-2.amazonaws.com"); // 엔드포인트 설정 [ 아시아 태평양 서울 ]
-    	
-    	List<Map<String,Object>> list = new ArrayList<Map<String,Object>>();
-        Map<String, Object> listMap = null; 
-        
-        while(iterator.hasNext()){
-        	
-        	long time = System.currentTimeMillis(); 
-        	SimpleDateFormat dayTime = new SimpleDateFormat("yyyyMMddHHmmssSSS"); 
-        	String strDT = dayTime.format(new Date(time)); 
-        	
-        	multipartFile = multipartHttpServletRequest.getFile(iterator.next());
-        	file = new File(multipartFile.getOriginalFilename());
-        	
-        	log.debug("################### file = " + multipartFile.getOriginalFilename());
-        	
-        	//file.getParentFile().mkdirs(); // correct!
-        	file.mkdirs(); // correct!
-        	if (!file.exists()) {
-        	    file.createNewFile();
-        	} 
-        	multipartFile.transferTo(file);
-        	
-        	if(!multipartFile.isEmpty()){
-        		fileName = multipartFile.getOriginalFilename();
-        		fileExt = fileName.substring(fileName.lastIndexOf("."));
-        		
-        		log.debug("FILE_NM : " + multipartFile.getName());
-        		log.debug("LGCL_FILE_NM : " + fileName);
-        		log.debug("PHSC_FILE_NM : " + strDT + fileExt);
-        		
-        		listMap = new HashMap<String,Object>();
-        		listMap.put("FILE_NM", multipartFile.getName());
-        		listMap.put("LGCL_FILE_NM", fileName);
-        		listMap.put("PHSC_FILE_NM", strDT + fileExt);
-        		list.add(listMap);
-        		
-        		// 파일 업로드를 위한 request 객체를 생성 하였다.
-                PutObjectRequest putObjectRequest =
-        	        // request 객체 안에 BUCKET_NAME + "생성 될 폴더 이름", 파일 원본이름, File 바이너리 데이터 를 설정하였다.
-        	        new PutObjectRequest(bucketNm+"/upload/editor", strDT + fileExt, file);
-
-                // Access List 를 설정 하는 부분이다. 공개 조회가 가능 하도록 public Read 로 설정 하였다.
-                putObjectRequest.setCannedAcl(CannedAccessControlList.PublicRead);
-
-                // 실제로 업로드 할 액션이다.
-                conn.putObject(putObjectRequest);
-        	}
-        }
-		return list;
-	}
 }
