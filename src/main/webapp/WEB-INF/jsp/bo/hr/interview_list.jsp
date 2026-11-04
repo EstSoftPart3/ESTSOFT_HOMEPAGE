@@ -214,7 +214,7 @@
 		var y = $('#yearSel').val(), mon = $('#monthSel').val();
 		var $w = $('#weekSel').empty().append('<option value="">전체</option>').prop('disabled', !y || !mon);
 		if (y && mon) monthWeeks(+y, +mon).forEach(function(w, i) {
-			$w.append($('<option>').val(w[0].format('YYYY-MM-DD') + '|' + w[1].format('YYYY-MM-DD')).text((i + 1) + '주차 (' + weekRange(w) + ')'));
+			$w.append($('<option>').val(w[0].format('YYYY-MM-DD') + '|' + w[1].format('YYYY-MM-DD')).text((i + 1) + '주차(' + weekRange(w) + ')'));
 		});
 	}
 
@@ -247,12 +247,12 @@
 		return parts.join(', ');
 	}
 
-	// 특이사항은 비고 첫 줄이다. 가져오기 때 붙은 [원본 …] 줄은 건너뛴다
+	// 비고는 첫 줄만 쓴다. 가져오기 때 붙은 [원본 …] 줄은 건너뛴다
 	function rosterLine(r, i) {
 		var who = [hrCodeName('HR_GENDER', r.GENDER), r.AGE].filter(Boolean).join(',');
 		var info = [who, r.PHONE, hrCodeName('HR_ROUTE', r.APLY_ROUTE)].filter(Boolean).join(', ');
 		var memo = (r.MEMO || '').split('\n').map(function(l) { return $.trim(l); }).filter(function(l) { return l && l.indexOf('[원본 ') !== 0; })[0];
-		return (i + 1) + '. ' + r.APLY_NM + (info ? '(' + info + ')' : '') + '\n\n특이사항 : ' + (memo || '없음');
+		return (i + 1) + '. ' + r.APLY_NM + (info ? '(' + info + ')' : '') + '\n비고 : ' + (memo || '없음');
 	}
 
 	function dashCounts(list) {
@@ -276,7 +276,7 @@
 
 	function dashText(s, t) {
 		function withDetail(n, detail) { return n + (detail ? '(' + detail + ')' : ''); }
-		return [t.title].concat(t.conds ? ['(' + t.conds + ')'] : [], ['총원 : ' + s.total, '참석 : ' + withDetail(s.attend, s.attendDetail), '합격 : ' + withDetail(s.pass, s.detail), '보류 : ' + s.hold, '출근확정 : ' + withDetail(s.join, s.joinNames)]).join('\n') + (s.roster ? '\n\n' + s.roster : '');
+		return [t.title].concat(t.conds ? ['(' + t.conds + ')'] : [], ['총원 : ' + s.total, '참석 : ' + withDetail(s.attend, s.attendDetail), '합격 : ' + withDetail(s.pass, s.detail), '보류 : ' + s.hold]).join('\n') + '\n\n' + (s.roster ? '출근확정 :\n' + s.roster : '출근확정 : 0');
 	}
 
 	function renderDash() {
