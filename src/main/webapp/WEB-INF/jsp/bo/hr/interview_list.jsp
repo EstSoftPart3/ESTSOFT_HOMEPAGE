@@ -18,6 +18,21 @@
 
 				<div class="card-body">
 					<div class="cal-panel">
+						<button type="button" class="cal-panel-head hr-dash-head" data-toggle="collapse" data-target="#dashBox" aria-expanded="true" aria-controls="dashBox">
+							<span><i class="fas fa-chart-bar"></i> 대시보드 (검색 기준)</span>
+							<i class="fas fa-chevron-up" aria-hidden="true"></i>
+						</button>
+						<div id="dashBox" class="collapse show">
+							<div class="cal-panel-body">
+								<div class="hr-dash" id="dashStats"></div>
+								<div class="text-right mb-2">
+									<button type="button" class="btn btn-sm btn-outline-primary" id="btnCopyDash" onclick="copyDash();"><i class="far fa-copy"></i> <span>보고 내용 복사</span></button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="cal-panel">
 						<div class="cal-panel-body">
 							<div class="form-row align-items-end">
 								<div class="col-md-1 col-6 mb-2">
@@ -28,6 +43,10 @@
 									<label for="monthSel">월</label>
 									<select id="monthSel" class="form-control form-control-sm hr-filter-input"></select>
 								</div>
+								<div class="col-md-2 col-6 mb-2">
+									<label for="weekSel">주차</label>
+									<select id="weekSel" class="form-control form-control-sm hr-filter-input"></select>
+								</div>
 								<div class="col-md-3 col-6 mb-2">
 									<label for="keyword">검색 (이름·연락처·비고, 모든 연도)</label>
 									<input type="search" id="keyword" class="form-control form-control-sm">
@@ -36,7 +55,7 @@
 								<div class="col-md-1 col-6 mb-2"><label for="fAttend">참석</label><select id="fAttend" class="form-control form-control-sm hr-filter-input"></select></div>
 								<div class="col-md-1 col-6 mb-2"><label for="fNotice">통보</label><select id="fNotice" class="form-control form-control-sm hr-filter-input"></select></div>
 								<div class="col-md-1 col-6 mb-2"><label for="fJoin">입사</label><select id="fJoin" class="form-control form-control-sm hr-filter-input"></select></div>
-								<div class="col-md-2 col-12 mb-2 text-right">
+								<div class="col-12 mb-2 text-right">
 									<button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetFilters();"><i class="fas fa-undo"></i> 필터 초기화</button>
 								</div>
 							</div>
@@ -138,13 +157,93 @@
 	var NONE = '__NONE';
 	// 결과는 탭, 이름·연락처·비고는 검색, 날짜는 연도로 찾으므로 필터에서 뺀다
 	var FILTERS = [['#fRoute', 'APLY_ROUTE', 'HR_ROUTE'], ['#fAttend', 'ATTEND_ST', 'HR_ATTEND'], ['#fNotice', 'NOTICE_ST', 'HR_NOTICE'], ['#fJoin', 'JOIN_ST', 'HR_JOIN']];
-	var rows = [], current = '', editing = null, sortCol = 0, sortDir = -1;
+	// 목록 칸 색. 코드 없는 값은 색을 넣지 않는다
+	var TONES = {
+		ATTEND_ST: { ATTEND: 'good', CANCEL: 'mute', ABSENT: 'bad', CHANGE: 'warn' },
+		RESULT_ST: { PASS: 'good', FAIL: 'bad', HOLD: 'warn', CANCEL: 'mute' },
+		NOTICE_ST: { WAIT: 'mute', NOTIFIED: 'info', REPLY_WAIT: 'warn', CONFIRM: 'good', REJECT: 'bad' },
+		JOIN_ST: { JOIN: 'good', REJECT: 'bad', JOIN_CANCEL: 'bad', NO_REPLY: 'warn', UNDECIDED: 'mute' }
+	};
+	var rows = [], shown = [], current = '', editing = null, sortCol = 0, sortDir = -1;
 
 	$(function() {
 		load();
-		$('#yearSel').on('change', render);
+		$('#yearSel').on('change', function() { fillWeeks(); render(); });
+		$('#monthSel').on('change', fillWeeks);
 		$('#keyword').on('input', render);
 	});
+
+	// 월요일에 시작하는 달력 주. 그 달의 날짜만 담아 [시작일, 끝일] 로 돌려준다
+	function monthWeeks(y, mon) {
+		var last = new Date(y, mon, 0).getDate(), offset = (new Date(y, mon - 1, 1).getDay() + 6) % 7, weeks = [];
+		for (var d = 1; d <= last; d++) {
+			var i = Math.floor((d - 1 + offset) / 7);
+			weeks[i] = weeks[i] || [d, d];
+			weeks[i][1] = d;
+		}
+		return weeks;
+	}
+
+	function fillWeeks() {
+		var y = $('#yearSel').val(), mon = $('#monthSel').val();
+		var $w = $('#weekSel').empty().append('<option value="">전체</option>').prop('disabled', !y || !mon);
+		if (y && mon) monthWeeks(+y, +mon).forEach(function(w, i) {
+			$w.append($('<option>').val(w.join('-')).text((i + 1) + '주차 (' + (w[0] === w[1] ? w[0] : w[0] + '~' + w[1]) + '일)'));
+		});
+	}
+
+	function inWeek(dt, week) {
+		if (!week) return true;
+		var d = +(dt || '').substr(8, 2), w = week.split('-');
+		return d >= +w[0] && d <= +w[1];
+	}
+
+	function dashCounts(list) {
+		function count(test) { return list.filter(test).length; }
+		var pass = list.filter(function(r) { return r.RESULT_ST === 'PASS'; }), parts = [], counted = 0;
+		if (pass.length) {
+			// 합격자의 입사여부별 인원. 코드가 없거나 지워진 값은 미입력으로 묶어 합계를 맞춘다
+			(HR_CODES.HR_JOIN || []).forEach(function(o) {
+				var n = pass.filter(function(r) { return r.JOIN_ST === o.CD; }).length;
+				counted += n;
+				if (n) parts.push((o.CD === 'JOIN' ? '출근확정' : o.NM) + n);
+			});
+			if (pass.length > counted) parts.push('미입력' + (pass.length - counted));
+		}
+		return {
+			total: list.length,
+			attend: count(function(r) { return r.ATTEND_ST === 'ATTEND'; }),
+			pass: pass.length,
+			detail: parts.join(', '),
+			hold: count(function(r) { return r.RESULT_ST === 'HOLD'; }),
+			join: count(function(r) { return r.JOIN_ST === 'JOIN'; })
+		};
+	}
+
+	function dashText(s) {
+		return ['총원 : ' + s.total, '참석 : ' + s.attend, '합격 : ' + s.pass + (s.detail ? '(' + s.detail + ')' : ''), '보류 : ' + s.hold, '출근확정 : ' + s.join].join('\n');
+	}
+
+	function renderDash() {
+		var s = dashCounts(shown), $box = $('#dashStats').empty();
+		[['총원', s.total], ['참석', s.attend], ['합격', s.pass, s.detail], ['보류', s.hold], ['출근확정', s.join]].forEach(function(t) {
+			$('<div class="hr-dash-item">').append($('<div class="hr-dash-label">').text(t[0])).append($('<div class="hr-dash-num">').text(t[1]))
+				.append($('<div class="hr-dash-sub">').text(t[2] || '')).appendTo($box);
+		});
+	}
+
+	// http 로 접속해도 되도록 clipboard API 대신 execCommand 를 쓴다
+	function copyDash() {
+		var $btn = $('#btnCopyDash'), $t = $('<textarea aria-hidden="true" style="position:fixed;top:0;left:-9999px;">').val(dashText(dashCounts(shown))).appendTo('body');
+		$t[0].select();
+		var ok = false;
+		try { ok = document.execCommand('copy'); } catch (e) {}
+		$t.remove();
+		$btn.focus();
+		if (!ok) { bootbox.alert('복사하지 못했습니다. 대시보드 숫자를 직접 옮겨 주세요.'); return; }
+		var $label = $btn.find('span').text('복사했습니다');
+		setTimeout(function() { $label.text('보고 내용 복사'); }, 1200);
+	}
 
 	$(document).on('click', '.cate-tab', function() { current = $(this).data('tab'); render(); });
 
@@ -155,6 +254,7 @@
 	function buildHead() {
 		var $m = $('#monthSel').append('<option value="">전체</option>');
 		for (var i = 1; i <= 12; i++) $m.append($('<option>').val(('0' + i).slice(-2)).text(i + '월'));
+		$m.val(moment().format('MM'));
 		FILTERS.forEach(function(f) {
 			var $s = $(f[0]).empty().append('<option value="">전체</option>').append($('<option>').val(NONE).text('값 없음'));
 			(HR_CODES[f[2]] || []).forEach(function(o) { $s.append($('<option>').val(o.CD).text(o.NM)); });
@@ -202,6 +302,7 @@
 		sortCol = 0; sortDir = -1; current = '';
 		$('.hr-filter-input').val('');
 		$('#keyword').val('');
+		fillWeeks();
 		render();
 	}
 
@@ -251,17 +352,20 @@
 			var $y = $('#yearSel').empty().append('<option value="">전체</option>');
 			Object.keys(years).sort().reverse().forEach(function(y) { $y.append($('<option>').val(y).text(y + '년')); });
 			$y.val(sel === null ? thisYear : sel);
+			if (sel === null) fillWeeks();
 			render();
 		});
 	}
 
 	function render() {
-		var year = $('#yearSel').val(), month = $('#monthSel').val(), kw = $.trim($('#keyword').val()).toLowerCase();
+		var year = $('#yearSel').val(), month = $('#monthSel').val(), week = $('#weekSel').val(), kw = $.trim($('#keyword').val()).toLowerCase();
 		// 검색어가 있으면 연도·월과 상관없이 찾는다
 		var base = rows.filter(function(r) {
 			if (kw) return [r.APLY_NM, r.PHONE, r.MEMO].join(' ').toLowerCase().indexOf(kw) >= 0;
-			return (!year || (r.INTV_DT || '').substr(0, 4) === year) && (!month || (r.INTV_DT || '').substr(5, 2) === month);
+			return (!year || (r.INTV_DT || '').substr(0, 4) === year) && (!month || (r.INTV_DT || '').substr(5, 2) === month) && inWeek(r.INTV_DT, week);
 		}).filter(passFilters);
+		shown = base;
+		renderDash();
 		markSort();
 		var $tabs = $('#tabs').empty(), test = TABS[0][2];
 		TABS.forEach(function(t) {
@@ -278,9 +382,11 @@
 					url: '/admin/hr/saveInterviewFieldData.do', key: { INTV_SQ: r.INTV_SQ }, field: c.field, type: c.type, label: r.APLY_NM + ' ' + c.t,
 					value: function() { return r[c.field]; },
 					show: function() { return (c.show || c.v)(r); },
+					tone: TONES[c.field] && function() { return TONES[c.field][r[c.field]]; },
 					saved: function(val) {
 						r[c.field] = val;
 						if (c.field === 'APLY_ROUTE' && val !== 'REFERRAL') r.REFERRER = null;
+						renderDash();
 					}
 				});
 			});

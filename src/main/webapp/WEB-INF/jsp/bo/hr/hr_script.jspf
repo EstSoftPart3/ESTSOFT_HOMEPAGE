@@ -49,9 +49,12 @@ function hrControl(type, val) {
 	return $c.val(val === undefined || val === null ? '' : val);
 }
 
-// 표 칸을 눌러 바로 고친다. opts: url, key: {키 이름: 값}, field, type, label, show(), value(), saved(새 값)
+// 표 칸을 눌러 바로 고친다. opts: url, key: {키 이름: 값}, field, type, label, show(), value(), saved(새 값), tone(): 칸 색 이름(선택)
 function hrEditable($td, opts) {
-	function paint() { $td.empty().text(opts.show() || ''); }
+	function paint() {
+		$td.empty().text(opts.show() || '');
+		if (opts.tone) $td.attr('data-tone', opts.tone() || null);
+	}
 	function edit() {
 		if ($td.find('.form-control').length) return;
 		var before = opts.value(), $c = hrControl(opts.type, before).attr('aria-label', opts.label), closed = false;
