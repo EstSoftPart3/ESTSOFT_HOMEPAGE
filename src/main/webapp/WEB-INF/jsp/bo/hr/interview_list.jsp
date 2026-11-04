@@ -167,15 +167,17 @@
 		JOIN_ST: { JOIN: 'good', REJECT: 'bad', JOIN_CANCEL: 'bad', NO_REPLY: 'warn', UNDECIDED: 'mute' },
 		JOIN_DT: {}
 	};
-	// 불참이나 불합격이면 뒤 칸은 쓸 필요가 없어 회색, 보류면 아직 써야 하므로 노란색
+	// 쓸 필요 없는 칸은 회색, 써야 하는데 비어 있는 칸은 노란색
 	function toneOf(r, field) {
-		if (field !== 'ATTEND_ST' && r.ATTEND_ST !== 'ATTEND') return 'mute';
-		if (field !== 'ATTEND_ST' && field !== 'RESULT_ST') {
-			if (r.RESULT_ST === 'FAIL') return 'mute';
-			if (r.RESULT_ST === 'HOLD') return 'warn';
+		if (field !== 'ATTEND_ST') {
+			if (r.ATTEND_ST !== 'ATTEND') return 'mute';
+			if (field !== 'RESULT_ST') {
+				if (r.RESULT_ST === 'HOLD') return 'warn';
+				if (r.RESULT_ST !== 'PASS') return 'mute';
+			}
 		}
-		if (field === 'JOIN_DT') return r.JOIN_DT ? 'good' : r.RESULT_ST === 'PASS' && r.JOIN_ST === 'JOIN' ? 'warn' : 'mute';
-		return TONES[field][r[field]];
+		if (field === 'JOIN_DT') return r.JOIN_DT ? 'good' : r.JOIN_ST === 'JOIN' ? 'warn' : 'mute';
+		return r[field] ? TONES[field][r[field]] : 'warn';
 	}
 	function paintTones($tr, r) {
 		COLS.forEach(function(c, i) {
@@ -233,43 +235,46 @@
 	}
 
 	// 코드별 인원. 코드가 없거나 지워진 값은 미입력으로 묶어 합계를 맞춘다
-	function breakdown(list, field, grp, rename) {
+	function breakdown(list, field, grp) {
 		if (!list.length) return '';
 		var parts = [], counted = 0;
 		(HR_CODES[grp] || []).forEach(function(o) {
 			var n = list.filter(function(r) { return r[field] === o.CD; }).length;
 			counted += n;
-			if (n) parts.push(((rename || {})[o.CD] || o.NM) + n);
+			if (n) parts.push(o.NM + n);
 		});
 		if (list.length > counted) parts.push('미입력' + (list.length - counted));
 		return parts.join(', ');
 	}
 
 	function dashCounts(list) {
-		function count(test) { return list.filter(test).length; }
 		var pass = list.filter(function(r) { return r.RESULT_ST === 'PASS'; });
 		var absent = list.filter(function(r) { return r.ATTEND_ST !== 'ATTEND'; });
+		// 출근일이 있으면 출근확정이다
+		var joined = list.filter(function(r) { return r.JOIN_DT; });
+		var passJoined = pass.filter(function(r) { return r.JOIN_DT; }).length;
 		return {
 			total: list.length,
 			attend: list.length - absent.length,
 			attendDetail: breakdown(absent, 'ATTEND_ST', 'HR_ATTEND'),
 			pass: pass.length,
-			detail: breakdown(pass, 'JOIN_ST', 'HR_JOIN', { JOIN: '출근확정' }),
-			hold: count(function(r) { return r.RESULT_ST === 'HOLD'; }),
-			join: count(function(r) { return r.JOIN_ST === 'JOIN'; })
+			detail: [passJoined && '출근확정' + passJoined, breakdown(pass.filter(function(r) { return !r.JOIN_DT; }), 'JOIN_ST', 'HR_JOIN')].filter(Boolean).join(', '),
+			hold: list.filter(function(r) { return r.RESULT_ST === 'HOLD'; }).length,
+			join: joined.length,
+			joinNames: joined.map(function(r) { return r.APLY_NM; }).join(', ')
 		};
 	}
 
 	function dashText(s, t) {
 		function withDetail(n, detail) { return n + (detail ? '(' + detail + ')' : ''); }
-		return [t.title].concat(t.conds ? ['(' + t.conds + ')'] : [], ['총원 : ' + s.total, '참석 : ' + withDetail(s.attend, s.attendDetail), '합격 : ' + withDetail(s.pass, s.detail), '보류 : ' + s.hold, '출근확정 : ' + s.join]).join('\n');
+		return [t.title].concat(t.conds ? ['(' + t.conds + ')'] : [], ['총원 : ' + s.total, '참석 : ' + withDetail(s.attend, s.attendDetail), '합격 : ' + withDetail(s.pass, s.detail), '보류 : ' + s.hold, '출근확정 : ' + withDetail(s.join, s.joinNames)]).join('\n');
 	}
 
 	function renderDash() {
 		var s = dashCounts(shown), t = dashTitle(), $box = $('#dashStats').empty();
 		$('#dashTitle').text(t.title);
 		$('#dashCond').text(t.conds);
-		[['총원', s.total], ['참석', s.attend, s.attendDetail], ['합격', s.pass, s.detail], ['보류', s.hold], ['출근확정', s.join]].forEach(function(t) {
+		[['총원', s.total], ['참석', s.attend, s.attendDetail], ['합격', s.pass, s.detail], ['보류', s.hold], ['출근확정', s.join, s.joinNames]].forEach(function(t) {
 			$('<div class="hr-dash-item">').append($('<div class="hr-dash-label">').text(t[0])).append($('<div class="hr-dash-num">').text(t[1]))
 				.append($('<div class="hr-dash-sub">').text(t[2] || '')).appendTo($box);
 		});
