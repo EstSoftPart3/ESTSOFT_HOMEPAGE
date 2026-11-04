@@ -204,6 +204,13 @@
 		return weeks;
 	}
 
+	// 처음 보여 줄 주의 목요일(그 주가 속한 달을 정한다). 주말이면 지난주다
+	function startThu() {
+		var d = moment();
+		if (d.isoWeekday() > 5) d.subtract(7, 'days');
+		return d.isoWeekday(4);
+	}
+
 	// 주가 다른 달에 걸치면 달까지 적는다
 	function weekRange(w) {
 		var format = w[0].month() === w[1].month() ? 'D일' : 'M월 D일';
@@ -311,7 +318,7 @@
 	function buildHead() {
 		var $m = $('#monthSel').append('<option value="">전체</option>');
 		for (var i = 1; i <= 12; i++) $m.append($('<option>').val(('0' + i).slice(-2)).text(i + '월'));
-		$m.val(moment().format('MM'));
+		$m.val(startThu().format('MM'));
 		FILTERS.forEach(function(f) {
 			var $s = $(f[0]).empty().append('<option value="">전체</option>').append($('<option>').val(NONE).text('값 없음'));
 			(HR_CODES[f[2]] || []).forEach(function(o) { $s.append($('<option>').val(o.CD).text(o.NM)); });
@@ -403,13 +410,16 @@
 				$('#f_APLY_ROUTE').on('change', toggleReferrer);
 				buildHead();
 			}
-			var years = {}, sel = $('#yearSel').val(), thisYear = String(new Date().getFullYear());
+			var years = {}, sel = $('#yearSel').val(), thu = startThu(), thisYear = thu.format('YYYY');
 			rows.forEach(function(r) { if (r.INTV_DT) years[r.INTV_DT.substr(0, 4)] = 1; });
 			years[thisYear] = 1;
 			var $y = $('#yearSel').empty().append('<option value="">전체</option>');
 			Object.keys(years).sort().reverse().forEach(function(y) { $y.append($('<option>').val(y).text(y + '년')); });
 			$y.val(sel === null ? thisYear : sel);
-			if (sel === null) fillWeeks();
+			if (sel === null) {
+				fillWeeks();
+				$('#weekSel').val(thu.clone().subtract(3, 'days').format('YYYY-MM-DD') + '|' + thu.clone().add(3, 'days').format('YYYY-MM-DD'));
+			}
 			render();
 		});
 	}
