@@ -96,10 +96,13 @@ public final class InterviewCalendarParser {
 		return s.replace("\\n", " ").replace("\\N", " ").replace("\\,", ",").replace("\\;", ";").replace("\\\\", "\\");
 	}
 
-	/** 면접이 아닌 일정: 종일(결과 정리용), 출근 */
-	public static boolean isExcluded(Map<String, String> event) {
+	/** 면접이 아닌 일정이면 제외 사유, 면접 대상이면 null */
+	public static String excludeReason(Map<String, String> event) {
 		String title = event.get("TITLE");
-		return "Y".equals(event.get("ALL_DAY")) || "CANCELLED".equals(event.get("STATUS")) || (title != null && title.trim().startsWith("출근"));
+		if ("CANCELLED".equals(event.get("STATUS"))) return "캘린더에서 삭제된 일정";
+		if ("Y".equals(event.get("ALL_DAY"))) return "종일 일정";
+		if (title != null && title.trim().startsWith("출근")) return "출근 일정";
+		return null;
 	}
 
 	/** 제목을 면접관리 칸 값으로 바꾼다. 형식이 다르거나 전화번호가 없으면 null */

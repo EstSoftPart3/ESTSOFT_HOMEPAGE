@@ -35,6 +35,76 @@
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 	</update>
 
+	<update id="alterBatchLogForIcal">
+		ALTER TABLE TB_EEP_BATCH_LOG ADD COLUMN IF NOT EXISTS ICAL_NM VARCHAR(100) NULL AFTER TRIGGER_CD
+	</update>
+
+	<!-- RESULT_CD: INSERT, UPDATE, SAME, EXCL, SKIP(실패). EVT_TITLE 의 전화번호는 가려서 저장한다 -->
+	<update id="createBatchLogDetailTable">
+		CREATE TABLE IF NOT EXISTS TB_EEP_BATCH_LOG_D (
+			LOG_D_SQ     INT          NOT NULL AUTO_INCREMENT,
+			BATCH_LOG_SQ INT          NOT NULL,
+			RESULT_CD    VARCHAR(10)  NOT NULL,
+			INTV_DT      DATE             NULL,
+			INTV_TM      VARCHAR(20)      NULL,
+			APLY_NM      VARCHAR(100)     NULL,
+			INTV_SQ      INT              NULL,
+			EVT_TITLE    VARCHAR(500)     NULL,
+			REASON       VARCHAR(200)     NULL,
+			PRIMARY KEY (LOG_D_SQ),
+			KEY IX_BATCH_LOG_D (BATCH_LOG_SQ)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+	</update>
+
+	<update id="createBatchIcalTable">
+		CREATE TABLE IF NOT EXISTS TB_EEP_BATCH_ICAL_M (
+			ICAL_SQ  INT          NOT NULL AUTO_INCREMENT,
+			ICAL_NM  VARCHAR(100) NOT NULL,
+			ICAL_URL VARCHAR(500) NOT NULL,
+			AUTO_YN  CHAR(1)      NOT NULL DEFAULT 'N',
+			REG_DT   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (ICAL_SQ),
+			UNIQUE KEY UX_BATCH_ICAL_URL (ICAL_URL)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+	</update>
+
+	<insert id="moveConfIcalToList">
+		INSERT IGNORE INTO TB_EEP_BATCH_ICAL_M (ICAL_NM, ICAL_URL, AUTO_YN)
+		SELECT '인터뷰 일정', CONF_VAL, 'Y'
+		FROM TB_EEP_CAL_CONF_M
+		WHERE CONF_KEY = 'INTERVIEW_ICAL_URL' AND CONF_VAL &lt;&gt; ''
+	</insert>
+
+	<delete id="deleteConfIcal">
+		DELETE FROM TB_EEP_CAL_CONF_M WHERE CONF_KEY = 'INTERVIEW_ICAL_URL'
+	</delete>
+
+	<select id="selectIcalList" resultType="hashMap">
+		SELECT ICAL_SQ, ICAL_NM, AUTO_YN, DATE_FORMAT(REG_DT, '%Y-%m-%d') AS REG_DT
+		FROM TB_EEP_BATCH_ICAL_M
+		ORDER BY ICAL_SQ
+	</select>
+
+	<select id="selectIcalAutoList" resultType="hashMap">
+		SELECT ICAL_SQ, ICAL_NM, ICAL_URL FROM TB_EEP_BATCH_ICAL_M WHERE AUTO_YN = 'Y' ORDER BY ICAL_SQ
+	</select>
+
+	<select id="selectIcalOne" parameterType="hashMap" resultType="hashMap">
+		SELECT ICAL_SQ, ICAL_NM, ICAL_URL FROM TB_EEP_BATCH_ICAL_M WHERE ICAL_SQ = #{ICAL_SQ}
+	</select>
+
+	<insert id="insertIcal" parameterType="hashMap">
+		INSERT INTO TB_EEP_BATCH_ICAL_M (ICAL_NM, ICAL_URL) VALUES (#{ICAL_NM}, #{ICAL_URL})
+	</insert>
+
+	<delete id="deleteIcal" parameterType="hashMap">
+		DELETE FROM TB_EEP_BATCH_ICAL_M WHERE ICAL_SQ = #{ICAL_SQ}
+	</delete>
+
+	<update id="updateIcalAuto" parameterType="hashMap">
+		UPDATE TB_EEP_BATCH_ICAL_M SET AUTO_YN = #{AUTO_YN} WHERE ICAL_SQ = #{ICAL_SQ}
+	</update>
+
 	<select id="selectIntvByGcalId" parameterType="hashMap" resultType="hashMap">
 		SELECT INTV_SQ, DATE_FORMAT(INTV_DT, '%Y-%m-%d') AS INTV_DT, INTV_TM, ATTEND_ST, RESULT_ST
 		FROM TB_EEP_HR_INTV_M
@@ -50,7 +120,7 @@
 	</select>
 
 	<!-- 순번은 면접관리 등록과 같이 다음 번호를 준다 -->
-	<insert id="insertBatchIntv" parameterType="hashMap">
+	<insert id="insertBatchIntv" parameterType="hashMap" useGeneratedKeys="true" keyProperty="INTV_SQ">
 		INSERT INTO TB_EEP_HR_INTV_M
 		(SEQ_NO, APLY_NM, INTV_DT, INTV_TM, APLY_TARGET, APLY_ROUTE, PHONE, ATTEND_ST, CAREER, RESULT_ST, GCAL_EVT_ID, UPDT_EMPLY_ID, UPDT_DT)
 		SELECT IFNULL(MAX(SEQ_NO), 0) + 1, #{APLY_NM}, #{INTV_DT}, #{INTV_TM}, #{APLY_TARGET}, #{APLY_ROUTE}, #{PHONE}, #{ATTEND_ST}, #{CAREER}, #{RESULT_ST}, #{GCAL_EVT_ID}, 'BATCH', NOW()
@@ -71,16 +141,33 @@
 		WHERE INTV_SQ = #{INTV_SQ}
 	</update>
 
-	<insert id="insertBatchLog" parameterType="hashMap">
+	<insert id="insertBatchLog" parameterType="hashMap" useGeneratedKeys="true" keyProperty="BATCH_LOG_SQ">
 		INSERT INTO TB_EEP_BATCH_LOG
-		(BATCH_CD, TRIGGER_CD, STATUS_CD, START_DT, END_DT, FROM_DT, TO_DT, READ_CNT, INSERT_CNT, UPDATE_CNT, SAME_CNT, EXCL_CNT, SKIP_CNT, SKIP_DETAIL, ERROR_MSG)
+		(BATCH_CD, TRIGGER_CD, ICAL_NM, STATUS_CD, START_DT, END_DT, FROM_DT, TO_DT, READ_CNT, INSERT_CNT, UPDATE_CNT, SAME_CNT, EXCL_CNT, SKIP_CNT, ERROR_MSG)
 		VALUES
-		(#{BATCH_CD}, #{TRIGGER_CD}, #{STATUS_CD}, #{START_DT}, NOW(), #{FROM_DT}, #{TO_DT}, #{READ_CNT}, #{INSERT_CNT}, #{UPDATE_CNT}, #{SAME_CNT}, #{EXCL_CNT}, #{SKIP_CNT}, #{SKIP_DETAIL}, #{ERROR_MSG})
+		(#{BATCH_CD}, #{TRIGGER_CD}, #{ICAL_NM}, #{STATUS_CD}, #{START_DT}, NOW(), #{FROM_DT}, #{TO_DT}, #{READ_CNT}, #{INSERT_CNT}, #{UPDATE_CNT}, #{SAME_CNT}, #{EXCL_CNT}, #{SKIP_CNT}, #{ERROR_MSG})
 	</insert>
+
+	<insert id="insertBatchLogDetail" parameterType="hashMap">
+		INSERT INTO TB_EEP_BATCH_LOG_D (BATCH_LOG_SQ, RESULT_CD, INTV_DT, INTV_TM, APLY_NM, INTV_SQ, EVT_TITLE, REASON)
+		VALUES
+		<foreach collection="list" item="d" separator=",">
+			(#{BATCH_LOG_SQ}, #{d.RESULT_CD}, #{d.INTV_DT}, #{d.INTV_TM}, #{d.APLY_NM}, #{d.INTV_SQ}, #{d.EVT_TITLE}, #{d.REASON})
+		</foreach>
+	</insert>
+
+	<!-- 실패를 먼저 보여 주고, 그다음 면접관리에 들어간 것 순서로 -->
+	<select id="selectBatchLogDetail" parameterType="hashMap" resultType="hashMap">
+		SELECT
+			  RESULT_CD, DATE_FORMAT(INTV_DT, '%Y-%m-%d') AS INTV_DT, INTV_TM, APLY_NM, INTV_SQ, EVT_TITLE, REASON
+		FROM TB_EEP_BATCH_LOG_D
+		WHERE BATCH_LOG_SQ = #{BATCH_LOG_SQ}
+		ORDER BY FIELD(RESULT_CD, 'SKIP', 'INSERT', 'UPDATE', 'SAME', 'EXCL'), INTV_DT, INTV_TM, LOG_D_SQ
+	</select>
 
 	<select id="selectBatchLogList" parameterType="hashMap" resultType="hashMap">
 		SELECT
-			  BATCH_LOG_SQ, TRIGGER_CD, STATUS_CD
+			  BATCH_LOG_SQ, TRIGGER_CD, ICAL_NM, STATUS_CD
 			, DATE_FORMAT(START_DT, '%Y-%m-%d %H:%i:%s') AS START_DT
 			, TIMESTAMPDIFF(SECOND, START_DT, END_DT) AS ELAPSED_SEC
 			, DATE_FORMAT(FROM_DT, '%Y-%m-%d') AS FROM_DT

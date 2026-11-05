@@ -16,13 +16,13 @@ import javax.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.eep.bo.batch.dao.BoBatchDao;
-import com.eep.bo.calendar.dao.BoCalendarDao;
 
 @Service
 public class BoBatchServiceImpl implements BoBatchService {
@@ -30,15 +30,10 @@ public class BoBatchServiceImpl implements BoBatchService {
 	private static final Logger log = LoggerFactory.getLogger(BoBatchServiceImpl.class);
 
 	private static final String BATCH_CD = "INTERVIEW_CAL";
-	private static final String CONF_ICAL_URL = "INTERVIEW_ICAL_URL";
 	private static final String ICAL_PREFIX = "https://calendar.google.com/calendar/ical/";
-	private static final int MAX_SKIP_DETAIL = 30;
 
 	@Autowired
 	private BoBatchDao BoBatchDao;
-
-	@Autowired
-	private BoCalendarDao BoCalendarDao;
 
 	private final RestTemplate rest;
 
@@ -63,15 +58,37 @@ public class BoBatchServiceImpl implements BoBatchService {
 	@Override
 	@Scheduled(cron = "0 0 0 * * *")
 	public void runInterviewScheduled() {
-		runInterview("AUTO");
+		List<Map<String, Object>> targets;
+		try {
+			targets = BoBatchDao.IcalAutoList();
+		} catch (Exception e) {
+			log.error("자동 실행 주소 조회 실패: {}", InterviewCalendarParser.cleanError(e));
+			return;
+		}
+		if (targets.isEmpty()) {
+			// 아무도 모르게 멈추지 않도록 이력에 남긴다
+			run("AUTO", null, null);
+		}
+		for (Map<String, Object> target : targets) {
+			run("AUTO", (String) target.get("ICAL_NM"), (String) target.get("ICAL_URL"));
+		}
+	}
+
+	@Override
+	public Map<String, Object> runInterview(int icalSq) {
+		Map<String, Object> target = BoBatchDao.IcalOne(icalSq);
+		if (target == null) {
+			throw new IllegalArgumentException("선택한 iCal 주소를 찾을 수 없습니다.");
+		}
+		return run("MANUAL", (String) target.get("ICAL_NM"), (String) target.get("ICAL_URL"));
 	}
 
 	// 화면 버튼과 스케줄이 겹쳐도 같은 일정을 두 번 넣지 않게 한 번에 하나만 돈다
-	@Override
-	public synchronized Map<String, Object> runInterview(String triggerCd) {
+	private synchronized Map<String, Object> run(String triggerCd, String icalNm, String url) {
 		Map<String, Object> run = new HashMap<>();
 		run.put("BATCH_CD", BATCH_CD);
 		run.put("TRIGGER_CD", triggerCd);
+		run.put("ICAL_NM", icalNm);
 		run.put("START_DT", LocalDateTime.now(InterviewCalendarParser.SEOUL).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 		for (String key : new String[] { "READ_CNT", "INSERT_CNT", "UPDATE_CNT", "SAME_CNT", "EXCL_CNT", "SKIP_CNT" }) {
 			run.put(key, 0);
@@ -79,8 +96,9 @@ public class BoBatchServiceImpl implements BoBatchService {
 		LocalDate[] week = InterviewCalendarParser.weekOf(LocalDate.now(InterviewCalendarParser.SEOUL));
 		run.put("FROM_DT", week[0].toString());
 		run.put("TO_DT", week[1].toString());
+		List<Map<String, Object>> details = new ArrayList<>();
 		try {
-			sync(week, run);
+			sync(url, week, run, details);
 			run.put("STATUS_CD", (Integer) run.get("SKIP_CNT") > 0 ? "WARN" : "OK");
 		} catch (Exception e) {
 			log.error("면접 일정 배치 실패: {}", InterviewCalendarParser.cleanError(e));
@@ -88,17 +106,16 @@ public class BoBatchServiceImpl implements BoBatchService {
 			run.put("ERROR_MSG", InterviewCalendarParser.cleanError(e));
 		}
 		try {
-			BoBatchDao.LogInsert(run);
+			BoBatchDao.LogInsert(run, details);
 		} catch (Exception e) {
 			log.error("배치 이력 저장 실패: {}", InterviewCalendarParser.cleanError(e));
 		}
 		return run;
 	}
 
-	private void sync(LocalDate[] week, Map<String, Object> run) {
-		String url = BoCalendarDao.ConfMap().get(CONF_ICAL_URL);
-		if (url == null || url.isEmpty()) {
-			throw new IllegalStateException("iCal 비공개 주소가 설정되지 않았습니다.");
+	private void sync(String url, LocalDate[] week, Map<String, Object> run, List<Map<String, Object>> details) {
+		if (url == null) {
+			throw new IllegalStateException("자동 실행으로 지정한 iCal 주소가 없습니다.");
 		}
 		String ics = new String(rest.getForObject(URI.create(url), byte[].class), StandardCharsets.UTF_8);
 		// 주소가 잘못돼 다른 페이지가 오면 '일정 0건 성공'으로 보이지 않게 한다
@@ -106,44 +123,53 @@ public class BoBatchServiceImpl implements BoBatchService {
 			throw new IllegalStateException("iCal 형식의 응답이 아닙니다. 비공개 주소를 확인해 주세요.");
 		}
 		String from = week[0].toString(), to = week[1].toString();
-		List<String> skipped = new ArrayList<>();
 		for (Map<String, String> event : InterviewCalendarParser.parseIcs(ics)) {
 			String date = event.get("DATE");
 			if (date == null || date.compareTo(from) < 0 || date.compareTo(to) > 0) {
 				continue;
 			}
 			add(run, "READ_CNT");
-			if (InterviewCalendarParser.isExcluded(event)) {
+			String title = event.get("TITLE");
+			Map<String, Object> detail = new HashMap<>();
+			detail.put("INTV_DT", date);
+			detail.put("INTV_TM", event.get("TIME"));
+			detail.put("EVT_TITLE", cut(InterviewCalendarParser.maskPhone(title), 500));
+			details.add(detail);
+
+			String excluded = InterviewCalendarParser.excludeReason(event);
+			if (excluded != null) {
 				add(run, "EXCL_CNT");
+				detail.put("RESULT_CD", "EXCL");
+				detail.put("REASON", excluded);
 				continue;
 			}
-			String title = event.get("TITLE");
-			String why = "제목 형식을 해석하지 못함";
+			Map<String, Object> row = InterviewCalendarParser.parseTitle(title);
+			if (row == null || event.get("UID") == null) {
+				add(run, "SKIP_CNT");
+				detail.put("RESULT_CD", "SKIP");
+				detail.put("REASON", "제목에서 이름·전화번호를 찾지 못함");
+				continue;
+			}
+			detail.put("APLY_NM", row.get("APLY_NM"));
+			row.put("GCAL_EVT_ID", event.get("UID"));
+			row.put("INTV_DT", date);
+			row.put("INTV_TM", event.get("TIME"));
 			try {
-				Map<String, Object> row = InterviewCalendarParser.parseTitle(title);
-				if (row != null && event.get("UID") != null) {
-					row.put("GCAL_EVT_ID", event.get("UID"));
-					row.put("INTV_DT", date);
-					row.put("INTV_TM", event.get("TIME"));
-					add(run, apply(row));
-					continue;
-				}
+				String result = apply(row);
+				add(run, result + "_CNT");
+				detail.put("RESULT_CD", result);
+				detail.put("INTV_SQ", row.get("INTV_SQ"));
 			} catch (Exception e) {
 				// 한 건 때문에 나머지 일정을 놓치지 않는다
 				log.error("면접 일정 저장 실패: {}", InterviewCalendarParser.cleanError(e));
-				why = "저장 실패";
+				add(run, "SKIP_CNT");
+				detail.put("RESULT_CD", "SKIP");
+				detail.put("REASON", "면접관리 저장 실패");
 			}
-			add(run, "SKIP_CNT");
-			if (skipped.size() < MAX_SKIP_DETAIL) {
-				skipped.add(date + " " + InterviewCalendarParser.maskPhone(title) + " - " + why);
-			}
-		}
-		if (!skipped.isEmpty()) {
-			run.put("SKIP_DETAIL", String.join("\n", skipped));
 		}
 	}
 
-	/** @return 이력에 올릴 건수 칸 이름 */
+	/** @return 처리 결과 코드 INSERT, UPDATE, SAME */
 	private String apply(Map<String, Object> row) {
 		Map<String, Object> linked = BoBatchDao.IntvByGcalId(row);
 		if (linked != null) {
@@ -152,14 +178,14 @@ public class BoBatchServiceImpl implements BoBatchService {
 					&& (row.get("ATTEND_ST") == null || hasText(linked.get("ATTEND_ST")))
 					&& (row.get("RESULT_ST") == null || hasText(linked.get("RESULT_ST")));
 			if (same) {
-				return "SAME_CNT";
+				return "SAME";
 			}
 			// 이미 연결된 행은 일정과 상태만 반영한다. 사람이 지운 연락처 등을 다시 채우지 않는다
 			for (String key : new String[] { "APLY_TARGET", "APLY_ROUTE", "PHONE", "CAREER" }) {
 				row.put(key, null);
 			}
 			BoBatchDao.IntvUpdate(row);
-			return "UPDATE_CNT";
+			return "UPDATE";
 		}
 		Map<String, Object> manual = BoBatchDao.IntvToLink(row);
 		if (manual != null) {
@@ -168,15 +194,19 @@ public class BoBatchServiceImpl implements BoBatchService {
 				row.put("INTV_TM", manual.get("INTV_TM"));
 			}
 			BoBatchDao.IntvUpdate(row);
-			return "UPDATE_CNT";
+			return "UPDATE";
 		}
 		// shortcut: 면접관리에서 지운 행은 그 주 다음 실행 때 다시 들어온다. 지운 일정 기록이 필요해지면 제외 목록을 둔다
 		BoBatchDao.IntvInsert(row);
-		return "INSERT_CNT";
+		return "INSERT";
 	}
 
 	private static boolean hasText(Object o) {
 		return o != null && !o.toString().isEmpty();
+	}
+
+	private static String cut(String s, int max) {
+		return s.length() > max ? s.substring(0, max) : s;
 	}
 
 	private static void add(Map<String, Object> run, String key) {
@@ -189,18 +219,39 @@ public class BoBatchServiceImpl implements BoBatchService {
 	}
 
 	@Override
-	public boolean icalUrlReady() {
-		String url = BoCalendarDao.ConfMap().get(CONF_ICAL_URL);
-		return url != null && !url.isEmpty();
+	public List<Map<String, Object>> interviewLogDetail(int logSq) {
+		return BoBatchDao.LogDetail(logSq);
 	}
 
 	@Override
-	public void saveIcalUrl(String url) {
-		String trimmed = url == null ? "" : url.trim();
-		// 서버가 이 주소를 직접 호출하므로 구글 캘린더 주소만 받는다
-		if (!trimmed.startsWith(ICAL_PREFIX) || !trimmed.endsWith(".ics")) {
-			throw new IllegalArgumentException("구글 캘린더의 '비공개 주소(iCal 형식)'를 입력해 주세요.");
+	public List<Map<String, Object>> icalList() {
+		return BoBatchDao.IcalList();
+	}
+
+	@Override
+	public void saveIcal(String name, String url) {
+		String nm = name == null ? "" : name.trim(), trimmed = url == null ? "" : url.trim();
+		if (nm.isEmpty() || nm.length() > 100) {
+			throw new IllegalArgumentException("이름을 100자 이내로 입력해 주세요.");
 		}
-		BoCalendarDao.ConfSave(CONF_ICAL_URL, trimmed);
+		// 서버가 이 주소를 직접 호출하므로 구글 캘린더 주소만 받는다. 공개 주소는 비공개 캘린더에서 404 가 난다
+		if (!trimmed.startsWith(ICAL_PREFIX) || !trimmed.contains("/private-") || !trimmed.endsWith(".ics") || trimmed.length() > 500) {
+			throw new IllegalArgumentException("구글 캘린더의 'iCal 형식의 비공개 주소'를 입력해 주세요. /private- 가 들어 있어야 합니다.");
+		}
+		try {
+			BoBatchDao.IcalInsert(nm, trimmed);
+		} catch (DataIntegrityViolationException e) { // MariaDB 드라이버에서는 DuplicateKeyException 으로 구분되지 않는다
+			throw new IllegalArgumentException("이미 등록된 주소입니다.");
+		}
+	}
+
+	@Override
+	public void deleteIcal(int icalSq) {
+		BoBatchDao.IcalDelete(icalSq);
+	}
+
+	@Override
+	public void setIcalAuto(int icalSq, boolean auto) {
+		BoBatchDao.IcalAutoUpdate(icalSq, auto ? "Y" : "N");
 	}
 }

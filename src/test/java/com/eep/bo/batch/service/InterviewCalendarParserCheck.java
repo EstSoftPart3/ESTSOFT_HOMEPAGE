@@ -65,9 +65,9 @@ public class InterviewCalendarParserCheck {
 		same(events.get(0).get("TIME"), "14:00", "UTC -> 서울 시간");
 		same(events.get(0).get("TITLE"), "[신입]홍길동(사람인_공고/010-1111-2222)", "접힌 줄 펼치기");
 		same(events.get(1).get("TIME"), "15:30", "TZID 시간");
-		check(InterviewCalendarParser.isExcluded(events.get(1)), "출근 제외");
-		check(InterviewCalendarParser.isExcluded(events.get(2)), "종일 제외");
-		check(!InterviewCalendarParser.isExcluded(events.get(0)), "면접은 포함");
+		same(InterviewCalendarParser.excludeReason(events.get(1)), "출근 일정", "출근 제외");
+		same(InterviewCalendarParser.excludeReason(events.get(2)), "종일 일정", "종일 제외");
+		same(InterviewCalendarParser.excludeReason(events.get(0)), null, "면접은 포함");
 
 		// 2026-11-02 는 월요일
 		same(InterviewCalendarParser.weekOf(LocalDate.of(2026, 11, 2))[0].toString(), "2026-11-02", "월요일");

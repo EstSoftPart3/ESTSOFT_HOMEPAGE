@@ -1,5 +1,6 @@
 -- 배치: 구글 캘린더 면접 일정 -> 면접관리 자동 입력 (2026-11-05)
--- 되돌리기: DROP TABLE TB_EEP_BATCH_LOG; ALTER TABLE TB_EEP_HR_INTV_M DROP KEY UX_HR_INTV_GCAL, DROP COLUMN GCAL_EVT_ID;
+-- 앱이 기동 때 BoBatchMapper_SQL.xml 의 같은 내용으로 맞춘다. 주소 목록·실행 상세 테이블(TB_EEP_BATCH_ICAL_M, TB_EEP_BATCH_LOG_D)도 그쪽에 있다
+-- 되돌리기: DROP TABLE TB_EEP_BATCH_LOG, TB_EEP_BATCH_LOG_D, TB_EEP_BATCH_ICAL_M; ALTER TABLE TB_EEP_HR_INTV_M DROP KEY UX_HR_INTV_GCAL, DROP COLUMN GCAL_EVT_ID;
 SET NAMES utf8mb4;
 
 -- 어떤 캘린더 일정에서 온 행인지. 일정이 옮겨져도 같은 행을 찾기 위해 둔다
