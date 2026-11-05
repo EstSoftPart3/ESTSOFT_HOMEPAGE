@@ -142,13 +142,11 @@ public class BoBatchController {
 		}
 	}
 
-	/** 구글 콘솔에 등록한 리디렉션 URI 와 글자까지 같아야 한다. 프록시 뒤면 X-Forwarded-Proto 를 따른다 */
+	/** 구글 콘솔에 등록한 리디렉션 URI 와 글자까지 같아야 한다. 프록시가 https 를 전달하지 않아 운영 도메인은 https 로 고정한다 */
 	private static String redirectUri(HttpServletRequest request) {
-		String proto = request.getHeader("X-Forwarded-Proto");
-		if (proto == null || proto.trim().isEmpty()) {
-			proto = request.getScheme();
-		}
-		return proto + "://" + request.getHeader("Host") + "/admin/batch/driveCallback.do";
+		String host = request.getHeader("Host");
+		String proto = host != null && host.startsWith("localhost") ? request.getScheme() : "https";
+		return proto + "://" + host + "/admin/batch/driveCallback.do";
 	}
 
 	private static ModelAndView json(String key, Object value) {
