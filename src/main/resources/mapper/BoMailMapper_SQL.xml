@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.eep.mapper.BoMailMapper">
+
+	<!-- jdbc.resultsettable 이 조회 결과를 로그에 남기므로 암호문은 조회하지 않는다 -->
+	<select id="selectAcctList" resultType="hashMap">
+		SELECT MAIL_ACCT_SQ, MAIL_ADDR, ACCT_USE, RGST_EMPLY_ID, DATE_FORMAT(RGST_DT, '%Y-%m-%d %H:%i') AS RGST_DT
+		FROM TB_EEP_MAIL_ACCT_M
+		ORDER BY MAIL_ACCT_SQ
+	</select>
+
+	<insert id="insertAcct" parameterType="hashMap">
+		INSERT INTO TB_EEP_MAIL_ACCT_M (MAIL_ADDR, ACCT_USE, APP_PW_ENC, RGST_EMPLY_ID, RGST_DT)
+		VALUES (#{MAIL_ADDR}, #{ACCT_USE}, #{APP_PW_ENC}, #{RGST_EMPLY_ID}, NOW())
+	</insert>
+
+	<delete id="deleteAcct" parameterType="hashMap">
+		DELETE FROM TB_EEP_MAIL_ACCT_M WHERE MAIL_ACCT_SQ = #{MAIL_ACCT_SQ}
+	</delete>
+
+</mapper>

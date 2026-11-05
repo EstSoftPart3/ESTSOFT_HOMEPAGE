@@ -2,3 +2,5 @@ db.username=
 db.password=
 mail.username=
 mail.password=
+# 메일계정 관리의 앱 비밀번호 암호화 키. 32바이트 Base64 (openssl rand -base64 32). 바꾸면 등록한 계정을 다시 넣어야 한다
+mail.crypto.key=
