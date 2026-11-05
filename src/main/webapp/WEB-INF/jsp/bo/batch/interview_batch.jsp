@@ -51,6 +51,33 @@
 					</div>
 
 					<div class="cal-panel">
+						<div class="cal-panel-head">
+							<span><i class="fab fa-google-drive"></i> 이력서 드라이브 연동 <span id="driveBadge" class="badge badge-warning">확인 중</span> <small id="driveAccount" class="text-muted"></small></span>
+							<a id="driveConnect" href="/admin/batch/driveStart.do" class="btn btn-sm btn-dark">구글 계정 연결</a>
+						</div>
+						<div class="cal-panel-body">
+							<div class="form-row">
+								<div class="col-md-3 mb-2">
+									<label for="driveClientId">OAuth 클라이언트 ID</label>
+									<input type="text" id="driveClientId" class="form-control form-control-sm" autocomplete="off">
+								</div>
+								<div class="col-md-3 mb-2">
+									<label for="driveClientSecret">클라이언트 시크릿</label>
+									<input type="password" id="driveClientSecret" class="form-control form-control-sm" autocomplete="new-password">
+								</div>
+								<div class="col-md-4 mb-2">
+									<label for="driveFolder">이력서 폴더 주소</label>
+									<input type="text" id="driveFolder" class="form-control form-control-sm" autocomplete="off" placeholder="https://drive.google.com/drive/folders/...">
+								</div>
+								<div class="col-md-2 mb-2 d-flex align-items-end">
+									<button type="button" class="btn btn-sm btn-dark btn-block" onclick="saveDrive();">저장</button>
+								</div>
+							</div>
+							<small class="text-muted">승인된 리디렉션 URI: <code id="driveRedirect"></code> · 폴더 구조: 년도/월/일/이름/이력서.pdf · 빈 칸만 채웁니다.</small>
+						</div>
+					</div>
+
+					<div class="cal-panel">
 						<div class="cal-panel-head"><span><i class="fas fa-history"></i> 실행 이력 (최근 30회) · 면접관리 해당 주 기준</span></div>
 						<div class="table-responsive">
 							<table class="table table-sm cal-table mb-0">
@@ -80,7 +107,7 @@
 						<div class="table-responsive">
 							<table class="table table-sm cal-table mb-0">
 								<thead>
-									<tr><th scope="col">처리</th><th scope="col">면접일</th><th scope="col">시간</th><th scope="col">이름</th><th scope="col">일정 제목</th><th scope="col">사유</th></tr>
+									<tr><th scope="col">처리</th><th scope="col">면접일</th><th scope="col">시간</th><th scope="col">이름</th><th scope="col">일정 제목</th><th scope="col">사유</th><th scope="col">이력서</th></tr>
 								</thead>
 								<tbody id="detailBody"></tbody>
 							</table>
@@ -101,7 +128,35 @@
 			.fail(function() { emptyRow('#icalBody', 5, '주소 목록을 불러오지 못했습니다.'); });
 		$.getJSON('/admin/batch/interviewBatchLogData.do', function(res) { renderLog(res.list); })
 			.fail(function() { emptyRow('#logBody', 12, '이력을 불러오지 못했습니다.'); });
+		loadDrive();
+		var result = /[?&]drive=(\w+)/.exec(location.search);
+		if (result) {
+			alert({ ok: '구글 드라이브를 연결했습니다.', noclient: 'OAuth 클라이언트를 먼저 저장해 주세요.' }[result[1]] || '구글 드라이브 연결에 실패했습니다. 클라이언트 설정과 리디렉션 URI를 확인해 주세요.');
+			history.replaceState(null, '', location.pathname);
+		}
 	});
+
+	function loadDrive() {
+		$.getJSON('/admin/batch/driveStatusData.do', function(res) {
+			var d = res.drive;
+			$('#driveRedirect').text(res.redirectUri);
+			$('#driveClientId').val(d.clientId || '');
+			$('#driveClientSecret').attr('placeholder', d.clientReady ? '저장됨 - 바꿀 때만 입력' : '');
+			$('#driveFolder').val(d.folderId || '');
+			$('#driveAccount').text(d.account || '');
+			$('#driveBadge').removeClass('badge-warning badge-success').addClass(d.connected ? 'badge-success' : 'badge-warning').text(d.connected ? '연결됨' : '연결 필요');
+			$('#driveConnect').text(d.connected ? '다시 연결' : '구글 계정 연결');
+		}).fail(function() { $('#driveBadge').text('확인 실패'); });
+	}
+
+	function saveDrive() {
+		$.post('/admin/batch/saveDriveConfData.do', { clientId: $('#driveClientId').val(), clientSecret: $('#driveClientSecret').val(), folder: $('#driveFolder').val() }, function(res) {
+			if (res.error) return alert(res.error);
+			$('#driveClientSecret').val('');
+			loadDrive();
+			alert('저장했습니다. 이제 구글 계정을 연결해 주세요.');
+		}, 'json').fail(function() { alert('저장에 실패했습니다.'); });
+	}
 
 	function emptyRow(body, cols, text) {
 		$(body).empty().append($('<tr>').append($('<td class="cal-empty">').attr('colspan', cols).text(text)));
@@ -148,18 +203,18 @@
 
 	function openDetail(r) {
 		$('#detailTitle').text('실행 상세 · ' + r.START_DT + (r.ICAL_NM ? ' · ' + r.ICAL_NM : ''));
-		emptyRow('#detailBody', 6, '불러오는 중입니다.');
+		emptyRow('#detailBody', 7, '불러오는 중입니다.');
 		$('#detailModal').modal('show');
 		$.getJSON('/admin/batch/interviewBatchDetailData.do', { logSq: r.BATCH_LOG_SQ }, function(res) {
-			if (!res.list || !res.list.length) return emptyRow('#detailBody', 6, r.ERROR_MSG || '상세 내역이 없습니다. 기능 추가 전 실행이거나 대상 주에 일정이 없었습니다.');
+			if (!res.list || !res.list.length) return emptyRow('#detailBody', 7, r.ERROR_MSG || '상세 내역이 없습니다. 기능 추가 전 실행이거나 대상 주에 일정이 없었습니다.');
 			var $body = $('#detailBody').empty();
 			res.list.forEach(function(d) {
 				$body.append($('<tr>').append(
 					$('<td>').append(badge(RESULT, d.RESULT_CD)),
 					$('<td>').text(d.INTV_DT || ''), $('<td>').text(d.INTV_TM || ''), $('<td class="cal-title">').text(d.APLY_NM || ''),
-					$('<td>').text(d.EVT_TITLE || ''), $('<td>').text(d.REASON || '')));
+					$('<td>').text(d.EVT_TITLE || ''), $('<td>').text(d.REASON || ''), $('<td>').text(d.RESUME_NOTE || '')));
 			});
-		}).fail(function() { emptyRow('#detailBody', 6, '상세 내역을 불러오지 못했습니다.'); });
+		}).fail(function() { emptyRow('#detailBody', 7, '상세 내역을 불러오지 못했습니다.'); });
 	}
 
 	function runNow() {

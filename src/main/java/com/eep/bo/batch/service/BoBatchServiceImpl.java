@@ -1,5 +1,6 @@
 package com.eep.bo.batch.service;
 
+import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -10,9 +11,13 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.annotation.PostConstruct;
 
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +28,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.eep.bo.batch.dao.BoBatchDao;
+import com.eep.bo.calendar.dao.BoCalendarDao;
+import com.eep.bo.calendar.service.BoCalendarServiceImpl;
 
 @Service
 public class BoBatchServiceImpl implements BoBatchService {
@@ -31,9 +38,23 @@ public class BoBatchServiceImpl implements BoBatchService {
 
 	private static final String BATCH_CD = "INTERVIEW_CAL";
 	private static final String ICAL_PREFIX = "https://calendar.google.com/calendar/ical/";
+	private static final String CONF_DRIVE_TOKEN = "DRIVE_REFRESH_TOKEN";
+	private static final String CONF_DRIVE_FOLDER = "DRIVE_RESUME_FOLDER";
+	private static final String CONF_DRIVE_ACCOUNT = "DRIVE_ACCOUNT";
+	private static final Pattern FOLDER_ID = Pattern.compile("^(?:https://drive\\.google\\.com/.*/folders/)?([\\w-]{10,})(?:[?/#].*)?$");
+	// 이력서 칸 -> 화면 이름
+	private static final String[][] RESUME_FIELDS = { { "ADDR", "주소" }, { "EDU", "학력" }, { "AGE", "나이" }, { "GENDER", "성별" }, { "CAREER", "경력" }, { "LANG", "외국어" } };
+	// 일정 제목에서 넣은 신입·경력 표시는 이력서 요약으로 바꿔도 된다. 매퍼의 updateIntvFromResume 과 같은 조건
+	private static final String TITLE_CAREER = "^(신입|경력)( [0-9년개월 ]+)?$";
 
 	@Autowired
 	private BoBatchDao BoBatchDao;
+
+	@Autowired
+	private BoCalendarDao BoCalendarDao;
+
+	@Autowired
+	private GoogleDriveApi GoogleDriveApi;
 
 	private final RestTemplate rest;
 
@@ -100,6 +121,7 @@ public class BoBatchServiceImpl implements BoBatchService {
 		try {
 			sync(url, week, run, details);
 			run.put("STATUS_CD", (Integer) run.get("SKIP_CNT") > 0 ? "WARN" : "OK");
+			fillResumes(details);
 		} catch (Exception e) {
 			log.error("면접 일정 배치 실패: {}", InterviewCalendarParser.cleanError(e));
 			run.put("STATUS_CD", "FAIL");
@@ -167,6 +189,95 @@ public class BoBatchServiceImpl implements BoBatchService {
 				detail.put("REASON", "면접관리 저장 실패");
 			}
 		}
+	}
+
+	/** 면접 행마다 드라이브의 년도/월/일/이름 폴더에서 이력서를 찾아 빈 칸을 채운다. 결과는 실행 상세의 RESUME_NOTE 에 남긴다 */
+	private void fillResumes(List<Map<String, Object>> details) {
+		List<Map<String, Object>> targets = new ArrayList<>();
+		for (Map<String, Object> d : details) {
+			if (d.get("INTV_SQ") != null && d.get("APLY_NM") != null) {
+				targets.add(d);
+			}
+		}
+		if (targets.isEmpty()) {
+			return;
+		}
+		Map<String, String> conf = BoCalendarDao.ConfMap();
+		String refresh = conf.get(CONF_DRIVE_TOKEN), root = conf.get(CONF_DRIVE_FOLDER);
+		if (!hasText(refresh) || !hasText(root)) {
+			targets.forEach(d -> d.put("RESUME_NOTE", "드라이브 미연결"));
+			return;
+		}
+		String token;
+		try {
+			token = GoogleDriveApi.accessToken(conf.get(BoCalendarServiceImpl.CONF_CLIENT_ID), conf.get(BoCalendarServiceImpl.CONF_CLIENT_SECRET), refresh);
+		} catch (Exception e) {
+			log.error("드라이브 인증 실패: {}", InterviewCalendarParser.cleanError(e));
+			targets.forEach(d -> d.put("RESUME_NOTE", "드라이브 인증 실패 - 다시 연결해 주세요"));
+			return;
+		}
+		Map<String, String> dayFolders = new HashMap<>();
+		for (Map<String, Object> d : targets) {
+			try {
+				d.put("RESUME_NOTE", fillResume(d, root, token, dayFolders));
+			} catch (Exception e) {
+				// 파일 하나 때문에 나머지 면접자를 놓치지 않는다. 원문이 섞일 수 있어 사유에는 예외 내용을 넣지 않는다
+				log.error("이력서 처리 실패: {}", e.getClass().getSimpleName());
+				d.put("RESUME_NOTE", "이력서 읽기 실패");
+			}
+		}
+	}
+
+	private String fillResume(Map<String, Object> d, String root, String token, Map<String, String> dayFolders) throws IOException {
+		Map<String, Object> current = BoBatchDao.IntvResumeCheck(d);
+		if (current == null) {
+			return "면접 행 없음";
+		}
+		List<String> blanks = new ArrayList<>();
+		for (String[] field : RESUME_FIELDS) {
+			boolean titleOnly = "CAREER".equals(field[0]) && current.get("CAREER") != null && current.get("CAREER").toString().matches(TITLE_CAREER);
+			if (!hasText(current.get(field[0])) || titleOnly) {
+				blanks.add(field[0]);
+			}
+		}
+		if (blanks.isEmpty()) {
+			return "이미 입력됨";
+		}
+		LocalDate date = LocalDate.parse((String) d.get("INTV_DT"));
+		String day = dayFolders.containsKey(date.toString()) ? dayFolders.get(date.toString()) : dayFolder(root, date, token);
+		dayFolders.put(date.toString(), day);
+		String person = day == null ? null : GoogleDriveApi.childFolderId(day, (String) d.get("APLY_NM"), token);
+		if (person == null) {
+			return "이력서 폴더 없음";
+		}
+		Map<String, Object> file = GoogleDriveApi.resumePdf(person, token);
+		if (file == null) {
+			return "PDF 없음";
+		}
+		Map<String, Object> found;
+		try (PDDocument pdf = PDDocument.load(GoogleDriveApi.download(file, token))) {
+			PDFTextStripper stripper = new PDFTextStripper();
+			stripper.setSortByPosition(true);
+			found = ResumeParser.parse(stripper.getText(pdf));
+		}
+		List<String> filled = new ArrayList<>();
+		for (String[] field : RESUME_FIELDS) {
+			if (found.get(field[0]) != null && blanks.contains(field[0])) {
+				filled.add(field[1]);
+			}
+		}
+		if (filled.isEmpty()) {
+			return found.isEmpty() ? "항목을 찾지 못함" : "새로 채울 칸 없음";
+		}
+		found.put("INTV_SQ", d.get("INTV_SQ"));
+		BoBatchDao.IntvFromResume(found);
+		return "반영: " + String.join(", ", filled);
+	}
+
+	private String dayFolder(String root, LocalDate date, String token) {
+		String year = GoogleDriveApi.childFolderId(root, date.getYear() + "년도", token);
+		String month = year == null ? null : GoogleDriveApi.childFolderId(year, date.getMonthValue() + "월", token);
+		return month == null ? null : GoogleDriveApi.childFolderId(month, date.getDayOfMonth() + "일", token);
 	}
 
 	/** @return 처리 결과 코드 INSERT, UPDATE, SAME */
@@ -243,6 +354,54 @@ public class BoBatchServiceImpl implements BoBatchService {
 		} catch (DataIntegrityViolationException e) { // MariaDB 드라이버에서는 DuplicateKeyException 으로 구분되지 않는다
 			throw new IllegalArgumentException("이미 등록된 주소입니다.");
 		}
+	}
+
+	@Override
+	public Map<String, Object> driveStatus() {
+		Map<String, String> conf = BoCalendarDao.ConfMap();
+		Map<String, Object> status = new HashMap<>();
+		status.put("clientId", conf.get(BoCalendarServiceImpl.CONF_CLIENT_ID));
+		status.put("clientReady", hasText(conf.get(BoCalendarServiceImpl.CONF_CLIENT_ID)) && hasText(conf.get(BoCalendarServiceImpl.CONF_CLIENT_SECRET)));
+		status.put("folderId", conf.get(CONF_DRIVE_FOLDER));
+		status.put("connected", hasText(conf.get(CONF_DRIVE_TOKEN)));
+		status.put("account", conf.get(CONF_DRIVE_ACCOUNT));
+		return status;
+	}
+
+	@Override
+	public void saveDriveConf(String clientId, String clientSecret, String folder) {
+		Matcher m = FOLDER_ID.matcher(folder == null ? "" : folder.trim());
+		if (!m.matches()) {
+			throw new IllegalArgumentException("이력서 폴더 주소를 확인해 주세요.");
+		}
+		if (clientId == null || clientId.trim().isEmpty()) {
+			throw new IllegalArgumentException("OAuth 클라이언트 ID를 입력해 주세요.");
+		}
+		BoCalendarDao.ConfSave(BoCalendarServiceImpl.CONF_CLIENT_ID, clientId.trim());
+		// 시크릿을 비워 두면 기존 값을 유지한다(화면에 다시 보여주지 않으므로)
+		if (clientSecret != null && !clientSecret.trim().isEmpty()) {
+			BoCalendarDao.ConfSave(BoCalendarServiceImpl.CONF_CLIENT_SECRET, clientSecret.trim());
+		}
+		BoCalendarDao.ConfSave(CONF_DRIVE_FOLDER, m.group(1));
+	}
+
+	@Override
+	public String driveAuthUrl(String redirectUri, String state) {
+		String clientId = BoCalendarDao.ConfMap().get(BoCalendarServiceImpl.CONF_CLIENT_ID);
+		return hasText(clientId) ? GoogleDriveApi.authUrl(clientId, redirectUri, state) : null;
+	}
+
+	@Override
+	public boolean connectDrive(String redirectUri, String code) {
+		Map<String, String> conf = BoCalendarDao.ConfMap();
+		Map<String, Object> tokens = GoogleDriveApi.exchangeCode(conf.get(BoCalendarServiceImpl.CONF_CLIENT_ID), conf.get(BoCalendarServiceImpl.CONF_CLIENT_SECRET), redirectUri, code);
+		String refresh = (String) tokens.get("refresh_token");
+		if (!hasText(refresh)) {
+			return false;
+		}
+		BoCalendarDao.ConfSave(CONF_DRIVE_TOKEN, refresh);
+		BoCalendarDao.ConfSave(CONF_DRIVE_ACCOUNT, GoogleDriveApi.accountEmail((String) tokens.get("access_token")));
+		return true;
 	}
 
 	@Override

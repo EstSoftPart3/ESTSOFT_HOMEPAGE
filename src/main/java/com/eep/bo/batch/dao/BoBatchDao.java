@@ -20,6 +20,7 @@ public class BoBatchDao {
 		BoBatchMapper.createBatchLogTable();
 		BoBatchMapper.alterBatchLogForIcal();
 		BoBatchMapper.createBatchLogDetailTable();
+		BoBatchMapper.alterBatchLogDetailForResume();
 		BoBatchMapper.createBatchIcalTable();
 		// 설정 테이블에 한 건만 두던 주소를 목록으로 옮긴다
 		if (BoBatchMapper.moveConfIcalToList() > 0) {
@@ -41,6 +42,14 @@ public class BoBatchDao {
 
 	public int IntvUpdate(Map<String, Object> param) {
 		return BoBatchMapper.updateBatchIntv(param);
+	}
+
+	public Map<String, Object> IntvResumeCheck(Map<String, Object> param) {
+		return BoBatchMapper.selectIntvResumeCheck(param);
+	}
+
+	public int IntvFromResume(Map<String, Object> param) {
+		return BoBatchMapper.updateIntvFromResume(param);
 	}
 
 	//실행 이력과 일정별 처리 결과

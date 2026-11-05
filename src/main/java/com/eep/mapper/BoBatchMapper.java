@@ -17,6 +17,9 @@ public interface BoBatchMapper {
 	public int createBatchLogTable();											//실행 이력 테이블 생성(있으면 그대로)
 	public int alterBatchLogForIcal();											//실행 이력에 주소 이름 칸 추가(있으면 그대로)
 	public int createBatchLogDetailTable();										//실행 상세 테이블 생성(있으면 그대로)
+	public int alterBatchLogDetailForResume();									//실행 상세에 이력서 처리 결과 칸 추가(있으면 그대로)
+	public Map<String, Object> selectIntvResumeCheck(Map<String, Object> param);	//이력서로 채울 칸의 현재 값
+	public int updateIntvFromResume(Map<String, Object> param);					//이력서 값으로 빈 칸 채우기
 	public int createBatchIcalTable();											//iCal 주소 테이블 생성(있으면 그대로)
 	public int moveConfIcalToList();											//설정 테이블의 주소를 목록으로 복사
 	public int deleteConfIcal();												//목록으로 옮긴 설정 삭제

@@ -23,4 +23,15 @@ public interface BoBatchService {
 	void deleteIcal(int icalSq);
 
 	void setIcalAuto(int icalSq, boolean auto);
+
+	/** 이력서 드라이브 연결 상태. 시크릿과 토큰은 돌려주지 않는다 */
+	Map<String, Object> driveStatus();
+
+	void saveDriveConf(String clientId, String clientSecret, String folder);
+
+	/** 클라이언트가 설정되지 않았으면 null */
+	String driveAuthUrl(String redirectUri, String state);
+
+	/** @return refresh token 을 받아 저장했으면 true */
+	boolean connectDrive(String redirectUri, String code);
 }

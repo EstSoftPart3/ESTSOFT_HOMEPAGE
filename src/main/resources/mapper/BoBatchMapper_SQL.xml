@@ -56,6 +56,28 @@
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 	</update>
 
+	<update id="alterBatchLogDetailForResume">
+		ALTER TABLE TB_EEP_BATCH_LOG_D ADD COLUMN IF NOT EXISTS RESUME_NOTE VARCHAR(200) NULL
+	</update>
+
+	<select id="selectIntvResumeCheck" parameterType="hashMap" resultType="hashMap">
+		SELECT ADDR, EDU, AGE, GENDER, CAREER, LANG FROM TB_EEP_HR_INTV_M WHERE INTV_SQ = #{INTV_SQ}
+	</select>
+
+	<!-- 사람이 입력한 값은 지키고 빈 칸만 채운다. 일정 제목에서 넣은 신입·경력 표시는 이력서 요약으로 바꾼다(서비스의 TITLE_CAREER 와 같은 조건) -->
+	<update id="updateIntvFromResume" parameterType="hashMap">
+		UPDATE TB_EEP_HR_INTV_M SET
+			  ADDR = COALESCE(NULLIF(ADDR, ''), #{ADDR})
+			, EDU = COALESCE(NULLIF(EDU, ''), #{EDU})
+			, AGE = COALESCE(NULLIF(AGE, ''), #{AGE})
+			, GENDER = COALESCE(NULLIF(GENDER, ''), #{GENDER})
+			, LANG_NOTE = IF(LANG IS NULL OR LANG = '', #{LANG_NOTE}, LANG_NOTE)
+			, LANG = COALESCE(NULLIF(LANG, ''), #{LANG})
+			, CAREER = IF(CAREER IS NULL OR CAREER = '' OR CAREER REGEXP '^(신입|경력)( [0-9년개월 ]+)?$', COALESCE(#{CAREER}, CAREER), CAREER)
+			, UPDT_EMPLY_ID = 'BATCH', UPDT_DT = NOW()
+		WHERE INTV_SQ = #{INTV_SQ}
+	</update>
+
 	<update id="createBatchIcalTable">
 		CREATE TABLE IF NOT EXISTS TB_EEP_BATCH_ICAL_M (
 			ICAL_SQ  INT          NOT NULL AUTO_INCREMENT,
@@ -149,17 +171,17 @@
 	</insert>
 
 	<insert id="insertBatchLogDetail" parameterType="hashMap">
-		INSERT INTO TB_EEP_BATCH_LOG_D (BATCH_LOG_SQ, RESULT_CD, INTV_DT, INTV_TM, APLY_NM, INTV_SQ, EVT_TITLE, REASON)
+		INSERT INTO TB_EEP_BATCH_LOG_D (BATCH_LOG_SQ, RESULT_CD, INTV_DT, INTV_TM, APLY_NM, INTV_SQ, EVT_TITLE, REASON, RESUME_NOTE)
 		VALUES
 		<foreach collection="list" item="d" separator=",">
-			(#{BATCH_LOG_SQ}, #{d.RESULT_CD}, #{d.INTV_DT}, #{d.INTV_TM}, #{d.APLY_NM}, #{d.INTV_SQ}, #{d.EVT_TITLE}, #{d.REASON})
+			(#{BATCH_LOG_SQ}, #{d.RESULT_CD}, #{d.INTV_DT}, #{d.INTV_TM}, #{d.APLY_NM}, #{d.INTV_SQ}, #{d.EVT_TITLE}, #{d.REASON}, #{d.RESUME_NOTE})
 		</foreach>
 	</insert>
 
 	<!-- 실패를 먼저 보여 주고, 그다음 면접관리에 들어간 것 순서로 -->
 	<select id="selectBatchLogDetail" parameterType="hashMap" resultType="hashMap">
 		SELECT
-			  RESULT_CD, DATE_FORMAT(INTV_DT, '%Y-%m-%d') AS INTV_DT, INTV_TM, APLY_NM, INTV_SQ, EVT_TITLE, REASON
+			  RESULT_CD, DATE_FORMAT(INTV_DT, '%Y-%m-%d') AS INTV_DT, INTV_TM, APLY_NM, INTV_SQ, EVT_TITLE, REASON, RESUME_NOTE
 		FROM TB_EEP_BATCH_LOG_D
 		WHERE BATCH_LOG_SQ = #{BATCH_LOG_SQ}
 		ORDER BY FIELD(RESULT_CD, 'SKIP', 'INSERT', 'UPDATE', 'SAME', 'EXCL'), INTV_DT, INTV_TM, LOG_D_SQ
