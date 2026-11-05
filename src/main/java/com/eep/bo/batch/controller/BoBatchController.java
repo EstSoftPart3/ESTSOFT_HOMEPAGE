@@ -42,7 +42,9 @@ public class BoBatchController {
 	@RequestMapping("/admin/batch/interviewBatchLogData.do")
 	@ResponseBody
 	public ModelAndView interviewBatchLogData() {
-		return json("list", BoBatchService.interviewLogList());
+		ModelAndView mv = json("list", BoBatchService.interviewLogList());
+		mv.addObject("pre", BoBatchService.preRunStatus());
+		return mv;
 	}
 
 	// 한 실행의 일정별 처리 결과

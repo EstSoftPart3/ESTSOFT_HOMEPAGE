@@ -74,7 +74,7 @@
 					</div>
 
 					<div class="cal-panel">
-						<div class="cal-panel-head"><span><i class="fas fa-history"></i> 실행 이력</span></div>
+						<div class="cal-panel-head"><span><i class="fas fa-history"></i> 실행 이력</span><small id="preStatus" class="text-muted"></small></div>
 						<div class="table-responsive">
 							<table class="table table-sm cal-table mb-0">
 								<thead>
@@ -127,7 +127,11 @@
 			$('#driveRedirect').text(status[0].redirectUri);
 			renderIcal(list[0].list);
 		}).fail(function() { emptyRow('#icalBody', 7, '설정을 불러오지 못했습니다.'); });
-		$.getJSON('/admin/batch/interviewBatchLogData.do', function(res) { renderLog(res.list); })
+		$.getJSON('/admin/batch/interviewBatchLogData.do', function(res) {
+			renderLog(res.list);
+			var pre = res.pre || {};
+			$('#preStatus').text('스케줄러 확인 ' + (pre.lastCheck || '대기 중') + ' · 오늘 면접 ' + ((pre.todayTimes || []).join(', ') || '없음') + ' (각 10분 전 실행)');
+		})
 			.fail(function() { emptyRow('#logBody', 12, '이력을 불러오지 못했습니다.'); });
 
 		// 가려진 값은 누르면 비우고, 아무것도 안 넣고 나오면 다시 가려 보여 준다. 그대로 두면 저장해도 바뀌지 않는다

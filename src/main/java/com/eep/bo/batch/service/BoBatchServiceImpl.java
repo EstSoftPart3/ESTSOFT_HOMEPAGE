@@ -100,22 +100,38 @@ public class BoBatchServiceImpl implements BoBatchService {
 	public void runInterviewBeforeScheduled() {
 		LocalDateTime now = LocalDateTime.now(InterviewCalendarParser.SEOUL).withSecond(0).withNano(0);
 		LocalDateTime last = lastPreRunCheck == null ? now.minusMinutes(1) : lastPreRunCheck;
+		boolean first = lastPreRunCheck == null;
 		lastPreRunCheck = now;
 		try {
+			// 정상 로그 수준이 warn 이라 스케줄러 동작을 확인할 수 있게 warn 으로 남긴다. 개인정보 없이 시각만 적는다
+			if (first) {
+				log.warn("면접 전 배치 확인 시작 {}, 오늘 면접 시각 {}", now, BoBatchDao.IntvTimesOn(now.toLocalDate().toString()));
+			}
 			boolean due = false;
 			for (LocalDateTime target : InterviewCalendarParser.preRunTargets(last, now)) {
 				due |= BoBatchDao.IntvCountAt(target.toLocalDate().toString(), target.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm"))) > 0;
 			}
 			// 09:00 에는 정기 배치가 같이 돌므로 또 돌리지 않는다
 			if (due && !(now.getHour() == 9 && now.getMinute() == 0)) {
-				log.info("면접 {}분 전 배치 실행", InterviewCalendarParser.PRE_RUN_MINUTES);
-				for (Map<String, Object> target : BoBatchDao.IcalAutoList()) {
-					run("PRE", target);
+				List<Map<String, Object>> targets = BoBatchDao.IcalAutoList();
+				log.warn("면접 {}분 전 배치 실행 {}, 세트 {}개", InterviewCalendarParser.PRE_RUN_MINUTES, now, targets.size());
+				for (Map<String, Object> target : targets) {
+					Map<String, Object> result = run("PRE", target);
+					log.warn("면접 전 배치 결과 {}", result.get("STATUS_CD"));
 				}
 			}
 		} catch (Exception e) {
 			log.error("면접 전 배치 실패: {}", InterviewCalendarParser.cleanError(e));
 		}
+	}
+
+	@Override
+	public Map<String, Object> preRunStatus() {
+		Map<String, Object> status = new HashMap<>();
+		LocalDateTime check = lastPreRunCheck;
+		status.put("lastCheck", check == null ? null : check.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm")));
+		status.put("todayTimes", BoBatchDao.IntvTimesOn(LocalDate.now(InterviewCalendarParser.SEOUL).toString()));
+		return status;
 	}
 
 	@Override

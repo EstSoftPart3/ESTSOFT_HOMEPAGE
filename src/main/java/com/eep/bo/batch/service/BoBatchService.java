@@ -11,6 +11,9 @@ public interface BoBatchService {
 	/** 면접 10분 전 스케줄러 진입점. 1분마다 불린다 */
 	void runInterviewBeforeScheduled();
 
+	/** 스케줄러가 마지막으로 확인한 시각과 오늘 취소되지 않은 면접 시각 */
+	Map<String, Object> preRunStatus();
+
 	/** 선택한 주소로 해당 주 면접 일정을 면접관리에 반영하고 실행 이력을 돌려준다 */
 	Map<String, Object> runInterview(int icalSq);
 
