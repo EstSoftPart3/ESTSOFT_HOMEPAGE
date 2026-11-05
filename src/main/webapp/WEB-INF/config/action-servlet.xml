@@ -60,16 +60,19 @@
 		</bean>
 		
 		
+		<!-- 루트 컨텍스트의 placeholder 는 이 서블릿 컨텍스트에 적용되지 않아 따로 둔다 -->
+		<bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		  <property name="location" value="classpath:config/db.properties"/>
+		</bean>
+
 		<!-- Gmail -->
 		<bean id="mailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl">
 		  <property name="host" value="smtp.gmail.com" />
 		  <property name="port" value="587" />
 		  
-<!-- 		  <property name="username" value="estsw.rnd@gmail.com" /> -->
-<!-- 		  <property name="password" value="hropxgvrpwvzsttu" /> -->
 		  
-		  <property name="username" value="est.part2@gmail.com" />
-		  <property name="password" value="dbrofeufqqizgrcm" />
+		  <property name="username" value="${mail.username}" />
+		  <property name="password" value="${mail.password}" />
 		  
 		  
 		  <property name="javaMailProperties">
@@ -77,7 +80,7 @@
 		   		<prop key="mail.smtp.starttls.enable">true</prop>
                 <prop key="mail.smtp.auth">true    </prop>
                 <prop key="mail.transport.protocol">smtp</prop>
-                <prop key="mail.debug">true</prop>
+                <prop key="mail.debug">false</prop>
                 <prop key="mail.smtp.ssl.trust">smtp.gmail.com</prop>
                 <prop key="mail.smtp.ssl.protocols">TLSv1.2</prop>
 		  </props>
