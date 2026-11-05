@@ -166,12 +166,6 @@
 		                </a>
 		              </li>
 		              <li class="nav-item">
-		                <a href="/admin/mail/openMailAccount.do" class="nav-link">
-		                  <i class="far fa-circle nav-icon sTitle"></i>
-		                  <p class="sTitle">메일계정 관리</p>
-		                </a>
-		              </li>
-		              <li class="nav-item">
 		                <%-- 로그인 없이 주소만 있으면 열리는 공개 페이지(정적 파일) --%>
 		                <a href="/travel/index.html" target="_blank" rel="noopener" class="nav-link">
 		                  <i class="far fa-circle nav-icon sTitle"></i>
