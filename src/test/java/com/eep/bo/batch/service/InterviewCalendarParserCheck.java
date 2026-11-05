@@ -83,6 +83,14 @@ public class InterviewCalendarParserCheck {
 		same(InterviewCalendarParser.maskIcalUrl("이상한 값"), "****", "형식이 다른 주소");
 		same(InterviewCalendarParser.maskMiddle("1234567890abcdef"), "123456****cdef", "가운데 가리기");
 		same(InterviewCalendarParser.maskMiddle("short"), "****", "짧은 값은 전부 가리기");
+
+		java.time.LocalDateTime at1350 = LocalDate.of(2026, 11, 5).atTime(13, 50);
+		List<java.time.LocalDateTime> due = InterviewCalendarParser.preRunTargets(at1350.minusMinutes(1), at1350);
+		check(due.size() == 1, "1분마다 확인이면 한 시각만");
+		same(due.get(0).toLocalTime().toString(), "14:00", "13:50 에 14:00 면접을 찾는다");
+		check(InterviewCalendarParser.preRunTargets(at1350, at1350).isEmpty(), "같은 분을 두 번 보지 않는다");
+		check(InterviewCalendarParser.preRunTargets(at1350.minusMinutes(3), at1350).size() == 3, "건너뛴 분도 본다");
+		check(InterviewCalendarParser.preRunTargets(at1350.minusDays(1), at1350).size() == 120, "오래 멈췄으면 2시간만 본다");
 		same(InterviewCalendarParser.maskMiddle(""), null, "빈 값");
 
 		System.out.println("OK");

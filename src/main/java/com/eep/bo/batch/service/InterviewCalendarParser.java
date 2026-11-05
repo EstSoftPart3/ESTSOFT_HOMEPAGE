@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
 public final class InterviewCalendarParser {
 
 	static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
+	static final int PRE_RUN_MINUTES = 10;
 
 	private static final DateTimeFormatter ICS_DT = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss");
 	private static final DateTimeFormatter ICS_D = DateTimeFormatter.ofPattern("yyyyMMdd");
@@ -29,6 +30,19 @@ public final class InterviewCalendarParser {
 	private static final Pattern YEARS =Pattern.compile("^(\\d+년\\s*)?(\\d+개월)?$");
 
 	private InterviewCalendarParser() {
+	}
+
+	/**
+	 * 지난 확인 뒤 지금까지 지나간 각 분의 10분 뒤 시각. 앞선 배치가 길어져 건너뛴 분도 놓치지 않으려고 구간으로 본다.
+	 * @param last 지난 확인 시각, now 지금 (둘 다 분 단위로 잘린 값). 오래 멈췄다 깨어나도 최근 2시간만 본다
+	 */
+	public static List<LocalDateTime> preRunTargets(LocalDateTime last, LocalDateTime now) {
+		LocalDateTime from = last.isBefore(now.minusHours(2)) ? now.minusHours(2) : last;
+		List<LocalDateTime> targets = new ArrayList<>();
+		for (LocalDateTime t = from.plusMinutes(1); !t.isAfter(now); t = t.plusMinutes(1)) {
+			targets.add(t.plusMinutes(PRE_RUN_MINUTES));
+		}
+		return targets;
 	}
 
 	/** 면접관리 화면이 처음 보여 주는 주(월~일). 토·일이면 지난주다 */

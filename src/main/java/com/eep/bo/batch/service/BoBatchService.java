@@ -8,6 +8,9 @@ public interface BoBatchService {
 	/** 스케줄러 진입점. 자동 실행으로 지정한 주소를 읽는다. AOP 프록시여도 잡히도록 인터페이스에 둔다 */
 	void runInterviewScheduled();
 
+	/** 면접 10분 전 스케줄러 진입점. 1분마다 불린다 */
+	void runInterviewBeforeScheduled();
+
 	/** 선택한 주소로 해당 주 면접 일정을 면접관리에 반영하고 실행 이력을 돌려준다 */
 	Map<String, Object> runInterview(int icalSq);
 

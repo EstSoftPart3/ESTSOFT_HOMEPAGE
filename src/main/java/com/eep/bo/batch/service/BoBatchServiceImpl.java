@@ -55,6 +55,7 @@ public class BoBatchServiceImpl implements BoBatchService {
 	private GoogleDriveApi GoogleDriveApi;
 
 	private final RestTemplate rest;
+	private volatile LocalDateTime lastPreRunCheck;
 
 	public BoBatchServiceImpl() {
 		SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
@@ -90,6 +91,30 @@ public class BoBatchServiceImpl implements BoBatchService {
 		}
 		for (Map<String, Object> target : targets) {
 			run("AUTO", target);
+		}
+	}
+
+	// 면접 10분 전에 한 번 더 돌린다. 1분마다 면접관리에서 10분 뒤 면접을 찾는다. 시간대는 코드에서 서울로 계산한다
+	@Override
+	@Scheduled(cron = "0 * * * * *")
+	public void runInterviewBeforeScheduled() {
+		LocalDateTime now = LocalDateTime.now(InterviewCalendarParser.SEOUL).withSecond(0).withNano(0);
+		LocalDateTime last = lastPreRunCheck == null ? now.minusMinutes(1) : lastPreRunCheck;
+		lastPreRunCheck = now;
+		try {
+			boolean due = false;
+			for (LocalDateTime target : InterviewCalendarParser.preRunTargets(last, now)) {
+				due |= BoBatchDao.IntvCountAt(target.toLocalDate().toString(), target.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm"))) > 0;
+			}
+			// 09:00 에는 정기 배치가 같이 돌므로 또 돌리지 않는다
+			if (due && !(now.getHour() == 9 && now.getMinute() == 0)) {
+				log.info("면접 {}분 전 배치 실행", InterviewCalendarParser.PRE_RUN_MINUTES);
+				for (Map<String, Object> target : BoBatchDao.IcalAutoList()) {
+					run("PRE", target);
+				}
+			}
+		} catch (Exception e) {
+			log.error("면접 전 배치 실패: {}", InterviewCalendarParser.cleanError(e));
 		}
 	}
 

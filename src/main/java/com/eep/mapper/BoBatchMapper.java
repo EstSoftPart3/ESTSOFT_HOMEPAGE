@@ -24,6 +24,7 @@ public interface BoBatchMapper {
 	public int moveConfIcalToList();											//설정 테이블의 주소를 목록으로 복사
 	public int deleteConfIcal();												//목록으로 옮긴 설정 삭제
 
+	public int countIntvAt(Map<String, Object> param);							//해당 일시의 취소되지 않은 면접 수
 	public Map<String, Object> selectIntvByGcalId(Map<String, Object> param);	//일정 ID 로 면접자 찾기
 	public Map<String, Object> selectIntvToLink(Map<String, Object> param);		//아직 일정과 연결 안 된 같은 이름·날짜의 면접자 찾기
 	public int insertBatchIntv(Map<String, Object> param);						//면접자 등록

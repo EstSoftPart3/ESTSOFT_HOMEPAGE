@@ -223,7 +223,7 @@
 		var $body = $('#logBody').empty();
 		list.forEach(function(r) {
 			var $tr = $('<tr>');
-			[r.START_DT, r.TRIGGER_CD === 'AUTO' ? '자동' : '수동', r.ICAL_NM || '-'].forEach(function(v) { $tr.append($('<td>').text(v)); });
+			[r.START_DT, { AUTO: '자동', PRE: '면접 전' }[r.TRIGGER_CD] || '수동', r.ICAL_NM || '-'].forEach(function(v) { $tr.append($('<td>').text(v)); });
 			$tr.append($('<td>').append(badge(STATUS, r.STATUS_CD)));
 			$tr.append($('<td>').text(r.FROM_DT + ' ~ ' + r.TO_DT));
 			[r.READ_CNT, r.INSERT_CNT, r.UPDATE_CNT, r.SAME_CNT, r.EXCL_CNT, r.SKIP_CNT].forEach(function(v) { $tr.append($('<td>').text(v)); });

@@ -159,6 +159,11 @@
 		UPDATE TB_EEP_BATCH_ICAL_M SET AUTO_YN = #{AUTO_YN} WHERE ICAL_SQ = #{ICAL_SQ}
 	</update>
 
+	<select id="countIntvAt" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*) FROM TB_EEP_HR_INTV_M
+		WHERE INTV_DT = #{INTV_DT} AND INTV_TM = #{INTV_TM} AND IFNULL(ATTEND_ST, '') &lt;&gt; 'CANCEL'
+	</select>
+
 	<select id="selectIntvByGcalId" parameterType="hashMap" resultType="hashMap">
 		SELECT INTV_SQ, DATE_FORMAT(INTV_DT, '%Y-%m-%d') AS INTV_DT, INTV_TM, ATTEND_ST, RESULT_ST
 		FROM TB_EEP_HR_INTV_M

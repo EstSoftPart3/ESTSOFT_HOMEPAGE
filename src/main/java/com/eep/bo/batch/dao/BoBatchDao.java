@@ -33,6 +33,13 @@ public class BoBatchDao {
 		}
 	}
 
+	public int IntvCountAt(String date, String time) {
+		Map<String, Object> param = new HashMap<>();
+		param.put("INTV_DT", date);
+		param.put("INTV_TM", time);
+		return BoBatchMapper.countIntvAt(param);
+	}
+
 	public Map<String, Object> IntvByGcalId(Map<String, Object> param) {
 		return BoBatchMapper.selectIntvByGcalId(param);
 	}
