@@ -23,10 +23,7 @@
 					<div class="cal-panel">
 						<div class="cal-panel-head">
 							<span><i class="fas fa-cog"></i> 가져오기 설정</span>
-							<span>
-								<a id="driveConnect" href="#" class="btn btn-sm btn-outline-dark" onclick="return connectDrive();">구글 계정 연결</a>
-								<button type="button" id="runBtn" class="btn btn-sm btn-dark" onclick="runNow();">지금 실행</button>
-							</span>
+							<button type="button" id="runBtn" class="btn btn-sm btn-dark" onclick="runNow();">지금 실행</button>
 						</div>
 						<div class="table-responsive">
 							<table class="table table-sm cal-table mb-0">
@@ -50,15 +47,24 @@
 									<label for="icalFolder">이력서 폴더 주소</label>
 									<input type="text" id="icalFolder" class="form-control form-control-sm" autocomplete="off">
 								</div>
-								<div class="col-md-5 mb-2">
+								<div class="col-md-3 mb-2">
 									<label for="driveClientId">OAuth 클라이언트 ID</label>
 									<input type="text" id="driveClientId" class="form-control form-control-sm" autocomplete="off">
 								</div>
-								<div class="col-md-3 mb-2">
+								<div class="col-md-2 mb-2">
 									<label for="driveClientSecret">클라이언트 시크릿</label>
 									<input type="text" id="driveClientSecret" class="form-control form-control-sm" data-secret="1" autocomplete="off">
 								</div>
-								<div class="col-md-4 mb-2 d-flex align-items-end">
+								<div class="col-md-4 mb-2">
+									<label for="driveAccount">연결된 구글 계정</label>
+									<div class="input-group input-group-sm">
+										<input type="text" id="driveAccount" class="form-control" readonly>
+										<div class="input-group-append">
+											<button type="button" id="driveConnect" class="btn btn-outline-dark" onclick="connectDrive();">연결</button>
+										</div>
+									</div>
+								</div>
+								<div class="col-md-3 mb-2 d-flex align-items-end">
 									<button type="button" class="btn btn-sm btn-dark flex-fill" onclick="saveAll();">저장</button>
 									<button type="button" class="btn btn-sm btn-outline-secondary flex-fill ml-1" onclick="newSet();">새로 추가</button>
 								</div>
@@ -160,7 +166,8 @@
 		setMasked('#icalFolder', r.FOLDER_MASK);
 		setMasked('#driveClientId', drive.clientMask);
 		setMasked('#driveClientSecret', drive.secretMask);
-		$('#driveConnect').text(r.DRIVE_CONNECTED ? '구글 계정 다시 연결' : '구글 계정 연결');
+		$('#driveAccount').val(r.DRIVE_CONNECTED ? (r.DRIVE_ACCOUNT || '연결됨') : '연결 안 됨');
+		$('#driveConnect').text(r.DRIVE_CONNECTED ? '다시 연결' : '연결');
 	}
 
 	// 사용자 입력과 일정 제목이 들어가므로 모두 text() 로 넣는다
@@ -207,9 +214,8 @@
 	}
 
 	function connectDrive() {
-		if (!selectedSq) { alert('연결할 줄을 선택해 주세요.'); return false; }
+		if (!selectedSq) return alert('새 설정은 먼저 저장한 뒤 연결해 주세요.');
 		location.href = '/admin/batch/driveStart.do?icalSq=' + selectedSq;
-		return false;
 	}
 
 	function renderLog(list) {

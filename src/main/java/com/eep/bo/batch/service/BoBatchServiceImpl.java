@@ -42,8 +42,8 @@ public class BoBatchServiceImpl implements BoBatchService {
 	private static final Pattern FOLDER_ID = Pattern.compile("^(?:https://drive\\.google\\.com/.*/folders/)?([\\w-]{10,})(?:[?/#].*)?$");
 	// 이력서 칸 -> 화면 이름
 	private static final String[][] RESUME_FIELDS = { { "ADDR", "주소" }, { "EDU", "학력" }, { "AGE", "나이" }, { "GENDER", "성별" }, { "CAREER", "경력" }, { "LANG", "외국어" } };
-	// 일정 제목에서 넣은 신입·경력 표시는 이력서 요약으로 바꿔도 된다. 매퍼의 updateIntvFromResume 과 같은 조건
-	private static final String TITLE_CAREER = "^(신입|경력)( [0-9년개월 ]+)?$";
+	// 일정 제목에서 넣은 신입·경력 표시와 이전 형식의 긴 요약(신입 · ...)은 이력서 경력으로 바꿔도 된다. 매퍼의 updateIntvFromResume 과 같은 조건
+	private static final String TITLE_CAREER = "^(신입|경력)( [0-9년개월 ]+| · .*)?$";
 
 	@Autowired
 	private BoBatchDao BoBatchDao;

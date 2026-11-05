@@ -36,7 +36,7 @@ public final class ResumeParser {
 			LANG_CODES.put(c[0], c[1]);
 		}
 	}
-	private static final int MAX_JOBS = 6, MAX_SKILLS = 8;
+	private static final int MAX_JOBS = 6;
 
 	private ResumeParser() {
 	}
@@ -104,35 +104,16 @@ public final class ResumeParser {
 		}
 	}
 
-	/** 신입·경력 구분, 총 경력, 회사별 기간, 주요 스킬을 한 줄로 요약한다 */
+	/** 이력서의 경력 항목에 적힌 회사와 기간만 나열한다. 예) 비트맥스 5개월, 소만사 2개월 */
 	private static void career(List<String> lines, Map<String, Object> row) {
-		List<String> parts = new ArrayList<>();
-		boolean experienced = false;
 		for (int i = 0; i < lines.size(); i++) {
-			Matcher total = CAREER_TOTAL.matcher(lines.get(i));
-			if (!total.matches()) {
-				continue;
+			if (CAREER_TOTAL.matcher(lines.get(i)).matches()) {
+				List<String> jobs = jobs(lines, i + 1);
+				if (!jobs.isEmpty()) {
+					row.put("CAREER", cut(String.join(", ", jobs), 500));
+				}
+				return;
 			}
-			experienced = true;
-			parts.add("총 " + total.group(1).trim());
-			List<String> jobs = jobs(lines, i + 1);
-			if (!jobs.isEmpty()) {
-				parts.add(String.join(", ", jobs));
-			}
-			break;
-		}
-		String type = experienced ? "경력" : "신입";
-		for (String line : lines.subList(0, Math.min(5, lines.size()))) {
-			if (line.matches("^\\S+\\s+신입$")) {
-				type = "신입"; // 인턴 등 경력이 있어도 본인이 신입으로 지원한 경우
-			}
-		}
-		List<String> skills = skills(lines);
-		if (!skills.isEmpty()) {
-			parts.add(String.join(", ", skills));
-		}
-		if (!parts.isEmpty()) {
-			row.put("CAREER", cut(type + " · " + String.join(" · ", parts), 500));
 		}
 	}
 
@@ -153,25 +134,6 @@ public final class ResumeParser {
 			jobs.add(company + (period != null && period.find() ? " " + period.group(1) : current ? " 재직중" : ""));
 		}
 		return jobs;
-	}
-
-	private static List<String> skills(List<String> lines) {
-		Set<String> skills = new LinkedHashSet<>();
-		for (int i = 0; i < lines.size(); i++) {
-			String line = lines.get(i);
-			if (!line.equals("나의 스킬") && !line.equals("스킬")) {
-				continue;
-			}
-			for (int j = i + 1; j < lines.size() && j <= i + 5 && !SECTION.matcher(lines.get(j)).find(); j++) {
-				for (String skill : lines.get(j).split("\\s{2,}|\\s*,\\s*")) {
-					if (skills.size() < MAX_SKILLS && !skill.isEmpty() && skill.length() <= 30 && !skill.startsWith("http")) {
-						skills.add(skill);
-					}
-				}
-			}
-			break;
-		}
-		return new ArrayList<>(skills);
 	}
 
 	private static void language(List<String> lines, Map<String, Object> row) {

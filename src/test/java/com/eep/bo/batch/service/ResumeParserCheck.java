@@ -41,7 +41,7 @@ public class ResumeParserCheck {
 		same(r, "AGE", "30");
 		same(r, "ADDR", "경기 고양시 일산서구 어딘가로");
 		same(r, "EDU", "가나대학교(4년제) 컴퓨터 중퇴");
-		same(r, "CAREER", "신입 · 총 2년 5개월 · 예시회사 2개월, 다른회사 재직중 · Java, Spring Boot, MySQL, React, Docker, AWS, Git, Redis");
+		same(r, "CAREER", "예시회사 2개월, 다른회사 재직중");
 		same(r, "LANG", "JA,EN");
 		same(r, "LANG_NOTE", "일본어 JLPT 1급/PASS, 영어 OPIC intermediate Mid1급/PASS");
 		check(!r.toString().contains("900101"), "주민번호가 결과에 들어가면 안 된다");
@@ -63,7 +63,7 @@ public class ResumeParserCheck {
 		same(r, "AGE", "42");
 		same(r, "ADDR", "경기 광명시 하안동");
 		same(r, "EDU", "마바대학교 휴학");
-		same(r, "CAREER", "경력 · 총 7년 · (주)원회사 1년 3개월, （주）이회사 1년 7개월 · Java, Spring");
+		same(r, "CAREER", "(주)원회사 1년 3개월, （주）이회사 1년 7개월");
 
 		check(ResumeParser.parse("아무 내용 없는 포트폴리오").isEmpty(), "항목이 없으면 빈 결과");
 		System.out.println("OK");
