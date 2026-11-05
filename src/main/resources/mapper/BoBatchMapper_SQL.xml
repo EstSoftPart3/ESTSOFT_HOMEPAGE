@@ -5,6 +5,36 @@
 
 <mapper namespace="com.eep.mapper.BoBatchMapper">
 
+	<!-- sql/hr_batch.sql 과 같은 내용. 이미 있으면 아무것도 하지 않는다 -->
+	<update id="alterIntvForBatch">
+		ALTER TABLE TB_EEP_HR_INTV_M
+			ADD COLUMN IF NOT EXISTS GCAL_EVT_ID VARCHAR(200) NULL,
+			ADD UNIQUE KEY IF NOT EXISTS UX_HR_INTV_GCAL (GCAL_EVT_ID)
+	</update>
+
+	<update id="createBatchLogTable">
+		CREATE TABLE IF NOT EXISTS TB_EEP_BATCH_LOG (
+			BATCH_LOG_SQ INT         NOT NULL AUTO_INCREMENT,
+			BATCH_CD     VARCHAR(30) NOT NULL,
+			TRIGGER_CD   VARCHAR(10) NOT NULL,
+			STATUS_CD    VARCHAR(10) NOT NULL,
+			START_DT     DATETIME    NOT NULL,
+			END_DT       DATETIME    NOT NULL,
+			FROM_DT      DATE            NULL,
+			TO_DT        DATE            NULL,
+			READ_CNT     INT         NOT NULL DEFAULT 0,
+			INSERT_CNT   INT         NOT NULL DEFAULT 0,
+			UPDATE_CNT   INT         NOT NULL DEFAULT 0,
+			SAME_CNT     INT         NOT NULL DEFAULT 0,
+			EXCL_CNT     INT         NOT NULL DEFAULT 0,
+			SKIP_CNT     INT         NOT NULL DEFAULT 0,
+			SKIP_DETAIL  TEXT            NULL,
+			ERROR_MSG    VARCHAR(500)    NULL,
+			PRIMARY KEY (BATCH_LOG_SQ),
+			KEY IX_BATCH_LOG_CD (BATCH_CD, START_DT)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+	</update>
+
 	<select id="selectIntvByGcalId" parameterType="hashMap" resultType="hashMap">
 		SELECT INTV_SQ, DATE_FORMAT(INTV_DT, '%Y-%m-%d') AS INTV_DT, INTV_TM, ATTEND_ST, RESULT_ST
 		FROM TB_EEP_HR_INTV_M

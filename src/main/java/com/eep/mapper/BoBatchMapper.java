@@ -13,6 +13,8 @@ public interface BoBatchMapper {
 	 *
 	 * **/
 
+	public int alterIntvForBatch();												//면접자 테이블에 일정 ID 칸 추가(있으면 그대로)
+	public int createBatchLogTable();											//실행 이력 테이블 생성(있으면 그대로)
 	public Map<String, Object> selectIntvByGcalId(Map<String, Object> param);	//일정 ID 로 면접자 찾기
 	public Map<String, Object> selectIntvToLink(Map<String, Object> param);		//아직 일정과 연결 안 된 같은 이름·날짜의 면접자 찾기
 	public int insertBatchIntv(Map<String, Object> param);						//면접자 등록

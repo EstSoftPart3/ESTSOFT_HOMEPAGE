@@ -14,6 +14,11 @@ public class BoBatchDao {
 	@Autowired
 	BoBatchMapper BoBatchMapper;
 
+	public void EnsureSchema() {
+		BoBatchMapper.alterIntvForBatch();
+		BoBatchMapper.createBatchLogTable();
+	}
+
 	public Map<String, Object> IntvByGcalId(Map<String, Object> param) {
 		return BoBatchMapper.selectIntvByGcalId(param);
 	}

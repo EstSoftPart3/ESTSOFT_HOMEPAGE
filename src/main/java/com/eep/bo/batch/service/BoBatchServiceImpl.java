@@ -11,6 +11,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.PostConstruct;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +47,16 @@ public class BoBatchServiceImpl implements BoBatchService {
 		factory.setConnectTimeout(10000);
 		factory.setReadTimeout(60000);
 		rest = new RestTemplate(factory);
+	}
+
+	// 운영 DB 스키마 변경 경로가 앱 계정뿐이라 기동 때 맞춘다. 실패해도 다른 화면까지 막지 않도록 로그만 남긴다
+	@PostConstruct
+	public void ensureSchema() {
+		try {
+			BoBatchDao.EnsureSchema();
+		} catch (Exception e) {
+			log.error("배치 테이블 준비 실패: {}", InterviewCalendarParser.cleanError(e));
+		}
 	}
 
 	// homepage 컨테이너가 UTC 이고 Spring 3.2 @Scheduled 에는 zone 이 없다. UTC 00:00 = 서울 09:00
