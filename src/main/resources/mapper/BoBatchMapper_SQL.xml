@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.eep.mapper.BoBatchMapper">
+
+	<select id="selectIntvByGcalId" parameterType="hashMap" resultType="hashMap">
+		SELECT INTV_SQ, DATE_FORMAT(INTV_DT, '%Y-%m-%d') AS INTV_DT, INTV_TM, ATTEND_ST, RESULT_ST
+		FROM TB_EEP_HR_INTV_M
+		WHERE GCAL_EVT_ID = #{GCAL_EVT_ID}
+	</select>
+
+	<select id="selectIntvToLink" parameterType="hashMap" resultType="hashMap">
+		SELECT INTV_SQ, INTV_TM
+		FROM TB_EEP_HR_INTV_M
+		WHERE GCAL_EVT_ID IS NULL AND APLY_NM = #{APLY_NM} AND INTV_DT = #{INTV_DT}
+		ORDER BY INTV_SQ
+		LIMIT 1
+	</select>
+
+	<!-- 순번은 면접관리 등록과 같이 다음 번호를 준다 -->
+	<insert id="insertBatchIntv" parameterType="hashMap">
+		INSERT INTO TB_EEP_HR_INTV_M
+		(SEQ_NO, APLY_NM, INTV_DT, INTV_TM, APLY_TARGET, APLY_ROUTE, PHONE, ATTEND_ST, CAREER, RESULT_ST, GCAL_EVT_ID, UPDT_EMPLY_ID, UPDT_DT)
+		SELECT IFNULL(MAX(SEQ_NO), 0) + 1, #{APLY_NM}, #{INTV_DT}, #{INTV_TM}, #{APLY_TARGET}, #{APLY_ROUTE}, #{PHONE}, #{ATTEND_ST}, #{CAREER}, #{RESULT_ST}, #{GCAL_EVT_ID}, 'BATCH', NOW()
+		FROM TB_EEP_HR_INTV_M
+	</insert>
+
+	<!-- 날짜·시간은 캘린더를 따르고, 나머지는 사람이 입력한 값을 지키도록 빈 칸만 채운다 -->
+	<update id="updateBatchIntv" parameterType="hashMap">
+		UPDATE TB_EEP_HR_INTV_M SET
+			  GCAL_EVT_ID = #{GCAL_EVT_ID}, INTV_DT = #{INTV_DT}, INTV_TM = #{INTV_TM}
+			, APLY_TARGET = COALESCE(NULLIF(APLY_TARGET, ''), #{APLY_TARGET})
+			, APLY_ROUTE = COALESCE(NULLIF(APLY_ROUTE, ''), #{APLY_ROUTE})
+			, PHONE = COALESCE(NULLIF(PHONE, ''), #{PHONE})
+			, ATTEND_ST = COALESCE(NULLIF(ATTEND_ST, ''), #{ATTEND_ST})
+			, CAREER = COALESCE(NULLIF(CAREER, ''), #{CAREER})
+			, RESULT_ST = COALESCE(NULLIF(RESULT_ST, ''), #{RESULT_ST})
+			, UPDT_EMPLY_ID = 'BATCH', UPDT_DT = NOW()
+		WHERE INTV_SQ = #{INTV_SQ}
+	</update>
+
+	<insert id="insertBatchLog" parameterType="hashMap">
+		INSERT INTO TB_EEP_BATCH_LOG
+		(BATCH_CD, TRIGGER_CD, STATUS_CD, START_DT, END_DT, FROM_DT, TO_DT, READ_CNT, INSERT_CNT, UPDATE_CNT, SAME_CNT, EXCL_CNT, SKIP_CNT, SKIP_DETAIL, ERROR_MSG)
+		VALUES
+		(#{BATCH_CD}, #{TRIGGER_CD}, #{STATUS_CD}, #{START_DT}, NOW(), #{FROM_DT}, #{TO_DT}, #{READ_CNT}, #{INSERT_CNT}, #{UPDATE_CNT}, #{SAME_CNT}, #{EXCL_CNT}, #{SKIP_CNT}, #{SKIP_DETAIL}, #{ERROR_MSG})
+	</insert>
+
+	<select id="selectBatchLogList" parameterType="hashMap" resultType="hashMap">
+		SELECT
+			  BATCH_LOG_SQ, TRIGGER_CD, STATUS_CD
+			, DATE_FORMAT(START_DT, '%Y-%m-%d %H:%i:%s') AS START_DT
+			, TIMESTAMPDIFF(SECOND, START_DT, END_DT) AS ELAPSED_SEC
+			, DATE_FORMAT(FROM_DT, '%Y-%m-%d') AS FROM_DT
+			, DATE_FORMAT(TO_DT, '%Y-%m-%d') AS TO_DT
+			, READ_CNT, INSERT_CNT, UPDATE_CNT, SAME_CNT, EXCL_CNT, SKIP_CNT, SKIP_DETAIL, ERROR_MSG
+		FROM TB_EEP_BATCH_LOG
+		WHERE BATCH_CD = #{BATCH_CD}
+		ORDER BY BATCH_LOG_SQ DESC
+		LIMIT 30
+	</select>
+
+</mapper>
