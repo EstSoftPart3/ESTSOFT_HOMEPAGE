@@ -25,7 +25,8 @@ public final class InterviewCalendarParser {
 	private static final Pattern TITLE = Pattern.compile("^((?:\\[[^\\]]*\\]\\s*)*)-?\\s*(?:면접\\s*-\\s*)?([^\\s\\[\\]()/]+)\\s*\\(([^()]*)\\)\\s*$");
 	private static final Pattern TAG = Pattern.compile("\\[([^\\]]*)\\]");
 	private static final Pattern PHONE = Pattern.compile("01\\d-?\\d{3,4}-?\\d{4}");
-	private static final Pattern YEARS = Pattern.compile("^(\\d+년\\s*)?(\\d+개월)?$");
+	private static final Pattern ICAL_URL = Pattern.compile("/ical/([^/]+)/private-([^/]+)/");
+	private static final Pattern YEARS =Pattern.compile("^(\\d+년\\s*)?(\\d+개월)?$");
 
 	private InterviewCalendarParser() {
 	}
@@ -169,6 +170,16 @@ public final class InterviewCalendarParser {
 	/** 이력 화면에 남기는 글자에서 전화번호를 가린다 */
 	public static String maskPhone(String s) {
 		return s == null ? "" : PHONE.matcher(s).replaceAll("010-****-****");
+	}
+
+	/** 화면 표시용: 어느 캘린더인지는 보이고 비공개 키는 끝 4자리만 남긴다. 예) est.supprt@gmail.com · private-****abcd */
+	public static String maskIcalUrl(String url) {
+		Matcher m = url == null ? null : ICAL_URL.matcher(url);
+		if (m == null || !m.find()) {
+			return "****";
+		}
+		String key = m.group(2);
+		return m.group(1).replace("%40", "@") + " · private-****" + key.substring(Math.max(0, key.length() - 4));
 	}
 
 	/** 오류 글에 iCal 비공개 주소가 섞여 들어가므로 URL 을 지운다 */

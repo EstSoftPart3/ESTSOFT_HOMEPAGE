@@ -79,6 +79,9 @@ public class InterviewCalendarParserCheck {
 		check(!err.contains("private-secret"), "오류 글에서 비공개 주소 제거");
 		check(!InterviewCalendarParser.maskPhone("홍길동(010-1111-2222)").contains("1111"), "전화번호 가리기");
 
+		same(InterviewCalendarParser.maskIcalUrl("https://calendar.google.com/calendar/ical/a.b%40gmail.com/private-1234567890abcd/basic.ics"), "a.b@gmail.com · private-****abcd", "iCal 주소 가리기");
+		same(InterviewCalendarParser.maskIcalUrl("이상한 값"), "****", "형식이 다른 주소");
+
 		System.out.println("OK");
 	}
 

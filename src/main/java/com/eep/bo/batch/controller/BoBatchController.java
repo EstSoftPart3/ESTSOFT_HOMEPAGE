@@ -24,6 +24,7 @@ public class BoBatchController {
 
 	private static final Logger log = LoggerFactory.getLogger(BoBatchController.class);
 	private static final String SS_DRIVE_STATE = "driveState";
+	private static final String SS_DRIVE_ICAL = "driveIcalSq";
 
 	@Autowired
 	private BoBatchService BoBatchService;
@@ -71,9 +72,9 @@ public class BoBatchController {
 
 	@RequestMapping(value = "/admin/batch/saveIcalData.do", method = RequestMethod.POST)
 	@ResponseBody
-	public ModelAndView saveIcalData(@RequestParam Map<String, Object> param) {
+	public ModelAndView saveIcalData(@RequestParam Map<String, Object> param, @RequestParam(value = "icalSq", required = false) Integer icalSq) {
 		try {
-			BoBatchService.saveIcal((String) param.get("name"), (String) param.get("url"));
+			BoBatchService.saveIcal(icalSq, (String) param.get("name"), (String) param.get("url"), (String) param.get("folder"));
 			return json("list", BoBatchService.icalList());
 		} catch (IllegalArgumentException e) {
 			return json("error", e.getMessage());
@@ -106,7 +107,7 @@ public class BoBatchController {
 	@ResponseBody
 	public ModelAndView saveDriveConfData(@RequestParam Map<String, Object> param) {
 		try {
-			BoBatchService.saveDriveConf((String) param.get("clientId"), (String) param.get("clientSecret"), (String) param.get("folder"));
+			BoBatchService.saveDriveConf((String) param.get("clientId"), (String) param.get("clientSecret"));
 			return json("result", "OK");
 		} catch (IllegalArgumentException e) {
 			return json("error", e.getMessage());
@@ -115,26 +116,29 @@ public class BoBatchController {
 
 	// 구글 승인 화면으로 보낸다. 끝나면 driveCallback 으로 돌아온다
 	@RequestMapping("/admin/batch/driveStart.do")
-	public String driveStart(HttpServletRequest request, HttpSession session) {
+	public String driveStart(@RequestParam("icalSq") int icalSq, HttpServletRequest request, HttpSession session) {
 		String state = UUID.randomUUID().toString();
 		String url = BoBatchService.driveAuthUrl(redirectUri(request), state);
 		if (url == null) {
 			return "redirect:/admin/batch/openInterviewBatch.do?drive=noclient";
 		}
 		session.setAttribute(SS_DRIVE_STATE, state);
+		session.setAttribute(SS_DRIVE_ICAL, icalSq);
 		return "redirect:" + url;
 	}
 
 	@RequestMapping("/admin/batch/driveCallback.do")
 	public String driveCallback(@RequestParam Map<String, Object> param, HttpServletRequest request, HttpSession session) {
 		Object state = session.getAttribute(SS_DRIVE_STATE);
+		Object icalSq = session.getAttribute(SS_DRIVE_ICAL);
 		session.removeAttribute(SS_DRIVE_STATE);
+		session.removeAttribute(SS_DRIVE_ICAL);
 		// state 가 다르면 이 세션이 시작한 승인이 아니다(CSRF)
-		if (state == null || !state.equals(param.get("state")) || param.get("code") == null) {
+		if (state == null || icalSq == null || !state.equals(param.get("state")) || param.get("code") == null) {
 			return "redirect:/admin/batch/openInterviewBatch.do?drive=fail";
 		}
 		try {
-			boolean ok = BoBatchService.connectDrive(redirectUri(request), (String) param.get("code"));
+			boolean ok = BoBatchService.connectDrive((Integer) icalSq, redirectUri(request), (String) param.get("code"));
 			return "redirect:/admin/batch/openInterviewBatch.do?drive=" + (ok ? "ok" : "fail");
 		} catch (RestClientException e) {
 			log.error("드라이브 연결 실패: {}", e.getClass().getSimpleName());

@@ -26,6 +26,11 @@ public class BoBatchDao {
 		if (BoBatchMapper.moveConfIcalToList() > 0) {
 			BoBatchMapper.deleteConfIcal();
 		}
+		BoBatchMapper.alterIcalForDrive();
+		// 공통 설정에 잠시 두었던 이력서 폴더를 세트로 옮긴다
+		if (BoBatchMapper.moveConfFolderToIcal() > 0) {
+			BoBatchMapper.deleteConfFolder();
+		}
 	}
 
 	public Map<String, Object> IntvByGcalId(Map<String, Object> param) {
@@ -84,11 +89,20 @@ public class BoBatchDao {
 		return BoBatchMapper.selectIcalOne(sq("ICAL_SQ", icalSq));
 	}
 
-	public int IcalInsert(String name, String url) {
+	public int IcalSave(Integer icalSq, String name, String url, String folderId) {
 		Map<String, Object> param = new HashMap<>();
+		param.put("ICAL_SQ", icalSq);
 		param.put("ICAL_NM", name);
 		param.put("ICAL_URL", url);
-		return BoBatchMapper.insertIcal(param);
+		param.put("DRIVE_FOLDER_ID", folderId);
+		return icalSq == null ? BoBatchMapper.insertIcal(param) : BoBatchMapper.updateIcal(param);
+	}
+
+	public int IcalDrive(int icalSq, String token, String account) {
+		Map<String, Object> param = sq("ICAL_SQ", icalSq);
+		param.put("DRIVE_TOKEN", token);
+		param.put("DRIVE_ACCOUNT", account);
+		return BoBatchMapper.updateIcalDrive(param);
 	}
 
 	public int IcalDelete(int icalSq) {

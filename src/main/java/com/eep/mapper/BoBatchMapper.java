@@ -37,6 +37,11 @@ public interface BoBatchMapper {
 	public List<Map<String, Object>> selectIcalList();							//주소 목록(비공개 주소 제외)
 	public List<Map<String, Object>> selectIcalAutoList();						//자동 실행 대상(비공개 주소 포함)
 	public Map<String, Object> selectIcalOne(Map<String, Object> param);		//주소 한 건(비공개 주소 포함)
+	public int alterIcalForDrive();												//세트에 드라이브 칸 추가(있으면 그대로)
+	public int moveConfFolderToIcal();											//설정 테이블의 이력서 폴더를 세트로 복사
+	public int deleteConfFolder();												//세트로 옮긴 폴더 설정 삭제
+	public int updateIcal(Map<String, Object> param);							//세트 수정
+	public int updateIcalDrive(Map<String, Object> param);						//세트에 드라이브 계정 연결
 	public int insertIcal(Map<String, Object> param);							//주소 등록
 	public int deleteIcal(Map<String, Object> param);							//주소 삭제
 	public int updateIcalAuto(Map<String, Object> param);						//자동 실행 여부 변경

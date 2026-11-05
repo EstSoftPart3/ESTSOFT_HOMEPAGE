@@ -38,9 +38,7 @@ public class BoBatchServiceImpl implements BoBatchService {
 
 	private static final String BATCH_CD = "INTERVIEW_CAL";
 	private static final String ICAL_PREFIX = "https://calendar.google.com/calendar/ical/";
-	private static final String CONF_DRIVE_TOKEN = "DRIVE_REFRESH_TOKEN";
-	private static final String CONF_DRIVE_FOLDER = "DRIVE_RESUME_FOLDER";
-	private static final String CONF_DRIVE_ACCOUNT = "DRIVE_ACCOUNT";
+	private static final String CLIENT_ID_SUFFIX = ".apps.googleusercontent.com";
 	private static final Pattern FOLDER_ID = Pattern.compile("^(?:https://drive\\.google\\.com/.*/folders/)?([\\w-]{10,})(?:[?/#].*)?$");
 	// 이력서 칸 -> 화면 이름
 	private static final String[][] RESUME_FIELDS = { { "ADDR", "주소" }, { "EDU", "학력" }, { "AGE", "나이" }, { "GENDER", "성별" }, { "CAREER", "경력" }, { "LANG", "외국어" } };
@@ -88,10 +86,10 @@ public class BoBatchServiceImpl implements BoBatchService {
 		}
 		if (targets.isEmpty()) {
 			// 아무도 모르게 멈추지 않도록 이력에 남긴다
-			run("AUTO", null, null);
+			run("AUTO", Collections.<String, Object> emptyMap());
 		}
 		for (Map<String, Object> target : targets) {
-			run("AUTO", (String) target.get("ICAL_NM"), (String) target.get("ICAL_URL"));
+			run("AUTO", target);
 		}
 	}
 
@@ -99,17 +97,17 @@ public class BoBatchServiceImpl implements BoBatchService {
 	public Map<String, Object> runInterview(int icalSq) {
 		Map<String, Object> target = BoBatchDao.IcalOne(icalSq);
 		if (target == null) {
-			throw new IllegalArgumentException("선택한 iCal 주소를 찾을 수 없습니다.");
+			throw new IllegalArgumentException("선택한 세트를 찾을 수 없습니다.");
 		}
-		return run("MANUAL", (String) target.get("ICAL_NM"), (String) target.get("ICAL_URL"));
+		return run("MANUAL", target);
 	}
 
 	// 화면 버튼과 스케줄이 겹쳐도 같은 일정을 두 번 넣지 않게 한 번에 하나만 돈다
-	private synchronized Map<String, Object> run(String triggerCd, String icalNm, String url) {
+	private synchronized Map<String, Object> run(String triggerCd, Map<String, Object> target) {
 		Map<String, Object> run = new HashMap<>();
 		run.put("BATCH_CD", BATCH_CD);
 		run.put("TRIGGER_CD", triggerCd);
-		run.put("ICAL_NM", icalNm);
+		run.put("ICAL_NM", target.get("ICAL_NM"));
 		run.put("START_DT", LocalDateTime.now(InterviewCalendarParser.SEOUL).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 		for (String key : new String[] { "READ_CNT", "INSERT_CNT", "UPDATE_CNT", "SAME_CNT", "EXCL_CNT", "SKIP_CNT" }) {
 			run.put(key, 0);
@@ -119,9 +117,9 @@ public class BoBatchServiceImpl implements BoBatchService {
 		run.put("TO_DT", week[1].toString());
 		List<Map<String, Object>> details = new ArrayList<>();
 		try {
-			sync(url, week, run, details);
+			sync((String) target.get("ICAL_URL"), week, run, details);
 			run.put("STATUS_CD", (Integer) run.get("SKIP_CNT") > 0 ? "WARN" : "OK");
-			fillResumes(details);
+			fillResumes(details, target);
 		} catch (Exception e) {
 			log.error("면접 일정 배치 실패: {}", InterviewCalendarParser.cleanError(e));
 			run.put("STATUS_CD", "FAIL");
@@ -137,7 +135,7 @@ public class BoBatchServiceImpl implements BoBatchService {
 
 	private void sync(String url, LocalDate[] week, Map<String, Object> run, List<Map<String, Object>> details) {
 		if (url == null) {
-			throw new IllegalStateException("자동 실행으로 지정한 iCal 주소가 없습니다.");
+			throw new IllegalStateException("자동 실행으로 지정한 세트가 없습니다.");
 		}
 		String ics = new String(rest.getForObject(URI.create(url), byte[].class), StandardCharsets.UTF_8);
 		// 주소가 잘못돼 다른 페이지가 오면 '일정 0건 성공'으로 보이지 않게 한다
@@ -192,7 +190,7 @@ public class BoBatchServiceImpl implements BoBatchService {
 	}
 
 	/** 면접 행마다 드라이브의 년도/월/일/이름 폴더에서 이력서를 찾아 빈 칸을 채운다. 결과는 실행 상세의 RESUME_NOTE 에 남긴다 */
-	private void fillResumes(List<Map<String, Object>> details) {
+	private void fillResumes(List<Map<String, Object>> details, Map<String, Object> target) {
 		List<Map<String, Object>> targets = new ArrayList<>();
 		for (Map<String, Object> d : details) {
 			if (d.get("INTV_SQ") != null && d.get("APLY_NM") != null) {
@@ -203,9 +201,9 @@ public class BoBatchServiceImpl implements BoBatchService {
 			return;
 		}
 		Map<String, String> conf = BoCalendarDao.ConfMap();
-		String refresh = conf.get(CONF_DRIVE_TOKEN), root = conf.get(CONF_DRIVE_FOLDER);
+		String refresh = (String) target.get("DRIVE_TOKEN"), root = (String) target.get("DRIVE_FOLDER_ID");
 		if (!hasText(refresh) || !hasText(root)) {
-			targets.forEach(d -> d.put("RESUME_NOTE", "드라이브 미연결"));
+			targets.forEach(d -> d.put("RESUME_NOTE", hasText(root) ? "드라이브 미연결" : "이력서 폴더 미설정"));
 			return;
 		}
 		String token;
@@ -336,23 +334,40 @@ public class BoBatchServiceImpl implements BoBatchService {
 
 	@Override
 	public List<Map<String, Object>> icalList() {
-		return BoBatchDao.IcalList();
+		List<Map<String, Object>> list = new ArrayList<>();
+		for (Map<String, Object> row : BoBatchDao.IcalList()) {
+			// 비공개 주소와 토큰은 화면으로 내보내지 않는다
+			row.put("ICAL_MASK", InterviewCalendarParser.maskIcalUrl((String) row.remove("ICAL_URL")));
+			row.put("DRIVE_CONNECTED", hasText(row.remove("DRIVE_TOKEN")));
+			list.add(row);
+		}
+		return list;
 	}
 
 	@Override
-	public void saveIcal(String name, String url) {
-		String nm = name == null ? "" : name.trim(), trimmed = url == null ? "" : url.trim();
+	public void saveIcal(Integer icalSq, String name, String url, String folder) {
+		String nm = name == null ? "" : name.trim(), trimmed = url == null ? "" : url.trim(), folderText = folder == null ? "" : folder.trim();
 		if (nm.isEmpty() || nm.length() > 100) {
 			throw new IllegalArgumentException("이름을 100자 이내로 입력해 주세요.");
 		}
-		// 서버가 이 주소를 직접 호출하므로 구글 캘린더 주소만 받는다. 공개 주소는 비공개 캘린더에서 404 가 난다
-		if (!trimmed.startsWith(ICAL_PREFIX) || !trimmed.contains("/private-") || !trimmed.endsWith(".ics") || trimmed.length() > 500) {
+		// 수정할 때 비워 두면 기존 주소를 유지한다(화면에 다시 보여주지 않으므로)
+		if (!(icalSq != null && trimmed.isEmpty())
+				// 서버가 이 주소를 직접 호출하므로 구글 캘린더 주소만 받는다. 공개 주소는 비공개 캘린더에서 404 가 난다
+				&& (!trimmed.startsWith(ICAL_PREFIX) || !trimmed.contains("/private-") || !trimmed.endsWith(".ics") || trimmed.length() > 500)) {
 			throw new IllegalArgumentException("구글 캘린더의 'iCal 형식의 비공개 주소'를 입력해 주세요. /private- 가 들어 있어야 합니다.");
 		}
+		String folderId = null;
+		if (!folderText.isEmpty()) {
+			Matcher m = FOLDER_ID.matcher(folderText);
+			if (!m.matches()) {
+				throw new IllegalArgumentException("이력서 폴더 주소를 확인해 주세요.");
+			}
+			folderId = m.group(1);
+		}
 		try {
-			BoBatchDao.IcalInsert(nm, trimmed);
+			BoBatchDao.IcalSave(icalSq, nm, trimmed, folderId);
 		} catch (DataIntegrityViolationException e) { // MariaDB 드라이버에서는 DuplicateKeyException 으로 구분되지 않는다
-			throw new IllegalArgumentException("이미 등록된 주소입니다.");
+			throw new IllegalArgumentException("이미 등록된 iCal 주소입니다.");
 		}
 	}
 
@@ -360,47 +375,50 @@ public class BoBatchServiceImpl implements BoBatchService {
 	public Map<String, Object> driveStatus() {
 		Map<String, String> conf = BoCalendarDao.ConfMap();
 		Map<String, Object> status = new HashMap<>();
-		status.put("clientId", conf.get(BoCalendarServiceImpl.CONF_CLIENT_ID));
-		status.put("clientReady", hasText(conf.get(BoCalendarServiceImpl.CONF_CLIENT_ID)) && hasText(conf.get(BoCalendarServiceImpl.CONF_CLIENT_SECRET)));
-		status.put("folderId", conf.get(CONF_DRIVE_FOLDER));
-		status.put("connected", hasText(conf.get(CONF_DRIVE_TOKEN)));
-		status.put("account", conf.get(CONF_DRIVE_ACCOUNT));
+		String clientId = conf.get(BoCalendarServiceImpl.CONF_CLIENT_ID), secret = conf.get(BoCalendarServiceImpl.CONF_CLIENT_SECRET);
+		status.put("clientId", clientId);
+		status.put("secretTail", hasText(secret) ? "****" + secret.substring(Math.max(0, secret.length() - 4)) : null);
+		status.put("clientReady", validClient(clientId, secret));
 		return status;
 	}
 
 	@Override
-	public void saveDriveConf(String clientId, String clientSecret, String folder) {
-		Matcher m = FOLDER_ID.matcher(folder == null ? "" : folder.trim());
-		if (!m.matches()) {
-			throw new IllegalArgumentException("이력서 폴더 주소를 확인해 주세요.");
+	public void saveDriveConf(String clientId, String clientSecret) {
+		String id = clientId == null ? "" : clientId.trim(), secret = clientSecret == null ? "" : clientSecret.trim();
+		// 브라우저 자동완성으로 이메일이나 계정 비밀번호가 들어가는 것을 막는다
+		if (!id.endsWith(CLIENT_ID_SUFFIX)) {
+			throw new IllegalArgumentException("클라이언트 ID가 올바르지 않습니다. " + CLIENT_ID_SUFFIX + " 로 끝나는 값을 입력해 주세요.");
 		}
-		if (clientId == null || clientId.trim().isEmpty()) {
-			throw new IllegalArgumentException("OAuth 클라이언트 ID를 입력해 주세요.");
+		if (!secret.isEmpty() && !secret.startsWith("GOCSPX-")) {
+			throw new IllegalArgumentException("클라이언트 시크릿이 올바르지 않습니다. GOCSPX- 로 시작하는 값을 입력해 주세요.");
 		}
-		BoCalendarDao.ConfSave(BoCalendarServiceImpl.CONF_CLIENT_ID, clientId.trim());
+		BoCalendarDao.ConfSave(BoCalendarServiceImpl.CONF_CLIENT_ID, id);
 		// 시크릿을 비워 두면 기존 값을 유지한다(화면에 다시 보여주지 않으므로)
-		if (clientSecret != null && !clientSecret.trim().isEmpty()) {
-			BoCalendarDao.ConfSave(BoCalendarServiceImpl.CONF_CLIENT_SECRET, clientSecret.trim());
+		if (!secret.isEmpty()) {
+			BoCalendarDao.ConfSave(BoCalendarServiceImpl.CONF_CLIENT_SECRET, secret);
 		}
-		BoCalendarDao.ConfSave(CONF_DRIVE_FOLDER, m.group(1));
+	}
+
+	private static boolean validClient(String clientId, String secret) {
+		return clientId != null && clientId.endsWith(CLIENT_ID_SUFFIX) && secret != null && secret.startsWith("GOCSPX-");
 	}
 
 	@Override
 	public String driveAuthUrl(String redirectUri, String state) {
-		String clientId = BoCalendarDao.ConfMap().get(BoCalendarServiceImpl.CONF_CLIENT_ID);
-		return hasText(clientId) ? GoogleDriveApi.authUrl(clientId, redirectUri, state) : null;
+		Map<String, String> conf = BoCalendarDao.ConfMap();
+		String clientId = conf.get(BoCalendarServiceImpl.CONF_CLIENT_ID);
+		return validClient(clientId, conf.get(BoCalendarServiceImpl.CONF_CLIENT_SECRET)) ? GoogleDriveApi.authUrl(clientId, redirectUri, state) : null;
 	}
 
 	@Override
-	public boolean connectDrive(String redirectUri, String code) {
+	public boolean connectDrive(int icalSq, String redirectUri, String code) {
 		Map<String, String> conf = BoCalendarDao.ConfMap();
 		Map<String, Object> tokens = GoogleDriveApi.exchangeCode(conf.get(BoCalendarServiceImpl.CONF_CLIENT_ID), conf.get(BoCalendarServiceImpl.CONF_CLIENT_SECRET), redirectUri, code);
 		String refresh = (String) tokens.get("refresh_token");
 		if (!hasText(refresh)) {
 			return false;
 		}
-		BoCalendarDao.ConfSave(CONF_DRIVE_TOKEN, refresh);
-		BoCalendarDao.ConfSave(CONF_DRIVE_ACCOUNT, GoogleDriveApi.accountEmail((String) tokens.get("access_token")));
+		BoBatchDao.IcalDrive(icalSq, refresh, GoogleDriveApi.accountEmail((String) tokens.get("access_token")));
 		return true;
 	}
 

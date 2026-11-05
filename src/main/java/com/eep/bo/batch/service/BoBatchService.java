@@ -15,23 +15,24 @@ public interface BoBatchService {
 
 	List<Map<String, Object>> interviewLogDetail(int logSq);
 
-	/** 등록된 iCal 주소 목록. 비공개 주소 값은 돌려주지 않는다 */
+	/** 가져오기 세트(iCal + 이력서 폴더 + 드라이브 계정) 목록. 비공개 주소는 가려서 주고 토큰은 돌려주지 않는다 */
 	List<Map<String, Object>> icalList();
 
-	void saveIcal(String name, String url);
+	/** icalSq 가 null 이면 새 세트. 수정할 때 url 을 비우면 기존 주소를 유지한다 */
+	void saveIcal(Integer icalSq, String name, String url, String folder);
 
 	void deleteIcal(int icalSq);
 
 	void setIcalAuto(int icalSq, boolean auto);
 
-	/** 이력서 드라이브 연결 상태. 시크릿과 토큰은 돌려주지 않는다 */
+	/** 공통 구글 앱 설정. 시크릿은 끝 4자리만 돌려준다 */
 	Map<String, Object> driveStatus();
 
-	void saveDriveConf(String clientId, String clientSecret, String folder);
+	void saveDriveConf(String clientId, String clientSecret);
 
-	/** 클라이언트가 설정되지 않았으면 null */
+	/** 클라이언트 설정이 올바르지 않으면 null */
 	String driveAuthUrl(String redirectUri, String state);
 
-	/** @return refresh token 을 받아 저장했으면 true */
-	boolean connectDrive(String redirectUri, String code);
+	/** @return refresh token 을 받아 그 세트에 저장했으면 true */
+	boolean connectDrive(int icalSq, String redirectUri, String code);
 }
