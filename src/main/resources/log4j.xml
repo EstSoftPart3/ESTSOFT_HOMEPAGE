@@ -78,7 +78,7 @@
 
 	<logger name="jdbc.sqlonly" additivity="false"> 
 
-		<level value="info"/> 
+		<level value="warn"/> 
 
 		<appender-ref ref="console"/> 
 
@@ -108,7 +108,7 @@
 
 	<logger name="jdbc.resultsettable" additivity="false"> 
 
-		<level value="info"/>  
+		<level value="warn"/>  
 
 		<appender-ref ref="console"/> 
 
