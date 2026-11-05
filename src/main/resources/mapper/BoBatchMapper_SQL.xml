@@ -138,12 +138,12 @@
 		INSERT INTO TB_EEP_BATCH_ICAL_M (ICAL_NM, ICAL_URL, DRIVE_FOLDER_ID) VALUES (#{ICAL_NM}, #{ICAL_URL}, #{DRIVE_FOLDER_ID})
 	</insert>
 
-	<!-- 주소를 비우면 기존 값을 유지한다 -->
+	<!-- 화면에서 가려진 그대로 둔 칸은 비어서 오고, 기존 값을 유지한다 -->
 	<update id="updateIcal" parameterType="hashMap">
 		UPDATE TB_EEP_BATCH_ICAL_M SET
 			  ICAL_NM = #{ICAL_NM}
 			, ICAL_URL = COALESCE(NULLIF(#{ICAL_URL}, ''), ICAL_URL)
-			, DRIVE_FOLDER_ID = #{DRIVE_FOLDER_ID}
+			, DRIVE_FOLDER_ID = COALESCE(#{DRIVE_FOLDER_ID}, DRIVE_FOLDER_ID)
 		WHERE ICAL_SQ = #{ICAL_SQ}
 	</update>
 

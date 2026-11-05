@@ -74,8 +74,11 @@ public class BoBatchController {
 	@ResponseBody
 	public ModelAndView saveIcalData(@RequestParam Map<String, Object> param, @RequestParam(value = "icalSq", required = false) Integer icalSq) {
 		try {
+			BoBatchService.saveDriveConf((String) param.get("clientId"), (String) param.get("clientSecret"));
 			BoBatchService.saveIcal(icalSq, (String) param.get("name"), (String) param.get("url"), (String) param.get("folder"));
-			return json("list", BoBatchService.icalList());
+			ModelAndView mv = json("list", BoBatchService.icalList());
+			mv.addObject("drive", BoBatchService.driveStatus());
+			return mv;
 		} catch (IllegalArgumentException e) {
 			return json("error", e.getMessage());
 		}
@@ -101,17 +104,6 @@ public class BoBatchController {
 		ModelAndView mv = json("drive", BoBatchService.driveStatus());
 		mv.addObject("redirectUri", redirectUri(request));
 		return mv;
-	}
-
-	@RequestMapping(value = "/admin/batch/saveDriveConfData.do", method = RequestMethod.POST)
-	@ResponseBody
-	public ModelAndView saveDriveConfData(@RequestParam Map<String, Object> param) {
-		try {
-			BoBatchService.saveDriveConf((String) param.get("clientId"), (String) param.get("clientSecret"));
-			return json("result", "OK");
-		} catch (IllegalArgumentException e) {
-			return json("error", e.getMessage());
-		}
 	}
 
 	// 구글 승인 화면으로 보낸다. 끝나면 driveCallback 으로 돌아온다

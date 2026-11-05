@@ -81,6 +81,9 @@ public class InterviewCalendarParserCheck {
 
 		same(InterviewCalendarParser.maskIcalUrl("https://calendar.google.com/calendar/ical/a.b%40gmail.com/private-1234567890abcd/basic.ics"), "a.b@gmail.com · private-****abcd", "iCal 주소 가리기");
 		same(InterviewCalendarParser.maskIcalUrl("이상한 값"), "****", "형식이 다른 주소");
+		same(InterviewCalendarParser.maskMiddle("1234567890abcdef"), "123456****cdef", "가운데 가리기");
+		same(InterviewCalendarParser.maskMiddle("short"), "****", "짧은 값은 전부 가리기");
+		same(InterviewCalendarParser.maskMiddle(""), null, "빈 값");
 
 		System.out.println("OK");
 	}

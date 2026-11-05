@@ -182,6 +182,14 @@ public final class InterviewCalendarParser {
 		return m.group(1).replace("%40", "@") + " · private-****" + key.substring(Math.max(0, key.length() - 4));
 	}
 
+	/** 화면 표시용: 앞 6자리와 끝 4자리만 남긴다. 값이 없으면 null */
+	public static String maskMiddle(String s) {
+		if (s == null || s.isEmpty()) {
+			return null;
+		}
+		return s.length() <= 10 ? "****" : s.substring(0, 6) + "****" + s.substring(s.length() - 4);
+	}
+
 	/** 오류 글에 iCal 비공개 주소가 섞여 들어가므로 URL 을 지운다 */
 	public static String cleanError(Throwable e) {
 		String msg = e.getClass().getSimpleName() + (e.getMessage() == null ? "" : ": " + e.getMessage());

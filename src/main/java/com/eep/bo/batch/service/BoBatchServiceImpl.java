@@ -339,6 +339,7 @@ public class BoBatchServiceImpl implements BoBatchService {
 			// 비공개 주소와 토큰은 화면으로 내보내지 않는다
 			row.put("ICAL_MASK", InterviewCalendarParser.maskIcalUrl((String) row.remove("ICAL_URL")));
 			row.put("DRIVE_CONNECTED", hasText(row.remove("DRIVE_TOKEN")));
+			row.put("FOLDER_MASK", InterviewCalendarParser.maskMiddle((String) row.remove("DRIVE_FOLDER_ID")));
 			list.add(row);
 		}
 		return list;
@@ -376,8 +377,8 @@ public class BoBatchServiceImpl implements BoBatchService {
 		Map<String, String> conf = BoCalendarDao.ConfMap();
 		Map<String, Object> status = new HashMap<>();
 		String clientId = conf.get(BoCalendarServiceImpl.CONF_CLIENT_ID), secret = conf.get(BoCalendarServiceImpl.CONF_CLIENT_SECRET);
-		status.put("clientId", clientId);
-		status.put("secretTail", hasText(secret) ? "****" + secret.substring(Math.max(0, secret.length() - 4)) : null);
+		status.put("clientMask", InterviewCalendarParser.maskMiddle(clientId));
+		status.put("secretMask", hasText(secret) ? "****" + secret.substring(Math.max(0, secret.length() - 4)) : null);
 		status.put("clientReady", validClient(clientId, secret));
 		return status;
 	}
@@ -385,15 +386,16 @@ public class BoBatchServiceImpl implements BoBatchService {
 	@Override
 	public void saveDriveConf(String clientId, String clientSecret) {
 		String id = clientId == null ? "" : clientId.trim(), secret = clientSecret == null ? "" : clientSecret.trim();
-		// 브라우저 자동완성으로 이메일이나 계정 비밀번호가 들어가는 것을 막는다
-		if (!id.endsWith(CLIENT_ID_SUFFIX)) {
+		// 브라우저 자동완성으로 이메일이나 계정 비밀번호가 들어가는 것을 막는다. 비운 칸은 기존 값을 유지한다
+		if (!id.isEmpty() && !id.endsWith(CLIENT_ID_SUFFIX)) {
 			throw new IllegalArgumentException("클라이언트 ID가 올바르지 않습니다. " + CLIENT_ID_SUFFIX + " 로 끝나는 값을 입력해 주세요.");
 		}
 		if (!secret.isEmpty() && !secret.startsWith("GOCSPX-")) {
 			throw new IllegalArgumentException("클라이언트 시크릿이 올바르지 않습니다. GOCSPX- 로 시작하는 값을 입력해 주세요.");
 		}
-		BoCalendarDao.ConfSave(BoCalendarServiceImpl.CONF_CLIENT_ID, id);
-		// 시크릿을 비워 두면 기존 값을 유지한다(화면에 다시 보여주지 않으므로)
+		if (!id.isEmpty()) {
+			BoCalendarDao.ConfSave(BoCalendarServiceImpl.CONF_CLIENT_ID, id);
+		}
 		if (!secret.isEmpty()) {
 			BoCalendarDao.ConfSave(BoCalendarServiceImpl.CONF_CLIENT_SECRET, secret);
 		}
