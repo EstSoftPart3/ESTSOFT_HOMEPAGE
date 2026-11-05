@@ -114,7 +114,7 @@ public class BoBatchServiceImpl implements BoBatchService {
 			// 09:00 에는 정기 배치가 같이 돌므로 또 돌리지 않는다
 			if (due && !(now.getHour() == 9 && now.getMinute() == 0)) {
 				List<Map<String, Object>> targets = BoBatchDao.IcalAutoList();
-				log.warn("면접 {}분 전 배치 실행 {}, 세트 {}개", InterviewCalendarParser.PRE_RUN_MINUTES, now, targets.size());
+				log.warn("면접 전 배치 실행 {}, 세트 {}개", now, targets.size());
 				for (Map<String, Object> target : targets) {
 					Map<String, Object> result = run("PRE", target);
 					log.warn("면접 전 배치 결과 {}", result.get("STATUS_CD"));
