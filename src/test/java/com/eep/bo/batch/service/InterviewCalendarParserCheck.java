@@ -68,6 +68,12 @@ public class InterviewCalendarParserCheck {
 		same(InterviewCalendarParser.excludeReason(events.get(1)), "출근 일정", "출근 제외");
 		same(InterviewCalendarParser.excludeReason(events.get(2)), "종일 일정", "종일 제외");
 		same(InterviewCalendarParser.excludeReason(events.get(0)), null, "면접은 포함");
+		same(exclude("[경력]면접-홍길동(새마을은행계정계/010-1111-2222)"), "경력 면접", "[경력] 제외");
+		same(exclude("[취소][경력]홍길동(사람인_공고/010-1111-2222)"), "경력 면접", "뒤쪽 태그의 경력도 제외");
+		same(exclude("[경력재지원]-홍길동(6년4개월/잡코리아_농협은행/010-1111-2222)"), "경력 면접", "[경력재지원] 제외");
+		same(exclude("[합격/경력]홍길동(010-1111-2222)"), "경력 면접", "슬래시로 묶인 경력 제외");
+		same(exclude("[신입]홍길동(사람인_공고/010-1111-2222)"), null, "신입은 포함");
+		same(exclude("[신입]경력자홍길동(010-1111-2222)"), null, "태그 밖의 경력 글자는 상관없음");
 
 		// 2026-11-02 는 월요일
 		same(InterviewCalendarParser.weekOf(LocalDate.of(2026, 11, 2))[0].toString(), "2026-11-02", "월요일");
@@ -94,6 +100,13 @@ public class InterviewCalendarParserCheck {
 		same(InterviewCalendarParser.maskMiddle(""), null, "빈 값");
 
 		System.out.println("OK");
+	}
+
+	private static String exclude(String title) {
+		Map<String, String> e = new java.util.HashMap<>();
+		e.put("TITLE", title);
+		e.put("ALL_DAY", "N");
+		return InterviewCalendarParser.excludeReason(e);
 	}
 
 	private static Map<String, Object> title(String title) {

@@ -233,12 +233,14 @@
 	// 보고 제목과 그 밖의 검색 조건. 검색어가 있으면 render 처럼 연도·월·주차를 보지 않는다
 	function dashTitle() {
 		var kw = $.trim($('#keyword').val()), y = $('#yearSel').val(), mon = $('#monthSel').val(), week = $('#weekSel').val();
-		var title = kw ? '' : [y && y + '년', mon && +mon + '월', week && $('#weekSel option:selected').text()].filter(Boolean).join(' ');
+		// 주차 옵션 "1주차(2일~8일)" 의 기간은 제목 끝으로 보낸다: 2026년 11월 1주차 신입 채용현황(2일~8일)
+		var wk = (!kw && week ? $('#weekSel option:selected').text() : '').match(/^([^(]*)(\(.*\))?$/) || ['', '', ''];
+		var title = kw ? '' : [y && y + '년', mon && +mon + '월', wk[1]].filter(Boolean).join(' ');
 		var conds = kw ? ['검색어: ' + kw] : [];
 		FILTERS.forEach(function(f) {
 			if ($(f[0]).val()) conds.push($('label[for=' + f[0].substr(1) + ']').text() + ': ' + $(f[0]).find('option:selected').text());
 		});
-		return { title: title || '전체 기간', conds: conds.join(' / ') };
+		return { title: (title || '전체 기간') + ' 신입 채용현황' + (wk[2] || ''), conds: conds.join(' / ') };
 	}
 
 	// 코드별 인원. 코드가 없거나 지워진 값은 미입력으로 묶어 합계를 맞춘다
@@ -283,14 +285,14 @@
 
 	function dashText(s, t) {
 		function withDetail(n, detail) { return n + (detail ? '(' + detail + ')' : ''); }
-		return [t.title].concat(t.conds ? ['(' + t.conds + ')'] : [], ['총원 : ' + s.total, '참석 : ' + withDetail(s.attend, s.attendDetail), '합격 : ' + withDetail(s.pass, s.detail), '보류 : ' + s.hold]).join('\n') + '\n\n' + (s.roster ? '출근확정 :\n' + s.roster : '출근확정 : 0');
+		return [t.title].concat(t.conds ? ['(' + t.conds + ')'] : [], ['예정 : ' + s.total, '참석 : ' + withDetail(s.attend, s.attendDetail), '합격 : ' + withDetail(s.pass, s.detail), '보류 : ' + s.hold]).join('\n') + '\n\n' + (s.roster ? '출근확정 :\n' + s.roster : '출근확정 : 0');
 	}
 
 	function renderDash() {
 		var s = dashCounts(shown), t = dashTitle(), $box = $('#dashStats').empty();
 		$('#dashTitle').text(t.title);
 		$('#dashCond').text(t.conds);
-		[['총원', s.total], ['참석', s.attend, s.attendDetail], ['합격', s.pass, s.detail], ['보류', s.hold], ['출근확정', s.join, s.joinNames]].forEach(function(t) {
+		[['예정', s.total], ['참석', s.attend, s.attendDetail], ['합격', s.pass, s.detail], ['보류', s.hold], ['출근확정', s.join, s.joinNames]].forEach(function(t) {
 			$('<div class="hr-dash-item">').append($('<div class="hr-dash-label">').text(t[0])).append($('<div class="hr-dash-num">').text(t[1]))
 				.append($('<div class="hr-dash-sub">').text(t[2] || '')).appendTo($box);
 		});

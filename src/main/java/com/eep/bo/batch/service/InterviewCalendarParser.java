@@ -25,6 +25,7 @@ public final class InterviewCalendarParser {
 	// 예: [취소][신입]이름(사람인_공고/010-0000-0000), [경력]면접-이름(...), [경력재지원]-이름(...)
 	private static final Pattern TITLE = Pattern.compile("^((?:\\[[^\\]]*\\]\\s*)*)-?\\s*(?:면접\\s*-\\s*)?([^\\s\\[\\]()/]+)\\s*\\(([^()]*)\\)\\s*$");
 	private static final Pattern TAG = Pattern.compile("\\[([^\\]]*)\\]");
+	private static final Pattern LEAD_TAGS = Pattern.compile("^((?:\\[[^\\]]*\\]\\s*)*)");
 	private static final Pattern PHONE = Pattern.compile("01\\d-?\\d{3,4}-?\\d{4}");
 	private static final Pattern ICAL_URL = Pattern.compile("/ical/([^/]+)/private-([^/]+)/");
 	private static final Pattern YEARS =Pattern.compile("^(\\d+년\\s*)?(\\d+개월)?$");
@@ -117,7 +118,23 @@ public final class InterviewCalendarParser {
 		if ("CANCELLED".equals(event.get("STATUS"))) return "캘린더에서 삭제된 일정";
 		if ("Y".equals(event.get("ALL_DAY"))) return "종일 일정";
 		if (title != null && title.trim().startsWith("출근")) return "출근 일정";
+		if (hasCareerTag(title)) return "경력 면접";
 		return null;
+	}
+
+	/** 신입면접 배치라서 앞쪽 대괄호 태그에 경력…([경력], [경력재지원] 등)이 있으면 가져오지 않는다 */
+	private static boolean hasCareerTag(String title) {
+		Matcher m = title == null ? null : LEAD_TAGS.matcher(title.trim());
+		if (m == null || !m.find()) {
+			return false;
+		}
+		Matcher tags = TAG.matcher(m.group(1));
+		while (tags.find()) {
+			for (String raw : tags.group(1).split("/")) {
+				if (raw.trim().startsWith("경력")) return true;
+			}
+		}
+		return false;
 	}
 
 	/** 제목을 면접관리 칸 값으로 바꾼다. 형식이 다르거나 전화번호가 없으면 null */
