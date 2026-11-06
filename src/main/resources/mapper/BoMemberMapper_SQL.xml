@@ -30,7 +30,6 @@
 			 ) AS mbrSexCd
 			,EMPLY_HOME_ADDR      AS mbrHomeAddr
 			,EMPLY_PH_NUM         AS mbrPhNum
-			,EMPLY_RRN			  AS mbrRrn	
 			,DATE_FORMAT(EMPLY_REG_DT,'%Y-%m-%d')  AS regDt
 			,DATE_FORMAT(EMPLY_UPDT_DT,'%Y-%m-%d')  AS updtDt
 			,USE_YN               AS useYn

@@ -76,7 +76,6 @@ public class BoMemberDao {
 	//직원정보 입력
 	public void memberInsert(Map<String, Object> param){
 		
-		System.out.println("MEMBER_INSERT_REQUEST = " + param);
 		BoMemberMapper.memberInsert(param);
 		
 	}

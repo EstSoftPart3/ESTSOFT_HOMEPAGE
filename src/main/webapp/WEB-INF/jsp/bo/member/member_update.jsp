@@ -95,7 +95,7 @@
                     	<div class="form-group row">
                     		<label class="col-form-label sTitle LabelStyle" style="text-align: center;">주민등록번호</label>
                     		<div class="col-sm-3">
-                      			<input type="text" class="form-control sTitle classname" id="mbrRrn" name="mbrRrn" maxlength="14" >
+                      			<input type="text" class="form-control sTitle classname" id="mbrRrn" name="mbrRrn" maxlength="14" title="바꿀 때만 전체 번호를 입력한다. 가려진 값 그대로 두면 바뀌지 않는다." >
                       		</div>
                     	</div>
                     	

@@ -2,3 +2,6 @@ db.username=
 db.password=
 mail.username=
 mail.password=
+
+# 직원 주민등록번호 암호화 키 (AES-256, base64 32바이트). 운영 키는 계정정보 엑셀에 있다
+rrn.key=
