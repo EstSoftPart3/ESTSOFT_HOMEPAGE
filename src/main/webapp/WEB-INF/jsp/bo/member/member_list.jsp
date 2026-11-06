@@ -16,7 +16,7 @@
 	    		<section class="content">
 	    			
 					<div class="card-header">
-	                	<h3 class="card-title bTitle"><b>직원 목록</b></h3>
+	                	<h3 class="card-title bTitle"><b>계정 목록</b></h3>
 	                	
 		                <div class="card-tools">
 		                  
@@ -41,7 +41,8 @@
 		                    <div class="input-group-append">
 		                      <button type="button" data-action="memberSearch" data-id="search-id" class="btn btn-default" id="searchBtn"><i class="fas fa-search"></i></button>&nbsp;&nbsp;&nbsp;
 		                    </div>
-		                    <button type="button" class="btn btn-info sTitle" onclick="memberInsert();">직원 등록</button>
+		                    <button type="button" class="btn btn-outline-secondary sTitle" onclick="location.href='/admin/member/outMemberList.do';">탈퇴 계정</button>
+		                    <button type="button" class="btn btn-info sTitle" onclick="memberInsert();">계정 등록</button>
 		                  </div>
 		                </div>
 	              	

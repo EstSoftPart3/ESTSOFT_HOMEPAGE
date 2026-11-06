@@ -103,7 +103,7 @@
                 	
                   	<button type="button" class="btn btn-primary sTitle" onclick="location.href='/admin/member/memberList.do';">목록</button>
                   	<button type="button" class="btn btn-info sTitle" onclick="memberUpdate();">수정</button>
-                  	<button type="button" class="btn btn-danger sTitle" onclick="outMember();">퇴사 처리</button>
+                  	<button type="button" class="btn btn-danger sTitle" onclick="outMember();">계정 탈퇴 처리</button>
                   	
                 </div>
                 

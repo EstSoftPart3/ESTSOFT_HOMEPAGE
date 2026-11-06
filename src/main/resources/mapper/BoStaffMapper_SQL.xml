@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 직원관리(인사카드). 표는 sql/hr_staff.sql -->
+<mapper namespace="com.eep.mapper.BoStaffMapper">
+
+	<select id="selectStaffList" resultType="hashMap">
+		SELECT
+			  STAFF_SQ, STATUS_CD, SEQ_NO, ORG_NM, DEPT_NM, POSITION_NM, STAFF_NM, RRN_ENC, PHONE, EMAIL, ADDR, STATION
+			, JOIN_DT, LEAVE_DT, HS_NM, HS_MAJOR, HS_GRAD, UNIV_NM, UNIV_MAJOR, UNIV_GRAD, FINAL_EDU
+			, MIL_IN_DT, MIL_OUT_DT, MIL_EXEMPT, EDU_NM, EDU_START_DT, EDU_END_DT, EDU_ORG, CERT_DT, BANK_NM, ACCOUNT_ENC
+			, DOC_REG, DOC_ID, DOC_GRAD, DOC_BANK, DOC_PHOTO, DOC_HI, DOC_CONTRACT, DOC_BIZ, DOC_EI, DOC_SEC
+			, DOC_EDU, DOC_NEP, DOC_PRIV, DOC_CRIME, DOC_MIL
+			, EMG_REL1, EMG_TEL1, EMG_REL2, EMG_TEL2, PREV_CAREER, HOBBY, LANG_SKILL, SPECIALTY, MEMO
+			, SCORE, GAPIL_YN, AUTO_APLY_YN, GRADE_NM, REAL_CAREER, WISH_PRICE, SK_FE, SK_BE, WORK_DOMAIN, WISH_LOC
+			, ETC1, SK_LANG, REPORT, SK_FW, SK_DB, SK_IDE, SK_VCS, ETC2, EXPERTISE, SK_OS
+		FROM TB_EEP_HR_STAFF_M
+		ORDER BY STATUS_CD DESC, JOIN_DT DESC, STAFF_SQ DESC
+	</select>
+
+	<select id="selectStaffSecret" parameterType="hashMap" resultType="string">
+		SELECT ${COL} FROM TB_EEP_HR_STAFF_M WHERE STAFF_SQ = #{STAFF_SQ}
+	</select>
+
+	<insert id="insertStaff" parameterType="hashMap" useGeneratedKeys="true" keyProperty="STAFF_SQ">
+		INSERT INTO TB_EEP_HR_STAFF_M (STATUS_CD, STAFF_NM, ORG_NM, DEPT_NM, POSITION_NM, PHONE, JOIN_DT, UPDT_EMPLY_ID, UPDT_DT)
+		VALUES (#{STATUS_CD}, #{STAFF_NM}, NULLIF(#{ORG_NM}, ''), NULLIF(#{DEPT_NM}, ''), NULLIF(#{POSITION_NM}, ''), NULLIF(#{PHONE}, ''), NULLIF(#{JOIN_DT}, ''), #{UPDT_EMPLY_ID}, NOW())
+	</insert>
+
+	<update id="updateStaffField" parameterType="hashMap">
+		UPDATE TB_EEP_HR_STAFF_M SET
+			  ${FIELD} = NULLIF(#{VALUE}, ''), UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE STAFF_SQ = #{STAFF_SQ}
+	</update>
+
+	<delete id="deleteStaff" parameterType="hashMap">
+		DELETE FROM TB_EEP_HR_STAFF_M WHERE STAFF_SQ = #{STAFF_SQ}
+	</delete>
+</mapper>

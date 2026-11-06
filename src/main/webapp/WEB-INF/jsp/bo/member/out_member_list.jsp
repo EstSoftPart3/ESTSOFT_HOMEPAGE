@@ -16,7 +16,7 @@
 	    		<section class="content">
 	    			
 					<div class="card-header">
-	                	<h3 class="card-title bTitle"><b>퇴사 직원 목록</b></h3>
+	                	<h3 class="card-title bTitle"><b>탈퇴 계정 목록</b></h3>
 	                	
 		                <div class="card-tools">
 		                  

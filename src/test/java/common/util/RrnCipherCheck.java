@@ -33,6 +33,8 @@ public class RrnCipherCheck {
 		check("*******".equals(RrnCipher.mask("12")), "짧은 값");
 		check(RrnCipher.isMasked("900101-*******") && RrnCipher.isMasked("(복호화 실패)"), "가린 값 판별");
 		check(!RrnCipher.isMasked("900101-1234567"), "실제 값은 가린 값 아님");
+		check("******6789".equals(RrnCipher.maskTailStored("110-123-456789")), "계좌번호 끝 4자리");
+		check("****".equals(RrnCipher.maskTailStored("123")), "짧은 계좌번호");
 
 		// 서버 python cryptography(AESGCM) 로 같은 키로 만든 값: "800202-2345678"
 		String fromPython = args.length > 0 ? args[0] : null;

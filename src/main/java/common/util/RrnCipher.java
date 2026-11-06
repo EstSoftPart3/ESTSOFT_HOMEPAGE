@@ -53,6 +53,19 @@ public final class RrnCipher {
 		return digits.length() < 6 ? "*******" : digits.substring(0, 6) + "-*******";
 	}
 
+	/** 계좌번호처럼 끝 4자리만 보여 줄 값: "******1234". 저장값(암호문·평문 모두)을 받는다 */
+	public static String maskTailStored(String stored) {
+		if (stored == null || stored.isEmpty()) {
+			return stored;
+		}
+		try {
+			String digits = (isEncrypted(stored) ? decrypt(stored) : stored).replaceAll("[^0-9]", "");
+			return digits.length() <= 4 ? "****" : "******" + digits.substring(digits.length() - 4);
+		} catch (RuntimeException e) {
+			return "(복호화 실패)";
+		}
+	}
+
 	/** 화면에서 가린 값이 그대로 돌아온 것인지. 이 경우 저장값을 바꾸지 않는다. */
 	public static boolean isMasked(String value) {
 		return value != null && (value.contains("*") || value.startsWith("("));

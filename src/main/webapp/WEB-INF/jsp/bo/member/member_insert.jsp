@@ -30,7 +30,7 @@
 		     	<!-- Main content -->
 	    		<section class="content">
     			 <div class="card-header">
-	               	<h3 class="card-title bTitle">직원 등록</h3>
+	               	<h3 class="card-title bTitle">계정 등록</h3>
 				</div>
 				
 				<form class="form-horizontal" name="form_member" id="form_member">

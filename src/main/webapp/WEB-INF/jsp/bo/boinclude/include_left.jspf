@@ -74,7 +74,22 @@
         <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
          
           <li class="nav-header"></li>
- 
+
+          	<li class="nav-item has-treeview menu-open">
+	            <a href="#" class="nav-link">
+	              <i class="nav-icon fas fa-user-shield"></i>
+	              <p class="sTitle">계정 및 권한<i class="right fas fa-angle-left"></i></p>
+	            </a>
+	            <ul class="nav nav-treeview">
+	              <li class="nav-item">
+	                <a href="/admin/member/memberList.do" class="nav-link">
+	                  <i class="far fa-circle nav-icon sTitle"></i>
+	                  <p class="sTitle">계정관리</p>
+	                </a>
+	              </li>
+	            </ul>
+          	</li>
+
           	<li class="nav-item has-treeview menu-open">
 	            <a href="#" class="nav-link">
 	              <i class="nav-icon fas fa-table"></i>
@@ -129,16 +144,9 @@
 		                </a>
 		              </li>
               <li class="nav-item">
-                <a href="/admin/member/memberList.do" class="nav-link">
+                <a href="/admin/staff/openStaffList.do" class="nav-link">
                   <i class="far fa-circle nav-icon sTitle"></i>
                   <p class="sTitle">직원관리</p>
-                </a>
-              </li>
-            
-              <li class="nav-item">
-                <a href="/admin/member/outMemberList.do" class="nav-link">
-                  <i class="far fa-circle nav-icon sTitle"></i>
-                  <p class="sTitle">퇴사자 관리</p>
                 </a>
               </li>
               

@@ -46,7 +46,7 @@
 		     	<!-- Main content -->
 	    		<section class="content">
     			 <div class="card-header">
-	               	<h3 class="card-title bTitle">퇴사 직원 상세정보</h3>
+	               	<h3 class="card-title bTitle">탈퇴 계정 상세정보</h3>
 				</div>
 				
 				<form class="form-horizontal">
@@ -102,7 +102,7 @@
                 <div class="card-footer" style="text-align:right;background-color:#ffffff">
                 	
                   	<button type="button" class="btn btn-primary sTitle" onclick="location.href='/admin/member/outMemberList.do';">목록</button>
-                  	<button type="button" class="btn btn-info sTitle" onclick="outMember();">퇴사 복구</button>
+                  	<button type="button" class="btn btn-info sTitle" onclick="outMember();">탈퇴 복구</button>
                   	
                 </div>
                 
