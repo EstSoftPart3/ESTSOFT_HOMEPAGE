@@ -278,6 +278,13 @@
 			<version>1.10</version>
 		</dependency>
 
+		<!-- 직원 비밀번호 해시 -->
+		<dependency>
+			<groupId>org.mindrot</groupId>
+			<artifactId>jbcrypt</artifactId>
+			<version>0.4</version>
+		</dependency>
+
 		<!-- Log4j -->
 		<dependency>
 			<groupId>log4j</groupId>

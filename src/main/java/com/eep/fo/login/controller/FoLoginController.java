@@ -17,16 +17,12 @@ import org.springframework.web.servlet.ModelAndView;
 
 import com.eep.bo.login.service.BoLoginRememberService;
 import com.eep.fo.login.service.FoLoginService;
-import com.eep.mapper.FoLoginMapper;
 
 @Controller
 public class FoLoginController {
 
 	@Autowired
 	private FoLoginService FoLoginService;
-	
-	@Autowired
-	private FoLoginMapper FoLoginMapper;
 
 	@Autowired
 	private BoLoginRememberService BoLoginRememberService;
@@ -62,7 +58,7 @@ public class FoLoginController {
 			
 			//권한 체크 세션 생성
 			@SuppressWarnings({ "unchecked", "unused" })
-			List<Map<String, Object>> AuthCheck = FoLoginMapper.loginAdminData(param);
+			List<Map<String, Object>> AuthCheck = (List<Map<String, Object>>) result.get("loginInfo");
 			String emplyAuthCheck = (String) AuthCheck.get(0).get("emplyAuthTypCd");
 			
 			System.out.println("emplyAuthCheck : : " + emplyAuthCheck);

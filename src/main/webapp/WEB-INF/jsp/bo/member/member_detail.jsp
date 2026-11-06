@@ -64,7 +64,7 @@
 						<td class="col-sm-1" align="center">아이디</td>
 						<td id="mbrId" class="col-sm-2 dataValue"></td>						
 						<td class="col-sm-1" align="center">비밀번호</td>
-						<td id="mbrPasswrd" class="col-sm-2 dataValue"></td>						
+						<td id="mbrPasswrd" class="col-sm-2 dataValue">암호화되어 볼 수 없음</td>						
 												
 					</tr>
 					<tr class="col-form-label sTitle LabelStyle"  >
@@ -148,7 +148,6 @@
 		        	 
 		        	 var mbrNm = dataContent.mbrNm						//이름
 		        	 var mbrId = dataContent.mbrId						//아이디
-		        	 var mbrPasswrd = dataContent.mbrPasswrd			//비밀번호
 		        	 var mbrEmail = dataContent.mbrEmail				//이메일
 		        	 var mbrSexCd = dataContent.mbrSexCd				//성별
 		        	 var mbrPhNum = dataContent.mbrPhNum				//휴대폰번호
@@ -171,7 +170,6 @@
 		        	 $("#mbrHomeAddr").text(mbrHomeAddr);
 		        	 $("#mbrRrn").text(mbrRrn);
 		        	 $("#updtDt").text(updtDt);
-		        	 $("#mbrPasswrd").text(mbrPasswrd);
 		        	 $("#delYn").text(delYn);
 	        	 } else {
 	        		alert("조회에 실패하였습니다. 다시 시도 해주세요.");

@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.eep.bo.member.dao.BoMemberDao;
 
+import common.util.PasswordHasher;
+
 @Service
 public class BoMemberServiceImpl implements BoMemberService {
 
@@ -38,6 +40,7 @@ public class BoMemberServiceImpl implements BoMemberService {
 	//직원정보 입력
 	@Override
 	public void memberInsert(Map<String, Object> param){
+		param.put("mbrPasswrd", PasswordHasher.hash((String) param.get("mbrPasswrd")));
 		BoMemeberDao.memberInsert(param);
 	}
 	
@@ -55,7 +58,8 @@ public class BoMemberServiceImpl implements BoMemberService {
 	@Override
 	public int memberPasswdClear(Map<String, Object> param){
 		int updateState = -1;
-		
+
+		param.put("mbrPasswrd", PasswordHasher.hash((String) param.get("mbrPasswrd")));
 		updateState = BoMemeberDao.memberPasswdClear(param);
 		
 		return updateState;

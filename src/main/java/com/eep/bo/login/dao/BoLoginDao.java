@@ -9,6 +9,8 @@ import org.springframework.stereotype.Repository;
 
 import com.eep.mapper.BoLoginMapper;
 
+import common.util.PasswordHasher;
+
 @Repository
 public class BoLoginDao {
 
@@ -22,8 +24,8 @@ public class BoLoginDao {
 				
 		@SuppressWarnings("unchecked")
 		List<Map<String, Object>> loginInfo = BoLoginMapper.loginAdminData(param);
-		
-		result.put("loginInfo", loginInfo);
+
+		result.put("loginInfo", PasswordHasher.keepMatched(loginInfo, (String) param.get("emplyPw")));
 				
 		return result;
 	}

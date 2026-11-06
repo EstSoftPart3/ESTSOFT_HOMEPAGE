@@ -9,6 +9,8 @@ import org.springframework.stereotype.Repository;
 
 import com.eep.mapper.FoLoginMapper;
 
+import common.util.PasswordHasher;
+
 @Repository
 public class FoLoginDao {
 
@@ -21,8 +23,8 @@ public class FoLoginDao {
 				
 		@SuppressWarnings("unchecked")
 		List<Map<String, Object>> loginInfo = FoLoginMapper.loginAdminData(param);
-		
-		result.put("loginInfo", loginInfo);
+
+		result.put("loginInfo", PasswordHasher.keepMatched(loginInfo, (String) param.get("emplyPw")));
 				
 		return result;
 	}

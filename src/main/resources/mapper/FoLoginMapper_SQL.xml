@@ -11,11 +11,11 @@
            	 , EMPLY_ID				AS emplyId
            	 , EMPLY_NM				AS emplyNm
            	 , EMPLY_AUTH_TYP_CD	AS emplyAuthTypCd
+           	 , EMPLY_PW				AS emplyPwHash
         FROM
             TB_EEP_EMPLY_M
         WHERE 1=1
          	AND EMPLY_ID = #{emplyId}
-         	AND EMPLY_PW = #{emplyPw}
          	AND EMPLY_AUTH_TYP_CD IN ('1','2')
     </select>
 	

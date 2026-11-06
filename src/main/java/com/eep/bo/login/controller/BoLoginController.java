@@ -18,7 +18,6 @@ import org.springframework.web.servlet.ModelAndView;
 
 import com.eep.bo.login.service.BoLoginRememberService;
 import com.eep.bo.login.service.BoLoginService;
-import com.eep.mapper.BoLoginMapper;
 
 
 @Controller
@@ -26,9 +25,6 @@ public class BoLoginController {
 
 	@Autowired
 	private BoLoginService BoLoginService;
-	
-	@Autowired
-	private BoLoginMapper BoLoginMapper;
 
 	@Autowired
 	private BoLoginRememberService BoLoginRememberService;
@@ -68,7 +64,7 @@ public class BoLoginController {
 		if(result.get("loginInfo").toString().length() != 2) {
 			//권한 체크 세션 생성
 			@SuppressWarnings({ "unchecked", "unused" })
-			List<Map<String, Object>> AuthCheck = BoLoginMapper.loginAdminData(param);
+			List<Map<String, Object>> AuthCheck = (List<Map<String, Object>>) result.get("loginInfo");
 			String emplyAuthCheck = (String) AuthCheck.get(0).get("emplyAuthTypCd");
 			
 			session.setAttribute("loginInfo", result);	
