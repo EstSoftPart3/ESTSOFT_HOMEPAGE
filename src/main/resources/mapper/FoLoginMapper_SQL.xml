@@ -9,7 +9,6 @@
         SELECT
         	   EMPLY_SQ				AS emplySq
            	 , EMPLY_ID				AS emplyId
-           	 , EMPLY_PW				AS emplyPw
            	 , EMPLY_NM				AS emplyNm
            	 , EMPLY_AUTH_TYP_CD	AS emplyAuthTypCd
         FROM
