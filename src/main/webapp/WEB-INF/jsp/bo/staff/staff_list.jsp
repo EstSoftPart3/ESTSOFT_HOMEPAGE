@@ -208,7 +208,7 @@
 	// 인사카드 칸: [필드, 라벨, 종류]. 종류 'secret' 은 가린 값 + 원문 보기
 	var SECTIONS = [
 		['기초정보', [['STAFF_NM', '성명'], ['ORG_NM', '소속'], ['DEPT_NM', '부서'], ['POSITION_NM', '직급'], ['SEQ_NO', 'NO'],
-			['RRN', '주민등록번호', 'secret'], ['PHONE', '전화번호'], ['EMAIL', '이메일'], ['ADDR', '주소(시도)'], ['STATION', '인근지하철역']]],
+			['RRN', '주민등록번호', 'secret'], ['PHONE', '전화번호'], ['EMAIL', '이메일'], ['ADDR', '주소(시도)'], ['STATION', '인근지하철역'], ['EMPLY_ID', '로그인 계정']]],
 		['일자', [['JOIN_DT', '입사일자', 'date'], ['LEAVE_DT', '퇴사일자', 'date']]],
 		['학력', [['HS_NM', '고교'], ['HS_MAJOR', '고교 전공'], ['HS_GRAD', '고교 졸업'], ['UNIV_NM', '대학·대학원'], ['UNIV_MAJOR', '전공'], ['UNIV_GRAD', '졸업년월'], ['FINAL_EDU', '최종학력']]],
 		['병역', [['MIL_IN_DT', '입대일'], ['MIL_OUT_DT', '전역일'], ['MIL_EXEMPT', '면제사유']]],
@@ -412,6 +412,18 @@
 			DOCS.forEach(function(d) { $d.append(docRow(r, d)); });
 		}
 		if (!docs || docs.sq !== r.STAFF_SQ) loadDocs(r.STAFF_SQ);
+		$b.append('<div class="hr-section">보유 장비</div>');
+		var $eq = $('<div class="small" id="staffEquipment">').appendTo($b);
+		loadEquipment(r.STAFF_SQ, function(list) {
+			$eq.empty();
+			if (!list.length) $eq.addClass('text-muted').text('대여 중인 장비가 없습니다.');
+			list.forEach(function(e) { $eq.append($('<div>').text(e.EQP_NO + ' · ' + (EQ_TYPE[e.TYPE_CD] || e.TYPE_CD) + ' · ' + (e.MODEL_NM || '') + ' · ' + (e.START_DT || '') + ' ~')); });
+		});
+	}
+
+	var EQ_TYPE = { NB: '노트북', MT: '모니터', DT: '데스크탑', MU: '마우스', KB: '키보드' };
+	function loadEquipment(sq, done) {
+		hrPost('/admin/equipment/staffEquipmentData.do', { STAFF_SQ: sq }, function(res) { done(res.result || []); });
 	}
 
 	// ── 영업정보/수행이력 탭 ──
@@ -743,7 +755,25 @@
 
 	function toggleStatus() {
 		var r = find(opened), to = r.STATUS_CD === 'WORK' ? 'LEFT' : 'WORK';
-		bootbox.confirm(r.STAFF_NM + ' 님을 ' + STATUS[to] + '(으)로 옮길까요?' + (to === 'LEFT' && !r.LEAVE_DT ? ' 퇴사일자는 인사카드에서 입력해 주세요.' : ''), function(ok) {
+		// 미반납 장비는 안내만 하고 퇴사 처리를 막지는 않는다
+		loadEquipment(r.STAFF_SQ, function(list) {
+			bootbox.confirm((to === 'LEFT' && list.length ? '반납하지 않은 장비가 ' + list.length + '대 있습니다. ' : '') + r.STAFF_NM + ' 님을 ' + STATUS[to] + '(으)로 옮길까요?' + (to === 'LEFT' && !r.LEAVE_DT ? ' 퇴사일자는 인사카드에서 입력해 주세요.' : ''), function(ok) {
+				if (!ok) return;
+				hrPost('/admin/staff/saveStaffFieldData.do', { STAFF_SQ: r.STAFF_SQ, FIELD: 'STATUS_CD', VALUE: to }, function() {
+					r.STATUS_CD = to;
+					current = to;
+					paintCard();
+					render();
+				});
+			});
+		});
+	}
+
+	// 재직/퇴사 전환은 toggleStatus, 나머지 한 방향은 이 버튼이 맡는다
+	function moveWait() {
+		var r = find(opened), to = r.STATUS_CD === 'WAIT' ? 'LEFT' : 'WAIT';
+		loadEquipment(r.STAFF_SQ, function(list) {
+		bootbox.confirm((to === 'LEFT' && list.length ? '반납하지 않은 장비가 ' + list.length + '대 있습니다. ' : '') + r.STAFF_NM + ' 님을 ' + STATUS[to] + '(으)로 옮길까요?', function(ok) {
 			if (!ok) return;
 			hrPost('/admin/staff/saveStaffFieldData.do', { STAFF_SQ: r.STAFF_SQ, FIELD: 'STATUS_CD', VALUE: to }, function() {
 				r.STATUS_CD = to;
@@ -752,19 +782,6 @@
 				render();
 			});
 		});
-	}
-
-	// 재직/퇴사 전환은 toggleStatus, 나머지 한 방향은 이 버튼이 맡는다
-	function moveWait() {
-		var r = find(opened), to = r.STATUS_CD === 'WAIT' ? 'LEFT' : 'WAIT';
-		bootbox.confirm(r.STAFF_NM + ' 님을 ' + STATUS[to] + '(으)로 옮길까요?', function(ok) {
-			if (!ok) return;
-			hrPost('/admin/staff/saveStaffFieldData.do', { STAFF_SQ: r.STAFF_SQ, FIELD: 'STATUS_CD', VALUE: to }, function() {
-				r.STATUS_CD = to;
-				current = to;
-				paintCard();
-				render();
-			});
 		});
 	}
 

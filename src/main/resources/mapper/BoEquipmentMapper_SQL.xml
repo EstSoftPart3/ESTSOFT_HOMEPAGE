@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 장비관리. 표는 sql/equipment.sql -->
+<mapper namespace="com.eep.mapper.BoEquipmentMapper">
+
+	<select id="selectEquipmentList" resultType="hashMap">
+		SELECT e.EQP_SQ, e.EQP_NO, e.TYPE_CD, e.BRAND_NM, e.MODEL_NM, e.SERIAL_NO, e.CPU_SPEC, e.MEM_SPEC, e.SSD_SPEC, e.HDD_SPEC, e.LAN_YN, e.ETC_TXT
+			, e.STATUS_CD, e.LOCATION_NM, e.AUDIT_EXCL_YN, DATE_FORMAT(e.DISPOSE_DT, '%Y-%m-%d') AS DISPOSE_DT, e.DISPOSE_REASON
+			, DATE_FORMAT(e.LAST_CHECK_DT, '%Y-%m-%d') AS LAST_CHECK_DT, e.LAST_CHECK_NM, e.MEMO
+			, r.RENT_SQ, r.RENT_GROUP, r.STAFF_SQ, r.HOLDER_NM, DATE_FORMAT(r.START_DT, '%Y-%m-%d') AS START_DT, r.PURPOSE_NM, r.PROJECT_NM
+			, s.STATUS_CD AS STAFF_STATUS, s.EMPLY_ID
+			, (SELECT COUNT(*) FROM TB_EEP_EQP_ISSUE_H i WHERE i.EQP_SQ = e.EQP_SQ AND i.CLOSE_DT IS NULL) AS OPEN_ISSUE
+			, CASE WHEN r.RENT_GROUP IS NOT NULL AND sg.SIGN_SQ IS NULL THEN 'Y' ELSE 'N' END AS SIGN_WAIT
+			, d.RESULT_CD AS AUDIT_RESULT
+		FROM TB_EEP_EQP_M e
+		LEFT JOIN TB_EEP_EQP_RENT_H r ON r.EQP_SQ = e.EQP_SQ AND r.OPEN_YN = 'Y'
+		LEFT JOIN TB_EEP_HR_STAFF_M s ON s.STAFF_SQ = r.STAFF_SQ
+		LEFT JOIN TB_EEP_EQP_SIGN_H sg ON sg.RENT_GROUP = r.RENT_GROUP
+		LEFT JOIN TB_EEP_EQP_AUDIT_M m ON m.STATUS_CD = 'OPEN'
+		LEFT JOIN TB_EEP_EQP_AUDIT_D d ON d.AUDIT_SQ = m.AUDIT_SQ AND d.EQP_SQ = e.EQP_SQ
+		ORDER BY e.TYPE_CD, e.EQP_NO, e.EQP_SQ
+	</select>
+
+	<select id="selectStaffOptions" resultType="hashMap">
+		SELECT STAFF_SQ, STAFF_NM, DEPT_NM, ORG_NM, EMPLY_ID FROM TB_EEP_HR_STAFF_M WHERE STATUS_CD &lt;&gt; 'LEFT' ORDER BY STAFF_NM
+	</select>
+
+	<select id="selectActiveNos" parameterType="hashMap" resultType="string">
+		SELECT EQP_NO FROM TB_EEP_EQP_M WHERE TYPE_CD = #{TYPE_CD} AND STATUS_CD IN ('RENT', 'STOCK')
+	</select>
+
+	<insert id="insertEquipment" parameterType="hashMap" useGeneratedKeys="true" keyProperty="EQP_SQ">
+		INSERT INTO TB_EEP_EQP_M (EQP_NO, TYPE_CD, BRAND_NM, MODEL_NM, SERIAL_NO, LOCATION_NM, STATUS_CD, UPDT_EMPLY_ID, UPDT_DT)
+		VALUES (#{EQP_NO}, #{TYPE_CD}, NULLIF(#{BRAND_NM}, ''), NULLIF(#{MODEL_NM}, ''), NULLIF(#{SERIAL_NO}, ''), NULLIF(#{LOCATION_NM}, ''), 'STOCK', #{UPDT_EMPLY_ID}, NOW())
+	</insert>
+
+	<update id="updateEquipmentField" parameterType="hashMap">
+		UPDATE TB_EEP_EQP_M SET ${FIELD} = NULLIF(#{VALUE}, ''), UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW() WHERE EQP_SQ = #{EQP_SQ}
+	</update>
+
+	<delete id="deleteEquipment" parameterType="hashMap">
+		DELETE FROM TB_EEP_EQP_M WHERE EQP_SQ = #{EQP_SQ} AND NOT EXISTS (SELECT 1 FROM TB_EEP_EQP_RENT_H r WHERE r.EQP_SQ = #{EQP_SQ})
+	</delete>
+
+	<update id="updateEquipmentRented" parameterType="hashMap">
+		UPDATE TB_EEP_EQP_M SET STATUS_CD = 'RENT', LOCATION_NM = NULL, UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW() WHERE EQP_SQ = #{EQP_SQ} AND STATUS_CD = 'STOCK'
+	</update>
+
+	<update id="updateEquipmentDisposed" parameterType="hashMap">
+		UPDATE TB_EEP_EQP_M SET STATUS_CD = #{STATUS_CD}, DISPOSE_DT = #{DISPOSE_DT}, DISPOSE_REASON = NULLIF(#{DISPOSE_REASON}, ''), UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE EQP_SQ = #{EQP_SQ} AND STATUS_CD IN <foreach collection="FROM" item="s" open="(" separator="," close=")">#{s}</foreach>
+	</update>
+
+	<select id="selectRentList" parameterType="hashMap" resultType="hashMap">
+		SELECT r.RENT_SQ, r.EQP_SQ, r.STAFF_SQ, r.HOLDER_NM, DATE_FORMAT(r.START_DT, '%Y-%m-%d') AS START_DT, DATE_FORMAT(r.END_DT, '%Y-%m-%d') AS END_DT, r.OPEN_YN
+			, r.PURPOSE_NM, r.PROJECT_NM, r.HANDOVER_NM, r.RENT_GROUP, r.RETURN_FORMAT_YN, r.RETURN_LABEL_YN, sg.SIGN_TP, DATE_FORMAT(sg.SIGN_DT, '%Y-%m-%d') AS SIGN_DT
+		FROM TB_EEP_EQP_RENT_H r
+		LEFT JOIN TB_EEP_EQP_SIGN_H sg ON sg.RENT_GROUP = r.RENT_GROUP
+		WHERE r.EQP_SQ = #{EQP_SQ}
+		ORDER BY r.OPEN_YN DESC, r.START_DT DESC, r.RENT_SQ DESC
+	</select>
+
+	<insert id="insertRent" parameterType="hashMap">
+		INSERT INTO TB_EEP_EQP_RENT_H (EQP_SQ, STAFF_SQ, HOLDER_NM, START_DT, OPEN_YN, PURPOSE_NM, PROJECT_NM, HANDOVER_NM, RENT_GROUP, REG_EMPLY_ID, REG_DT)
+		VALUES (#{EQP_SQ}, NULLIF(#{STAFF_SQ}, ''), #{HOLDER_NM}, #{START_DT}, 'Y', NULLIF(#{PURPOSE_NM}, ''), NULLIF(#{PROJECT_NM}, ''), NULLIF(#{HANDOVER_NM}, ''), #{RENT_GROUP}, #{UPDT_EMPLY_ID}, NOW())
+	</insert>
+
+	<update id="updateRentField" parameterType="hashMap">
+		UPDATE TB_EEP_EQP_RENT_H SET ${FIELD} = NULLIF(#{VALUE}, '') WHERE RENT_SQ = #{RENT_SQ}
+	</update>
+
+	<update id="closeRent" parameterType="hashMap">
+		UPDATE TB_EEP_EQP_RENT_H SET OPEN_YN = 'N', END_DT = #{END_DT}, RETURN_FORMAT_YN = #{RETURN_FORMAT_YN}, RETURN_LABEL_YN = #{RETURN_LABEL_YN}
+		WHERE RENT_SQ = #{RENT_SQ} AND OPEN_YN = 'Y' AND (START_DT IS NULL OR START_DT &lt;= #{END_DT})
+	</update>
+
+	<update id="updateEquipmentReturned" parameterType="hashMap">
+		UPDATE TB_EEP_EQP_M SET STATUS_CD = 'STOCK', LOCATION_NM = NULLIF(#{LOCATION_NM}, ''), UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE EQP_SQ = (SELECT EQP_SQ FROM TB_EEP_EQP_RENT_H WHERE RENT_SQ = #{RENT_SQ}) AND STATUS_CD = 'RENT'
+	</update>
+
+	<insert id="insertIssueByRent" parameterType="hashMap">
+		INSERT INTO TB_EEP_EQP_ISSUE_H (EQP_SQ, CONTENT, OPEN_DT, REG_EMPLY_ID)
+		SELECT EQP_SQ, #{CONTENT}, #{END_DT}, #{UPDT_EMPLY_ID} FROM TB_EEP_EQP_RENT_H WHERE RENT_SQ = #{RENT_SQ}
+	</insert>
+
+	<update id="closeRentByEquipment" parameterType="hashMap">
+		UPDATE TB_EEP_EQP_RENT_H SET OPEN_YN = 'N', END_DT = #{DISPOSE_DT} WHERE EQP_SQ = #{EQP_SQ} AND OPEN_YN = 'Y'
+	</update>
+
+	<select id="selectIssueList" parameterType="hashMap" resultType="hashMap">
+		SELECT ISSUE_SQ, EQP_SQ, CONTENT, DATE_FORMAT(OPEN_DT, '%Y-%m-%d') AS OPEN_DT, DATE_FORMAT(CLOSE_DT, '%Y-%m-%d') AS CLOSE_DT, CLOSE_NOTE
+		FROM TB_EEP_EQP_ISSUE_H WHERE EQP_SQ = #{EQP_SQ} ORDER BY (CLOSE_DT IS NULL) DESC, OPEN_DT DESC, ISSUE_SQ DESC
+	</select>
+
+	<insert id="insertIssue" parameterType="hashMap">
+		INSERT INTO TB_EEP_EQP_ISSUE_H (EQP_SQ, CONTENT, OPEN_DT, REG_EMPLY_ID) VALUES (#{EQP_SQ}, #{CONTENT}, CURDATE(), #{UPDT_EMPLY_ID})
+	</insert>
+
+	<update id="closeIssue" parameterType="hashMap">
+		UPDATE TB_EEP_EQP_ISSUE_H SET CLOSE_DT = CURDATE(), CLOSE_NOTE = NULLIF(#{CLOSE_NOTE}, '') WHERE ISSUE_SQ = #{ISSUE_SQ} AND CLOSE_DT IS NULL
+	</update>
+
+	<select id="selectFileList" parameterType="hashMap" resultType="hashMap">
+		SELECT FILE_SQ, EQP_SQ, DOC_CD, FILE_ID, FILE_NM, WEB_LINK FROM TB_EEP_EQP_FILE_R WHERE EQP_SQ = #{EQP_SQ} ORDER BY FILE_SQ DESC
+	</select>
+
+	<insert id="insertFile" parameterType="hashMap">
+		INSERT INTO TB_EEP_EQP_FILE_R (EQP_SQ, DOC_CD, FILE_ID, FILE_NM, WEB_LINK, REG_EMPLY_ID, REG_DT) VALUES (#{EQP_SQ}, #{DOC_CD}, #{FILE_ID}, #{FILE_NM}, #{WEB_LINK}, #{UPDT_EMPLY_ID}, NOW())
+	</insert>
+
+	<delete id="deleteFile" parameterType="hashMap">
+		DELETE FROM TB_EEP_EQP_FILE_R WHERE FILE_SQ = #{FILE_SQ} AND EQP_SQ = #{EQP_SQ}
+	</delete>
+
+	<select id="selectStaffEquipment" parameterType="hashMap" resultType="hashMap">
+		SELECT e.EQP_NO, e.TYPE_CD, e.MODEL_NM, DATE_FORMAT(r.START_DT, '%Y-%m-%d') AS START_DT
+		FROM TB_EEP_EQP_RENT_H r JOIN TB_EEP_EQP_M e ON e.EQP_SQ = r.EQP_SQ
+		WHERE r.STAFF_SQ = #{STAFF_SQ} AND r.OPEN_YN = 'Y' ORDER BY e.TYPE_CD, e.EQP_NO
+	</select>
+
+	<select id="selectOpenAudit" resultType="hashMap">
+		SELECT AUDIT_SQ, AUDIT_YM FROM TB_EEP_EQP_AUDIT_M WHERE STATUS_CD = 'OPEN' ORDER BY AUDIT_SQ DESC LIMIT 1
+	</select>
+
+	<select id="selectAuditList" resultType="hashMap">
+		SELECT m.AUDIT_SQ, m.AUDIT_YM, m.STATUS_CD, COUNT(d.EQP_SQ) AS TOTAL, COALESCE(SUM(d.RESULT_CD = 'OK'), 0) AS OK_CNT, COALESCE(SUM(d.RESULT_CD = 'BAD'), 0) AS BAD_CNT
+		FROM TB_EEP_EQP_AUDIT_M m LEFT JOIN TB_EEP_EQP_AUDIT_D d ON d.AUDIT_SQ = m.AUDIT_SQ
+		GROUP BY m.AUDIT_SQ, m.AUDIT_YM, m.STATUS_CD ORDER BY m.AUDIT_YM DESC
+	</select>
+
+	<insert id="insertAudit" parameterType="hashMap" useGeneratedKeys="true" keyProperty="AUDIT_SQ">
+		INSERT INTO TB_EEP_EQP_AUDIT_M (AUDIT_YM, STATUS_CD, REG_EMPLY_ID) VALUES (#{AUDIT_YM}, 'OPEN', #{UPDT_EMPLY_ID})
+	</insert>
+
+	<insert id="insertAuditDetail" parameterType="hashMap">
+		INSERT INTO TB_EEP_EQP_AUDIT_D (AUDIT_SQ, EQP_SQ, STAFF_SQ, HOLDER_NM, GUEST_YN, RESULT_CD)
+		SELECT #{AUDIT_SQ}, e.EQP_SQ, r.STAFF_SQ, COALESCE(r.HOLDER_NM, e.LOCATION_NM), CASE WHEN s.EMPLY_ID IS NULL THEN 'Y' ELSE 'N' END, 'NONE'
+		FROM TB_EEP_EQP_M e
+		LEFT JOIN TB_EEP_EQP_RENT_H r ON r.EQP_SQ = e.EQP_SQ AND r.OPEN_YN = 'Y'
+		LEFT JOIN TB_EEP_HR_STAFF_M s ON s.STAFF_SQ = r.STAFF_SQ
+		WHERE e.STATUS_CD IN ('RENT', 'STOCK') AND e.AUDIT_EXCL_YN = 'N'
+	</insert>
+
+	<select id="selectAuditDetail" parameterType="hashMap" resultType="hashMap">
+		SELECT d.AUDIT_SQ, d.EQP_SQ, d.STAFF_SQ, d.HOLDER_NM, d.GUEST_YN, d.RESULT_CD, d.NOTE, d.RESPONSE_CD, d.CHECK_EMPLY_ID, DATE_FORMAT(d.CHECK_DT, '%m-%d') AS CHECK_DT
+			, e.EQP_NO, e.TYPE_CD, e.MODEL_NM, e.STATUS_CD, s.DEPT_NM
+			, (SELECT GROUP_CONCAT(i.CONTENT SEPARATOR ' / ') FROM TB_EEP_EQP_ISSUE_H i WHERE i.EQP_SQ = d.EQP_SQ AND i.CLOSE_DT IS NULL) AS OPEN_ISSUES
+		FROM TB_EEP_EQP_AUDIT_D d
+		JOIN TB_EEP_EQP_M e ON e.EQP_SQ = d.EQP_SQ
+		LEFT JOIN TB_EEP_HR_STAFF_M s ON s.STAFF_SQ = d.STAFF_SQ
+		WHERE d.AUDIT_SQ = #{AUDIT_SQ}
+		ORDER BY e.STATUS_CD, d.HOLDER_NM, e.TYPE_CD, e.EQP_NO
+	</select>
+
+	<update id="updateAuditResult" parameterType="hashMap">
+		UPDATE TB_EEP_EQP_AUDIT_D d JOIN TB_EEP_EQP_AUDIT_M m ON m.AUDIT_SQ = d.AUDIT_SQ
+		SET d.RESULT_CD = #{RESULT_CD}, d.NOTE = NULLIF(#{NOTE}, ''), d.RESPONSE_CD = 'ADMIN', d.CHECK_EMPLY_ID = #{UPDT_EMPLY_ID}, d.CHECK_DT = NOW()
+		WHERE d.AUDIT_SQ = #{AUDIT_SQ} AND d.EQP_SQ = #{EQP_SQ} AND m.STATUS_CD = 'OPEN'
+	</update>
+
+	<update id="updateAuditSelf" parameterType="hashMap">
+		UPDATE TB_EEP_EQP_AUDIT_D d JOIN TB_EEP_EQP_AUDIT_M m ON m.AUDIT_SQ = d.AUDIT_SQ
+		SET d.RESULT_CD = #{RESULT_CD}, d.NOTE = NULLIF(#{NOTE}, ''), d.RESPONSE_CD = 'SELF', d.CHECK_EMPLY_ID = #{UPDT_EMPLY_ID}, d.CHECK_DT = NOW()
+		WHERE d.EQP_SQ = #{EQP_SQ} AND d.STAFF_SQ = #{STAFF_SQ} AND d.GUEST_YN = 'N' AND m.STATUS_CD = 'OPEN'
+	</update>
+
+	<update id="closeAudit" parameterType="hashMap">
+		UPDATE TB_EEP_EQP_AUDIT_M SET STATUS_CD = 'CLOSED', CLOSE_DT = NOW() WHERE AUDIT_SQ = #{AUDIT_SQ} AND STATUS_CD = 'OPEN'
+	</update>
+
+	<update id="updateLastCheck" parameterType="hashMap">
+		UPDATE TB_EEP_EQP_M e JOIN TB_EEP_EQP_AUDIT_D d ON d.EQP_SQ = e.EQP_SQ
+		SET e.LAST_CHECK_DT = DATE(d.CHECK_DT), e.LAST_CHECK_NM = d.CHECK_EMPLY_ID
+		WHERE d.AUDIT_SQ = #{AUDIT_SQ} AND d.RESULT_CD &lt;&gt; 'NONE'
+	</update>
+
+	<select id="selectGroupRents" parameterType="hashMap" resultType="hashMap">
+		SELECT r.RENT_SQ, r.STAFF_SQ, r.HOLDER_NM, DATE_FORMAT(r.START_DT, '%Y-%m-%d') AS START_DT, e.EQP_NO, e.TYPE_CD, e.MODEL_NM, e.SERIAL_NO, s.PHONE, s.EMPLY_ID
+		FROM TB_EEP_EQP_RENT_H r
+		JOIN TB_EEP_EQP_M e ON e.EQP_SQ = r.EQP_SQ
+		LEFT JOIN TB_EEP_HR_STAFF_M s ON s.STAFF_SQ = r.STAFF_SQ
+		WHERE r.RENT_GROUP = #{RENT_GROUP}
+		ORDER BY e.TYPE_CD, e.EQP_NO
+	</select>
+
+	<select id="selectSign" parameterType="hashMap" resultType="hashMap">
+		SELECT SIGN_SQ, RENT_GROUP, SIGN_TP, DOC_TEXT, SIGN_IMG, FILE_NM, WEB_LINK, SIGNER_ID, SIGNER_KIND, DATE_FORMAT(SIGN_DT, '%Y-%m-%d %H:%i') AS SIGN_DT
+		FROM TB_EEP_EQP_SIGN_H WHERE RENT_GROUP = #{RENT_GROUP}
+	</select>
+
+	<insert id="insertSign" parameterType="hashMap">
+		INSERT INTO TB_EEP_EQP_SIGN_H (RENT_GROUP, SIGN_TP, DOC_TEXT, SIGN_IMG, FILE_ID, FILE_NM, WEB_LINK, SIGNER_ID, SIGNER_KIND, SIGN_DT, SIGN_IP)
+		VALUES (#{RENT_GROUP}, #{SIGN_TP}, #{DOC_TEXT}, #{SIGN_IMG}, #{FILE_ID}, #{FILE_NM}, #{WEB_LINK}, #{SIGNER_ID}, #{SIGNER_KIND}, NOW(), #{SIGN_IP})
+	</insert>
+
+	<select id="selectSeal" resultType="string">
+		SELECT SEAL_IMG FROM TB_EEP_EQP_SEAL_M WHERE SEAL_ID = 1
+	</select>
+
+	<insert id="saveSeal" parameterType="hashMap">
+		INSERT INTO TB_EEP_EQP_SEAL_M (SEAL_ID, SEAL_IMG, UPDT_EMPLY_ID, UPDT_DT) VALUES (1, #{SEAL_IMG}, #{UPDT_EMPLY_ID}, NOW())
+		ON DUPLICATE KEY UPDATE SEAL_IMG = VALUES(SEAL_IMG), UPDT_EMPLY_ID = VALUES(UPDT_EMPLY_ID), UPDT_DT = NOW()
+	</insert>
+
+	<select id="selectStaffByLogin" parameterType="hashMap" resultType="hashMap">
+		SELECT STAFF_SQ, STAFF_NM, DEPT_NM FROM TB_EEP_HR_STAFF_M WHERE EMPLY_ID = #{EMPLY_ID}
+	</select>
+
+	<select id="selectMyRents" parameterType="hashMap" resultType="hashMap">
+		SELECT r.RENT_SQ, r.RENT_GROUP, r.EQP_SQ, DATE_FORMAT(r.START_DT, '%Y-%m-%d') AS START_DT, e.EQP_NO, e.TYPE_CD, e.MODEL_NM
+			, CASE WHEN r.RENT_GROUP IS NOT NULL AND sg.SIGN_SQ IS NULL THEN 'Y' ELSE 'N' END AS SIGN_WAIT
+			, m.AUDIT_YM, d.RESULT_CD, d.NOTE
+		FROM TB_EEP_EQP_RENT_H r
+		JOIN TB_EEP_EQP_M e ON e.EQP_SQ = r.EQP_SQ
+		LEFT JOIN TB_EEP_EQP_SIGN_H sg ON sg.RENT_GROUP = r.RENT_GROUP
+		LEFT JOIN TB_EEP_EQP_AUDIT_M m ON m.STATUS_CD = 'OPEN'
+		LEFT JOIN TB_EEP_EQP_AUDIT_D d ON d.AUDIT_SQ = m.AUDIT_SQ AND d.EQP_SQ = r.EQP_SQ AND d.STAFF_SQ = r.STAFF_SQ AND d.GUEST_YN = 'N'
+		WHERE r.STAFF_SQ = #{STAFF_SQ} AND r.OPEN_YN = 'Y'
+		ORDER BY e.TYPE_CD, e.EQP_NO
+	</select>
+</mapper>

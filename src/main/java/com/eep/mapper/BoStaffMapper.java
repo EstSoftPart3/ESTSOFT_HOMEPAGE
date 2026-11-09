@@ -18,6 +18,7 @@ public interface BoStaffMapper {
 	public int insertStaff(Map<String, Object> param);							//등록 (STATUS_CD, STAFF_NM)
 	public int updateStaffField(Map<String, Object> param);						//한 칸 수정 (FIELD 는 서비스의 허용 목록)
 	public int deleteStaff(Map<String, Object> param);							//삭제
+	public Map<String, Object> selectEmplyLinkCheck(Map<String, Object> param);	//VALUE 계정의 존재 수(ACCOUNT_CNT), STAFF_SQ 외 연결 수(TAKEN_CNT)
 
 	public Map<String, Object> selectStaffOne(Map<String, Object> param);		//STAFF_SQ 한 명 (암호문 포함, 서버 안에서만 쓴다)
 	public int updateStaffFolder(Map<String, Object> param);					//STAFF_SQ, DRIVE_FOLDER_ID

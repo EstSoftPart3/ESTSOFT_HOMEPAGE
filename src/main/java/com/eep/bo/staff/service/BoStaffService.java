@@ -38,7 +38,7 @@ public class BoStaffService {
 			"DOC_EDU", "DOC_NEP", "DOC_PRIV", "DOC_CRIME", "DOC_MIL",
 			"EMG_REL1", "EMG_TEL1", "EMG_REL2", "EMG_TEL2", "PREV_CAREER", "HOBBY", "LANG_SKILL", "SPECIALTY", "MEMO",
 			"SCORE", "GAPIL_YN", "AUTO_APLY_YN", "GRADE_NM", "REAL_CAREER", "WISH_PRICE", "SK_FE", "SK_BE", "WORK_DOMAIN", "WISH_LOC",
-			"ETC1", "SK_LANG", "REPORT", "SK_FW", "SK_DB", "SK_IDE", "SK_VCS", "ETC2", "EXPERTISE", "SK_OS"));
+			"ETC1", "SK_LANG", "REPORT", "SK_FW", "SK_DB", "SK_IDE", "SK_VCS", "ETC2", "EXPERTISE", "SK_OS", "EMPLY_ID"));
 
 	@Autowired
 	private BoStaffMapper BoStaffMapper;
@@ -87,6 +87,14 @@ public class BoStaffService {
 			throw new IllegalArgumentException("성명을 입력해 주세요.");
 		} else if (("JOIN_DT".equals(field) || "LEAVE_DT".equals(field)) && !value.isEmpty()) {
 			checkDate(value);
+		} else if ("EMPLY_ID".equals(field) && !value.isEmpty()) {
+			Map<String, Object> check = BoStaffMapper.selectEmplyLinkCheck(param);
+			if (((Number) check.get("ACCOUNT_CNT")).intValue() == 0) {
+				throw new IllegalArgumentException("없는 로그인 계정입니다.");
+			}
+			if (((Number) check.get("TAKEN_CNT")).intValue() > 0) {
+				throw new IllegalArgumentException("다른 인사카드에 연결된 계정입니다.");
+			}
 		}
 		BoStaffMapper.updateStaffField(param);
 	}

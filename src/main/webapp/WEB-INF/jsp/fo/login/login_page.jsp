@@ -127,15 +127,10 @@
       				message: "로그인 성공했습니다. 메인 페이지로 되돌아갑니다.",
       				locale: 'kr',
       				callback: function() {
-      					
-// 						var referrer = document.referrer;
-
-//       					if(referrer.indexOf("/eep/mainPage.do") != -1){
-      						location.href = '/eep/mainPage.do';
-//       					}else{
-//       						location.href = referrer;
-//       					}
-      					
+      					// 장비 확인이나 증서 서명이 남아 있으면 내 장비로 보낸다. 조회가 실패해도 로그인은 막지 않는다
+      					$.post('/eep/equipment/pendingData.do', function(res) {
+      						location.href = res.count > 0 ? '/eep/equipment/myEquipment.do' : '/eep/mainPage.do';
+      					}).fail(function() { location.href = '/eep/mainPage.do'; });
       				} });
 
       	 	} else {
