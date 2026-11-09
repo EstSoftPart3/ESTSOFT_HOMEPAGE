@@ -54,6 +54,7 @@
       <span class="brand-text font-weight-light" style="font-size: 12px;">&nbsp;&nbsp;&nbsp;&nbsp;
       	${loginInfo.loginInfo[0].emplyNm}(${loginInfo.loginInfo[0].emplyId})님 접속
       	&nbsp;&nbsp;<button type="button" class="btn-sm-sm btn-danger" onclick="logout();">logout</button>
+      	<button type="button" class="btn-sm-sm btn-secondary" title="비밀번호 변경" aria-label="비밀번호 변경" onclick="location.href='/eep/account/changePassword.do'; return false;"><i class="fas fa-key"></i></button>
       </span>
     </a>
     

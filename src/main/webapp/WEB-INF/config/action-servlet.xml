@@ -30,6 +30,20 @@
 			</mvc:interceptor>
 		</mvc:interceptors>
 		
+		<!-- 초기 비밀번호 변경 강제 -->
+		<mvc:interceptors>
+			<mvc:interceptor>
+				<mvc:mapping path="/admin/**" />
+				<mvc:mapping path="/eep/**" />
+				<mvc:exclude-mapping path="/admin/login/**"/>
+				<mvc:exclude-mapping path="/admin/logout.do"/>
+				<mvc:exclude-mapping path="/eep/login/**"/>
+				<mvc:exclude-mapping path="/eep/logout.do"/>
+				<mvc:exclude-mapping path="/eep/account/**"/>
+				<bean class="com.common.logger.PasswordInitInterceptor"></bean>
+			</mvc:interceptor>
+		</mvc:interceptors>
+
 		<!-- 홈페이지  interceptor  -->
 		<!-- <mvc:interceptors>
 			<mvc:interceptor>

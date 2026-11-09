@@ -99,6 +99,14 @@ public class boLoggerInterceptor extends HandlerInterceptorAdapter {
 			return false;
 		}
 
+		// 로그인 중에 중지·퇴사되거나 직원 계정으로 바뀌어도 다음 요청부터 막는다
+		if(!systemService.isActiveAdmin(loginId(obj))) {
+			BoLoginRememberService.clear(request, response);
+			session.invalidate();
+			response.sendRedirect("/admin/login/loginPage.do");
+			return false;
+		}
+
 		// Spring 이 핸들러를 찾을 때와 같은 경로로 판단해야 ;나 인코딩으로 우회되지 않는다
 		BoSystemService.Access access = systemService.access(loginId(obj));
 		if(!access.allows(new UrlPathHelper().getLookupPathForRequest(request))) {

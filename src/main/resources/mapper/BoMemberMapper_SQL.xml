@@ -4,180 +4,111 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.eep.mapper.BoMemberMapper">
-	
-    <!-- 직원 목록 -->
-	<select id="memberList" resultType="hashMap">
-		SELECT
-			EMPLY_SQ	          AS mbrSq
-			,EMPLY_ID             AS mbrId
-			,EMPLY_EMAIL		  AS mbrEmail
-			,EMPLY_NM             AS mbrNm
-			,(
 
-				CASE
-					WHEN EMPLY_AUTH_TYP_CD = '1' THEN '일반'
-					WHEN EMPLY_AUTH_TYP_CD = '2' THEN '관리자' 
-					WHEN EMPLY_AUTH_TYP_CD IS NULL THEN '-'
-				END
-			 ) AS mbrAuthCd
-			,(
-			
-				CASE 
-					WHEN EMPLY_SEX_TYP_CD = 'M' THEN '남'
-					WHEN EMPLY_SEX_TYP_CD = 'F' THEN '여' 
-					WHEN EMPLY_SEX_TYP_CD IS NULL THEN '-'
-				END
-			 ) AS mbrSexCd
-			,EMPLY_HOME_ADDR      AS mbrHomeAddr
-			,EMPLY_PH_NUM         AS mbrPhNum
-			,DATE_FORMAT(EMPLY_REG_DT,'%Y-%m-%d')  AS regDt
-			,DATE_FORMAT(EMPLY_UPDT_DT,'%Y-%m-%d')  AS updtDt
-			,USE_YN               AS useYn
-			,(
-				CASE 
-					WHEN DEL_YN			 = 'Y' THEN '탈퇴함'
-					WHEN DEL_YN			 = 'N' THEN '탈퇴안함' 
-					WHEN EMPLY_AUTH_TYP_CD IS NULL THEN '-'
-				END
-			 )AS delYn
-        FROM
-            TB_EEP_EMPLY_M A
-        WHERE 1=1
-         
-          <if test="memberGubun != '' and memberGubun != null">
-          	AND A.EMPLY_AUTH_TYP_CD = #{memberGubun}
-          </if>
-<!--           <if test="memberOut != '' and memberOut != null"> -->
-<!--           	AND A.DEL_YN = #{delYn} -->
-<!--           </if> -->
-          <if test="searchWord != null and searchWord !=''">
-	          <if test="searchGubun == 'mbrNm' and searchWord != null">
-	          	AND A.EMPLY_NM LIKE CONCAT('%',#{searchWord},'%')
-	          </if>
-	          <if test="searchGubun == 'mbrId' and searchWord != null">
-	          	AND A.EMPLY_ID LIKE CONCAT('%',#{searchWord},'%')
-	          </if>
-	          <if test="searchGubun == 'mbrEmail' and searchWord != null">
-	          	AND A.EMPLY_EMAIL LIKE CONCAT('%',#{searchWord},'%')
-	          </if>
-	          <if test="searchGubun == 'mbrPhNum' and searchWord != null">
-	          	AND A.EMPLY_PH_NUM LIKE CONCAT('%',#{searchWord},'%')
-	          </if>
-	       </if>
-	       <if test="delYn != null">
-	       		AND A.DEL_YN = #{delYn}
-	       </if>
-      	ORDER BY EMPLY_SQ DESC
-    </select>
-    
-    <!-- 직원 상세 -->
-    <select id="memberContent" resultType="hashMap">
-      	SELECT
-           EMPLY_SQ	          AS mbrSq
-			,EMPLY_ID             AS mbrId
-			,EMPLY_EMAIL		  AS mbrEmail
-			,EMPLY_NM             AS mbrNm
-			,(
-				CASE
-					WHEN EMPLY_AUTH_TYP_CD = '1' THEN '일반'
-					WHEN EMPLY_AUTH_TYP_CD = '2' THEN '관리자' 
-					WHEN EMPLY_AUTH_TYP_CD IS NULL THEN '-'
-				END
-			 ) AS mbrAuthCd
-			,(
-				CASE 
-					WHEN EMPLY_SEX_TYP_CD = 'M' THEN '남'
-					WHEN EMPLY_SEX_TYP_CD = 'F' THEN '여' 
-					WHEN EMPLY_SEX_TYP_CD IS NULL THEN '-'
-				END
-			 ) AS mbrSexCd
-			,EMPLY_HOME_ADDR      AS mbrHomeAddr
-			,EMPLY_PH_NUM         AS mbrPhNum
-			,EMPLY_RRN			  AS mbrRrn	
-			,DATE_FORMAT(EMPLY_REG_DT,'%Y-%m-%d')  AS regDt
-			,DATE_FORMAT(EMPLY_UPDT_DT,'%Y-%m-%d')  AS updtDt
-			,DEL_YN				  AS delYn
-			,(
-				CASE
-					WHEN USE_YN = 'Y' THEN '사용중'
-					WHEN USE_YN = 'N' THEN '사용중지'
-				END			
-			) AS useYn
-        FROM
-            TB_EEP_EMPLY_M A 
-        WHERE 1=1
-         AND A.EMPLY_SQ = #{mbrSq}
-    </select>
-  
-   <!-- 직원등록 -->
-   <insert id="memberInsert" parameterType="hashMap">
-    	INSERT INTO TB_EEP_EMPLY_M
-        (
-			EMPLY_ID
-			,EMPLY_PW
-			,EMPLY_NM
-			,EMPLY_AUTH_TYP_CD
-			,EMPLY_SEX_TYP_CD
-			,EMPLY_HOME_ADDR
-			,EMPLY_PH_NUM
-			,EMPLY_RRN
-			,EMPLY_EMAIL
-			,USE_YN
-			,EMPLY_REG_DT
-       	) 
-        VALUES
-        (
-			#{mbrId}
-			,#{mbrPasswrd}
-			,#{mbrNm}
-			,#{mbrAuthCd}
-			,#{mbrSexCd}
-			,#{mbrHomeAddr}
-			,#{mbrPhNum}
-			,#{mbrRrn}
-			,#{mbrEmail}
-			,#{useYn}
-			,NOW()
-        )
-    </insert>
-    
-    <!-- 직원 수정 -->
-    <update id="memberUpdate" parameterType="hashMap">
-   		UPDATE TB_EEP_EMPLY_M
-   		<trim prefix="SET" suffixOverrides=",">
-      		<if test="authSq         != null">EMPLY_AUTH_TYP_CD =#{authSq},</if>
-      		<if test="mbrId         != null">EMPLY_ID =#{mbrId},</if>
-      		<if test="mbrNm         != null">EMPLY_NM =#{mbrNm},</if>
-			<if test="mbrEmail       != null">EMPLY_EMAIL =#{mbrEmail},</if>
-<!-- 			<if test="mbrPasswrd     != null">MBR_PASSWRD =#{mbrPasswrd},</if> -->
-			<if test="mbrSexCd       != null">EMPLY_SEX_TYP_CD = #{mbrSexCd},</if>
-			<if test="mbrHomeAddr    != null">EMPLY_HOME_ADDR = #{mbrHomeAddr},</if>
-			<if test="mbrPhNum       != null">EMPLY_PH_NUM = #{mbrPhNum},</if>
-			<if test="mbrRrn       != null">EMPLY_RRN = #{mbrRrn},</if>
-			EMPLY_UPDT_DT = NOW(),
-			<if test="useYn          != null">USE_YN = #{useYn},</if>
-   		</trim>
-   		WHERE EMPLY_SQ = #{mbrSq}
+	<sql id="roleColumns">
+		(SELECT GROUP_CONCAT(R.ROLE_NM ORDER BY R.SORT_NO SEPARATOR ', ') FROM TB_EEP_USER_ROLE_R U JOIN TB_EEP_ROLE_M R ON R.ROLE_SQ = U.ROLE_SQ WHERE U.EMPLY_ID = E.EMPLY_ID) AS ROLE_NMS
+		, (SELECT COUNT(*) FROM TB_EEP_USER_ROLE_R U JOIN TB_EEP_ROLE_M R ON R.ROLE_SQ = U.ROLE_SQ WHERE U.EMPLY_ID = E.EMPLY_ID AND R.ROLE_CD = 'SUPER') AS SUPER_CNT
+	</sql>
+
+	<!-- 주민번호·주소는 목록에 내리지 않는다 -->
+	<select id="selectAccounts" resultType="hashmap">
+		SELECT E.EMPLY_SQ, E.EMPLY_ID, E.EMPLY_NM, E.EMPLY_EMAIL, E.EMPLY_PH_NUM, E.EMPLY_AUTH_TYP_CD
+			, IFNULL(E.USE_YN, 'Y') AS USE_YN, IFNULL(E.DEL_YN, 'N') AS DEL_YN, E.PW_INIT_YN
+			, DATE_FORMAT(E.LAST_LOGIN_DT, '%Y-%m-%d %H:%i') AS LAST_LOGIN_DT, LEFT(E.EMPLY_REG_DT, 10) AS REG_DT
+			, S.STAFF_SQ, S.STATUS_CD AS STAFF_STATUS, S.STAFF_NM
+			, <include refid="roleColumns"/>
+		FROM TB_EEP_EMPLY_M E
+		LEFT JOIN TB_EEP_HR_STAFF_M S ON S.EMPLY_ID = E.EMPLY_ID
+		ORDER BY E.EMPLY_NM, E.EMPLY_SQ
+	</select>
+
+	<select id="selectPendingStaff" resultType="hashmap">
+		SELECT STAFF_SQ, STAFF_NM, EMAIL, ORG_NM, DEPT_NM
+		FROM TB_EEP_HR_STAFF_M
+		WHERE STATUS_CD = 'WORK' AND IFNULL(EMPLY_ID, '') = ''
+		ORDER BY STAFF_NM
+	</select>
+
+	<select id="selectAccount" parameterType="int" resultType="hashmap">
+		SELECT E.EMPLY_SQ, E.EMPLY_ID, E.EMPLY_NM, E.EMPLY_EMAIL, E.EMPLY_PH_NUM, E.EMPLY_HOME_ADDR, E.EMPLY_SEX_TYP_CD, E.EMPLY_RRN, E.EMPLY_AUTH_TYP_CD
+			, IFNULL(E.USE_YN, 'Y') AS USE_YN, IFNULL(E.DEL_YN, 'N') AS DEL_YN, E.PW_INIT_YN
+			, DATE_FORMAT(E.LAST_LOGIN_DT, '%Y-%m-%d %H:%i') AS LAST_LOGIN_DT, LEFT(E.EMPLY_REG_DT, 10) AS REG_DT
+			, S.STAFF_SQ, S.STATUS_CD AS STAFF_STATUS, S.STAFF_NM
+			, <include refid="roleColumns"/>
+		FROM TB_EEP_EMPLY_M E
+		LEFT JOIN TB_EEP_HR_STAFF_M S ON S.EMPLY_ID = E.EMPLY_ID
+		WHERE E.EMPLY_SQ = #{sq}
+	</select>
+
+	<select id="selectStaffForIssue" parameterType="int" resultType="hashmap">
+		SELECT STAFF_SQ, STAFF_NM, EMAIL, PHONE, STATUS_CD, EMPLY_ID FROM TB_EEP_HR_STAFF_M WHERE STAFF_SQ = #{staffSq}
+	</select>
+
+	<select id="countId" parameterType="hashmap" resultType="int">
+		SELECT COUNT(*) FROM TB_EEP_EMPLY_M WHERE EMPLY_ID = #{EMPLY_ID}
+		<if test="EMPLY_SQ != null">AND EMPLY_SQ &lt;&gt; #{EMPLY_SQ}</if>
+	</select>
+
+	<insert id="insertAccount" parameterType="hashmap">
+		INSERT INTO TB_EEP_EMPLY_M (EMPLY_ID, EMPLY_PW, EMPLY_NM, EMPLY_AUTH_TYP_CD, EMPLY_PH_NUM, EMPLY_EMAIL, USE_YN, DEL_YN, PW_INIT_YN, EMPLY_REG_DT)
+		VALUES (#{EMPLY_ID}, #{EMPLY_PW}, #{EMPLY_NM}, #{TYPE_CD}, #{EMPLY_PH_NUM,jdbcType=VARCHAR}, #{EMPLY_EMAIL,jdbcType=VARCHAR}, 'Y', 'N', 'Y', NOW())
+	</insert>
+
+	<update id="updateAccount" parameterType="hashmap">
+		UPDATE TB_EEP_EMPLY_M
+		SET EMPLY_ID = #{EMPLY_ID}, EMPLY_NM = #{EMPLY_NM}, EMPLY_EMAIL = #{EMPLY_EMAIL,jdbcType=VARCHAR}, EMPLY_PH_NUM = #{EMPLY_PH_NUM,jdbcType=VARCHAR}
+			, EMPLY_HOME_ADDR = #{EMPLY_HOME_ADDR,jdbcType=VARCHAR}, EMPLY_SEX_TYP_CD = #{EMPLY_SEX_TYP_CD,jdbcType=VARCHAR}
+			<if test="EMPLY_RRN != null">, EMPLY_RRN = #{EMPLY_RRN}</if>
+			, EMPLY_UPDT_DT = NOW()
+		WHERE EMPLY_SQ = #{EMPLY_SQ}
 	</update>
-	
-	<!-- 직원 비밀번호 초기화 -->
-	<update id="memberPasswdClear" parameterType="hashMap">
-   		UPDATE TB_EEP_EMPLY_M
-   		<trim prefix="SET" suffixOverrides=",">
-			EMPLY_PW =#{mbrPasswrd},
-			EMPLY_UPDT_DT = NOW(),
-   		</trim>
-   		WHERE EMPLY_SQ = #{mbrSq}
+
+	<update id="renameRoleUser" parameterType="hashmap">
+		UPDATE TB_EEP_USER_ROLE_R SET EMPLY_ID = #{EMPLY_ID} WHERE EMPLY_ID = #{OLD_ID}
 	</update>
-	
-	<!-- 직원 탈퇴, 복구 -->
-	<update id="outMember" parameterType="hashMap">
-   		UPDATE TB_EEP_EMPLY_M
-   		SET
-			DEL_YN = #{delYn},
-			EMPLY_UPDT_DT = NOW()
-   		WHERE EMPLY_SQ = #{mbrSq}
+
+	<update id="renameStaffLink" parameterType="hashmap">
+		UPDATE TB_EEP_HR_STAFF_M SET EMPLY_ID = #{EMPLY_ID} WHERE EMPLY_ID = #{OLD_ID}
 	</update>
-	
-	
+
+	<update id="updatePassword" parameterType="hashmap">
+		UPDATE TB_EEP_EMPLY_M SET EMPLY_PW = #{EMPLY_PW}, PW_INIT_YN = 'Y', EMPLY_UPDT_DT = NOW() WHERE EMPLY_SQ = #{EMPLY_SQ}
+	</update>
+
+	<update id="updateStatus" parameterType="hashmap">
+		UPDATE TB_EEP_EMPLY_M
+		SET EMPLY_UPDT_DT = NOW()
+			<if test="USE_YN != null">, USE_YN = #{USE_YN}</if>
+			<if test="DEL_YN != null">, DEL_YN = #{DEL_YN}</if>
+		WHERE EMPLY_SQ = #{EMPLY_SQ}
+	</update>
+
+	<update id="updateType" parameterType="hashmap">
+		UPDATE TB_EEP_EMPLY_M SET EMPLY_AUTH_TYP_CD = #{TYPE_CD}, EMPLY_UPDT_DT = NOW() WHERE EMPLY_SQ = #{EMPLY_SQ}
+	</update>
+
+	<delete id="deleteUserRoles" parameterType="string">
+		DELETE FROM TB_EEP_USER_ROLE_R WHERE EMPLY_ID = #{emplyId}
+	</delete>
+
+	<update id="linkStaff" parameterType="hashmap">
+		UPDATE TB_EEP_HR_STAFF_M SET EMPLY_ID = #{EMPLY_ID} WHERE STAFF_SQ = #{STAFF_SQ} AND IFNULL(EMPLY_ID, '') = ''
+	</update>
+
+	<update id="unlinkStaff" parameterType="string">
+		UPDATE TB_EEP_HR_STAFF_M SET EMPLY_ID = NULL WHERE EMPLY_ID = #{emplyId}
+	</update>
+
+	<select id="selectPasswordHash" parameterType="string" resultType="string">
+		SELECT EMPLY_PW FROM TB_EEP_EMPLY_M WHERE EMPLY_ID = #{emplyId}
+	</select>
+
+	<update id="changePassword" parameterType="hashmap">
+		UPDATE TB_EEP_EMPLY_M SET EMPLY_PW = #{EMPLY_PW}, PW_INIT_YN = 'N', EMPLY_UPDT_DT = NOW() WHERE EMPLY_ID = #{EMPLY_ID}
+	</update>
+
+	<update id="touchLogin" parameterType="string">
+		UPDATE TB_EEP_EMPLY_M SET LAST_LOGIN_DT = NOW() WHERE EMPLY_ID = #{emplyId}
+	</update>
+
 </mapper>

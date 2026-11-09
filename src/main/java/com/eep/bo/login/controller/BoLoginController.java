@@ -18,6 +18,7 @@ import org.springframework.web.servlet.ModelAndView;
 
 import com.eep.bo.login.service.BoLoginRememberService;
 import com.eep.bo.login.service.BoLoginService;
+import com.eep.bo.member.service.BoMemberService;
 
 
 @Controller
@@ -28,7 +29,10 @@ public class BoLoginController {
 
 	@Autowired
 	private BoLoginRememberService BoLoginRememberService;
-	
+
+	@Autowired
+	private BoMemberService memberService;
+
 	@RequestMapping(value = "/admin/login/loginPage.do")
 	public String openLoginPage(HttpServletRequest request, HttpServletResponse response) {
 		if(BoLoginRememberService.restore(request, response)) {
@@ -69,6 +73,7 @@ public class BoLoginController {
 			
 			session.setAttribute("loginInfo", result);	
 			session.setAttribute("emplyAuthCheck", emplyAuthCheck);
+			memberService.touchLogin(emplyId);
 
 			if("Y".equals(param.get("saveId"))) {
 				BoLoginRememberService.saveId(emplyId, request, response);

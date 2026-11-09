@@ -48,6 +48,10 @@ public class BoSystemService {
 		return Access.of(mapper.selectActiveMenus(), mapper.selectMyGrants(emplyId));
 	}
 
+	public boolean isActiveAdmin(String emplyId) {
+		return mapper.countActiveAdmin(emplyId) > 0;
+	}
+
 	public static class Access {
 		public final boolean superUser;
 		public final List<Map<String, Object>> tree = new ArrayList<>();

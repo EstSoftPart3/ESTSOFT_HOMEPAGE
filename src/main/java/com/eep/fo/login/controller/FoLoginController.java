@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.eep.bo.login.service.BoLoginRememberService;
+import com.eep.bo.member.service.BoMemberService;
 import com.eep.fo.login.service.FoLoginService;
 
 @Controller
@@ -26,7 +27,10 @@ public class FoLoginController {
 
 	@Autowired
 	private BoLoginRememberService BoLoginRememberService;
-	
+
+	@Autowired
+	private BoMemberService memberService;
+
 	@RequestMapping(value = "/eep/login/loginPage.do")
 	public String openLoginPage() {
 
@@ -65,7 +69,8 @@ public class FoLoginController {
 			
 			session.setAttribute("loginInfo", result);	
 			session.setAttribute("emplyAuthCheck", emplyAuthCheck);
-		} 
+			memberService.touchLogin(emplyId);
+		}
 
 		return mv;
 
