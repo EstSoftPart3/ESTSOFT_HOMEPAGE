@@ -13,6 +13,13 @@
 	#issueRows .form-control { min-width: 130px; }
 	.ac-secret { font-family: Consolas, monospace; font-size: 14px; font-weight: 700; }
 	.ac-busy { opacity: .5; pointer-events: none; }
+	.ac-filled { background: #dff3f9 !important; }
+	.ac-results { border: 1px solid rgba(17,17,17,.12); border-radius: 6px; max-height: 230px; overflow-y: auto; margin-top: 4px; font-size: 12px; }
+	.ac-result { display: grid; grid-template-columns: 90px 110px minmax(0, 1.4fr) 110px minmax(0, 1fr) 96px; gap: 8px; align-items: center; padding: 5px 8px; cursor: pointer; }
+	.ac-result > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.ac-result:hover, .ac-result.active { background: #dff3f9; }
+	.ac-result[aria-disabled=true] { color: #999; cursor: not-allowed; background: none; }
+	.ac-result-head { font-weight: 600; color: #666; cursor: default; background: #fafbfc !important; }
 	.ac-section { font-size: 13px; font-weight: 700; color: #111; margin: 12px 0 8px; padding-top: 10px; border-top: 1px solid rgba(17,17,17,.1); }
 </style>
 
@@ -53,21 +60,29 @@
 			<div class="modal-header"><h5 class="modal-title" id="cardTitle">계정 카드</h5><button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button></div>
 			<form id="cardForm" onsubmit="saveCard(); return false;">
 				<input type="hidden" name="EMPLY_SQ" id="cSq">
+				<input type="hidden" name="STAFF_SQ" id="cStaffSq">
+				<input type="hidden" name="COPY_RRN" id="cCopyRrn">
 				<div class="modal-body">
+					<div class="mb-2">
+						<label for="cStaffSearch">연결 직원</label>
+						<div id="staffChosen" class="d-flex align-items-center flex-wrap" style="gap:6px" hidden></div>
+						<div id="staffSearchBox">
+							<input id="cStaffSearch" class="form-control form-control-sm" autocomplete="off" maxlength="50" role="combobox" aria-expanded="false" aria-controls="staffResults" placeholder="이름·이메일·전화번호로 직원 검색">
+							<div id="staffResults" class="ac-results" role="listbox" aria-label="직원 검색 결과" hidden></div>
+						</div>
+						<div id="staffNote" class="d-flex align-items-center small mt-1" style="gap:6px" hidden><span class="sys-pill info">인사카드에서 불러옴</span><span class="text-muted">저장을 눌러야 반영됩니다</span><button type="button" class="btn btn-xs btn-outline-secondary" onclick="undoStaff();">되돌리기</button></div>
+					</div>
 					<div class="form-row">
 						<div class="col-md-4 mb-2"><label for="cId">아이디 *</label><input id="cId" name="EMPLY_ID" class="form-control form-control-sm sys-mono" maxlength="50" required></div>
 						<div class="col-md-4 mb-2"><label for="cName">이름 *</label><input id="cName" name="EMPLY_NM" class="form-control form-control-sm" maxlength="50" required></div>
 						<div class="col-md-4 mb-2"><label for="cSex">성별</label><select id="cSex" name="EMPLY_SEX_TYP_CD" class="form-control form-control-sm"><option value=""></option><option value="M">남</option><option value="F">여</option></select></div>
 						<div class="col-md-6 mb-2"><label for="cEmail">이메일</label><input id="cEmail" name="EMPLY_EMAIL" type="email" class="form-control form-control-sm" maxlength="200"></div>
 						<div class="col-md-6 mb-2"><label for="cPhone">휴대전화</label><input id="cPhone" name="EMPLY_PH_NUM" class="form-control form-control-sm" maxlength="50"></div>
-						<div class="col-md-8 mb-2"><label for="cAddr">주소</label><input id="cAddr" name="EMPLY_HOME_ADDR" class="form-control form-control-sm" maxlength="50"></div>
+						<div class="col-md-8 mb-2"><label for="cAddr">주소</label><input id="cAddr" name="EMPLY_HOME_ADDR" class="form-control form-control-sm" maxlength="500"></div>
 						<div class="col-md-4 mb-2"><label for="cRrn">주민등록번호 (바꿀 때만 전체 입력)</label><input id="cRrn" name="EMPLY_RRN" class="form-control form-control-sm" maxlength="14" autocomplete="off"></div>
 					</div>
-					<div class="ac-section">연결·구분</div>
-					<div class="form-row align-items-end">
-						<div class="col-md-6 mb-2"><label for="cStaff">연결 직원</label><div class="d-flex"><select id="cStaff" class="form-control form-control-sm"></select><button type="button" class="btn btn-sm btn-outline-secondary ml-1 text-nowrap" onclick="saveLink();">연결 저장</button></div></div>
-						<div class="col-md-6 mb-2"><label>계정 구분</label><div id="cType" class="d-flex align-items-center flex-wrap" style="gap:6px"></div></div>
-					</div>
+					<div class="ac-section">계정 구분</div>
+					<div id="cType" class="d-flex align-items-center flex-wrap mb-2" style="gap:6px"></div>
 					<div class="ac-section">비밀번호</div>
 					<div class="d-flex align-items-center flex-wrap" style="gap:8px"><span id="cPw"></span><button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetPw();"><i class="fas fa-key" aria-hidden="true"></i> 초기 비밀번호 재발급</button><span class="small text-muted" id="cLogin"></span></div>
 				</div>
@@ -119,6 +134,7 @@
 	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
 	<script>
 	var data = { accounts: [], pending: [], roles: [] }, tab = 'staff', leftOnly = false, card = null, pendingPick = null, done = [];
+	var linked = null, staffRows = [], staffActive = -1, staffTimer = null, staffSeq = 0;
 	var TABS = [['staff', '직원 계정'], ['admin', '관리자 계정'], ['pending', '미발급 재직자'], ['inactive', '중지·퇴사'], ['fix', '정리 필요']];
 
 	$(load);
@@ -127,7 +143,7 @@
 	function load() {
 		hrPost('/admin/member/memberListData.do', {}, function(res) {
 			data = res.result;
-			$('#iRole').empty();
+			$('#iRole').empty().append('<option value="">권한 선택</option>');
 			data.roles.forEach(function(r) { $('#iRole').append($('<option>').val(r.ROLE_SQ).text(r.ROLE_NM)); });
 			render();
 		});
@@ -210,12 +226,8 @@
 		hrPost('/admin/member/memberCardData.do', { EMPLY_SQ: sq }, function(res) {
 			card = res.result;
 			$('#cardTitle').text((card.EMPLY_NM || '이름 없음') + ' · ' + typeText(card) + ' 계정');
-			$('#cSq').val(card.EMPLY_SQ); $('#cId').val(card.EMPLY_ID || ''); $('#cName').val(card.EMPLY_NM || ''); $('#cSex').val(card.EMPLY_SEX_TYP_CD || '');
-			$('#cEmail').val(card.EMPLY_EMAIL || ''); $('#cPhone').val(card.EMPLY_PH_NUM || ''); $('#cAddr').val(card.EMPLY_HOME_ADDR || ''); $('#cRrn').val(card.EMPLY_RRN || '');
-			var $s = $('#cStaff').empty().append('<option value="">연결 안 함</option>');
-			if (card.STAFF_SQ) $s.append($('<option>').val(card.STAFF_SQ).text(card.STAFF_NM + ' (현재)'));
-			data.pending.forEach(function(x) { $s.append($('<option>').val(x.STAFF_SQ).text(x.STAFF_NM + (x.EMAIL ? ' · ' + x.EMAIL : ''))); });
-			$s.val(card.STAFF_SQ || '');
+			$('#cSq').val(card.EMPLY_SQ);
+			fillCard();
 			paintType();
 			$('#cPw').empty().append(pwPill(card));
 			$('#cLogin').text('최근 로그인 ' + (card.LAST_LOGIN_DT || '-'));
@@ -224,13 +236,106 @@
 		});
 	}
 
+	function fillCard() {
+		$('#cId').val(card.EMPLY_ID || ''); $('#cName').val(card.EMPLY_NM || ''); $('#cSex').val(card.EMPLY_SEX_TYP_CD || '');
+		$('#cEmail').val(card.EMPLY_EMAIL || ''); $('#cPhone').val(card.EMPLY_PH_NUM || ''); $('#cAddr').val(card.EMPLY_HOME_ADDR || ''); $('#cRrn').val(card.EMPLY_RRN || '');
+		$('#cardForm .ac-filled').removeClass('ac-filled');
+		$('#cCopyRrn').val('');
+		$('#staffNote').prop('hidden', true);
+		linked = card.STAFF_SQ ? { STAFF_SQ: card.STAFF_SQ, STAFF_NM: card.STAFF_NM, STATUS_CD: card.STAFF_STATUS } : null;
+		paintLink(false);
+	}
+
+	// ── 직원 검색 ──
+
+	function paintLink(searching) {
+		$('#cStaffSq').val(linked ? linked.STAFF_SQ : '');
+		$('#cStaffSearch').val('');
+		closeResults();
+		var $c = $('#staffChosen').empty().prop('hidden', !linked || searching);
+		$('#staffSearchBox').prop('hidden', !!linked && !searching);
+		if (!linked) return;
+		$c.append($('<b>').text(linked.STAFF_NM)).append(linked.STATUS_CD === 'WORK' ? pill('재직', 'info') : pill('퇴사', 'bad'))
+			.append($('<button type="button" class="btn btn-xs btn-outline-secondary">변경</button>').on('click', function() { paintLink(true); $('#cStaffSearch').focus(); }))
+			.append($('<button type="button" class="btn btn-xs btn-outline-secondary">연결 해제</button>').on('click', function() { linked = null; paintLink(false); }));
+	}
+
+	function closeResults() { staffRows = []; staffActive = -1; $('#staffResults').prop('hidden', true).empty(); $('#cStaffSearch').attr('aria-expanded', 'false').removeAttr('aria-activedescendant'); }
+
+	function selectable(s) { return !s.EMPLY_ID || s.EMPLY_ID === card.EMPLY_ID; }
+
+	function renderResults(rows) {
+		staffRows = rows;
+		staffActive = -1;
+		var $r = $('#staffResults').empty().prop('hidden', false);
+		$('#cStaffSearch').attr('aria-expanded', 'true');
+		if (!rows.length) { $r.append('<div class="p-2 text-muted">검색 결과가 없습니다.</div>'); return; }
+		var $h = $('<div class="ac-result ac-result-head" role="presentation">');
+		['이름', '주민번호', '이메일', '전화번호', '소속', '상태'].forEach(function(t) { $h.append($('<span>').text(t)); });
+		$r.append($h);
+		rows.forEach(function(s, i) {
+			var ok = selectable(s), org = [s.ORG_NM, s.DEPT_NM].filter(Boolean).join(' ');
+			var $row = $('<div class="ac-result" role="option">').attr({ id: 'staffOpt' + i, 'aria-selected': 'false', 'aria-disabled': !ok })
+				.append($('<span>').append($('<b>').text(s.STAFF_NM))).append($('<span class="sys-mono">').text(s.RRN || '-')).append($('<span>').text(s.EMAIL || '-')).append($('<span>').text(s.PHONE || '-')).append($('<span>').text(org || '-'))
+				.append($('<span>').append(!ok ? pill('다른 계정 연결') : s.STATUS_CD === 'WORK' ? pill('재직', 'info') : pill('퇴사', 'bad')));
+			if (ok) $row.on('mousedown', function(e) { e.preventDefault(); chooseStaff(s); });
+			$r.append($row);
+		});
+	}
+
+	function moveActive(step) {
+		var n = staffRows.length, i = staffActive;
+		for (var k = 0; k < n; k++) {
+			i = (i + step + n) % n;
+			if (selectable(staffRows[i])) {
+				staffActive = i;
+				$('#staffResults .ac-result').removeClass('active').attr('aria-selected', 'false');
+				var $o = $('#staffOpt' + i).addClass('active').attr('aria-selected', 'true');
+				$o[0].scrollIntoView({ block: 'nearest' });
+				$('#cStaffSearch').attr('aria-activedescendant', 'staffOpt' + i);
+				return;
+			}
+		}
+	}
+
+	function chooseStaff(s) {
+		linked = s;
+		[['#cName', s.STAFF_NM], ['#cSex', s.SEX_CD], ['#cEmail', s.EMAIL], ['#cPhone', s.PHONE], ['#cAddr', s.ADDR], ['#cRrn', s.RRN]].forEach(function(f) {
+			if (f[1]) $(f[0]).val(f[1]).addClass('ac-filled');
+		});
+		$('#cCopyRrn').val(s.RRN ? 'Y' : '');
+		$('#staffNote').prop('hidden', false);
+		paintLink(false);
+	}
+
+	function undoStaff() { fillCard(); }
+
+	// 결과 목록의 스크롤바를 눌러도 입력칸 포커스가 빠져 목록이 닫히지 않게 한다
+	$('#staffResults').on('mousedown', function(e) { e.preventDefault(); });
+
+	$('#cStaffSearch').on('input', function() {
+		clearTimeout(staffTimer);
+		var q = $.trim(this.value), seq = ++staffSeq;
+		if (!q) { closeResults(); return; }
+		staffTimer = setTimeout(function() {
+			hrPost('/admin/member/searchStaffData.do', { KEYWORD: q }, function(res) { if (seq === staffSeq) renderResults(res.result); });
+		}, 250);
+	}).on('keydown', function(e) {
+		if (e.key === 'Enter') { e.preventDefault(); if (staffActive >= 0) chooseStaff(staffRows[staffActive]); }
+		else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (staffRows.length) moveActive(e.key === 'ArrowDown' ? 1 : -1); }
+		else if (e.key === 'Escape' && !$('#staffResults').prop('hidden')) { e.preventDefault(); e.stopPropagation(); closeResults(); }
+	}).on('blur', closeResults);
+
 	function paintType() {
 		var $t = $('#cType').empty().append(pill(typeText(card), 'info'));
 		if (card.ROLE_NMS) $t.append(pill(card.ROLE_NMS));
 		if (card.EMPLY_AUTH_TYP_CD !== '2') {
-			var $role = $('<select class="form-control form-control-sm" style="width:auto" aria-label="관리자 권한">');
+			var $role = $('<select class="form-control form-control-sm" style="width:auto" aria-label="관리자 권한">').append('<option value="">권한 선택</option>');
 			data.roles.forEach(function(r) { $role.append($('<option>').val(r.ROLE_SQ).text(r.ROLE_NM)); });
-			$t.append($role).append($('<button type="button" class="btn btn-sm btn-outline-primary text-nowrap">관리자로 지정</button>').on('click', function() { setType('2', $role.val()); }));
+			$t.append($role).append($('<button type="button" class="btn btn-sm btn-outline-primary text-nowrap">관리자로 지정</button>').on('click', function() {
+				if (!$role.val()) { bootbox.alert('부여할 권한을 먼저 골라 주세요.'); return; }
+				setType('2', $role.val());
+			}));
 		}
 		if (card.EMPLY_AUTH_TYP_CD !== '1') $t.append($('<button type="button" class="btn btn-sm btn-outline-secondary text-nowrap">직원으로 지정</button>').on('click', function() { setType('1'); }));
 	}
@@ -262,12 +367,6 @@
 
 	function saveCard() { hrPost('/admin/member/saveMemberData.do', $('#cardForm').serialize(), afterChange); }
 
-	function saveLink() {
-		var d = { EMPLY_SQ: card.EMPLY_SQ };
-		if ($('#cStaff').val()) d.STAFF_SQ = $('#cStaff').val();
-		hrPost('/admin/member/linkStaffData.do', d, afterChange);
-	}
-
 	function resetPw() {
 		bootbox.confirm('초기 비밀번호를 새로 발급할까요? 지금 비밀번호는 쓸 수 없게 됩니다.', function(ok) {
 			if (ok) hrPost('/admin/member/resetPasswordData.do', { EMPLY_SQ: card.EMPLY_SQ }, function(res) { afterChange(); showDone([res.result]); });
@@ -282,6 +381,7 @@
 		$('#iManual').prop('checked', false);
 		$('#iSearch, #mId, #mName, #mEmail').val('');
 		$('#iAll').prop('checked', false);
+		$('#iRole').val('');
 		buildRows();
 		applyKind();
 		$('#issueModal').modal('show');

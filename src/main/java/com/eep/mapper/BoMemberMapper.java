@@ -34,7 +34,11 @@ public interface BoMemberMapper {
 
 	void deleteUserRoles(String emplyId);
 
-	void linkStaff(Map<String, Object> param);
+	int linkStaff(Map<String, Object> param);
+
+	List<Map<String, Object>> searchStaff(String keyword);
+
+	String selectStaffRrn(int staffSq);
 
 	void unlinkStaff(String emplyId);
 

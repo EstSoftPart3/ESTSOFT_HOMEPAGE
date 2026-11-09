@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 import javax.sql.DataSource;
@@ -149,7 +150,7 @@ public class BoMemberService {
 		validateEmail(email);
 		String phone = text(p.get("EMPLY_PH_NUM")), addr = text(p.get("EMPLY_HOME_ADDR")), sex = text(p.get("EMPLY_SEX_TYP_CD")), rrn = text(p.get("EMPLY_RRN"));
 		require(phone == null || phone.length() <= 50, "휴대전화를 확인해 주세요.");
-		require(addr == null || addr.length() <= 50, "주소는 50자 이내로 입력해 주세요.");
+		require(addr == null || addr.length() <= 500, "주소는 500자 이내로 입력해 주세요.");
 		require(sex == null || "M".equals(sex) || "F".equals(sex), "성별을 확인해 주세요.");
 		p.put("EMPLY_SQ", sq);
 		p.put("EMPLY_ID", id);
@@ -158,8 +159,12 @@ public class BoMemberService {
 		p.put("EMPLY_PH_NUM", phone);
 		p.put("EMPLY_HOME_ADDR", addr);
 		p.put("EMPLY_SEX_TYP_CD", sex);
+		Integer staffSq = text(p.get("STAFF_SQ")) == null ? null : Integer.valueOf(number(p.get("STAFF_SQ")));
+		boolean relink = !Objects.equals(staffSq, row.get("STAFF_SQ"));
+		// 인사카드에서 불러온 가림값이면 암호문을 서버에서 복사해 원문이 화면을 거치지 않게 한다
+		String staffRrn = relink && staffSq != null && "Y".equals(p.get("COPY_RRN")) && RrnCipher.isMasked(rrn) ? text(mapper.selectStaffRrn(staffSq)) : null;
 		// 가려 보여 준 값이 그대로 오면 저장값을 유지한다
-		p.put("EMPLY_RRN", rrn == null || RrnCipher.isMasked(rrn) ? null : RrnCipher.isEncrypted(rrn) ? rrn : RrnCipher.encrypt(rrn));
+		p.put("EMPLY_RRN", staffRrn != null ? stored(staffRrn) : rrn == null || RrnCipher.isMasked(rrn) ? null : stored(rrn));
 		p.put("OLD_ID", oldId);
 		tx.execute(s -> {
 			mapper.updateAccount(p);
@@ -167,8 +172,51 @@ public class BoMemberService {
 				mapper.renameRoleUser(p);
 				mapper.renameStaffLink(p);
 			}
+			if (relink) {
+				mapper.unlinkStaff(id);
+				if (staffSq != null) {
+					Map<String, Object> link = new HashMap<>();
+					link.put("EMPLY_ID", id);
+					link.put("STAFF_SQ", staffSq);
+					require(mapper.linkStaff(link) == 1, "이미 다른 계정에 연결된 직원입니다.");
+				}
+			}
 			return null;
 		});
+	}
+
+	private static String stored(String rrn) {
+		return RrnCipher.isEncrypted(rrn) ? rrn : RrnCipher.encrypt(rrn);
+	}
+
+	/** 계정 카드의 직원 검색. 주민번호 원문은 내보내지 않고 가림값과 성별만 준다 */
+	public List<Map<String, Object>> searchStaff(String keyword) {
+		String q = text(keyword);
+		require(q != null && q.length() <= 50, "검색어를 확인해 주세요.");
+		List<Map<String, Object>> rows = mapper.searchStaff(q);
+		for (Map<String, Object> r : rows) {
+			String enc = (String) r.remove("RRN_ENC");
+			r.put("RRN", RrnCipher.maskStored(enc));
+			r.put("SEX_CD", sexOf(enc));
+		}
+		return rows;
+	}
+
+	private static String sexOf(String stored) {
+		if (stored == null || stored.isEmpty()) {
+			return null;
+		}
+		try {
+			return sexFromRrn(RrnCipher.isEncrypted(stored) ? RrnCipher.decrypt(stored) : stored);
+		} catch (RuntimeException e) {
+			return null;
+		}
+	}
+
+	/** 뒷자리 첫 숫자가 홀수면 남, 짝수면 여 */
+	static String sexFromRrn(String plain) {
+		String digits = plain.replaceAll("[^0-9]", "");
+		return digits.length() < 7 ? null : (digits.charAt(6) - '0') % 2 == 1 ? "M" : "F";
 	}
 
 	/** SUSPEND, RESUME, RETIRE, RESTORE */
@@ -203,22 +251,6 @@ public class BoMemberService {
 				system.addRoleUser(roleSq, id, actor.id, actor.superUser);
 			} else {
 				mapper.deleteUserRoles(id);
-			}
-			return null;
-		});
-	}
-
-	public void linkStaff(int sq, Integer staffSq, Actor actor) {
-		Map<String, Object> row = target(sq, actor);
-		String id = (String) row.get("EMPLY_ID");
-		require(id != null, "아이디를 먼저 입력해 주세요.");
-		tx.execute(s -> {
-			mapper.unlinkStaff(id);
-			if (staffSq != null) {
-				Map<String, Object> p = new HashMap<>();
-				p.put("EMPLY_ID", id);
-				p.put("STAFF_SQ", staffSq);
-				mapper.linkStaff(p);
 			}
 			return null;
 		});

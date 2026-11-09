@@ -80,10 +80,9 @@ public class BoMemberController {
 		return call(() -> { service.setType(sq, type, roleSq, actor); return "OK"; });
 	}
 
-	@RequestMapping(value = "/admin/member/linkStaffData.do", method = RequestMethod.POST)
-	public ModelAndView linkStaffData(@RequestParam("EMPLY_SQ") int sq, @RequestParam(value = "STAFF_SQ", required = false) Integer staffSq, HttpSession session) {
-		Actor actor = actor(session);
-		return call(() -> { service.linkStaff(sq, staffSq, actor); return "OK"; });
+	@RequestMapping(value = "/admin/member/searchStaffData.do", method = RequestMethod.POST)
+	public ModelAndView searchStaffData(@RequestParam("KEYWORD") String keyword) {
+		return call(() -> service.searchStaff(keyword));
 	}
 
 	private interface Call {

@@ -25,6 +25,8 @@ public class BoMemberServiceCheck {
 		check(BoMemberService.passwordProblem("sample1234", "old", "SAMPLE1234") != null, "아이디와 같음");
 		check(BoMemberService.passwordProblem("id", "same123456", "same123456") != null, "현재와 같음");
 		check(BoMemberService.passwordProblem("id", "old", "good-pass-123") == null, "통과");
+		check("M".equals(BoMemberService.sexFromRrn("900101-1234567")) && "F".equals(BoMemberService.sexFromRrn("0001014234567")), "주민번호 성별");
+		check(BoMemberService.sexFromRrn("900101") == null, "뒷자리 없는 주민번호");
 		System.out.println("BoMemberServiceCheck OK");
 	}
 

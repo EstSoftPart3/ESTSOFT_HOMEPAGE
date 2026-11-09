@@ -95,6 +95,20 @@
 		UPDATE TB_EEP_HR_STAFF_M SET EMPLY_ID = #{EMPLY_ID} WHERE STAFF_SQ = #{STAFF_SQ} AND IFNULL(EMPLY_ID, '') = ''
 	</update>
 
+	<select id="searchStaff" parameterType="string" resultType="hashmap">
+		SELECT STAFF_SQ, STAFF_NM, RRN_ENC, EMAIL, PHONE, ADDR, ORG_NM, DEPT_NM, STATUS_CD, EMPLY_ID
+		FROM TB_EEP_HR_STAFF_M
+		WHERE STAFF_NM LIKE CONCAT('%', #{keyword}, '%')
+			OR EMAIL LIKE CONCAT('%', #{keyword}, '%')
+			OR REPLACE(PHONE, '-', '') LIKE CONCAT('%', REPLACE(#{keyword}, '-', ''), '%')
+		ORDER BY STATUS_CD = 'WORK' DESC, STAFF_NM, STAFF_SQ
+		LIMIT 20
+	</select>
+
+	<select id="selectStaffRrn" parameterType="int" resultType="string">
+		SELECT RRN_ENC FROM TB_EEP_HR_STAFF_M WHERE STAFF_SQ = #{staffSq}
+	</select>
+
 	<update id="unlinkStaff" parameterType="string">
 		UPDATE TB_EEP_HR_STAFF_M SET EMPLY_ID = NULL WHERE EMPLY_ID = #{emplyId}
 	</update>
