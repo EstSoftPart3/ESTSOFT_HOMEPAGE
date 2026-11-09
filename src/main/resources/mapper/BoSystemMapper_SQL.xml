@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.eep.mapper.BoSystemMapper">
+
+	<!-- 숨긴 그룹의 하위 메뉴도 함께 빠진다 -->
+	<select id="selectActiveMenus" resultType="hashmap">
+		SELECT M.MENU_CODE, M.MENU_NM, M.REL_CODE, M.MENU_URL, M.ICON_NM, M.SORT_NO, M.AUTH_PATTERN, M.NEW_WIN_YN
+		FROM TB_EEP_MENU M
+		LEFT JOIN TB_EEP_MENU P ON P.MENU_CODE = M.REL_CODE
+		WHERE M.USE_YN = 'Y' AND (M.REL_CODE IS NULL OR P.USE_YN = 'Y')
+		ORDER BY IFNULL(P.SORT_NO, M.SORT_NO), M.REL_CODE IS NOT NULL, M.SORT_NO, M.MENU_CODE
+	</select>
+
+	<select id="selectMyGrants" parameterType="string" resultType="hashmap">
+		SELECT R.ROLE_CD, RM.MENU_CODE
+		FROM TB_EEP_USER_ROLE_R U
+		JOIN TB_EEP_ROLE_M R ON R.ROLE_SQ = U.ROLE_SQ
+		LEFT JOIN TB_EEP_ROLE_MENU_R RM ON RM.ROLE_SQ = R.ROLE_SQ
+		WHERE U.EMPLY_ID = #{emplyId}
+	</select>
+
+	<select id="selectAllMenus" resultType="hashmap">
+		SELECT M.MENU_CODE, M.MENU_NM, M.REL_CODE, M.MENU_URL, M.ICON_NM, M.SORT_NO, M.USE_YN, M.AUTH_PATTERN, M.NEW_WIN_YN
+		FROM TB_EEP_MENU M
+		LEFT JOIN TB_EEP_MENU P ON P.MENU_CODE = M.REL_CODE
+		ORDER BY IFNULL(P.SORT_NO, M.SORT_NO), M.REL_CODE IS NOT NULL, M.SORT_NO, M.MENU_CODE
+	</select>
+
+	<select id="countMenu" parameterType="string" resultType="int">
+		SELECT COUNT(*) FROM TB_EEP_MENU WHERE MENU_CODE = #{menuCode}
+	</select>
+
+	<select id="countChildMenus" parameterType="string" resultType="int">
+		SELECT COUNT(*) FROM TB_EEP_MENU WHERE REL_CODE = #{menuCode}
+	</select>
+
+	<insert id="upsertMenu" parameterType="hashmap">
+		INSERT INTO TB_EEP_MENU (MENU_CODE, MENU_NM, REL_CODE, MENU_DEPTH, MENU_URL, ICON_NM, SORT_NO, USE_YN, AUTH_PATTERN, NEW_WIN_YN, FRST_REGISTER, FRST_REG_DT, LAST_UPDT_DT)
+		VALUES (#{MENU_CODE}, #{MENU_NM}, #{REL_CODE}, #{MENU_DEPTH}, #{MENU_URL}, #{ICON_NM}, #{SORT_NO}, #{USE_YN}, #{AUTH_PATTERN}, #{NEW_WIN_YN}, #{UPDT_EMPLY_ID}, NOW(), NOW())
+		ON DUPLICATE KEY UPDATE MENU_NM = VALUES(MENU_NM), REL_CODE = VALUES(REL_CODE), MENU_DEPTH = VALUES(MENU_DEPTH), MENU_URL = VALUES(MENU_URL), ICON_NM = VALUES(ICON_NM), SORT_NO = VALUES(SORT_NO), USE_YN = VALUES(USE_YN), AUTH_PATTERN = VALUES(AUTH_PATTERN), NEW_WIN_YN = VALUES(NEW_WIN_YN), LAST_UPDT_DT = NOW()
+	</insert>
+
+	<delete id="deleteMenu" parameterType="string">
+		DELETE FROM TB_EEP_MENU WHERE MENU_CODE = #{menuCode}
+	</delete>
+
+	<delete id="deleteMenuGrants" parameterType="string">
+		DELETE FROM TB_EEP_ROLE_MENU_R WHERE MENU_CODE = #{menuCode}
+	</delete>
+
+	<select id="selectRoles" resultType="hashmap">
+		SELECT ROLE_SQ, ROLE_CD, ROLE_NM, ROLE_DESC, SYSTEM_YN FROM TB_EEP_ROLE_M ORDER BY SORT_NO, ROLE_SQ
+	</select>
+
+	<select id="selectRoleMenus" resultType="hashmap">
+		SELECT ROLE_SQ, MENU_CODE FROM TB_EEP_ROLE_MENU_R
+	</select>
+
+	<select id="selectRoleUsers" resultType="hashmap">
+		SELECT U.ROLE_SQ, U.EMPLY_ID, E.EMPLY_NM, E.EMPLY_EMAIL, DATE_FORMAT(U.REG_DT, '%Y-%m-%d') AS REG_DT
+		FROM TB_EEP_USER_ROLE_R U
+		JOIN TB_EEP_EMPLY_M E ON E.EMPLY_ID = U.EMPLY_ID
+		ORDER BY E.EMPLY_NM
+	</select>
+
+	<select id="selectAdminOptions" resultType="hashmap">
+		SELECT EMPLY_ID, MAX(EMPLY_NM) AS EMPLY_NM
+		FROM TB_EEP_EMPLY_M
+		WHERE EMPLY_AUTH_TYP_CD = '2' AND IFNULL(DEL_YN, 'N') = 'N' AND IFNULL(USE_YN, 'Y') = 'Y' AND EMPLY_ID IS NOT NULL AND EMPLY_ID &lt;&gt; ''
+		GROUP BY EMPLY_ID
+		ORDER BY EMPLY_NM
+	</select>
+
+	<select id="selectRole" parameterType="int" resultType="hashmap">
+		SELECT ROLE_SQ, ROLE_CD, ROLE_NM, SYSTEM_YN FROM TB_EEP_ROLE_M WHERE ROLE_SQ = #{roleSq}
+	</select>
+
+	<insert id="insertRole" parameterType="hashmap">
+		INSERT INTO TB_EEP_ROLE_M (ROLE_CD, ROLE_NM, ROLE_DESC, SORT_NO)
+		SELECT #{ROLE_CD}, #{ROLE_NM}, #{ROLE_DESC}, IFNULL(MAX(SORT_NO), 0) + 1 FROM TB_EEP_ROLE_M
+	</insert>
+
+	<update id="updateRole" parameterType="hashmap">
+		UPDATE TB_EEP_ROLE_M SET ROLE_NM = #{ROLE_NM}, ROLE_DESC = #{ROLE_DESC} WHERE ROLE_SQ = #{ROLE_SQ}
+	</update>
+
+	<delete id="deleteRole" parameterType="int">
+		DELETE FROM TB_EEP_ROLE_M WHERE ROLE_SQ = #{roleSq}
+	</delete>
+
+	<delete id="deleteRoleMenus" parameterType="int">
+		DELETE FROM TB_EEP_ROLE_MENU_R WHERE ROLE_SQ = #{roleSq}
+	</delete>
+
+	<delete id="deleteRoleUsers" parameterType="int">
+		DELETE FROM TB_EEP_USER_ROLE_R WHERE ROLE_SQ = #{roleSq}
+	</delete>
+
+	<!-- 그룹은 권한 대상이 아니라 2단계 메뉴만 넣는다 -->
+	<insert id="insertRoleMenus" parameterType="hashmap">
+		INSERT INTO TB_EEP_ROLE_MENU_R (ROLE_SQ, MENU_CODE)
+		SELECT #{ROLE_SQ}, MENU_CODE FROM TB_EEP_MENU
+		WHERE REL_CODE IS NOT NULL AND MENU_CODE IN
+		<foreach collection="MENU_CODES" item="code" open="(" separator="," close=")">#{code}</foreach>
+	</insert>
+
+	<select id="countActiveAdmin" parameterType="string" resultType="int">
+		SELECT COUNT(*) FROM TB_EEP_EMPLY_M
+		WHERE EMPLY_ID = #{emplyId} AND EMPLY_AUTH_TYP_CD = '2' AND IFNULL(DEL_YN, 'N') = 'N' AND IFNULL(USE_YN, 'Y') = 'Y'
+	</select>
+
+	<insert id="insertRoleUser" parameterType="hashmap">
+		INSERT IGNORE INTO TB_EEP_USER_ROLE_R (EMPLY_ID, ROLE_SQ, REG_EMPLY_ID) VALUES (#{EMPLY_ID}, #{ROLE_SQ}, #{UPDT_EMPLY_ID})
+	</insert>
+
+	<delete id="deleteRoleUser" parameterType="hashmap">
+		DELETE FROM TB_EEP_USER_ROLE_R WHERE EMPLY_ID = #{EMPLY_ID} AND ROLE_SQ = #{ROLE_SQ}
+	</delete>
+
+	<select id="countRoleUsers" parameterType="int" resultType="int">
+		SELECT COUNT(*) FROM TB_EEP_USER_ROLE_R WHERE ROLE_SQ = #{roleSq}
+	</select>
+
+</mapper>

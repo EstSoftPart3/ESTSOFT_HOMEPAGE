@@ -1,0 +1,30 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%-- 메뉴·권한 관리 공통 스타일 (캘린더 스타일에 더한다) --%>
+<style>
+	.sys-split { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 14px; align-items: start; }
+	@media (max-width: 800px) { .sys-split { grid-template-columns: minmax(0, 1fr); } }
+	.sys-mono { font-family: Consolas, monospace; font-size: 12px; }
+	.sys-tree { padding-bottom: 12px; }
+	.sys-node { display: flex; align-items: center; gap: 7px; width: 100%; border: 0; background: none; border-radius: 6px; padding: 5px 8px; font-size: 13px; color: #333; text-align: left; }
+	.sys-node:hover { background: rgba(22,213,255,.12); }
+	.sys-node:focus-visible, .sys-role:focus-visible { outline: 2px solid #16d5ff; outline-offset: -2px; }
+	.sys-node.on { background: #111; color: #fff; }
+	.sys-node-group { font-weight: 600; margin-top: 4px; }
+	.sys-node-item { padding-left: 30px; }
+	.sys-pill { display: inline-block; padding: 0 8px; border-radius: 10px; font-size: 11px; font-weight: 600; background: #eef1f4; color: #444; white-space: nowrap; }
+	.sys-pill.info { background: #dff3f9; color: #0b6e8a; }
+	.sys-roles { display: grid; gap: 6px; padding: 12px 14px; }
+	.sys-role { display: grid; gap: 2px; width: 100%; border: 1px solid rgba(17,17,17,.12); border-radius: 8px; background: #fff; padding: 8px 10px; text-align: left; color: #333; }
+	.sys-role:hover { background: rgba(22,213,255,.08); }
+	.sys-role.on { border-color: #0b6e8a; background: #dff3f9; }
+	.sys-role-name { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #111; }
+	.sys-role small { color: #666; }
+	.sys-check { display: flex; align-items: center; gap: 7px; margin: 0; padding: 3px 0; font-size: 13px; font-weight: 400 !important; color: #333 !important; cursor: pointer; }
+	.sys-check.group { font-weight: 600 !important; margin-top: 6px; }
+	.sys-check.item { padding-left: 24px; }
+	.sys-matrix th, .sys-matrix td { text-align: center; white-space: nowrap; }
+	.sys-matrix th:first-child, .sys-matrix td:first-child { text-align: left; position: sticky; left: 0; background: #fff; }
+	.sys-matrix tr.group td { background: #fafbfc; font-weight: 600; }
+	.sys-yes { color: #0b6e8a; }
+	.sys-no { color: #c4cad0; }
+</style>

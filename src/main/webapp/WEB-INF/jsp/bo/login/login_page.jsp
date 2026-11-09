@@ -133,7 +133,7 @@
       				message: "로그인 성공했습니다.",
       				locale: 'kr',
       				callback: function() {
-      					location.href = '/admin/hr/openInterviewList.do';
+      					location.href = '/admin/home.do';
       				} });
 
       	 	} else {

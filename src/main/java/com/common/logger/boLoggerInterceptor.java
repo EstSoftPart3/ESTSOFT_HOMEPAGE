@@ -1,6 +1,8 @@
 package com.common.logger;
 
 import java.io.PrintWriter;
+import java.util.List;
+import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -12,8 +14,10 @@ import org.json.simple.JSONArray;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
+import org.springframework.web.util.UrlPathHelper;
 
 import com.eep.bo.login.service.BoLoginRememberService;
+import com.eep.bo.system.service.BoSystemService;
 
 /**
  * <pre>
@@ -34,6 +38,15 @@ public class boLoggerInterceptor extends HandlerInterceptorAdapter {
 
 	@Autowired
 	private BoLoginRememberService BoLoginRememberService;
+
+	@Autowired
+	private BoSystemService systemService;
+
+	@SuppressWarnings("unchecked")
+	private static String loginId(Object loginInfo) {
+		List<Map<String, Object>> list = (List<Map<String, Object>>) ((Map<String, Object>) loginInfo).get("loginInfo");
+		return (String) list.get(0).get("emplyId");
+	}
 
 	/**
 	 * 
@@ -82,10 +95,19 @@ public class boLoggerInterceptor extends HandlerInterceptorAdapter {
             out.flush();
 			
 			session.invalidate();
-			
+
 			return false;
 		}
 
+		// Spring 이 핸들러를 찾을 때와 같은 경로로 판단해야 ;나 인코딩으로 우회되지 않는다
+		BoSystemService.Access access = systemService.access(loginId(obj));
+		if(!access.allows(new UrlPathHelper().getLookupPathForRequest(request))) {
+			response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+			response.setContentType("text/html; charset=UTF-8");
+			response.getWriter().println("<script>alert('이 메뉴를 사용할 권한이 없습니다.'); location.replace('" + BoSystemService.HOME + "');</script>");
+			return false;
+		}
+		request.setAttribute("boMenus", access.tree);
 
 		if (log.isDebugEnabled()) {
 			log.debug(

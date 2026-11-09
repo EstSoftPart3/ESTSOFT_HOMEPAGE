@@ -32,7 +32,7 @@ public class BoLoginController {
 	@RequestMapping(value = "/admin/login/loginPage.do")
 	public String openLoginPage(HttpServletRequest request, HttpServletResponse response) {
 		if(BoLoginRememberService.restore(request, response)) {
-			return "redirect:/admin/hr/openInterviewList.do";
+			return "redirect:/admin/home.do";
 		}
 		request.setAttribute("savedId", BoLoginRememberService.savedId(request));
 		request.setAttribute("savedAutoCheck", BoLoginRememberService.savedAutoCheck(request));

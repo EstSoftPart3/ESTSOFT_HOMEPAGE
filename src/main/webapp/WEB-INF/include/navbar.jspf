@@ -55,7 +55,7 @@
 				<c:if test="${sessionScope.emplyAuthCheck == '2'}">
 					<div class="mode-switch ms-lg-3 my-2 my-lg-0" role="group" aria-label="화면 전환">
 						<a href="/eep/mainPage.do" class="mode-switch-item active" aria-current="page"><i class="fa fa-home"></i> 홈페이지</a>
-						<a href="/admin/board/notice/openNoticeBoardList.do" class="mode-switch-item"><i class="fa fa-cog"></i> 관리자</a>
+						<a href="/admin/home.do" class="mode-switch-item"><i class="fa fa-cog"></i> 관리자</a>
 					</div>
 				</c:if>
             	<div class="nav-item dropdown">
