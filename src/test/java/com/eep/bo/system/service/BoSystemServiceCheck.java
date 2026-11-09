@@ -1,5 +1,6 @@
 package com.eep.bo.system.service;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -29,7 +30,37 @@ public class BoSystemServiceCheck {
 		BoSystemService.validatePatterns("/admin/hr/*x*, /admin/a/**");
 		rejects("/eep/**");
 		rejects("/admin/**");
+
+		List<Map<String, Object>> rows = BoSystemService.menuOrderRows("H1:HT,A;G1:;H2:HI", withHiddenGroup(menus));
+		check(rows.size() == 6 && "H1".equals(rows.get(0).get("MENU_CODE")) && rows.get(0).get("REL_CODE") == null && (int) rows.get(0).get("SORT_NO") == 10, "그룹 순서");
+		check("A".equals(rows.get(2).get("MENU_CODE")) && "H1".equals(rows.get(2).get("REL_CODE")) && (int) rows.get(2).get("SORT_NO") == 2, "다른 그룹으로 이동");
+		rejectsOrder("", menus);
+		rejectsOrder("G1:A;H1:HI", menus); // HT 누락
+		rejectsOrder("G1:A,A;H1:HI,HT", menus); // 중복
+		rejectsOrder("A:G1;H1:HI,HT", menus); // 그룹과 메뉴가 뒤바뀜
+		rejectsOrder("G1:A,X;H1:HI,HT", menus); // 없는 메뉴
+
+		List<Map<String, Object>> core = new ArrayList<>(withHiddenGroup(menus));
+		core.add(menu("M00002", "G1", "/admin/system/menu/open.do", "/admin/system/menu/**"));
+		rejectsOrder("G1:A,HI;H1:HT;H2:M00002", core); // 메뉴 관리를 숨긴 그룹으로 이동
 		System.out.println("BoSystemServiceCheck OK");
+	}
+
+	private static List<Map<String, Object>> withHiddenGroup(List<Map<String, Object>> menus) {
+		List<Map<String, Object>> all = new ArrayList<>(menus);
+		Map<String, Object> hidden = menu("H2", null, null, null);
+		hidden.put("USE_YN", "N");
+		all.add(hidden);
+		return all;
+	}
+
+	private static void rejectsOrder(String order, List<Map<String, Object>> menus) {
+		try {
+			BoSystemService.menuOrderRows(order, menus);
+		} catch (IllegalArgumentException e) {
+			return;
+		}
+		throw new AssertionError("거부해야 함: " + order);
 	}
 
 	private static void rejects(String pattern) {

@@ -13,7 +13,7 @@
 				<div class="card-body">
 					<div class="sys-split">
 						<div class="cal-panel">
-							<div class="cal-panel-head"><span>메뉴 구조</span><span>
+							<div class="cal-panel-head"><span>메뉴 구조 <small id="sortMsg" class="sys-pill info" role="status"></small></span><span>
 								<button type="button" class="btn btn-sm btn-outline-secondary" onclick="newMenu(true);"><i class="fas fa-plus" aria-hidden="true"></i> 그룹</button>
 								<button type="button" class="btn btn-sm btn-primary" onclick="newMenu(false);"><i class="fas fa-plus" aria-hidden="true"></i> 메뉴</button>
 							</span></div>
@@ -28,7 +28,7 @@
 									<div class="col-md-4 mb-2"><label for="fParent">상위 그룹</label><select id="fParent" name="REL_CODE" class="form-control form-control-sm"></select></div>
 									<div class="col-12 mb-2 only-item"><label for="fUrl">화면 주소 *</label><input id="fUrl" name="MENU_URL" class="form-control form-control-sm sys-mono" maxlength="200" placeholder="/admin/업무/openList.do"></div>
 									<div class="col-12 mb-2 only-item"><label for="fPattern">접근 경로 (쉼표로 구분, 데이터 요청 주소까지 포함)</label><textarea id="fPattern" name="AUTH_PATTERN" rows="3" class="form-control form-control-sm sys-mono" maxlength="1000" placeholder="/admin/업무/**"></textarea></div>
-									<div class="col-md-5 mb-2 only-group"><label for="fIcon">아이콘</label><input id="fIcon" name="ICON_NM" class="form-control form-control-sm sys-mono" maxlength="50" placeholder="fa-folder"></div>
+									<div class="col-12 mb-2 only-group"><label id="iconLabel">아이콘</label><input type="hidden" id="fIcon" name="ICON_NM"><div id="iconGrid" class="sys-icons" role="radiogroup" aria-labelledby="iconLabel"></div></div>
 									<div class="col-md-3 mb-2"><label for="fSort">순서</label><input id="fSort" name="SORT_NO" type="number" min="0" class="form-control form-control-sm" required></div>
 									<div class="col-md-4 mb-2"><label for="fUse">표시</label><select id="fUse" name="USE_YN" class="form-control form-control-sm"><option value="Y">사용</option><option value="N">숨김</option></select></div>
 									<div class="col-md-4 mb-2 only-item"><label for="fNew">열기</label><select id="fNew" name="NEW_WIN_YN" class="form-control form-control-sm"><option value="N">현재 창</option><option value="Y">새 창</option></select></div>
@@ -47,8 +47,13 @@
 
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
 	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
+	<script src="/resources/bo/plugins/jquery-ui/jquery-ui.min.js"></script>
 	<script>
-	var menus = [], selected = null;
+	var menus = [], selected = null, savedOrder = '', draggedAt = 0, sortMsgTimer;
+	var ICONS = ['user-shield', 'users', 'user-tie', 'id-card', 'sitemap', 'building', 'briefcase', 'tasks',
+		'calendar-alt', 'clock', 'clipboard-list', 'file', 'file-alt', 'folder', 'table', 'edit',
+		'bullhorn', 'comments', 'envelope', 'chart-bar', 'chart-line', 'coins', 'credit-card', 'file-invoice-dollar',
+		'laptop', 'server', 'database', 'flask', 'graduation-cap', 'cogs', 'shield-alt', 'globe'].map(function(n) { return 'fa-' + n; });
 
 	$(load);
 
@@ -66,13 +71,65 @@
 	function renderTree() {
 		var $t = $('#tree').empty();
 		groups().forEach(function(g) {
-			$t.append(node(g, 'sys-node-group'));
-			menus.filter(function(m) { return m.REL_CODE === g.MENU_CODE; }).forEach(function(m) { $t.append(node(m, 'sys-node-item')); });
+			var $items = $('<div class="sys-items">');
+			menus.filter(function(m) { return m.REL_CODE === g.MENU_CODE; }).forEach(function(m) { $items.append(node(m, 'sys-node-item')); });
+			$t.append($('<div class="sys-group">').append(node(g, 'sys-node-group'), $items));
+		});
+		// cancel: 기본값이 button 드래그를 막는다
+		var drag = { axis: 'y', cancel: '', distance: 5, tolerance: 'pointer', placeholder: 'sys-drop', forcePlaceholderSize: true, stop: saveOrder };
+		$t.sortable($.extend({ items: '.sys-group', handle: '.sys-node-group' }, drag));
+		$t.find('.sys-items').sortable($.extend({ items: '.sys-node', connectWith: '.sys-items' }, drag));
+		savedOrder = treeOrder();
+	}
+
+	function treeOrder() {
+		return $('#tree .sys-group').map(function() {
+			var items = $(this).find('.sys-node-item').map(function() { return $(this).attr('data-code'); }).get();
+			return $(this).find('.sys-node-group').attr('data-code') + ':' + items.join(',');
+		}).get().join(';');
+	}
+
+	function saveOrder() {
+		draggedAt = Date.now();
+		var order = treeOrder();
+		if (order === savedOrder) return;
+		hrPost('/admin/system/menu/sortMenuData.do', { MENU_ORDER: order }, function() { refreshTree('순서를 저장했습니다'); }, function() { refreshTree('저장하지 못해 되돌렸습니다'); });
+	}
+
+	// 수정 중인 폼 내용은 두고 드래그로 바뀐 순서와 소속만 맞춘다
+	function refreshTree(msg) {
+		var parent = $('#fParent').val();
+		hrPost('/admin/system/menu/menuListData.do', {}, function(res) {
+			menus = res.result;
+			if (selected) selected = menus.filter(function(m) { return m.MENU_CODE === selected.MENU_CODE; })[0] || null;
+			renderTree();
+			renderParents();
+			$('#fParent').val(selected ? selected.REL_CODE || '' : parent);
+			if (selected) $('#fSort').val(selected.SORT_NO);
+			$('#sortMsg').text(msg);
+			clearTimeout(sortMsgTimer);
+			sortMsgTimer = setTimeout(function() { $('#sortMsg').empty(); }, 2500);
 		});
 	}
 
+	function renderIcons() {
+		var current = $('#fIcon').val();
+		var list = current && ICONS.indexOf(current) < 0 ? [current].concat(ICONS) : ICONS;
+		$('#iconGrid').empty().append(list.map(function(name) {
+			return $('<button type="button" class="sys-icon" role="radio">').attr({ title: name, 'aria-label': name, 'aria-checked': name === current }).toggleClass('on', name === current)
+				.append($('<i class="fas" aria-hidden="true">').addClass(name))
+				.on('click', function() {
+					$('#fIcon').val(name);
+					$('#iconGrid .sys-icon').removeClass('on').attr('aria-checked', false);
+					$(this).addClass('on').attr('aria-checked', true);
+				});
+		}));
+	}
+
 	function node(m, cls) {
-		var $b = $('<button type="button" class="sys-node">').addClass(cls).toggleClass('on', !!selected && selected.MENU_CODE === m.MENU_CODE).on('click', function() { select(m); });
+		// 드래그를 놓을 때 뒤따르는 click 으로 폼이 열리지 않게 한다
+		var $b = $('<button type="button" class="sys-node">').addClass(cls).attr('data-code', m.MENU_CODE).toggleClass('on', !!selected && selected.MENU_CODE === m.MENU_CODE).on('click', function() { if (Date.now() - draggedAt > 300) select(m); });
+		$b.append('<i class="fas fa-grip-vertical sys-grip" aria-hidden="true"></i>');
 		if (cls === 'sys-node-group') $b.append($('<i class="fas fa-fw" aria-hidden="true">').addClass(m.ICON_NM || 'fa-folder'));
 		$b.append($('<span>').text(m.MENU_NM));
 		if (m.USE_YN === 'N') $b.append('<span class="sys-pill">숨김</span>');
@@ -100,7 +157,8 @@
 		$('#fParent').val(m.REL_CODE || '');
 		$('#fUrl').val(m.MENU_URL || '');
 		$('#fPattern').val(m.AUTH_PATTERN || '');
-		$('#fIcon').val(m.ICON_NM || '');
+		$('#fIcon').val(m.ICON_NM || 'fa-folder');
+		renderIcons();
 		$('#fSort').val(m.SORT_NO === undefined ? 0 : m.SORT_NO);
 		$('#fUse').val(m.USE_YN || 'Y');
 		$('#fNew').val(m.NEW_WIN_YN || 'N');

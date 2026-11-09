@@ -186,6 +186,49 @@ public class BoSystemService {
 		});
 	}
 
+	/** 드래그 후의 전체 배치를 저장한다 */
+	public void sortMenus(String order) {
+		List<Map<String, Object>> rows = menuOrderRows(order, mapper.selectAllMenus());
+		tx.execute(s -> {
+			rows.forEach(mapper::updateMenuOrder);
+			return null;
+		});
+	}
+
+	/** order 형식: 그룹:메뉴,메뉴;그룹:메뉴. 화면을 연 뒤 메뉴가 바뀌었으면 일부만 저장되지 않게 전부 거부한다 */
+	static List<Map<String, Object>> menuOrderRows(String order, List<Map<String, Object>> menus) {
+		String stale = "메뉴가 변경되었습니다. 새로고침 후 다시 시도해 주세요.";
+		Map<String, Map<String, Object>> byCode = new HashMap<>();
+		menus.forEach(m -> byCode.put((String) m.get("MENU_CODE"), m));
+		List<Map<String, Object>> rows = new ArrayList<>();
+		Set<String> seen = new HashSet<>();
+		String[] groups = order.split(";");
+		for (int g = 0; g < groups.length; g++) {
+			String[] parts = groups[g].split(":", -1);
+			require(parts.length == 2, stale);
+			Map<String, Object> group = byCode.get(parts[0]);
+			require(group != null && group.get("REL_CODE") == null && seen.add(parts[0]), stale);
+			rows.add(orderRow(parts[0], null, (g + 1) * 10));
+			String[] items = parts[1].isEmpty() ? new String[0] : parts[1].split(",");
+			for (int i = 0; i < items.length; i++) {
+				Map<String, Object> item = byCode.get(items[i]);
+				require(item != null && item.get("REL_CODE") != null && seen.add(items[i]), stale);
+				require(!CORE_MENUS.contains(items[i]) || !"N".equals(group.get("USE_YN")), "메뉴·권한 관리에 필요한 메뉴는 숨긴 그룹으로 옮길 수 없습니다.");
+				rows.add(orderRow(items[i], parts[0], i + 1));
+			}
+		}
+		require(seen.size() == menus.size(), stale);
+		return rows;
+	}
+
+	private static Map<String, Object> orderRow(String code, String parent, int sort) {
+		Map<String, Object> row = new HashMap<>();
+		row.put("MENU_CODE", code);
+		row.put("REL_CODE", parent);
+		row.put("SORT_NO", sort);
+		return row;
+	}
+
 	// ── 권한 ──
 
 	public Map<String, Object> roles() {

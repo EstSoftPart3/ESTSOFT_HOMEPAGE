@@ -50,6 +50,11 @@ public class BoSystemController {
 		return call(() -> { service.saveMenu(param); return "OK"; });
 	}
 
+	@RequestMapping(value = "/admin/system/menu/sortMenuData.do", method = RequestMethod.POST)
+	public ModelAndView sortMenuData(@RequestParam("MENU_ORDER") String order) {
+		return call(() -> { service.sortMenus(order); return "OK"; });
+	}
+
 	@RequestMapping(value = "/admin/system/menu/deleteMenuData.do", method = RequestMethod.POST)
 	public ModelAndView deleteMenuData(@RequestParam("MENU_CODE") String code) {
 		return call(() -> { service.deleteMenu(code); return "OK"; });

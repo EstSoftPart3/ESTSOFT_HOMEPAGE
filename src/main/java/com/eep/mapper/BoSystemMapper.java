@@ -20,6 +20,8 @@ public interface BoSystemMapper {
 
 	void upsertMenu(Map<String, Object> param);
 
+	void updateMenuOrder(Map<String, Object> param);
+
 	void deleteMenu(String menuCode);
 
 	void deleteMenuGrants(String menuCode);
