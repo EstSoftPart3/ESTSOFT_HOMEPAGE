@@ -248,6 +248,23 @@ public class StaffDriveService {
 		return out;
 	}
 
+	/** 이 직원에게 연결된 서류 파일만 받는다. {name, data} */
+	public Map<String, Object> download(Object staffSq, int docSq) {
+		for (Map<String, Object> d : docs(staffSq)) {
+			if (((Number) d.get("DOC_SQ")).intValue() != docSq) continue;
+			String token = token();
+			Map<String, Object> file = drive.file(str(d.get("FILE_ID")), token);
+			if (str(file.get("mimeType")).startsWith("application/vnd.google-apps.")) {
+				throw new IllegalArgumentException("구글 문서 형식은 파일 이름을 눌러 드라이브에서 받아 주세요.");
+			}
+			Map<String, Object> out = new HashMap<>();
+			out.put("name", file.get("name"));
+			out.put("data", drive.download(file, token));
+			return out;
+		}
+		throw new IllegalArgumentException("연결된 서류를 찾지 못했습니다.");
+	}
+
 	public void unlink(Object staffSq, Object docSq) {
 		Map<String, Object> p = one("STAFF_SQ", staffSq);
 		p.put("DOC_SQ", docSq);

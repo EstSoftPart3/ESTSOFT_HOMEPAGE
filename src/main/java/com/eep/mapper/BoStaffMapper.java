@@ -24,4 +24,10 @@ public interface BoStaffMapper {
 	public List<Map<String, Object>> selectStaffDocList(Map<String, Object> param);	//STAFF_SQ 의 서류 파일
 	public int insertStaffDoc(Map<String, Object> param);						//서류 파일 연결 (같은 파일·칸이면 무시)
 	public int deleteStaffDoc(Map<String, Object> param);						//DOC_SQ, STAFF_SQ 연결 끊기 (드라이브 파일은 둔다)
+
+	public List<Map<String, Object>> selectStaffPrjList(Map<String, Object> param);	//STAFF_SQ 의 프로젝트 수행이력
+	public int insertStaffPrj(Map<String, Object> param);						//수행이력 등록
+	public int updateStaffPrj(Map<String, Object> param);						//수행이력 수정 (PRJ_SQ, STAFF_SQ)
+	public int deleteStaffPrj(Map<String, Object> param);						//수행이력 삭제 (PRJ_SQ, STAFF_SQ)
+	public int deleteStaffPrjAll(Map<String, Object> param);					//STAFF_SQ 의 수행이력 전부
 }

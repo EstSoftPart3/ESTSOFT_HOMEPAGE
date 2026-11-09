@@ -60,4 +60,30 @@
 	<delete id="deleteStaffDoc" parameterType="hashMap">
 		DELETE FROM TB_EEP_HR_STAFF_DOC_R WHERE DOC_SQ = #{DOC_SQ} AND STAFF_SQ = #{STAFF_SQ}
 	</delete>
+
+	<select id="selectStaffPrjList" parameterType="hashMap" resultType="hashMap">
+		SELECT PRJ_SQ, STAFF_SQ, PRJ_NM, CLIENT_NM, WORK_NM, ROLE_NM, START_YM, END_YM, IND_NM, APP_NM, MACHINE_NM, OS_NM, LANG_NM, DBMS_NM, TOOL_NM, FRAMEWORK_NM, ETC_NM
+		FROM TB_EEP_HR_STAFF_PRJ_R WHERE STAFF_SQ = #{STAFF_SQ} ORDER BY END_YM IS NULL DESC, START_YM DESC, PRJ_SQ DESC
+	</select>
+
+	<insert id="insertStaffPrj" parameterType="hashMap">
+		INSERT INTO TB_EEP_HR_STAFF_PRJ_R (STAFF_SQ, PRJ_NM, CLIENT_NM, WORK_NM, ROLE_NM, START_YM, END_YM, IND_NM, APP_NM, MACHINE_NM, OS_NM, LANG_NM, DBMS_NM, TOOL_NM, FRAMEWORK_NM, ETC_NM, REG_EMPLY_ID, REG_DT)
+		VALUES (#{STAFF_SQ}, #{PRJ_NM}, #{CLIENT_NM}, #{WORK_NM}, #{ROLE_NM}, #{START_YM}, #{END_YM,jdbcType=CHAR}, #{IND_NM}, #{APP_NM}, #{MACHINE_NM}, #{OS_NM}, #{LANG_NM}, #{DBMS_NM}, #{TOOL_NM}, #{FRAMEWORK_NM}, #{ETC_NM}, #{UPDT_EMPLY_ID}, NOW())
+	</insert>
+
+	<update id="updateStaffPrj" parameterType="hashMap">
+		UPDATE TB_EEP_HR_STAFF_PRJ_R
+		SET PRJ_NM = #{PRJ_NM}, CLIENT_NM = #{CLIENT_NM}, WORK_NM = #{WORK_NM}, ROLE_NM = #{ROLE_NM}, START_YM = #{START_YM}, END_YM = #{END_YM,jdbcType=CHAR}
+			, IND_NM = #{IND_NM}, APP_NM = #{APP_NM}, MACHINE_NM = #{MACHINE_NM}, OS_NM = #{OS_NM}, LANG_NM = #{LANG_NM}, DBMS_NM = #{DBMS_NM}, TOOL_NM = #{TOOL_NM}, FRAMEWORK_NM = #{FRAMEWORK_NM}, ETC_NM = #{ETC_NM}
+			, UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE PRJ_SQ = #{PRJ_SQ} AND STAFF_SQ = #{STAFF_SQ}
+	</update>
+
+	<delete id="deleteStaffPrj" parameterType="hashMap">
+		DELETE FROM TB_EEP_HR_STAFF_PRJ_R WHERE PRJ_SQ = #{PRJ_SQ} AND STAFF_SQ = #{STAFF_SQ}
+	</delete>
+
+	<delete id="deleteStaffPrjAll" parameterType="hashMap">
+		DELETE FROM TB_EEP_HR_STAFF_PRJ_R WHERE STAFF_SQ = #{STAFF_SQ}
+	</delete>
 </mapper>

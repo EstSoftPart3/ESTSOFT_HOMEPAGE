@@ -1,10 +1,12 @@
 package com.eep.bo.staff.controller;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -130,6 +132,50 @@ public class BoStaffController {
 	@RequestMapping(value = "/admin/staff/unlinkStaffDocData.do", method = RequestMethod.POST)
 	public ModelAndView unlinkStaffDocData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("DOC_SQ") int docSq) {
 		StaffDriveService.unlink(staffSq, docSq);
+		return json("result", "OK");
+	}
+
+	/** 드라이브 파일을 서버가 받아 전달한다. 관리자 개인 구글 계정의 권한과 상관없이 받을 수 있다 */
+	@RequestMapping(value = "/admin/staff/downloadStaffDoc.do", method = RequestMethod.GET)
+	@SuppressWarnings("unchecked")
+	public void downloadStaffDoc(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("DOC_SQ") int docSq, HttpServletResponse response, HttpSession session) throws IOException {
+		ModelAndView mv = drive(() -> StaffDriveService.download(staffSq, docSq));
+		Object error = mv.getModel().get("error");
+		if (error != null) {
+			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+			response.setContentType("text/plain; charset=UTF-8");
+			response.getWriter().write(error.toString());
+			return;
+		}
+		byte[] data = (byte[]) ((Map<String, Object>) mv.getModel().get("result")).get("data");
+		System.out.println("STAFF_DOC_DOWNLOAD by=" + loginId(session) + " staff=" + staffSq + " doc=" + docSq);
+		response.setContentType("application/octet-stream");
+		response.setHeader("X-Content-Type-Options", "nosniff");
+		response.setContentLength(data.length);
+		response.getOutputStream().write(data);
+	}
+
+	// ── 프로젝트 수행이력 ──
+
+	@RequestMapping(value = "/admin/staff/staffPrjData.do", method = RequestMethod.POST)
+	public ModelAndView staffPrjData(@RequestParam Map<String, Object> param) {
+		return json("list", BoStaffService.prjList(param));
+	}
+
+	@RequestMapping(value = "/admin/staff/saveStaffPrjData.do", method = RequestMethod.POST)
+	public ModelAndView saveStaffPrjData(@RequestParam Map<String, Object> param, HttpSession session) {
+		try {
+			param.put("UPDT_EMPLY_ID", loginId(session));
+			BoStaffService.prjSave(param);
+			return json("result", "OK");
+		} catch (IllegalArgumentException e) {
+			return json("error", e.getMessage());
+		}
+	}
+
+	@RequestMapping(value = "/admin/staff/deleteStaffPrjData.do", method = RequestMethod.POST)
+	public ModelAndView deleteStaffPrjData(@RequestParam Map<String, Object> param) {
+		BoStaffService.prjDelete(param);
 		return json("result", "OK");
 	}
 
