@@ -92,6 +92,11 @@ public class BoEquipmentController {
 		return write(param, session, () -> service.addIssue(param));
 	}
 
+	@RequestMapping(value = "/admin/equipment/saveIssueData.do", method = RequestMethod.POST)
+	public ModelAndView saveIssueData(@RequestParam Map<String, Object> param, HttpSession session) {
+		return write(param, session, () -> service.saveIssue(param));
+	}
+
 	@RequestMapping(value = "/admin/equipment/closeIssueData.do", method = RequestMethod.POST)
 	public ModelAndView closeIssueData(@RequestParam Map<String, Object> param, HttpSession session) {
 		return write(param, session, () -> service.closeIssue(param));
