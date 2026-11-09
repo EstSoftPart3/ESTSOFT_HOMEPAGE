@@ -5,13 +5,12 @@
 
 <mapper namespace="com.eep.mapper.BoSystemMapper">
 
-	<!-- 숨긴 그룹의 하위 메뉴도 함께 빠진다 -->
+	<!-- 형제 메뉴끼리의 순서만 맞춘다. 트리는 상위 코드를 따라 화면과 Access.of 가 만든다 -->
 	<select id="selectActiveMenus" resultType="hashmap">
-		SELECT M.MENU_CODE, M.MENU_NM, M.REL_CODE, M.MENU_URL, M.ICON_NM, M.SORT_NO, M.AUTH_PATTERN, M.NEW_WIN_YN
-		FROM TB_EEP_MENU M
-		LEFT JOIN TB_EEP_MENU P ON P.MENU_CODE = M.REL_CODE
-		WHERE M.USE_YN = 'Y' AND (M.REL_CODE IS NULL OR P.USE_YN = 'Y')
-		ORDER BY IFNULL(P.SORT_NO, M.SORT_NO), M.REL_CODE IS NOT NULL, M.SORT_NO, M.MENU_CODE
+		SELECT MENU_CODE, MENU_NM, REL_CODE, MENU_URL, ICON_NM, SORT_NO, AUTH_PATTERN, NEW_WIN_YN
+		FROM TB_EEP_MENU
+		WHERE USE_YN = 'Y'
+		ORDER BY SORT_NO, MENU_CODE
 	</select>
 
 	<select id="selectMyGrants" parameterType="string" resultType="hashmap">
@@ -23,14 +22,11 @@
 	</select>
 
 	<select id="selectAllMenus" resultType="hashmap">
-		SELECT M.MENU_CODE, M.MENU_NM, M.REL_CODE, M.MENU_URL, M.ICON_NM, M.SORT_NO, M.USE_YN, M.AUTH_PATTERN, M.NEW_WIN_YN
-		FROM TB_EEP_MENU M
-		LEFT JOIN TB_EEP_MENU P ON P.MENU_CODE = M.REL_CODE
-		ORDER BY IFNULL(P.SORT_NO, M.SORT_NO), M.REL_CODE IS NOT NULL, M.SORT_NO, M.MENU_CODE
-	</select>
-
-	<select id="countMenu" parameterType="string" resultType="int">
-		SELECT COUNT(*) FROM TB_EEP_MENU WHERE MENU_CODE = #{menuCode}
+		<!-- 예전부터 있던 테이블이라 상위가 없는 옛 행은 화면에도 안 나오고 구조 검증도 막지 않게 뺀다 -->
+		SELECT MENU_CODE, MENU_NM, REL_CODE, MENU_URL, ICON_NM, SORT_NO, USE_YN, AUTH_PATTERN, NEW_WIN_YN
+		FROM TB_EEP_MENU
+		WHERE REL_CODE IS NULL OR REL_CODE IN (SELECT MENU_CODE FROM TB_EEP_MENU)
+		ORDER BY SORT_NO, MENU_CODE
 	</select>
 
 	<select id="countChildMenus" parameterType="string" resultType="int">
@@ -44,7 +40,7 @@
 	</insert>
 
 	<update id="updateMenuOrder" parameterType="hashmap">
-		UPDATE TB_EEP_MENU SET REL_CODE = #{REL_CODE,jdbcType=VARCHAR}, SORT_NO = #{SORT_NO}, LAST_UPDT_DT = NOW() WHERE MENU_CODE = #{MENU_CODE}
+		UPDATE TB_EEP_MENU SET REL_CODE = #{REL_CODE,jdbcType=VARCHAR}, MENU_DEPTH = #{MENU_DEPTH}, SORT_NO = #{SORT_NO}, LAST_UPDT_DT = NOW() WHERE MENU_CODE = #{MENU_CODE}
 	</update>
 
 	<delete id="deleteMenu" parameterType="string">
@@ -103,11 +99,11 @@
 		DELETE FROM TB_EEP_USER_ROLE_R WHERE ROLE_SQ = #{roleSq}
 	</delete>
 
-	<!-- 그룹은 권한 대상이 아니라 2단계 메뉴만 넣는다 -->
+	<!-- 그룹과 묶음은 권한 대상이 아니라 화면 메뉴만 넣는다 -->
 	<insert id="insertRoleMenus" parameterType="hashmap">
 		INSERT INTO TB_EEP_ROLE_MENU_R (ROLE_SQ, MENU_CODE)
 		SELECT #{ROLE_SQ}, MENU_CODE FROM TB_EEP_MENU
-		WHERE REL_CODE IS NOT NULL AND MENU_CODE IN
+		WHERE MENU_URL IS NOT NULL AND MENU_CODE IN
 		<foreach collection="MENU_CODES" item="code" open="(" separator="," close=")">#{code}</foreach>
 	</insert>
 

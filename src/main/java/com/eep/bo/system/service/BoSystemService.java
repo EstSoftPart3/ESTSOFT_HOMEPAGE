@@ -69,27 +69,37 @@ public class BoSystemService {
 				granted.add(g.get("MENU_CODE"));
 			}
 			Access access = new Access(superUser);
-			Map<Object, Map<String, Object>> groups = new HashMap<>();
+			Map<Object, List<Map<String, Object>>> byParent = new HashMap<>();
 			for (Map<String, Object> m : menus) {
-				if (m.get("REL_CODE") == null) {
-					Map<String, Object> group = new HashMap<>(m);
-					group.put("children", new ArrayList<Map<String, Object>>());
-					groups.put(m.get("MENU_CODE"), group);
-				}
+				byParent.computeIfAbsent(m.get("REL_CODE"), k -> new ArrayList<>()).add(m);
 			}
-			Set<Object> added = new HashSet<>();
-			for (Map<String, Object> m : menus) {
-				Map<String, Object> group = groups.get(m.get("REL_CODE"));
-				if (group == null || !(superUser || granted.contains(m.get("MENU_CODE")))) {
-					continue;
-				}
-				children(group).add(m);
-				access.items.add(m);
-				if (added.add(m.get("REL_CODE"))) {
+			// 그룹에서 내려가며 모으므로 숨겨서 목록에 없는 상위의 하위 메뉴는 자연히 빠진다
+			for (Map<String, Object> root : byParent.getOrDefault(null, new ArrayList<>())) {
+				Map<String, Object> group = access.branch(root, byParent, granted);
+				if (!children(group).isEmpty()) {
 					access.tree.add(group);
 				}
 			}
 			return access;
+		}
+
+		/** 권한 있는 화면만 남긴 그룹·묶음의 사본을 만든다 */
+		private Map<String, Object> branch(Map<String, Object> parent, Map<Object, List<Map<String, Object>>> byParent, Set<Object> granted) {
+			Map<String, Object> copy = new HashMap<>(parent);
+			List<Map<String, Object>> kids = new ArrayList<>();
+			copy.put("children", kids);
+			for (Map<String, Object> m : byParent.getOrDefault(parent.get("MENU_CODE"), new ArrayList<>())) {
+				if (m.get("MENU_URL") == null) {
+					Map<String, Object> sub = branch(m, byParent, granted);
+					if (!children(sub).isEmpty()) {
+						kids.add(sub);
+					}
+				} else if (superUser || granted.contains(m.get("MENU_CODE"))) {
+					kids.add(m);
+					items.add(m);
+				}
+			}
+			return copy;
 		}
 
 		/** 어떤 메뉴에도 속하지 않은 /admin 주소는 슈퍼관리자만 연다 */
@@ -141,28 +151,50 @@ public class BoSystemService {
 			url = null;
 			patterns = null;
 		} else {
-			require(mapper.countMenu(parent) == 1, "상위 그룹을 찾을 수 없습니다.");
-			require(!parent.equals(code), "자기 자신을 상위 그룹으로 지정할 수 없습니다.");
-			require(code == null || mapper.countChildMenus(code) == 0, "하위 메뉴가 있는 그룹은 메뉴로 바꿀 수 없습니다.");
-			require(url != null && url.length() <= 200 && URL.matcher(url).matches() && !url.startsWith("//"), "화면 주소는 /로 시작하는 내부 주소로 입력해 주세요.");
+			require(url == null || (url.length() <= 200 && URL.matcher(url).matches() && !url.startsWith("//")), "화면 주소는 /로 시작하는 내부 주소로 입력해 주세요.");
 			validatePatterns(patterns);
+			if (url == null) {
+				patterns = null;
+			}
 			icon = null;
-		}
-		boolean visible = !"N".equals(p.get("USE_YN"));
-		if (code != null && CORE_MENUS.contains(code)) {
-			require(visible, "메뉴·권한 관리에 필요한 메뉴는 숨길 수 없습니다.");
 		}
 		p.put("MENU_CODE", code != null ? code : "MN" + System.currentTimeMillis());
 		p.put("MENU_NM", name);
 		p.put("REL_CODE", parent);
-		p.put("MENU_DEPTH", group ? "1" : "2");
 		p.put("MENU_URL", url);
 		p.put("ICON_NM", icon);
 		p.put("AUTH_PATTERN", patterns);
-		p.put("USE_YN", visible ? "Y" : "N");
+		p.put("USE_YN", "N".equals(p.get("USE_YN")) ? "N" : "Y");
 		p.put("NEW_WIN_YN", "Y".equals(p.get("NEW_WIN_YN")) ? "Y" : "N");
 		p.put("SORT_NO", number(p.get("SORT_NO"), "순서"));
+		List<Map<String, Object>> after = new ArrayList<>(mapper.selectAllMenus());
+		after.removeIf(m -> p.get("MENU_CODE").equals(m.get("MENU_CODE")));
+		after.add(p);
+		p.put("MENU_DEPTH", String.valueOf(validateMenuTree(after).get(p.get("MENU_CODE"))));
 		mapper.upsertMenu(p);
+	}
+
+	/** 저장 후의 전체 메뉴로 구조를 검사하고 메뉴별 단계를 돌려준다. 3단계 제한이 순환 참조도 막는다 */
+	static Map<String, Integer> validateMenuTree(List<Map<String, Object>> menus) {
+		Map<String, Map<String, Object>> byCode = new HashMap<>();
+		menus.forEach(m -> byCode.put((String) m.get("MENU_CODE"), m));
+		Map<String, Integer> depths = new HashMap<>();
+		for (Map<String, Object> m : menus) {
+			require(m.get("REL_CODE") != null || m.get("MENU_URL") == null, "화면 주소가 있는 메뉴는 그룹이 될 수 없습니다.");
+			int depth = 1;
+			boolean visible = !"N".equals(m.get("USE_YN"));
+			for (Map<String, Object> at = m; at.get("REL_CODE") != null; depth++) {
+				require(depth < 3, "메뉴는 3단계까지만 만들 수 있습니다.");
+				at = byCode.get(at.get("REL_CODE"));
+				require(at != null, "상위 메뉴를 찾을 수 없습니다.");
+				require(at.get("MENU_URL") == null, "화면 주소가 있는 메뉴 아래에는 메뉴를 둘 수 없습니다.");
+				visible &= !"N".equals(at.get("USE_YN"));
+			}
+			require(depth < 3 || m.get("MENU_URL") != null, "3단계 메뉴는 화면 주소를 입력해 주세요.");
+			require(visible || !CORE_MENUS.contains(m.get("MENU_CODE")), "메뉴·권한 관리에 필요한 메뉴는 숨길 수 없습니다.");
+			depths.put((String) m.get("MENU_CODE"), depth);
+		}
+		return depths;
 	}
 
 	static void validatePatterns(String patterns) {
@@ -195,38 +227,28 @@ public class BoSystemService {
 		});
 	}
 
-	/** order 형식: 그룹:메뉴,메뉴;그룹:메뉴. 화면을 연 뒤 메뉴가 바뀌었으면 일부만 저장되지 않게 전부 거부한다 */
+	/** order 형식: 코드:상위코드,코드:상위코드 (화면 위에서 아래 순서, 그룹은 상위코드 없음). 화면을 연 뒤 메뉴가 바뀌었으면 일부만 저장되지 않게 전부 거부한다 */
 	static List<Map<String, Object>> menuOrderRows(String order, List<Map<String, Object>> menus) {
 		String stale = "메뉴가 변경되었습니다. 새로고침 후 다시 시도해 주세요.";
-		Map<String, Map<String, Object>> byCode = new HashMap<>();
-		menus.forEach(m -> byCode.put((String) m.get("MENU_CODE"), m));
+		Map<String, Map<String, Object>> remaining = new HashMap<>();
+		menus.forEach(m -> remaining.put((String) m.get("MENU_CODE"), m));
 		List<Map<String, Object>> rows = new ArrayList<>();
-		Set<String> seen = new HashSet<>();
-		String[] groups = order.split(";");
-		for (int g = 0; g < groups.length; g++) {
-			String[] parts = groups[g].split(":", -1);
-			require(parts.length == 2, stale);
-			Map<String, Object> group = byCode.get(parts[0]);
-			require(group != null && group.get("REL_CODE") == null && seen.add(parts[0]), stale);
-			rows.add(orderRow(parts[0], null, (g + 1) * 10));
-			String[] items = parts[1].isEmpty() ? new String[0] : parts[1].split(",");
-			for (int i = 0; i < items.length; i++) {
-				Map<String, Object> item = byCode.get(items[i]);
-				require(item != null && item.get("REL_CODE") != null && seen.add(items[i]), stale);
-				require(!CORE_MENUS.contains(items[i]) || !"N".equals(group.get("USE_YN")), "메뉴·권한 관리에 필요한 메뉴는 숨긴 그룹으로 옮길 수 없습니다.");
-				rows.add(orderRow(items[i], parts[0], i + 1));
-			}
+		Map<String, Integer> counts = new HashMap<>();
+		for (String entry : order.split(",")) {
+			String[] parts = entry.split(":", -1);
+			Map<String, Object> menu = remaining.remove(parts[0]);
+			require(parts.length == 2 && menu != null, stale);
+			String parent = parts[1].isEmpty() ? null : parts[1];
+			int position = counts.merge(parent, 1, Integer::sum);
+			Map<String, Object> row = new HashMap<>(menu);
+			row.put("REL_CODE", parent);
+			row.put("SORT_NO", parent == null ? position * 10 : position);
+			rows.add(row);
 		}
-		require(seen.size() == menus.size(), stale);
+		require(remaining.isEmpty(), stale);
+		Map<String, Integer> depths = validateMenuTree(rows);
+		rows.forEach(r -> r.put("MENU_DEPTH", String.valueOf(depths.get(r.get("MENU_CODE")))));
 		return rows;
-	}
-
-	private static Map<String, Object> orderRow(String code, String parent, int sort) {
-		Map<String, Object> row = new HashMap<>();
-		row.put("MENU_CODE", code);
-		row.put("REL_CODE", parent);
-		row.put("SORT_NO", sort);
-		return row;
 	}
 
 	// ── 권한 ──

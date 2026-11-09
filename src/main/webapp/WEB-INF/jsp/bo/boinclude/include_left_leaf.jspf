@@ -1,0 +1,7 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<li class="nav-item">
+  <a href="<c:out value="${leaf.MENU_URL}"/>" class="nav-link"<c:if test="${leaf.NEW_WIN_YN == 'Y'}"> target="_blank" rel="noopener"</c:if>>
+    <i class="far fa-circle nav-icon sTitle"></i>
+    <p class="sTitle"><c:out value="${leaf.MENU_NM}"/><c:if test="${leaf.NEW_WIN_YN == 'Y'}"> <i class="fas fa-external-link-alt" style="font-size:10px;"></i></c:if></p>
+  </a>
+</li>

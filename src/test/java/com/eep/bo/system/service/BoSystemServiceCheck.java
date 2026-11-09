@@ -31,19 +31,49 @@ public class BoSystemServiceCheck {
 		rejects("/eep/**");
 		rejects("/admin/**");
 
-		List<Map<String, Object>> rows = BoSystemService.menuOrderRows("H1:HT,A;G1:;H2:HI", withHiddenGroup(menus));
-		check(rows.size() == 6 && "H1".equals(rows.get(0).get("MENU_CODE")) && rows.get(0).get("REL_CODE") == null && (int) rows.get(0).get("SORT_NO") == 10, "그룹 순서");
-		check("A".equals(rows.get(2).get("MENU_CODE")) && "H1".equals(rows.get(2).get("REL_CODE")) && (int) rows.get(2).get("SORT_NO") == 2, "다른 그룹으로 이동");
+		List<Map<String, Object>> rows = BoSystemService.menuOrderRows("H1:,HT:H1,A:H1,G1:,H2:,HI:H2", withHiddenGroup(menus));
+		check(rows.size() == 6 && "H1".equals(rows.get(0).get("MENU_CODE")) && rows.get(0).get("REL_CODE") == null && (int) rows.get(0).get("SORT_NO") == 10 && "1".equals(rows.get(0).get("MENU_DEPTH")), "그룹 순서");
+		check("A".equals(rows.get(2).get("MENU_CODE")) && "H1".equals(rows.get(2).get("REL_CODE")) && (int) rows.get(2).get("SORT_NO") == 2 && "2".equals(rows.get(2).get("MENU_DEPTH")), "다른 그룹으로 이동");
 		rejectsOrder("", menus);
-		rejectsOrder("G1:A;H1:HI", menus); // HT 누락
-		rejectsOrder("G1:A,A;H1:HI,HT", menus); // 중복
-		rejectsOrder("A:G1;H1:HI,HT", menus); // 그룹과 메뉴가 뒤바뀜
-		rejectsOrder("G1:A,X;H1:HI,HT", menus); // 없는 메뉴
+		rejectsOrder("G1:,A:G1,H1:,HI:H1", menus); // HT 누락
+		rejectsOrder("G1:,A:G1,A:G1,H1:,HI:H1,HT:H1", menus); // 중복
+		rejectsOrder("A:,G1:A,H1:,HI:H1,HT:H1", menus); // 화면을 그룹으로
+		rejectsOrder("G1:,A:G1,X:G1,H1:,HI:H1,HT:H1", menus); // 없는 메뉴
 
 		List<Map<String, Object>> core = new ArrayList<>(withHiddenGroup(menus));
 		core.add(menu("M00002", "G1", "/admin/system/menu/open.do", "/admin/system/menu/**"));
-		rejectsOrder("G1:A,HI;H1:HT;H2:M00002", core); // 메뉴 관리를 숨긴 그룹으로 이동
+		rejectsOrder("G1:,A:G1,HI:G1,H1:,HT:H1,H2:,M00002:H2", core); // 메뉴 관리를 숨긴 그룹으로 이동
+
+		List<Map<String, Object>> deep = Arrays.asList(
+				menu("R", null, null, null), menu("F", "R", null, null), menu("L", "F", "/admin/l/open.do", "/admin/l/**"), menu("S", "R", "/admin/s/open.do", "/admin/s/**"), menu("E", "R", null, null));
+		BoSystemService.Access three = BoSystemService.Access.of(deep, Arrays.asList(grant("X", "L")));
+		List<?> kids = (List<?>) three.tree.get(0).get("children");
+		check(three.allows("/admin/l/data.do") && !three.allows("/admin/s/open.do") && kids.size() == 1 && "/admin/l/open.do".equals(three.firstUrl()), "3단계 권한과 빈 묶음 제외");
+		check(BoSystemService.Access.of(deep, Arrays.asList(grant("X", "S"))).tree.size() == 1 && BoSystemService.Access.of(deep, Collections.<Map<String, Object>>emptyList()).tree.isEmpty(), "권한 없는 그룹 제외");
+		BoSystemService.Access hiddenFolder = BoSystemService.Access.of(Arrays.asList(menu("R", null, null, null), menu("L", "F", "/admin/l/open.do", "/admin/l/**")), Arrays.asList(grant("X", "L")));
+		check(!hiddenFolder.allows("/admin/l/open.do") && hiddenFolder.tree.isEmpty(), "숨긴 묶음 아래 화면 차단");
+		check(BoSystemService.validateMenuTree(deep).get("L") == 3, "3단계 허용");
+		rejectsTree(with(deep, menu("D", "L", "/admin/d/open.do", null))); // 4단계이자 화면 아래
+		rejectsTree(with(deep, menu("D", "S", "/admin/d/open.do", null))); // 화면 아래
+		rejectsTree(with(deep, menu("D", "F", null, null))); // 3단계 묶음
+		rejectsTree(with(deep, menu("D", "NONE", "/admin/d/open.do", null))); // 상위 없음
+		rejectsTree(Arrays.asList(menu("C1", "C2", null, null), menu("C2", "C1", null, null))); // 순환
 		System.out.println("BoSystemServiceCheck OK");
+	}
+
+	private static List<Map<String, Object>> with(List<Map<String, Object>> menus, Map<String, Object> extra) {
+		List<Map<String, Object>> all = new ArrayList<>(menus);
+		all.add(extra);
+		return all;
+	}
+
+	private static void rejectsTree(List<Map<String, Object>> menus) {
+		try {
+			BoSystemService.validateMenuTree(menus);
+		} catch (IllegalArgumentException e) {
+			return;
+		}
+		throw new AssertionError("거부해야 함: " + menus);
 	}
 
 	private static List<Map<String, Object>> withHiddenGroup(List<Map<String, Object>> menus) {

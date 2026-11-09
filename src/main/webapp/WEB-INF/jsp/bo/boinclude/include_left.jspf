@@ -35,6 +35,11 @@
     .mode-switch { display: inline-flex; align-self: center; padding: 3px; gap: 2px; border-radius: 999px; background: #F2F8FE; border: 1px solid rgba(17,17,17,.08); white-space: nowrap; }
     .mode-switch[hidden] { display: none; }
     .sidebar-collapse .main-sidebar:not(:hover) .nav-treeview { display: none !important; }
+    .nav-sidebar .nav-treeview .nav-treeview .nav-link { padding-left: 1.75rem; }
+    .nav-sidebar a.nav-link.bo-current, .nav-sidebar a.nav-link.bo-current:hover { background: #16D5FF !important; color: #06222B !important; font-weight: 700; box-shadow: inset 4px 0 0 #fff; }
+    .nav-sidebar a.nav-link.bo-parent { color: #fff !important; font-weight: 600; }
+    .sidebar-collapse .main-sidebar:not(:hover) .nav-sidebar > .nav-item > a.bo-parent { box-shadow: inset 4px 0 0 #16D5FF; }
+    .sidebar-collapse .main-sidebar:not(:hover) .nav-sidebar > .nav-item > a.bo-parent .nav-icon { color: #16D5FF !important; }
     .mode-switch-item { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; line-height: 1; color: #555; text-decoration: none; transition: background-color .15s, color .15s; }
     .mode-switch-item:hover { color: #111; background: rgba(22,213,255,.18); text-decoration: none; }
     .mode-switch-item.active { color: #fff; background: #111; box-shadow: 0 1px 3px rgba(0,0,0,.2); pointer-events: none; }
@@ -86,12 +91,20 @@
 	            </a>
 	            <ul class="nav nav-treeview">
 	              <c:forEach var="item" items="${group.children}">
-	              <li class="nav-item">
-	                <a href="<c:out value="${item.MENU_URL}"/>" class="nav-link"<c:if test="${item.NEW_WIN_YN == 'Y'}"> target="_blank" rel="noopener"</c:if>>
-	                  <i class="far fa-circle nav-icon sTitle"></i>
-	                  <p class="sTitle"><c:out value="${item.MENU_NM}"/><c:if test="${item.NEW_WIN_YN == 'Y'}"> <i class="fas fa-external-link-alt" style="font-size:10px;"></i></c:if></p>
+	              <c:choose>
+	              <c:when test="${not empty item.children}">
+	              <li class="nav-item has-treeview">
+	                <a href="#" class="nav-link">
+	                  <i class="far fa-folder-open nav-icon sTitle"></i>
+	                  <p class="sTitle"><c:out value="${item.MENU_NM}"/><i class="right fas fa-angle-left"></i></p>
 	                </a>
+	                <ul class="nav nav-treeview">
+	                  <c:forEach var="leaf" items="${item.children}"><%@ include file="/WEB-INF/jsp/bo/boinclude/include_left_leaf.jspf"%></c:forEach>
+	                </ul>
 	              </li>
+	              </c:when>
+	              <c:otherwise><c:set var="leaf" value="${item}"/><%@ include file="/WEB-INF/jsp/bo/boinclude/include_left_leaf.jspf"%></c:otherwise>
+	              </c:choose>
 	              </c:forEach>
 	            </ul>
           	</li>
@@ -116,7 +129,7 @@
 	// AdminLTE 는 window load 뒤에 접은 상태를 복원해 화면 전환마다 펼쳐졌다 접히므로 그리기 전에 먼저 적용한다
 	if (localStorage.getItem('remember.lte.pushmenu') === 'sidebar-collapse') document.body.classList.add('sidebar-collapse');
 	[].forEach.call(document.querySelectorAll('aside .has-treeview.menu-open'), function(li) { li.classList.remove('menu-open'); });
-	var links = [].slice.call(document.querySelectorAll('aside .nav-treeview a.nav-link'));
+	var links = [].slice.call(document.querySelectorAll('aside .nav-treeview a.nav-link:not([href="#"])'));
 	var path = location.pathname, dir = path.substring(0, path.lastIndexOf('/') + 1);
 	var current = links.filter(function(a) { return a.pathname + a.search === path + location.search; })[0]
 		|| links.filter(function(a) { return a.pathname === path; })[0]
@@ -126,7 +139,11 @@
 		icon.classList.remove('far');
 		icon.classList.add('fas');
 		current.setAttribute('aria-current', 'page');
-		current.closest('.has-treeview').classList.add('menu-open');
+		current.classList.add('bo-current');
+		for (var li = current.closest('.has-treeview'); li; li = li.parentElement.closest('.has-treeview')) {
+			li.classList.add('menu-open');
+			li.children[0].classList.add('bo-parent');
+		}
 	}
 })();
 </script>

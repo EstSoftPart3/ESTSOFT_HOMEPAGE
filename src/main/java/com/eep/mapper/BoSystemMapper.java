@@ -14,8 +14,6 @@ public interface BoSystemMapper {
 
 	List<Map<String, Object>> selectAllMenus();
 
-	int countMenu(String menuCode);
-
 	int countChildMenus(String menuCode);
 
 	void upsertMenu(Map<String, Object> param);

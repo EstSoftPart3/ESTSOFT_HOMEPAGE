@@ -25,8 +25,8 @@
 								<input type="hidden" name="MENU_CODE" id="fCode">
 								<div class="form-row">
 									<div class="col-md-8 mb-2"><label for="fName">이름 *</label><input id="fName" name="MENU_NM" class="form-control form-control-sm" maxlength="50" required></div>
-									<div class="col-md-4 mb-2"><label for="fParent">상위 그룹</label><select id="fParent" name="REL_CODE" class="form-control form-control-sm"></select></div>
-									<div class="col-12 mb-2 only-item"><label for="fUrl">화면 주소 *</label><input id="fUrl" name="MENU_URL" class="form-control form-control-sm sys-mono" maxlength="200" placeholder="/admin/업무/openList.do"></div>
+									<div class="col-md-4 mb-2"><label for="fParent">상위 메뉴</label><select id="fParent" name="REL_CODE" class="form-control form-control-sm"></select></div>
+									<div class="col-12 mb-2 only-item"><label for="fUrl">화면 주소 <small>(2단계에서 비워 두면 하위 메뉴를 담는 묶음)</small></label><input id="fUrl" name="MENU_URL" class="form-control form-control-sm sys-mono" maxlength="200" placeholder="/admin/업무/openList.do"></div>
 									<div class="col-12 mb-2 only-item"><label for="fPattern">접근 경로 (쉼표로 구분, 데이터 요청 주소까지 포함)</label><textarea id="fPattern" name="AUTH_PATTERN" rows="3" class="form-control form-control-sm sys-mono" maxlength="1000" placeholder="/admin/업무/**"></textarea></div>
 									<div class="col-12 mb-2 only-group"><label id="iconLabel">아이콘</label><input type="hidden" id="fIcon" name="ICON_NM"><div id="iconGrid" class="sys-icons" role="radiogroup" aria-labelledby="iconLabel"></div></div>
 									<div class="col-md-3 mb-2"><label for="fSort">순서</label><input id="fSort" name="SORT_NO" type="number" min="0" class="form-control form-control-sm" required></div>
@@ -67,26 +67,33 @@
 	}
 
 	function groups() { return menus.filter(function(m) { return !m.REL_CODE; }); }
+	function childrenOf(code) { return menus.filter(function(m) { return m.REL_CODE === code; }); }
+	function isFolder(m) { return m.REL_CODE && !m.MENU_URL; }
 
 	function renderTree() {
 		var $t = $('#tree').empty();
 		groups().forEach(function(g) {
-			var $items = $('<div class="sys-items">');
-			menus.filter(function(m) { return m.REL_CODE === g.MENU_CODE; }).forEach(function(m) { $items.append(node(m, 'sys-node-item')); });
-			$t.append($('<div class="sys-group">').append(node(g, 'sys-node-group'), $items));
+			$t.append($('<div class="sys-group">').append(node(g, 'sys-node-group'), itemList(g.MENU_CODE, 'lv2')));
 		});
 		// cancel: 기본값이 button 드래그를 막는다
 		var drag = { axis: 'y', cancel: '', distance: 5, tolerance: 'pointer', placeholder: 'sys-drop', forcePlaceholderSize: true, stop: saveOrder };
 		$t.sortable($.extend({ items: '.sys-group', handle: '.sys-node-group' }, drag));
-		$t.find('.sys-items').sortable($.extend({ items: '.sys-node', connectWith: '.sys-items' }, drag));
+		$t.find('.sys-items').sortable($.extend({ items: '> .sys-node-item, > .sys-sub', connectWith: '.sys-items' }, drag));
 		savedOrder = treeOrder();
 	}
 
+	function itemList(parent, level) {
+		var $list = $('<div class="sys-items">').addClass(level);
+		childrenOf(parent).forEach(function(m) {
+			$list.append(isFolder(m) ? $('<div class="sys-sub">').append(node(m, 'sys-node-folder'), itemList(m.MENU_CODE, 'lv3')) : node(m, 'sys-node-item'));
+		});
+		return $list;
+	}
+
 	function treeOrder() {
-		return $('#tree .sys-group').map(function() {
-			var items = $(this).find('.sys-node-item').map(function() { return $(this).attr('data-code'); }).get();
-			return $(this).find('.sys-node-group').attr('data-code') + ':' + items.join(',');
-		}).get().join(';');
+		return $('#tree .sys-node').map(function() {
+			return $(this).attr('data-code') + ':' + ($(this).closest('.sys-items').prev('.sys-node').attr('data-code') || '');
+		}).get().join(',');
 	}
 
 	function saveOrder() {
@@ -106,6 +113,7 @@
 			renderParents();
 			$('#fParent').val(selected ? selected.REL_CODE || '' : parent);
 			if (selected) $('#fSort').val(selected.SORT_NO);
+			applyKind();
 			$('#sortMsg').text(msg);
 			clearTimeout(sortMsgTimer);
 			sortMsgTimer = setTimeout(function() { $('#sortMsg').empty(); }, 2500);
@@ -131,6 +139,7 @@
 		var $b = $('<button type="button" class="sys-node">').addClass(cls).attr('data-code', m.MENU_CODE).toggleClass('on', !!selected && selected.MENU_CODE === m.MENU_CODE).on('click', function() { if (Date.now() - draggedAt > 300) select(m); });
 		$b.append('<i class="fas fa-grip-vertical sys-grip" aria-hidden="true"></i>');
 		if (cls === 'sys-node-group') $b.append($('<i class="fas fa-fw" aria-hidden="true">').addClass(m.ICON_NM || 'fa-folder'));
+		if (cls === 'sys-node-folder') $b.append('<i class="far fa-folder-open" aria-hidden="true"></i>');
 		$b.append($('<span>').text(m.MENU_NM));
 		if (m.USE_YN === 'N') $b.append('<span class="sys-pill">숨김</span>');
 		return $b;
@@ -138,14 +147,17 @@
 
 	function renderParents() {
 		var $p = $('#fParent').empty().append('<option value="">없음 (그룹)</option>');
-		groups().forEach(function(g) { $p.append($('<option>').val(g.MENU_CODE).text(g.MENU_NM)); });
+		groups().forEach(function(g) {
+			$p.append($('<option>').val(g.MENU_CODE).text(g.MENU_NM));
+			childrenOf(g.MENU_CODE).filter(isFolder).forEach(function(f) { $p.append($('<option>').val(f.MENU_CODE).text('└ ' + f.MENU_NM)); });
+		});
 	}
 
 	function applyKind() {
-		var group = !$('#fParent').val();
+		var parent = $('#fParent').val(), group = !parent;
 		$('.only-item').prop('hidden', group);
 		$('.only-group').prop('hidden', !group);
-		$('#fUrl').prop('required', !group);
+		$('#fUrl').prop('required', menus.some(function(m) { return m.MENU_CODE === parent && m.REL_CODE; }));
 	}
 	$('#fParent').on('change', applyKind);
 

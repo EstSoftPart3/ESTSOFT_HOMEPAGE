@@ -12,6 +12,9 @@
 	.sys-node-group { font-weight: 600; margin-top: 4px; }
 	.sys-node-item { padding-left: 22px; }
 	.sys-node { cursor: grab; }
+	.sys-node-folder { padding-left: 22px; font-weight: 600; }
+	.lv3 .sys-node-item { padding-left: 42px; }
+	.sys-items.lv3:empty { min-height: 30px; margin-left: 42px; border: 1px dashed #c4cad0; border-radius: 6px; }
 	.sys-grip { font-size: 10px; opacity: .45; }
 	.sys-items { min-height: 8px; }
 	.sys-drop { border: 2px dashed #0b6e8a; border-radius: 6px; background: rgba(22,213,255,.12); visibility: visible !important; }
@@ -32,7 +35,10 @@
 	.sys-role small { color: #666; }
 	.sys-check { display: flex; align-items: center; gap: 7px; margin: 0; padding: 3px 0; font-size: 13px; font-weight: 400 !important; color: #333 !important; cursor: pointer; }
 	.sys-check.group { font-weight: 600 !important; margin-top: 6px; }
-	.sys-check.item { padding-left: 24px; }
+	.sys-check.item, .sys-check.group.lv2 { padding-left: 24px; }
+	.sys-check.item.lv3 { padding-left: 46px; }
+	.sys-check.group.lv2 { margin-top: 0; }
+	.sys-matrix td.sys-lv3 { padding-left: 26px; }
 	.sys-matrix th, .sys-matrix td { text-align: center; white-space: nowrap; }
 	.sys-matrix th:first-child, .sys-matrix td:first-child { text-align: left; position: sticky; left: 0; background: #fff; }
 	.sys-matrix tr.group td { background: #fafbfc; font-weight: 600; }

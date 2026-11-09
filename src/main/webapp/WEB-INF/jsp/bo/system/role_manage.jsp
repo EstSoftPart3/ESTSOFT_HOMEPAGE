@@ -66,8 +66,9 @@
 	}
 
 	function isSuper(r) { return r.ROLE_CD === 'SUPER'; }
-	function items() { return data.menus.filter(function(m) { return m.REL_CODE; }); }
+	function items() { return data.menus.filter(function(m) { return m.MENU_URL; }); }
 	function groups() { return data.menus.filter(function(m) { return !m.REL_CODE; }); }
+	function childrenOf(code) { return data.menus.filter(function(m) { return m.REL_CODE === code; }); }
 	function menuCodes(r) { return data.roleMenus.filter(function(x) { return x.ROLE_SQ === r.ROLE_SQ; }).map(function(x) { return x.MENU_CODE; }); }
 	function users(r) { return data.roleUsers.filter(function(x) { return x.ROLE_SQ === r.ROLE_SQ; }); }
 
@@ -102,27 +103,32 @@
 	function renderMenus() {
 		var $b = $('#tabBody').empty(), locked = isSuper(current), have = menuCodes(current);
 		if (locked) $b.append('<div class="small text-muted mb-2">슈퍼관리자는 항상 모든 메뉴를 사용합니다.</div>');
-		var $tree = $('<div>').appendTo($b);
-		groups().forEach(function(g) {
+		var $tree = $('<div>').appendTo($b), syncs = [];
+		function syncAll() { syncs.forEach(function(sync) { sync(); }); }
+		// 그룹·묶음 체크박스는 하위 화면 일괄 선택용이고 저장되는 것은 화면 메뉴뿐이다
+		function branch(g, level) {
 			var $box = $('<input type="checkbox">').prop('disabled', locked);
-			var $group = $('<label class="sys-check group">').append($box).append($('<span>').text(g.MENU_NM)).appendTo($tree);
+			var $group = $('<label class="sys-check group">').addClass('lv' + level).append($box).append($('<span>').text(g.MENU_NM)).appendTo($tree);
 			var $children = $();
-			data.menus.filter(function(m) { return m.REL_CODE === g.MENU_CODE; }).forEach(function(m) {
+			childrenOf(g.MENU_CODE).forEach(function(m) {
+				if (!m.MENU_URL) { $children = $children.add(branch(m, level + 1)); return; }
 				var $c = $('<input type="checkbox" class="menu-box">').val(m.MENU_CODE).prop({ disabled: locked, checked: locked || have.indexOf(m.MENU_CODE) >= 0 });
-				var $label = $('<label class="sys-check item">').append($c).append($('<span>').text(m.MENU_NM));
+				var $label = $('<label class="sys-check item">').addClass('lv' + (level + 1)).append($c).append($('<span>').text(m.MENU_NM));
 				if (m.USE_YN === 'N') $label.append('<span class="sys-pill">숨김</span>');
 				$tree.append($label);
+				$c.on('change', function() { dirty = true; syncAll(); });
 				$children = $children.add($c);
 			});
-			function sync() {
+			syncs.push(function() {
 				var on = $children.filter(':checked').length;
 				$box.prop({ checked: on > 0 && on === $children.length, indeterminate: on > 0 && on < $children.length });
-			}
-			$box.on('change', function() { $children.prop('checked', this.checked); dirty = true; sync(); });
-			$children.on('change', function() { dirty = true; sync(); });
+			});
+			$box.on('change', function() { $children.prop('checked', this.checked); dirty = true; syncAll(); });
 			if (!$children.length) $group.remove();
-			sync();
-		});
+			return $children;
+		}
+		groups().forEach(function(g) { branch(g, 1); });
+		syncAll();
 		if (!locked) {
 			$('<div class="text-right mb-2">').append($('<button type="button" class="btn btn-sm btn-primary">저장</button>').on('click', saveMenus)).appendTo($b);
 		}
@@ -165,19 +171,21 @@
 	function renderAll() {
 		var $head = $('<tr>').append('<th>메뉴</th>'), $body = $('<tbody>');
 		data.roles.forEach(function(r) { $head.append($('<th>').text(r.ROLE_NM)); });
-		groups().forEach(function(g) {
-			var children = data.menus.filter(function(m) { return m.REL_CODE === g.MENU_CODE; });
+		function rows(g, deep) {
+			var children = childrenOf(g.MENU_CODE);
 			if (!children.length) return;
 			$('<tr class="group">').append($('<td>').attr('colspan', data.roles.length + 1).text(g.MENU_NM)).appendTo($body);
 			children.forEach(function(m) {
-				var $tr = $('<tr>').append($('<td>').text(m.MENU_NM));
+				if (!m.MENU_URL) { rows(m, true); return; }
+				var $tr = $('<tr>').append($('<td>').toggleClass('sys-lv3', deep).text(m.MENU_NM));
 				data.roles.forEach(function(r) {
 					var yes = isSuper(r) || menuCodes(r).indexOf(m.MENU_CODE) >= 0;
 					$tr.append($('<td>').append(yes ? '<i class="fas fa-check sys-yes" aria-label="허용"></i>' : '<span class="sys-no" aria-label="없음">–</span>'));
 				});
 				$body.append($tr);
 			});
-		});
+		}
+		groups().forEach(function(g) { rows(g, false); });
 		$('#tabBody').empty().append($('<div class="table-responsive mb-2">').append($('<table class="table table-sm cal-table sys-matrix mb-0">').append($('<thead>').append($head)).append($body)));
 	}
 
