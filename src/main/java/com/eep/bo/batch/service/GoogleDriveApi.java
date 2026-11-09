@@ -44,7 +44,8 @@ public class GoogleDriveApi {
 
 	/** 직원서류처럼 쓰기가 필요한 연결은 WRITE_SCOPE 로 따로 승인받는다 */
 	public String authUrl(String clientId, String redirectUri, String state, String scope) {
-		return AUTH_URL + "?response_type=code&access_type=offline&prompt=consent"
+		// select_account: 구글 계정을 여러 개 로그인한 브라우저에서 기본 계정으로 넘어가지 않게 한다
+		return AUTH_URL + "?response_type=code&access_type=offline&prompt=select_account%20consent"
 				+ "&client_id=" + enc(clientId)
 				+ "&redirect_uri=" + enc(redirectUri)
 				+ "&scope=" + enc(scope)

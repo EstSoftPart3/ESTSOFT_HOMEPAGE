@@ -156,6 +156,33 @@
           	
           	<li class="nav-item has-treeview menu-open">
 	            <a href="#" class="nav-link">
+	              <i class="nav-icon fas fa-flask"></i>
+	              <p class="sTitle">연구소<i class="right fas fa-angle-left"></i></p>
+	            </a>
+	            <ul class="nav nav-treeview">
+	              <li class="nav-item">
+	                <a href="/admin/lab/openResearcherList.do" class="nav-link">
+	                  <i class="far fa-circle nav-icon sTitle"></i>
+	                  <p class="sTitle">연구원</p>
+	                </a>
+	              </li>
+	              <li class="nav-item">
+	                <a href="/admin/lab/openProjectList.do" class="nav-link">
+	                  <i class="far fa-circle nav-icon sTitle"></i>
+	                  <p class="sTitle">연구과제</p>
+	                </a>
+	              </li>
+	              <li class="nav-item">
+	                <a href="/admin/lab/openJournalList.do" class="nav-link">
+	                  <i class="far fa-circle nav-icon sTitle"></i>
+	                  <p class="sTitle">월간 연구일지</p>
+	                </a>
+	              </li>
+	            </ul>
+          	</li>
+
+          	<li class="nav-item has-treeview menu-open">
+	            <a href="#" class="nav-link">
 	              <i class="nav-icon fas fa-briefcase"></i>
 	              <p class="sTitle">업무툴<i class="right fas fa-angle-left"></i>
 	              </p>
