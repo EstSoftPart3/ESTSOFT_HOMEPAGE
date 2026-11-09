@@ -14,6 +14,17 @@
 	.st-chip { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 10px; background: #eef1f4; color: #444; margin: 0 4px 4px 0; }
 	.st-chip b { color: #111; }
 	[data-copy]:focus { outline: 2px solid #16d5ff; outline-offset: -2px; }
+	.st-doc-row { display: grid; grid-template-columns: 120px 76px 1fr auto; gap: 8px; align-items: start; padding: 4px 6px; border-radius: 6px; }
+	.st-doc-row + .st-doc-row { border-top: 1px dashed rgba(17,17,17,.08); }
+	.st-doc-row.is-over { outline: 2px dashed #16a0c4; background: #e3f6fb; }
+	.st-doc-row .hr-card-label { line-height: 22px; }
+	.st-files a { display: inline-block; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; font-size: 12px; }
+	.st-file { display: inline-flex; align-items: center; gap: 2px; background: #f3f6f8; border-radius: 10px; padding: 0 4px 0 8px; margin: 0 4px 4px 0; }
+	.st-file button { background: none; border: 0; padding: 0 3px; color: #888; font-size: 11px; }
+	.st-file button:hover, .st-file button:focus { color: #0b6e8a; }
+	.st-attach { font-size: 11px; padding: 1px 8px; margin: 0; cursor: pointer; }
+	.st-busy { opacity: .5; pointer-events: none; }
+	#driveStatus { font-size: 12px; }
 	#copyToast { position: fixed; right: 18px; bottom: 18px; z-index: 2000; background: #222; color: #fff; font-size: 12px; padding: 6px 12px; border-radius: 6px; display: none; }
 </style>
 
@@ -55,7 +66,10 @@
 									<button type="button" class="btn btn-sm btn-primary" onclick="openNew();"><i class="fas fa-plus"></i> 직원 등록</button>
 								</div>
 							</div>
-							<div id="summary" class="mt-1"></div>
+							<div class="d-flex flex-wrap align-items-center justify-content-between mt-1">
+								<div id="summary"></div>
+								<div id="driveStatus" class="text-muted"></div>
+							</div>
 						</div>
 					</div>
 
@@ -109,6 +123,30 @@
 		</div>
 	</div>
 
+	<div class="modal fade" id="scanModal" tabindex="-1" role="dialog" aria-labelledby="scanTitle" aria-hidden="true">
+		<div class="modal-dialog modal-lg" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="scanTitle">드라이브에 있는 서류 연결</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
+				</div>
+				<div class="modal-body">
+					<p class="small text-muted mb-2">사람 폴더와 <b>00. 입사관련서류</b> 폴더의 파일입니다. 서류 종류는 파일 이름으로 미리 골라 두었습니다. 연결하면 통장사본·신분증·등본·졸업증명·병적증명서는 글자를 읽어 빈 칸을 채웁니다.
+						<a id="scanFolder" href="#" target="_blank" rel="noopener">드라이브에서 폴더 열기</a></p>
+					<div class="table-responsive" style="max-height:55vh;">
+						<table class="table table-sm cal-table mb-0">
+							<thead><tr><th style="width:36px;"><span class="sr-only">선택</span></th><th>파일</th><th style="width:190px;">서류 종류</th></tr></thead>
+							<tbody id="scanBody"></tbody>
+						</table>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-sm btn-primary" id="btnLink" onclick="linkScanned();">선택한 파일 연결</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
 	<div id="copyToast" role="status" aria-live="polite"></div>
 
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
@@ -148,7 +186,8 @@
 		$('#sortSel, .st-filter').on('change', render);
 		hrBuildFields('#newFields', [['STAFF_NM', '성명 *', 6], ['STATUS_CD', '재직 상태', 6, { values: STATUS }], ['ORG_NM', '소속', 4], ['DEPT_NM', '부서', 4],
 			['POSITION_NM', '직급', 4], ['PHONE', '전화번호', 6], ['JOIN_DT', '입사일자', 6, 'date']]);
-		$('#cardModal').on('hidden.bs.modal', function() { opened = null; revealed = {}; render(); });
+		$('#cardModal').on('hidden.bs.modal', function() { opened = null; revealed = {}; docs = null; render(); });
+		loadDrive();
 	});
 
 	$(document).on('click', '.cate-tab', function() { current = $(this).data('tab'); render(); });
@@ -291,18 +330,160 @@
 			});
 			if (s[0] === '일자') $g.append($('<div class="hr-card-row">').append($('<div class="hr-card-label">').text('근속')).append($('<div class="hr-cell">').text(tenure(r) || '-')));
 		});
-		$b.append($('<div class="hr-section">').append('서류 ').append($('<span class="small text-muted font-weight-normal">').text('(미제출 ' + missingDocs(r).length + '건)')));
-		var $d = $('<div class="st-docs">').appendTo($b);
-		DOCS.forEach(function(d) {
-			var $cell = $('<div>');
-			hrEditable($cell, {
-				url: '/admin/staff/saveStaffFieldData.do', key: { STAFF_SQ: r.STAFF_SQ }, field: d[0], type: DOC_VALUES, label: r.STAFF_NM + ' ' + d[1],
-				show: function() { return r[d[0]] || '미제출'; }, value: function() { return r[d[0]]; },
-				saved: function(v) { r[d[0]] = v; paintCard(); }
-			});
-			$cell.attr('data-tone', !r[d[0]] || r[d[0]] === 'X' ? 'warn' : 'good');
-			$d.append($('<div class="hr-card-row">').append($('<div class="hr-card-label">').css('flex-basis', '96px').text(d[1])).append(copyable($cell, r, d[0])));
+		$b.append($('<div class="hr-section d-flex align-items-center">').append('서류&nbsp;')
+			.append($('<span class="small text-muted font-weight-normal">').text('(미제출 ' + missingDocs(r).length + '건 · 파일은 구글 드라이브)'))
+			.append($('<button type="button" class="btn btn-sm btn-outline-primary ml-auto">').html('<i class="fab fa-google-drive"></i> 드라이브에서 찾기').on('click', openScan)));
+		var $d = $('<div>').appendTo($b);
+		DOCS.forEach(function(d) { $d.append(docRow(r, d)); });
+		if (!docs || docs.sq !== r.STAFF_SQ) loadDocs(r.STAFF_SQ);
+	}
+
+	// ── 서류 첨부 (구글 드라이브) ──
+	var docs = null; // { sq, list }
+	var PARSEABLE = ['DOC_BANK', 'DOC_ID', 'DOC_REG', 'DOC_GRAD', 'DOC_MIL'];
+
+	function docRow(r, d) {
+		var $cell = $('<div>');
+		hrEditable($cell, {
+			url: '/admin/staff/saveStaffFieldData.do', key: { STAFF_SQ: r.STAFF_SQ }, field: d[0], type: DOC_VALUES, label: r.STAFF_NM + ' ' + d[1],
+			show: function() { return r[d[0]] || '미제출'; }, value: function() { return r[d[0]]; },
+			saved: function(v) { r[d[0]] = v; paintCard(); }
 		});
+		$cell.attr('data-tone', !r[d[0]] || r[d[0]] === 'X' ? 'warn' : 'good').css({ 'border-radius': '4px', padding: '0 6px', 'line-height': '22px' });
+		var $files = $('<div class="st-files">');
+		((docs && docs.sq === r.STAFF_SQ ? docs.list : []) || []).filter(function(f) { return f.DOC_CD === d[0]; }).forEach(function(f) {
+			var $f = $('<span class="st-file">').append($('<a target="_blank" rel="noopener">').attr('href', f.WEB_LINK || ('https://drive.google.com/file/d/' + f.FILE_ID + '/view')).attr('title', f.FILE_NM).text(f.FILE_NM));
+			if (PARSEABLE.indexOf(d[0]) >= 0) $f.append($('<button type="button">').attr('aria-label', f.FILE_NM + ' 글자 다시 읽기').attr('title', '글자 다시 읽어 칸 채우기').html('<i class="fas fa-redo"></i>')
+				.on('click', function() { docAction('/admin/staff/readStaffDocData.do', { STAFF_SQ: r.STAFF_SQ, DOC_CD: d[0], FILE_ID: f.FILE_ID }, d[1] + ' 다시 읽기'); }));
+			$f.append($('<button type="button">').attr('aria-label', f.FILE_NM + ' 연결 끊기').attr('title', '연결 끊기 (드라이브 파일은 남는다)').html('&times;')
+				.on('click', function() {
+					bootbox.confirm(f.FILE_NM + ' 연결을 끊을까요? 드라이브의 파일은 지우지 않습니다.', function(ok) {
+						if (ok) hrPost('/admin/staff/unlinkStaffDocData.do', { STAFF_SQ: r.STAFF_SQ, DOC_SQ: f.DOC_SQ }, function() { loadDocs(r.STAFF_SQ); });
+					});
+				}));
+			$files.append($f);
+		});
+		var inputId = 'up_' + d[0];
+		var $input = $('<input type="file" class="d-none" accept="image/*,application/pdf,.hwp,.doc,.docx,.zip">').attr('id', inputId)
+			.on('change', function() { if (this.files[0]) upload(r, d, this.files[0]); this.value = ''; });
+		var $attach = $('<label class="btn btn-sm btn-outline-secondary st-attach">').attr('for', inputId).html('<i class="fas fa-paperclip"></i> 첨부');
+		var $row = $('<div class="st-doc-row">').append($('<div class="hr-card-label">').text(d[1])).append(copyable($cell, r, d[0])).append($files).append($('<div>').append($input).append($attach));
+		// 파일을 이 줄에 끌어다 놓아도 첨부한다
+		$row.on('dragover', function(e) { e.preventDefault(); $row.addClass('is-over'); })
+			.on('dragleave drop', function() { $row.removeClass('is-over'); })
+			.on('drop', function(e) { e.preventDefault(); var f = e.originalEvent.dataTransfer.files[0]; if (f) upload(r, d, f); });
+		return $row;
+	}
+
+	function loadDocs(sq) {
+		$.post('/admin/staff/staffDocsData.do', { STAFF_SQ: sq }, function(res) {
+			docs = { sq: sq, list: res.docs || [] };
+			if (String(opened) === String(sq)) paintCard();
+		});
+	}
+
+	function upload(r, d, file) {
+		if (file.size > 20 * 1024 * 1024) { bootbox.alert('20MB 이하 파일만 올릴 수 있습니다.'); return; }
+		var fd = new FormData();
+		fd.append('STAFF_SQ', r.STAFF_SQ);
+		fd.append('DOC_CD', d[0]);
+		fd.append('file', file);
+		busy(true, d[1] + ' 올리는 중… 글자를 읽으면 10초쯤 걸립니다');
+		$.ajax({ url: '/admin/staff/uploadStaffDocData.do', type: 'POST', data: fd, processData: false, contentType: false })
+			.done(function(res) { afterDoc(res, d[1] + ' 첨부'); })
+			.fail(function() { busy(false); });
+	}
+
+	function docAction(url, data, label) {
+		busy(true, label + ' 중…');
+		$.post(url, data).done(function(res) { afterDoc(res, label); }).fail(function() { busy(false); });
+	}
+
+	// 빈 칸은 서버가 이미 채웠다. 다른 값이 있던 칸은 골라서 바꾼다
+	function afterDoc(res, label) {
+		busy(false);
+		if (res.error) { bootbox.alert(res.error); return; }
+		var out = res.result || {}, filled = Object.keys(out.filled || {});
+		toast(label + ' 완료' + (filled.length ? ' · 채움: ' + filled.map(function(f) { return LABELS[f] || f; }).join(', ') : '') + (out.ocrError ? ' · ' + out.ocrError : ''));
+		var sq = opened;
+		load(function() { loadDocs(sq); });
+		if (!out.conflicts || !out.conflicts.length) return;
+		var $list = $('<div>').append($('<p class="small">').text('서류에서 읽은 값이 지금 값과 다릅니다. 바꿀 항목을 고르세요.'));
+		out.conflicts.forEach(function(c, i) {
+			$list.append($('<div class="form-check">').append($('<input type="checkbox" class="form-check-input">').attr('id', 'cf' + i).val(i))
+				.append($('<label class="form-check-label">').attr('for', 'cf' + i).append($('<b>').text(LABELS[c.field] || c.field)).append(document.createTextNode(' : ' + (c.old || '(빈칸)') + '  →  ' + c.shown))));
+		});
+		bootbox.dialog({ title: label + ' · 다른 값', message: $list, buttons: {
+			cancel: { label: '그대로 두기', className: 'btn-outline-secondary btn-sm' },
+			ok: { label: '고른 항목 바꾸기', className: 'btn-primary btn-sm', callback: function() {
+				var picks = $list.find('input:checked').map(function() { return out.conflicts[this.value]; }).get(), left = picks.length;
+				picks.forEach(function(c) {
+					hrPost('/admin/staff/saveStaffFieldData.do', { STAFF_SQ: sq, FIELD: c.field, VALUE: c.value }, function() {
+						if (--left === 0) { toast(picks.length + '개 항목을 바꿨습니다'); load(function() { if (opened) paintCard(); }); }
+					});
+				});
+			} }
+		} });
+	}
+
+	function busy(on, msg) {
+		$('#cardBody').toggleClass('st-busy', on);
+		if (on) { clearTimeout(toastTimer); $('#copyToast').text(msg).show(); } else { $('#copyToast').fadeOut(200); }
+	}
+
+	var scanned = [];
+	function openScan() {
+		var r = find(opened);
+		busy(true, '드라이브에서 ' + r.STAFF_NM + ' 폴더를 찾는 중…');
+		$.post('/admin/staff/scanStaffDocsData.do', { STAFF_SQ: r.STAFF_SQ }).done(function(res) {
+			busy(false);
+			if (res.error) { bootbox.alert(res.error); return; }
+			scanned = res.result.files || [];
+			$('#scanFolder').attr('href', res.result.folderLink);
+			var linked = (docs && docs.list || []).map(function(f) { return f.FILE_ID + '|' + f.DOC_CD; });
+			var $b = $('#scanBody').empty();
+			if (!scanned.length) $b.append('<tr><td colspan="3" class="text-center text-muted py-3">폴더에 파일이 없습니다.</td></tr>');
+			scanned.forEach(function(f, i) {
+				var $sel = $('<select class="form-control form-control-sm">').attr('aria-label', f.FILE_NM + ' 서류 종류').append('<option value="">연결 안 함</option>');
+				DOCS.forEach(function(d) { $sel.append($('<option>').val(d[0]).text(d[1])); });
+				$sel.val(f.GUESS || '');
+				var done = f.GUESS && linked.indexOf(f.FILE_ID + '|' + f.GUESS) >= 0;
+				$b.append($('<tr>').append($('<td>').append($('<input type="checkbox">').attr({ id: 'sc' + i, 'aria-label': f.FILE_NM + ' 선택' }).val(i).prop('checked', !!f.GUESS && !done).prop('disabled', done)))
+					.append($('<td>').append($('<a target="_blank" rel="noopener">').attr('href', f.WEB_LINK).text(f.PATH)).append(done ? ' <span class="small text-muted">(연결됨)</span>' : ''))
+					.append($('<td>').append($sel.attr('data-i', i))));
+			});
+			$('#scanModal').modal('show');
+		}).fail(function() { busy(false); });
+	}
+
+	function linkScanned() {
+		var r = find(opened), picks = [];
+		$('#scanBody input:checked').each(function() {
+			var i = this.value, doc = $('#scanBody select[data-i=' + i + ']').val();
+			if (doc) picks.push({ f: scanned[i], doc: doc });
+		});
+		if (!picks.length) { bootbox.alert('연결할 파일과 서류 종류를 골라 주세요.'); return; }
+		$('#scanModal').modal('hide');
+		// 하나씩 차례로: 글자 읽기가 겹치지 않게
+		(function next(i) {
+			if (i >= picks.length) return;
+			var p = picks[i], label = (LABELS[p.doc] || p.doc) + ' 연결 (' + (i + 1) + '/' + picks.length + ')';
+			busy(true, label + ' 중…');
+			$.post('/admin/staff/linkStaffDocData.do', { STAFF_SQ: r.STAFF_SQ, DOC_CD: p.doc, FILE_ID: p.f.FILE_ID })
+				.done(function(res) { afterDoc(res, label); next(i + 1); })
+				.fail(function() { busy(false); });
+		})(0);
+	}
+
+	function loadDrive() {
+		$.post('/admin/staff/staffDriveStatusData.do', function(res) {
+			var d = res.drive || {}, $s = $('#driveStatus').empty().append('<i class="fab fa-google-drive"></i> ');
+			if (d.connected) $s.append(document.createTextNode('서류 드라이브: ' + (d.account || '연결됨') + ' '));
+			else $s.append(document.createTextNode('서류 드라이브 미연결 '));
+			$s.append($('<a href="/admin/staff/driveStart.do">').text(d.connected ? '다시 연결' : '드라이브 연결'));
+		});
+		var m = /[?&]drive=(\w+)/.exec(location.search);
+		if (m) bootbox.alert({ ok: '구글 드라이브를 연결했습니다.', fail: '드라이브 연결에 실패했습니다. 다시 시도해 주세요.', noclient: '구글 OAuth 클라이언트가 설정되지 않았습니다. 업무툴 > 캘린더 설정에서 먼저 넣어 주세요.' }[m[1]] || m[1]);
 	}
 
 	// 가린 값 + 원문 보기(눈). 원문을 연 뒤에 누르면 원문으로 고칠 수 있다

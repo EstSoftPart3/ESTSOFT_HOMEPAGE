@@ -18,6 +18,8 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.eep.bo.batch.service.BoBatchService;
+import com.eep.bo.staff.controller.BoStaffController;
+import com.eep.bo.staff.service.StaffDriveService;
 
 @Controller
 public class BoBatchController {
@@ -28,6 +30,9 @@ public class BoBatchController {
 
 	@Autowired
 	private BoBatchService BoBatchService;
+
+	@Autowired
+	private StaffDriveService StaffDriveService;
 
 	/**
 	 * 배치 - 신입면접 Controller
@@ -123,6 +128,21 @@ public class BoBatchController {
 
 	@RequestMapping("/admin/batch/driveCallback.do")
 	public String driveCallback(@RequestParam Map<String, Object> param, HttpServletRequest request, HttpSession session) {
+		// 직원관리 서류용 연결도 같은 콘솔 리디렉션 URI 로 돌아온다
+		Object staffState = session.getAttribute(BoStaffController.SS_STAFF_DRIVE_STATE);
+		if (staffState != null) {
+			session.removeAttribute(BoStaffController.SS_STAFF_DRIVE_STATE);
+			if (!staffState.equals(param.get("state")) || param.get("code") == null) {
+				return "redirect:/admin/staff/openStaffList.do?drive=fail";
+			}
+			try {
+				boolean ok = StaffDriveService.connect(redirectUri(request), (String) param.get("code"));
+				return "redirect:/admin/staff/openStaffList.do?drive=" + (ok ? "ok" : "fail");
+			} catch (RestClientException e) {
+				log.error("직원서류 드라이브 연결 실패: {}", e.getClass().getSimpleName());
+				return "redirect:/admin/staff/openStaffList.do?drive=fail";
+			}
+		}
 		Object state = session.getAttribute(SS_DRIVE_STATE);
 		Object icalSq = session.getAttribute(SS_DRIVE_ICAL);
 		session.removeAttribute(SS_DRIVE_STATE);
@@ -141,7 +161,7 @@ public class BoBatchController {
 	}
 
 	/** 구글 콘솔에 등록한 리디렉션 URI 와 글자까지 같아야 한다. 프록시가 https 를 전달하지 않아 운영 도메인은 https 로 고정한다 */
-	private static String redirectUri(HttpServletRequest request) {
+	public static String redirectUri(HttpServletRequest request) {
 		String host = request.getHeader("Host");
 		String proto = host != null && host.startsWith("localhost") ? request.getScheme() : "https";
 		return proto + "://" + host + "/admin/batch/driveCallback.do";

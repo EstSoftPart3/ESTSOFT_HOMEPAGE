@@ -72,7 +72,8 @@ public class BoStaffService {
 				return; // 가린 값이 그대로 오면 바꾸지 않는다
 			}
 			param.put("FIELD", SECRET_COLS.get(field));
-			param.put("VALUE", value.isEmpty() ? "" : RrnCipher.encrypt(value));
+			// 서류 충돌 화면은 암호문을 돌려보낸다. 복호화해 다시 암호화하므로 위조된 값은 저장되지 않는다
+			param.put("VALUE", value.isEmpty() ? "" : RrnCipher.encrypt(RrnCipher.isEncrypted(value) ? RrnCipher.decrypt(value) : value));
 		} else if ("STATUS_CD".equals(field)) {
 			if (!STATUS_CODES.contains(value)) {
 				throw new IllegalArgumentException("재직 상태 값이 올바르지 않습니다.");

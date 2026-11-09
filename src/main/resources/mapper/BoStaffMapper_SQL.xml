@@ -38,4 +38,26 @@
 	<delete id="deleteStaff" parameterType="hashMap">
 		DELETE FROM TB_EEP_HR_STAFF_M WHERE STAFF_SQ = #{STAFF_SQ}
 	</delete>
+
+	<select id="selectStaffOne" parameterType="hashMap" resultType="hashMap">
+		SELECT * FROM TB_EEP_HR_STAFF_M WHERE STAFF_SQ = #{STAFF_SQ}
+	</select>
+
+	<update id="updateStaffFolder" parameterType="hashMap">
+		UPDATE TB_EEP_HR_STAFF_M SET DRIVE_FOLDER_ID = #{DRIVE_FOLDER_ID} WHERE STAFF_SQ = #{STAFF_SQ}
+	</update>
+
+	<select id="selectStaffDocList" parameterType="hashMap" resultType="hashMap">
+		SELECT DOC_SQ, STAFF_SQ, DOC_CD, FILE_ID, FILE_NM, MIME_TYPE, WEB_LINK, DATE_FORMAT(REG_DT, '%Y-%m-%d') AS REG_DT
+		FROM TB_EEP_HR_STAFF_DOC_R WHERE STAFF_SQ = #{STAFF_SQ} ORDER BY DOC_CD, DOC_SQ
+	</select>
+
+	<insert id="insertStaffDoc" parameterType="hashMap">
+		INSERT IGNORE INTO TB_EEP_HR_STAFF_DOC_R (STAFF_SQ, DOC_CD, FILE_ID, FILE_NM, MIME_TYPE, WEB_LINK, REG_EMPLY_ID, REG_DT)
+		VALUES (#{STAFF_SQ}, #{DOC_CD}, #{FILE_ID}, #{FILE_NM}, #{MIME_TYPE}, #{WEB_LINK}, #{UPDT_EMPLY_ID}, NOW())
+	</insert>
+
+	<delete id="deleteStaffDoc" parameterType="hashMap">
+		DELETE FROM TB_EEP_HR_STAFF_DOC_R WHERE DOC_SQ = #{DOC_SQ} AND STAFF_SQ = #{STAFF_SQ}
+	</delete>
 </mapper>
