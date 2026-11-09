@@ -32,6 +32,10 @@
 	.st-env { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 1px 6px; }
 	.st-env-label { color: #888; font-size: 11px; line-height: 20px; }
 	.st-prj td { vertical-align: top; overflow-wrap: break-word; }
+	.st-item td { white-space: pre-line; }
+	.st-act { background: none; border: 0; padding: 0 4px; color: #888; }
+	.st-act:hover, .st-act:focus { color: #0b6e8a; }
+	.st-unset { color: #b7791f; }
 	.st-prj-del { background: none; border: 0; padding: 0 4px; color: #888; }
 	.st-prj-del:hover, .st-prj-del:focus { color: #c0392b; }
 	.st-dl { color: #0b6e8a; padding: 0 3px; font-size: 11px; cursor: pointer; }
@@ -182,6 +186,21 @@
 		</div>
 	</div>
 
+	<div class="modal fade" id="edModal" tabindex="-1" role="dialog" aria-labelledby="edTitle" aria-hidden="true">
+		<div class="modal-dialog modal-lg" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="edTitle">수정</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
+				</div>
+				<form id="edForm" onsubmit="submitEditor(); return false;">
+					<div class="modal-body"><div class="form-row" id="edFields"></div></div>
+					<div class="modal-footer"><button type="submit" class="btn btn-sm btn-primary">저장</button></div>
+				</form>
+			</div>
+		</div>
+	</div>
+
 	<div id="copyToast" role="status" aria-live="polite"></div>
 
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
@@ -201,6 +220,17 @@
 	var PRJ_ENV_FIELDS = PRJ_ENV.map(function(e) { return [e[0], e[1], e[0] === 'ETC_NM' ? 6 : 3]; });
 	var PRJ_ALL = PRJ_MAIN.concat(PRJ_AREA, PRJ_ENV_FIELDS);
 	var cardTab = 0, prjs = null; // prjs: { sq, list }
+	var EDU_TYPE = { list: [['', '선택']].concat(['검정고시', '고등학교(인문계)', '고등학교(실업계)', '대학교(2~3년제)', '대학교(4년제)', '사이버·방통대·학점은행제', '대학원(석사)', '대학원(박사)'].map(function(k) { return [k, k]; })) };
+	var EDU_STATE = { list: [['', '선택'], ['졸업', '졸업'], ['재학', '재학'], ['휴학', '휴학'], ['수료', '수료'], ['중퇴', '중퇴']] };
+	// 여러 건 섹션. cols: [칸, 이름, 입력 종류, 필수], base: 기존 인사카드 칸(cols 순서). 기존 칸의 건은 기존 칸에, 추가한 건은 항목 표에 저장한다
+	var LISTS = {
+		'학력': { cd: 'EDU', title: '학력', cols: [['C1', '구분', EDU_TYPE, true], ['C2', '학교명', null, true], ['C3', '전공'], ['C4', '졸업년월', 'month'], ['C5', '상태', EDU_STATE]],
+			base: [['HS_KIND', 'HS_NM', 'HS_MAJOR', 'HS_GRAD', 'HS_STATE'], ['UNIV_KIND', 'UNIV_NM', 'UNIV_MAJOR', 'UNIV_GRAD', 'UNIV_STATE']], extra: ['FINAL_EDU'] },
+		'교육·자격': { cd: 'TRAIN', title: '교육·자격', cols: [['C1', '교육·자격명', null, true], ['C2', '기관'], ['C3', '시작월', 'month'], ['C4', '종료월', 'month']],
+			base: [['EDU_NM', 'EDU_ORG', 'EDU_START_DT', 'EDU_END_DT']], extra: ['CERT_DT'] },
+		'비상연락망': { cd: 'EMG', title: '비상연락망', cols: [['C1', '관계', null, true], ['C2', '연락처', null, true]], base: [['EMG_REL1', 'EMG_TEL1'], ['EMG_REL2', 'EMG_TEL2']] }
+	};
+	var items = null; // { sq, list }
 	var DOC_VALUES = { list: [['', '미제출'], ['O', 'O'], ['X', 'X'], ['-', '해당없음']] };
 	var DOCS = [['DOC_REG', '주민등본'], ['DOC_ID', '신분증'], ['DOC_GRAD', '졸업증명'], ['DOC_BANK', '통장사본'], ['DOC_PHOTO', '증명사진'],
 		['DOC_HI', '건보득실확인서'], ['DOC_CONTRACT', '근로계약'], ['DOC_BIZ', '사업자사실증명'], ['DOC_EI', '고용보험자격이력'], ['DOC_SEC', '보안서약서'],
@@ -237,7 +267,7 @@
 		$('#sortSel, .st-filter').on('change', render);
 		hrBuildFields('#newFields', [['STAFF_NM', '성명 *', 6], ['STATUS_CD', '재직 상태', 6, { values: STATUS }], ['ORG_NM', '소속', 4], ['DEPT_NM', '부서', 4],
 			['POSITION_NM', '직급', 4], ['PHONE', '전화번호', 6], ['JOIN_DT', '입사일자', 6, 'date']]);
-		$('#cardModal').on('hidden.bs.modal', function() { opened = null; revealed = {}; docs = null; prjs = null; cardTab = 0; render(); });
+		$('#cardModal').on('hidden.bs.modal', function() { opened = null; revealed = {}; docs = null; prjs = null; items = null; cardTab = 0; render(); });
 		hrBuildFields('#prjMain', PRJ_MAIN);
 		hrBuildFields('#prjArea', PRJ_AREA);
 		hrBuildFields('#prjEnv', PRJ_ENV_FIELDS);
@@ -245,7 +275,7 @@
 		$('#f_END_YM').after('<div class="form-check mt-1"><input type="checkbox" class="form-check-input" id="prjOngoing" name="ONGOING_YN" value="Y"><label class="form-check-label small" for="prjOngoing">진행중</label></div>');
 		$('#prjOngoing').on('change', syncOngoing);
 		// 인사카드 위에 뜬 창을 닫아도 인사카드 스크롤이 유지되게 한다
-		$('#prjModal').on('hidden.bs.modal', function() { if ($('#cardModal').hasClass('show')) $('body').addClass('modal-open'); });
+		$(document).on('hidden.bs.modal', function() { if ($('.modal.show').length) $('body').addClass('modal-open'); });
 		loadDrive();
 	});
 
@@ -398,7 +428,8 @@
 				.on('click', function() { cardTab = i; paintCard(); $('#cardBody .nav-link.active').focus(); })).appendTo($tabs);
 		});
 		SECTIONS.filter(function(s) { return CARD_TABS[cardTab][1].indexOf(s[0]) >= 0; }).forEach(function(s) {
-			$p.append($('<div class="hr-section">').text(s[0]));
+			if (LISTS[s[0]]) { itemSection($p, r, LISTS[s[0]]); return; }
+			$p.append(sectionHead(r, s[0], s[1]));
 			var $g = $('<div class="st-grid">').appendTo($p);
 			s[1].forEach(function(f) {
 				var $row = $('<div class="hr-card-row">').append($('<div class="hr-card-label">').text(f[1])).appendTo($g);
@@ -446,14 +477,119 @@
 	}
 
 	function salesTab($p, r) {
-		$p.append('<div class="hr-section">영업 조건</div>');
+		function head(title, fields, type) { $p.append(sectionHead(r, title, fields.map(function(f) { return [f, LABELS[f], type]; }))); }
+		head('영업 조건', SALES_TERMS);
 		salesGrid($p, r, SALES_TERMS);
-		$p.append('<div class="hr-section">기술 스택</div>');
+		head('기술 스택', SALES_SKILLS, 'textarea');
 		salesRows($p, r, SALES_SKILLS, tags);
-		$p.append('<div class="hr-section">업무·기타</div>');
+		head('업무·기타', SALES_TEXTS.concat(SALES_ETC), 'textarea');
 		salesRows($p, r, SALES_TEXTS);
 		salesGrid($p, r, SALES_ETC);
 		prjSection($p, r);
+	}
+
+	// ── 탭 안의 수정 팝업과 여러 건 항목 ──
+	function sectionHead(r, title, fields) {
+		return $('<div class="hr-section d-flex align-items-center">').text(title)
+			.append($('<button type="button" class="btn btn-sm btn-outline-secondary ml-auto">').attr('aria-label', title + ' 수정').html('<i class="fas fa-pen"></i> 수정').on('click', function() { editSection(r, title, fields); }));
+	}
+
+	function editSection(r, title, fields) {
+		openEditor(title + ' 수정', fields.map(function(f) { return { name: f[0], label: f[1], type: f[2] === 'secret' ? null : f[2], val: r[f[0]] || '' }; }), function(vals, done) {
+			saveFields(r, fields.map(function(f) { return [f[0], vals[f[0]], r[f[0]] || '']; }), done);
+		});
+	}
+
+	var edSave = null;
+	function openEditor(title, fields, save) {
+		var $f = $('#edFields').empty();
+		fields.forEach(function(f) {
+			var id = 'ed_' + f.name, $c = hrControl(f.type, f.val).attr({ id: id, name: f.name }).prop('required', !!f.required);
+			$('<div class="mb-2">').addClass(f.type === 'textarea' ? 'col-12' : 'col-md-6').append($('<label>').attr('for', id).text(f.label + (f.required ? ' *' : ''))).append($c).appendTo($f);
+		});
+		edSave = save;
+		$('#edTitle').text(title);
+		$('#edModal').modal('show');
+	}
+
+	function submitEditor() {
+		var vals = {};
+		$('#edFields [name]').each(function() { vals[this.name] = $.trim($(this).val()); });
+		edSave(vals, function() { $('#edModal').modal('hide'); toast('저장했습니다'); });
+	}
+
+	// list: [칸, 새 값, 이전 값]. 바뀐 칸만 차례로 저장한다
+	function saveFields(r, list, done) {
+		var todo = list.filter(function(x) { return x[1] !== String(x[2]); });
+		(function next(i) {
+			if (i >= todo.length) { fillFilters(); render(); paintCard(); done(); return; }
+			var field = todo[i][0], val = todo[i][1];
+			hrPost('/admin/staff/saveStaffFieldData.do', { STAFF_SQ: r.STAFF_SQ, FIELD: field, VALUE: val }, function() {
+				var secret = field === 'RRN' || field === 'ACCOUNT';
+				r[field] = secret ? maskLocal(field, val) : val;
+				if (secret) delete revealed[r.STAFF_SQ + '|' + field];
+				next(i + 1);
+			}, paintCard);
+		})(0);
+	}
+
+	function has(v) { return !!v && v !== '-'; }
+
+	function itemRows(r, spec) {
+		var out = spec.base.map(function(b) { return { base: b, v: b.map(function(f) { return r[f] || ''; }) }; }).filter(function(x) { return x.v.some(has); });
+		(items && items.sq === r.STAFF_SQ ? items.list : []).filter(function(i) { return i.ITEM_CD === spec.cd; }).forEach(function(i) {
+			out.push({ item: i, v: spec.cols.map(function(c) { return i[c[0]] || ''; }) });
+		});
+		function ym(x) { return x.v[3].replace(/[^0-9]/g, '').substr(0, 6); }
+		return spec.cd === 'EDU' ? out.sort(function(a, b) { return ym(b).localeCompare(ym(a)); }) : out;
+	}
+
+	function itemSection($p, r, spec) {
+		var loaded = items && items.sq === r.STAFF_SQ, list = itemRows(r, spec);
+		$p.append($('<div class="hr-section d-flex align-items-center">').text(spec.title).append($('<span class="small text-muted font-weight-normal ml-2">').text(loaded ? list.length + '건' : ''))
+			.append($('<button type="button" class="btn btn-sm btn-outline-primary ml-auto">').attr('aria-label', spec.title + ' 추가').html('<i class="fas fa-plus"></i> 추가').on('click', function() { openItem(r, spec, null); })));
+		if (!loaded) loadItems(r.STAFF_SQ);
+		if (loaded && !list.length) $p.append($('<div class="small text-muted">').text('등록된 ' + spec.title + ' 정보가 없습니다.'));
+		if (list.length) {
+			var $body = $('<tbody>');
+			list.forEach(function(x) {
+				var $tr = $('<tr>').appendTo($body);
+				x.v.forEach(function(v, i) {
+					if (spec.cd === 'EDU' && i === 0 && !v) $tr.append('<td class="st-unset">구분 미지정</td>');
+					else $tr.append($('<td>').text(v || '-'));
+				});
+				$tr.append($('<td class="text-right text-nowrap">')
+					.append($('<button type="button" class="st-act">').attr('aria-label', spec.title + ' ' + (x.v[1] || x.v[0]) + ' 수정').html('<i class="fas fa-pen"></i>').on('click', function() { openItem(r, spec, x); }))
+					.append($('<button type="button" class="st-act">').attr('aria-label', spec.title + ' ' + (x.v[1] || x.v[0]) + ' 삭제').html('<i class="fas fa-trash"></i>').on('click', function() { deleteItem(r, spec, x); })));
+			});
+			$p.append($('<div class="table-responsive">').append($('<table class="table table-sm cal-table st-prj st-item mb-2">')
+				.append($('<thead>').append($('<tr>').append(spec.cols.map(function(c) { return $('<th>').text(c[1]); })).append('<th style="width:64px;"><span class="sr-only">관리</span></th>'))).append($body)));
+		}
+		if (spec.extra) salesGrid($p, r, spec.extra);
+	}
+
+	function loadItems(sq) {
+		hrPost('/admin/staff/staffItemData.do', { STAFF_SQ: sq }, function(res) {
+			items = { sq: sq, list: res.list || [] };
+			if (String(opened) === String(sq) && cardTab < 2) paintCard();
+		});
+	}
+
+	function openItem(r, spec, x) {
+		// 기존 칸 값은 형식이 제각각이라 달력이 빈칸으로 만들지 않게 글자로 고친다
+		var fields = spec.cols.map(function(c, i) { return { name: c[0], label: c[1], type: x && x.base && c[2] === 'month' ? null : c[2], required: !(x && x.base) && c[3], val: x ? x.v[i] : '' }; });
+		openEditor(spec.title + (x ? ' 수정' : ' 추가'), fields, function(vals, done) {
+			if (x && x.base) { saveFields(r, x.base.map(function(f, i) { return [f, vals['C' + (i + 1)], x.v[i]]; }), done); return; }
+			hrPost('/admin/staff/saveStaffItemData.do', $.extend({ C3: '', C4: '', C5: '' }, vals, { STAFF_SQ: r.STAFF_SQ, ITEM_CD: spec.cd, ITEM_SQ: x ? x.item.ITEM_SQ : '' }), function() { loadItems(r.STAFF_SQ); done(); });
+		});
+	}
+
+	function deleteItem(r, spec, x) {
+		bootbox.confirm(spec.title + ' ' + (x.v[1] || x.v[0]) + ' 정보를 삭제할까요? 되돌릴 수 없습니다.', function(ok) {
+			if (!ok) return;
+			if (x.base) saveFields(r, x.base.map(function(f, i) { return [f, '', x.v[i]]; }), function() {});
+			else hrPost('/admin/staff/deleteStaffItemData.do', { STAFF_SQ: r.STAFF_SQ, ITEM_SQ: x.item.ITEM_SQ }, function() { loadItems(r.STAFF_SQ); });
+		});
 	}
 
 	function prjSection($p, r) {

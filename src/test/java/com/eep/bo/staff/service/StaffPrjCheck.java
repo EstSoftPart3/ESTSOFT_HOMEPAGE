@@ -30,6 +30,21 @@ public class StaffPrjCheck {
 		rejected(with("START_YM", "2024-13"), "없는 달");
 		rejected(with("END_YM", "2023-12"), "종료월이 시작월보다 빠름");
 		BoStaffService.checkPrj(with("END_YM", "2024-01"));
+		Map<String, Object> edu = item("EDU", "대학교(4년제)", " 가나대 ");
+		edu.put("C5", "졸업");
+		BoStaffService.checkItem(edu);
+		check("가나대".equals(edu.get("C2")) && "".equals(edu.get("C3")), "항목 값 다듬기");
+		BoStaffService.checkItem(item("EDU", "사이버·방통대·학점은행제", "가나사이버대"));
+		BoStaffService.checkItem(item("TRAIN", "자바 과정", ""));
+		BoStaffService.checkItem(item("EMG", "배우자", "010-0000-0000"));
+		rejectedItem(item("NOPE", "a", "b"), "없는 항목");
+		rejectedItem(item("EDU", "대학교", "가나대"), "없는 구분");
+		rejectedItem(item("EDU", "대학교(4년제)", " "), "학교명 없음");
+		rejectedItem(item("TRAIN", " ", "기관"), "교육명 없음");
+		rejectedItem(item("EMG", "배우자", ""), "연락처 없음");
+		Map<String, Object> badState = item("EDU", "대학교(4년제)", "가나대");
+		badState.put("C5", "졸업예정");
+		rejectedItem(badState, "없는 상태");
 		System.out.println("StaffPrjCheck OK");
 	}
 
@@ -53,6 +68,23 @@ public class StaffPrjCheck {
 	private static void rejected(Map<String, Object> m, String label) {
 		try {
 			BoStaffService.checkPrj(m);
+		} catch (IllegalArgumentException e) {
+			return;
+		}
+		throw new AssertionError(label);
+	}
+
+	private static Map<String, Object> item(String cd, String c1, String c2) {
+		Map<String, Object> m = new HashMap<>();
+		m.put("ITEM_CD", cd);
+		m.put("C1", c1);
+		m.put("C2", c2);
+		return m;
+	}
+
+	private static void rejectedItem(Map<String, Object> m, String label) {
+		try {
+			BoStaffService.checkItem(m);
 		} catch (IllegalArgumentException e) {
 			return;
 		}

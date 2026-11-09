@@ -23,6 +23,15 @@ public class BoStaffService {
 	private static final List<String> PRJ_ROLES = Arrays.asList("운영", "개발", "운영/개발");
 	private static final String[] PRJ_OPTIONAL = { "IND_NM", "APP_NM", "MACHINE_NM", "OS_NM", "LANG_NM", "DBMS_NM", "TOOL_NM", "FRAMEWORK_NM", "ETC_NM" };
 	private static final String YM = "\\d{4}-(0[1-9]|1[0-2])";
+	private static final List<String> EDU_KINDS = Arrays.asList("검정고시", "고등학교(인문계)", "고등학교(실업계)", "대학교(2~3년제)", "대학교(4년제)", "사이버·방통대·학점은행제", "대학원(석사)", "대학원(박사)");
+	private static final List<String> EDU_STATES = Arrays.asList("졸업", "재학", "휴학", "수료", "중퇴");
+	/** 항목 -> 필수 칸 {컬럼, 이름} */
+	private static final Map<String, String[][]> ITEM_REQUIRED = new HashMap<>();
+	static {
+		ITEM_REQUIRED.put("EDU", new String[][] { { "C1", "구분" }, { "C2", "학교명" } });
+		ITEM_REQUIRED.put("TRAIN", new String[][] { { "C1", "교육·자격명" } });
+		ITEM_REQUIRED.put("EMG", new String[][] { { "C1", "관계" }, { "C2", "연락처" } });
+	}
 	/** 화면 칸 이름 -> 암호문 컬럼. 이 두 칸은 저장 때 암호화하고 원문은 따로 요청해야 보인다 */
 	private static final Map<String, String> SECRET_COLS = new HashMap<>();
 	static {
@@ -32,7 +41,7 @@ public class BoStaffService {
 	// 컬럼명이 SQL 에 그대로 들어가므로 허용 목록으로만 받는다
 	private static final Set<String> TEXT_FIELDS = new HashSet<>(Arrays.asList(
 			"SEQ_NO", "ORG_NM", "DEPT_NM", "POSITION_NM", "STAFF_NM", "PHONE", "EMAIL", "ADDR", "STATION", "JOIN_DT", "LEAVE_DT",
-			"HS_NM", "HS_MAJOR", "HS_GRAD", "UNIV_NM", "UNIV_MAJOR", "UNIV_GRAD", "FINAL_EDU", "MIL_IN_DT", "MIL_OUT_DT", "MIL_EXEMPT",
+			"HS_NM", "HS_MAJOR", "HS_GRAD", "HS_KIND", "HS_STATE", "UNIV_NM", "UNIV_MAJOR", "UNIV_GRAD", "UNIV_KIND", "UNIV_STATE", "FINAL_EDU", "MIL_IN_DT", "MIL_OUT_DT", "MIL_EXEMPT",
 			"EDU_NM", "EDU_START_DT", "EDU_END_DT", "EDU_ORG", "CERT_DT", "BANK_NM",
 			"DOC_REG", "DOC_ID", "DOC_GRAD", "DOC_BANK", "DOC_PHOTO", "DOC_HI", "DOC_CONTRACT", "DOC_BIZ", "DOC_EI", "DOC_SEC",
 			"DOC_EDU", "DOC_NEP", "DOC_PRIV", "DOC_CRIME", "DOC_MIL",
@@ -115,7 +124,48 @@ public class BoStaffService {
 
 	public void delete(Map<String, Object> param) {
 		BoStaffMapper.deleteStaffPrjAll(param);
+		BoStaffMapper.deleteStaffItemAll(param);
 		BoStaffMapper.deleteStaff(param);
+	}
+
+	public List<Map<String, Object>> itemList(Map<String, Object> param) {
+		return BoStaffMapper.selectStaffItemList(param);
+	}
+
+	public void itemSave(Map<String, Object> param) {
+		checkItem(param);
+		if (str(param, "ITEM_SQ").isEmpty()) {
+			BoStaffMapper.insertStaffItem(param);
+		} else {
+			BoStaffMapper.updateStaffItem(param);
+		}
+	}
+
+	public void itemDelete(Map<String, Object> param) {
+		BoStaffMapper.deleteStaffItem(param);
+	}
+
+	/** 항목 종류·필수 칸을 확인하고 값을 다듬는다 */
+	static void checkItem(Map<String, Object> param) {
+		String item = str(param, "ITEM_CD");
+		String[][] required = ITEM_REQUIRED.get(item);
+		if (required == null) {
+			throw new IllegalArgumentException("항목 종류가 올바르지 않습니다.");
+		}
+		for (String c : new String[] { "C1", "C2", "C3", "C4", "C5" }) {
+			param.put(c, str(param, c).trim());
+		}
+		for (String[] r : required) {
+			if (str(param, r[0]).isEmpty()) {
+				throw new IllegalArgumentException(r[1] + "을(를) 입력해 주세요.");
+			}
+		}
+		if ("EDU".equals(item) && !EDU_KINDS.contains(param.get("C1"))) {
+			throw new IllegalArgumentException("학력 구분 값이 올바르지 않습니다.");
+		}
+		if ("EDU".equals(item) && !str(param, "C5").isEmpty() && !EDU_STATES.contains(param.get("C5"))) {
+			throw new IllegalArgumentException("학력 상태 값이 올바르지 않습니다.");
+		}
 	}
 
 	public List<Map<String, Object>> prjList(Map<String, Object> param) {

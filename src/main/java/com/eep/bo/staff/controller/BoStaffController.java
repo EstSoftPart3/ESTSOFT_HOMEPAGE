@@ -179,6 +179,30 @@ public class BoStaffController {
 		return json("result", "OK");
 	}
 
+	// ── 학력·교육·비상연락 추가 건 ──
+
+	@RequestMapping(value = "/admin/staff/staffItemData.do", method = RequestMethod.POST)
+	public ModelAndView staffItemData(@RequestParam Map<String, Object> param) {
+		return json("list", BoStaffService.itemList(param));
+	}
+
+	@RequestMapping(value = "/admin/staff/saveStaffItemData.do", method = RequestMethod.POST)
+	public ModelAndView saveStaffItemData(@RequestParam Map<String, Object> param, HttpSession session) {
+		try {
+			param.put("UPDT_EMPLY_ID", loginId(session));
+			BoStaffService.itemSave(param);
+			return json("result", "OK");
+		} catch (IllegalArgumentException e) {
+			return json("error", e.getMessage());
+		}
+	}
+
+	@RequestMapping(value = "/admin/staff/deleteStaffItemData.do", method = RequestMethod.POST)
+	public ModelAndView deleteStaffItemData(@RequestParam Map<String, Object> param) {
+		BoStaffService.itemDelete(param);
+		return json("result", "OK");
+	}
+
 	public static final String SS_STAFF_DRIVE_STATE = "staffDriveState";
 
 	private interface DriveCall {

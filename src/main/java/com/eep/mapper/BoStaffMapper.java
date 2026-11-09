@@ -31,4 +31,10 @@ public interface BoStaffMapper {
 	public int updateStaffPrj(Map<String, Object> param);						//수행이력 수정 (PRJ_SQ, STAFF_SQ)
 	public int deleteStaffPrj(Map<String, Object> param);						//수행이력 삭제 (PRJ_SQ, STAFF_SQ)
 	public int deleteStaffPrjAll(Map<String, Object> param);					//STAFF_SQ 의 수행이력 전부
+
+	public List<Map<String, Object>> selectStaffItemList(Map<String, Object> param);	//STAFF_SQ 의 학력·교육·비상연락 추가 건
+	public int insertStaffItem(Map<String, Object> param);						//추가 건 등록
+	public int updateStaffItem(Map<String, Object> param);						//추가 건 수정 (ITEM_SQ, STAFF_SQ, ITEM_CD)
+	public int deleteStaffItem(Map<String, Object> param);						//추가 건 삭제 (ITEM_SQ, STAFF_SQ)
+	public int deleteStaffItemAll(Map<String, Object> param);					//STAFF_SQ 의 추가 건 전부
 }
