@@ -3,9 +3,13 @@
 <%@ include file="/WEB-INF/jsp/bo/boinclude/include_top.jspf"%>
 <%@ include file="/WEB-INF/jsp/bo/calendar/calendar_style.jspf"%>
 <%@ include file="/WEB-INF/jsp/bo/hr/hr_common.jspf"%>
+<%@ include file="/WEB-INF/jsp/bo/lab/lab_style.jspf"%>
 <style>
-	.lab-open { background: none; border: 0; padding: 0; color: #0b6e8a; font-weight: 600; text-decoration: underline; cursor: pointer; }
-	.lab-info th { width: 110px; background: #f3f6f8; font-weight: 600; }
+	.lab-step { display: flex; gap: 6px; margin-bottom: 12px; }
+	.lab-step span { flex: 1; text-align: center; padding: 8px 4px; border-radius: 6px; background: #eef1f4; color: #495057; }
+	.lab-step span.done { background: #dcecf8; color: #0a4a78; font-weight: 700; }
+	.lab-step span.now { background: #0a4a78; color: #fff; font-weight: 700; }
+	.lab-body { width: 100%; min-height: 160px; border: 1px solid #ced4da; border-radius: 6px; }
 </style>
 
 <body class="hold-transition sidebar-mini">
@@ -13,65 +17,84 @@
 		<%@ include file="/WEB-INF/jsp/bo/boinclude/include_left.jspf"%>
 		<div class="content-wrapper">
 			<section class="content cal-page">
-				<div class="card-header"><h3 class="card-title bTitle"><b>월간 연구일지</b></h3></div>
+				<div class="card-header"><h3 class="card-title bTitle"><b>연구일지</b></h3></div>
 				<div class="card-body">
-					<div class="cal-panel">
-						<div class="cal-panel-body">
-							<div class="form-row align-items-end">
-								<div class="col-md-5 col-12 mb-2"><label for="fPrj">과제</label><select id="fPrj" class="form-control form-control-sm"></select></div>
-								<div class="col-md-3 col-6 mb-2"><label for="fStatus">상태</label><select id="fStatus" class="form-control form-control-sm"></select></div>
-								<div class="col-md-4 col-6 mb-2 text-right"><button type="button" class="btn btn-sm btn-primary" onclick="openNew();"><i class="fas fa-plus"></i> 일지 작성</button></div>
+					<div class="lab-view" id="viewList">
+						<div class="cal-panel">
+							<div class="cal-panel-body">
+								<div class="form-row align-items-end">
+									<div class="col-md-3 col-12 mb-2"><div class="lab-team"><label for="fTeam">연구팀</label><select id="fTeam" class="form-control form-control-sm"></select></div></div>
+									<div class="col-md-3 col-6 mb-2"><label for="fName">과제명</label><input type="search" id="fName" class="form-control form-control-sm"></div>
+									<div class="col-md-2 col-6 mb-2"><label for="fRun">진행</label><select id="fRun" class="form-control form-control-sm"><option value="">전체</option><option value="ON">진행 중</option><option value="OFF">종료</option></select></div>
+									<div class="col-md-1 col-6 mb-2"><button type="button" class="btn btn-sm btn-primary btn-block" onclick="drawList();">조회</button></div>
+									<div class="col-md-3 col-6 mb-2 text-right"><button type="button" class="btn btn-sm btn-primary" onclick="openProject();"><i class="fas fa-plus"></i> 과제 등록</button></div>
+								</div>
 							</div>
 						</div>
-						<div class="table-responsive px-3">
+						<div class="cal-panel"><div class="table-responsive px-3">
 							<table class="table table-sm table-hover cal-table mb-0">
-								<thead><tr><th>대상 월</th><th>과제</th><th>작성자</th><th>상태</th><th>PDF</th></tr></thead>
+								<thead><tr><th>과제명</th><th>연구기간</th><th>연구장소</th><th>최근 일지</th><th>결재 상태</th><th>일지</th></tr></thead>
 								<tbody id="listBody"></tbody>
 							</table>
-						</div>
+						</div></div>
 					</div>
+					<div class="lab-view" id="viewProject" style="display:none;"></div>
+					<div class="lab-view" id="viewJournal" style="display:none;"></div>
 				</div>
 			</section>
 		</div>
 	</div>
 
-	<div class="modal fade" id="newModal" tabindex="-1" role="dialog" aria-labelledby="newTitle" aria-hidden="true">
+	<div class="modal fade" id="projectModal" tabindex="-1" role="dialog" aria-labelledby="projectTitle" aria-hidden="true">
 		<div class="modal-dialog" role="document">
-			<form class="modal-content" onsubmit="createJournal(); return false;">
+			<form class="modal-content" onsubmit="saveProject(); return false;">
 				<div class="modal-header">
-					<h5 class="modal-title" id="newTitle">일지 작성</h5>
+					<h5 class="modal-title" id="projectTitle">과제 등록</h5>
 					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
 				</div>
 				<div class="modal-body">
-					<div class="form-group"><label for="newPrj">과제</label><select id="newPrj" class="form-control form-control-sm" required></select></div>
-					<div class="form-group"><label for="newYm">대상 월</label><input type="month" id="newYm" class="form-control form-control-sm" required></div>
+					<input type="hidden" id="PRJ_SQ">
+					<div class="form-group"><label for="TEAM_SQ">연구팀</label><select id="TEAM_SQ" class="form-control form-control-sm" required></select></div>
+					<div class="form-group"><label for="PRJ_NM">과제명</label><input id="PRJ_NM" class="form-control form-control-sm" maxlength="200" required></div>
+					<div class="form-row">
+						<div class="form-group col-6"><label for="START_DT">연구 시작일</label><input type="date" id="START_DT" class="form-control form-control-sm" required></div>
+						<div class="form-group col-6"><label for="END_DT">연구 종료일</label><input type="date" id="END_DT" class="form-control form-control-sm" required></div>
+					</div>
+					<div class="form-group"><label for="PLACE">연구장소</label><input id="PLACE" class="form-control form-control-sm" maxlength="200" required></div>
+					<div class="form-group">
+						<label for="DRIVE_FOLDER_ID">드라이브 과제 폴더 (주소 또는 ID)</label>
+						<input id="DRIVE_FOLDER_ID" class="form-control form-control-sm" required aria-describedby="folderHelp">
+						<small id="folderHelp" class="form-text text-muted">대표 확인이 끝나면 PDF 가 이 폴더의 <b>02. 연구일지</b> 에 올라갑니다.</small>
+					</div>
 				</div>
-				<div class="modal-footer"><button type="submit" class="btn btn-sm btn-primary">만들기</button></div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-sm btn-outline-secondary" data-dismiss="modal">취소</button>
+					<button type="submit" class="btn btn-sm btn-primary">저장</button>
+				</div>
 			</form>
 		</div>
 	</div>
 
-	<div class="modal fade" id="detailModal" tabindex="-1" role="dialog" aria-labelledby="detailTitle" aria-hidden="true">
-		<div class="modal-dialog modal-lg" role="document">
-			<div class="modal-content">
+	<div class="modal fade" id="journalModal" tabindex="-1" role="dialog" aria-labelledby="journalTitle" aria-hidden="true">
+		<div class="modal-dialog modal-xl" role="document">
+			<form class="modal-content" onsubmit="saveJournal(); return false;">
 				<div class="modal-header">
-					<h5 class="modal-title" id="detailTitle">월간 연구일지</h5>
+					<h5 class="modal-title" id="journalTitle">일지 등록</h5>
 					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
 				</div>
 				<div class="modal-body">
-					<table class="table table-sm table-bordered lab-info"><tbody id="infoBody"></tbody></table>
-					<div class="form-group"><label for="content">연구 내용</label><textarea id="content" rows="12" class="form-control form-control-sm"></textarea></div>
-					<div id="uploadState" role="status"></div>
-					<h6 class="mt-3">처리 이력</h6>
-					<div class="table-responsive">
-						<table class="table table-sm cal-table mb-0">
-							<thead><tr><th>일시</th><th>처리</th><th>처리자</th><th>메모</th></tr></thead>
-							<tbody id="historyBody"></tbody>
-						</table>
+					<div class="form-row">
+						<div class="form-group col-md-6"><label for="jProject">과제</label><input id="jProject" class="form-control form-control-sm" readonly></div>
+						<div class="form-group col-md-6"><label for="jYm">대상 월</label><input type="month" id="jYm" class="form-control form-control-sm" required></div>
 					</div>
+					<div class="form-group"><label for="jMembers">연구인원 (자동)</label><input id="jMembers" class="form-control form-control-sm" readonly></div>
+					<div class="form-group mb-0"><label for="editor">연구 내용</label><textarea id="editor" rows="16" style="width:100%;"></textarea></div>
 				</div>
-				<div class="modal-footer" id="detailActions"></div>
-			</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-sm btn-outline-secondary" data-dismiss="modal">취소</button>
+					<button type="submit" class="btn btn-sm btn-primary" id="jSave">저장</button>
+				</div>
+			</form>
 		</div>
 	</div>
 
@@ -79,101 +102,229 @@
 	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
 	<script>
 	var STATUS = { DRAFT: '작성 중', SUBMITTED: '제출', MANAGER_OK: '부서장 확인', CEO_OK: '대표 확인' };
+	var STEPS = ['DRAFT', 'SUBMITTED', 'MANAGER_OK', 'CEO_OK'];
 	var ACTION = { CREATE: '작성 시작', SAVE: '저장', SUBMIT: '제출', APPROVE_MANAGER: '부서장 확인', APPROVE_CEO: '대표 확인', REJECT: '반려', UPLOAD: '드라이브 업로드' };
-	var rows = [], current = null;
+	var projects = [], teams = [], project = null, journal = null, editing = null, prjTab = 0, jrnTab = 0;
+	var oEditors = [], editorReady = false, editorHtml = '';
 
+	function pill(st) { return st ? $('<span class="lab-pill">').addClass(st).text(STATUS[st]) : ''; }
+	function today() { return new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); }
+
+	// ── 목록 ──
 	function drawList() {
-		var prj = $('#fPrj').val(), st = $('#fStatus').val();
-		var $b = $('#listBody').empty(), list = rows.filter(function(r) { return (!prj || String(r.PRJ_SQ) === prj) && (!st || r.STATUS_CD === st); });
-		if (!list.length) $b.append('<tr><td colspan="5" class="text-center text-muted">일지가 없습니다.</td></tr>');
-		list.forEach(function(r) {
-			var pdf = r.PDF_LINK ? $('<a target="_blank" rel="noopener">열기</a>').attr('href', r.PDF_LINK) : r.UPLOAD_ERR ? $('<span class="text-danger">업로드 실패</span>') : '';
-			$('<tr>').append($('<td>').append($('<button type="button" class="lab-open">').text(r.YM).click(function() { openDetail(r.JRN_SQ); })),
-				$('<td>').text(r.PRJ_NM), $('<td>').text(r.WRITER_NM || ''), $('<td>').text(STATUS[r.STATUS_CD]), $('<td>').append(pdf)).appendTo($b);
+		var team = $('#fTeam').val(), name = $('#fName').val().trim().toLowerCase(), run = $('#fRun').val(), now = today();
+		var list = projects.filter(function(p) {
+			return String(p.TEAM_SQ) === team && (!name || p.PRJ_NM.toLowerCase().indexOf(name) >= 0) && (!run || (run === 'ON') === (p.END_DT >= now));
+		});
+		var $b = $('#listBody').empty();
+		if (!list.length) $b.append('<tr><td colspan="6" class="text-center text-muted">과제가 없습니다.</td></tr>');
+		list.forEach(function(p) {
+			$('<tr>').append($('<td>').append($('<a class="lab-open">').attr('href', '#p=' + p.PRJ_SQ).text(p.PRJ_NM)),
+				$('<td>').text(p.START_DT + ' ~ ' + p.END_DT), $('<td>').text(p.PLACE), $('<td>').text(p.LAST_YM || ''),
+				$('<td>').append(pill(p.LAST_STATUS)), $('<td>').text(p.JRN_CNT + '건')).appendTo($b);
 		});
 	}
 
-	function load() {
-		hrPost('/admin/lab/journalListData.do', {}, function(res) { rows = res.result; drawList(); });
+	function loadList() {
+		hrPost('/admin/lab/projectListData.do', {}, function(res) { projects = res.result; drawList(); });
 	}
 
-	function openNew() {
-		var d = new Date();
-		$('#newYm').val(d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2));
-		$('#newModal').modal('show');
-	}
-
-	function createJournal() {
-		hrPost('/admin/lab/createJournalData.do', { PRJ_SQ: $('#newPrj').val(), YM: $('#newYm').val() }, function(res) {
-			$('#newModal').modal('hide');
-			load();
-			openDetail(res.result);
+	// ── 과제 상세 ──
+	function tabBar(names, cur, pick) {
+		var $t = $('<div class="lab-tabs" role="tablist">');
+		names.forEach(function(n, i) {
+			$('<button type="button" role="tab">').attr('aria-selected', i === cur ? 'true' : 'false').text(n).click(function() { pick(i); }).appendTo($t);
 		});
+		return $t;
 	}
 
-	function actionButton(label, cls, fn) {
-		return $('<button type="button" class="btn btn-sm">').addClass(cls).text(label).click(function() {
-			$('#detailActions button').prop('disabled', true);
-			fn();
-		});
+	function backBar(href) {
+		return $('<div class="lab-back">').append($('<a class="btn btn-sm btn-outline-secondary">목록</a>').attr('href', href));
 	}
 
-	function refresh() { load(); openDetail(current); }
-
-	function post(url, data, done) {
-		hrPost(url, $.extend({ JRN_SQ: current }, data), done || refresh, refresh);
+	function info(rows) {
+		var $b = $('<tbody>');
+		rows.forEach(function(r) { $('<tr>').append($('<th scope="row">').text(r[0]), r[1] instanceof jQuery ? $('<td>').append(r[1]) : $('<td>').text(r[1] || '')).appendTo($b); });
+		return $('<table class="table table-sm table-bordered lab-info mb-0">').append($b);
 	}
 
-	function openDetail(sq) {
-		current = sq;
-		hrPost('/admin/lab/journalDetailData.do', { JRN_SQ: sq }, function(res) {
-			var r = res.result, j = r.journal, draft = j.STATUS_CD === 'DRAFT';
-			var info = [['상태', STATUS[j.STATUS_CD]], ['대상 월', j.YM], ['작성자', j.WRITER_NM], ['연구주제', j.PRJ_NM], ['연구장소', j.PLACE], ['연구기간', j.PERIOD], ['연구인원', r.members || '그 달에 소속된 연구원이 없습니다']];
-			var $i = $('#infoBody').empty();
-			info.forEach(function(x) { $('<tr>').append($('<th scope="row">').text(x[0]), $('<td>').text(x[1] || '')).appendTo($i); });
-			$('#content').val(j.CONTENT || '').prop('readOnly', !draft);
-
-			var $u = $('#uploadState').empty();
-			if (j.PDF_LINK) $u.append($('<a target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">드라이브에서 PDF 열기</a>').attr('href', j.PDF_LINK));
-			else if (j.UPLOAD_ERR) $u.append($('<div class="alert alert-danger py-1 small mb-0">').text('업로드 실패: ' + j.UPLOAD_ERR));
-
-			var $h = $('#historyBody').empty();
-			r.history.forEach(function(h) {
-				$('<tr>').append($('<td>').text(h.REG_DT), $('<td>').text(ACTION[h.ACTION_CD] || h.ACTION_CD), $('<td>').text((h.ACTOR_NM || '') + ' (' + h.ACTOR_ID + ')'), $('<td>').text(h.NOTE || '')).appendTo($h);
+	function drawProject() {
+		var p = project.project, $v = $('#viewProject').empty();
+		$v.append($('<div class="lab-head">').append($('<h4>').text(p.PRJ_NM)));
+		$v.append(tabBar(['월간 일지', '과제 정보'], prjTab, function(i) { prjTab = i; drawProject(); }));
+		var $panel = $('<div class="cal-panel"><div class="cal-panel-body"></div></div>').appendTo($v), $b = $panel.find('.cal-panel-body');
+		if (prjTab === 0) {
+			$b.append($('<div class="lab-actions">').append($('<button type="button" class="btn btn-sm btn-primary"><i class="fas fa-plus"></i> 일지 등록</button>').click(function() { openJournal(); })));
+			var $t = $('<tbody>');
+			if (!project.journals.length) $t.append('<tr><td colspan="5" class="text-center text-muted">일지가 없습니다.</td></tr>');
+			project.journals.forEach(function(j) {
+				var pdf = j.PDF_LINK ? $('<a target="_blank" rel="noopener">열기</a>').attr('href', j.PDF_LINK) : j.UPLOAD_ERR ? $('<span class="text-danger">업로드 실패</span>') : '';
+				$('<tr>').append($('<td>').append($('<a class="lab-open">').attr('href', '#j=' + j.JRN_SQ).text(j.YM)), $('<td>').text(j.WRITER_NM || ''), $('<td>').text(j.WRITE_DT || ''),
+					$('<td>').append(pill(j.STATUS_CD)), $('<td>').append(pdf)).appendTo($t);
 			});
+			$b.append($('<div class="table-responsive">').append($('<table class="table table-sm table-hover cal-table mb-0"><thead><tr><th>대상 월</th><th>작성자</th><th>작성일</th><th>결재 상태</th><th>PDF</th></tr></thead></table>').append($t)));
+		} else {
+			$b.append($('<div class="lab-actions">').append($('<button type="button" class="btn btn-sm btn-primary">수정</button>').click(function() { openProject(p); })));
+			$b.append(info([['연구팀', p.TEAM_NM], ['과제명', p.PRJ_NM], ['연구기간', p.START_DT + ' ~ ' + p.END_DT], ['연구장소', p.PLACE],
+				['드라이브', $('<a target="_blank" rel="noopener">폴더 열기</a>').attr('href', 'https://drive.google.com/drive/folders/' + encodeURIComponent(p.DRIVE_FOLDER_ID))]]));
+		}
+		$v.append(backBar('#'));
+	}
 
-			var $a = $('#detailActions').empty();
-			if (draft) {
-				$a.append(actionButton('저장', 'btn-outline-secondary', function() { post('/admin/lab/saveJournalData.do', { CONTENT: $('#content').val() }); }),
-					actionButton('제출', 'btn-primary', function() { post('/admin/lab/submitJournalData.do', { CONTENT: $('#content').val() }); }));
-			}
-			if (r.canApprove) {
-				$a.append(actionButton('반려', 'btn-outline-danger', function() {
-					bootbox.prompt({ title: '반려 사유', inputType: 'textarea', callback: function(note) {
-						if (note === null) { refresh(); return; }
-						post('/admin/lab/rejectJournalData.do', { NOTE: note });
-					} });
-				}), actionButton(j.STATUS_CD === 'SUBMITTED' ? '부서장 확인' : '대표 확인', 'btn-primary', function() {
-					post('/admin/lab/approveJournalData.do', {}, function(ok) {
-						if (ok.result.uploadError) bootbox.alert('결재는 끝났지만 PDF 업로드에 실패했습니다. ' + $('<div>').text(ok.result.uploadError).html());
-						refresh();
-					});
-				}));
-			}
-			if (j.STATUS_CD === 'CEO_OK' && !j.PDF_LINK) {
-				$a.append(actionButton('업로드 다시 시도', 'btn-primary', function() { post('/admin/lab/uploadJournalData.do', {}); }));
-			}
-			$('#detailModal').modal('show');
+	function loadProject(sq, then) {
+		hrPost('/admin/lab/projectDetailData.do', { PRJ_SQ: sq }, function(res) { project = res.result; if (then) then(); else drawProject(); });
+	}
+
+	function openProject(p) {
+		$('#projectTitle').text(p ? '과제 수정' : '과제 등록');
+		['PRJ_SQ', 'PRJ_NM', 'START_DT', 'END_DT', 'PLACE', 'DRIVE_FOLDER_ID'].forEach(function(f) { $('#' + f).val(p && p[f] || ''); });
+		$('#TEAM_SQ').val(p ? p.TEAM_SQ : $('#fTeam').val());
+		$('#projectModal').modal('show');
+	}
+
+	function saveProject() {
+		var data = {};
+		['PRJ_SQ', 'TEAM_SQ', 'PRJ_NM', 'START_DT', 'END_DT', 'PLACE', 'DRIVE_FOLDER_ID'].forEach(function(f) { data[f] = $('#' + f).val(); });
+		hrPost('/admin/lab/saveProjectData.do', data, function() {
+			$('#projectModal').modal('hide');
+			loadList();
+			if (data.PRJ_SQ) loadProject(data.PRJ_SQ);
 		});
 	}
 
-	$.each($.extend({ '': '전체' }, STATUS), function(k, v) { $('#fStatus').append($('<option>').val(k).text(v)); });
-	$('#fPrj, #fStatus').change(drawList);
+	// ── 일지 상세 ──
+	// 에디터 HTML 은 스크립트가 돌지 않는 격리 영역에 보여 준다. 높이를 재려고 same-origin 만 허용한다
+	function richFrame(html) {
+		var $f = $('<iframe class="lab-body" sandbox="allow-same-origin" title="연구 내용">');
+		$f.on('load', function() { var d = this.contentDocument; if (d && d.documentElement) this.style.height = (d.documentElement.scrollHeight + 8) + 'px'; });
+		return $f.attr('srcdoc', '<!doctype html><meta charset="utf-8"><style>body{margin:12px;font:14px sans-serif}table{border-collapse:collapse}td,th{border:1px solid #868e96;padding:4px 8px}</style>' + (html || ''));
+	}
+
+	function act(url, data, done) {
+		$('#viewJournal .lab-head button').prop('disabled', true);
+		hrPost(url, $.extend({ JRN_SQ: journal.journal.JRN_SQ }, data), done || showCurrent, showCurrent);
+	}
+
+	function drawJournal() {
+		var r = journal, j = r.journal, st = j.STATUS_CD, $v = $('#viewJournal').empty();
+		var $head = $('<div class="lab-head">').append($('<h4>').text(j.YM + ' 월간 연구일지 · ' + j.PRJ_NM)).appendTo($v);
+		function button(label, cls, fn) { $('<button type="button" class="btn btn-sm">').addClass(cls).text(label).click(fn).appendTo($head); }
+		if (st === 'DRAFT') {
+			button('수정', 'btn-outline-secondary', function() { openJournal(r); });
+			button('제출', 'btn-primary', function() { act('/admin/lab/submitJournalData.do'); });
+		}
+		if (r.canApprove) {
+			button('반려', 'btn-outline-danger', function() {
+				bootbox.prompt({ title: '반려 사유', inputType: 'textarea', callback: function(note) { if (note !== null) act('/admin/lab/rejectJournalData.do', { NOTE: note }); } });
+			});
+			button(STATUS[st === 'SUBMITTED' ? 'MANAGER_OK' : 'CEO_OK'], 'btn-primary', function() {
+				act('/admin/lab/approveJournalData.do', {}, function(ok) {
+					if (ok.result.uploadError) bootbox.alert($('<div>').text('결재는 끝났지만 PDF 업로드에 실패했습니다. ' + ok.result.uploadError).html());
+					showCurrent();
+				});
+			});
+			if (r.needSign) $head.find('button:last').prop('disabled', true);
+		}
+		if (st === 'CEO_OK' && !j.PDF_LINK) button('업로드 다시 시도', 'btn-primary', function() { act('/admin/lab/uploadJournalData.do'); });
+		if (j.PDF_LINK) $head.append($('<a target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">드라이브에서 PDF 열기</a>').attr('href', j.PDF_LINK));
+
+		var cur = STEPS.indexOf(st), $s = $('<div class="lab-step">').appendTo($v);
+		STEPS.forEach(function(x, i) { $('<span>').addClass(i < cur ? 'done' : i === cur ? 'now' : '').text(STATUS[x]).appendTo($s); });
+		if (r.needSign) $v.append($('<div class="alert alert-warning py-2">').append('서명을 등록해야 승인할 수 있습니다. ', $('<a class="lab-open">내 서명 등록</a>').attr('href', '/admin/lab/openLabManage.do#t=' + j.TEAM_SQ + '&tab=3&sign=1')));
+		if (st === 'CEO_OK' && j.UPLOAD_ERR && !j.PDF_LINK) $v.append($('<div class="alert alert-danger py-2" role="status">').text('업로드 실패: ' + j.UPLOAD_ERR));
+
+		$v.append(tabBar(['일지 내용', '처리 이력'], jrnTab, function(i) { jrnTab = i; drawJournal(); }));
+		var $panel = $('<div class="cal-panel"><div class="cal-panel-body"></div></div>').appendTo($v), $b = $panel.find('.cal-panel-body');
+		if (jrnTab === 0) {
+			$b.append($('<div class="mb-2">').append(info([['작성자', j.WRITER_NM], ['연구장소', j.PLACE], ['연구기간', j.PERIOD], ['연구인원', r.members || '그 달에 소속된 연구원이 없습니다']])));
+			$b.append(richFrame(j.CONTENT));
+		} else {
+			var $t = $('<tbody>');
+			r.history.slice().reverse().forEach(function(h) {
+				$('<tr>').append($('<td>').text(h.REG_DT), $('<td>').text(ACTION[h.ACTION_CD] || h.ACTION_CD), $('<td>').text((h.ACTOR_NM || '') + ' (' + h.ACTOR_ID + ')'), $('<td>').text(h.NOTE || '')).appendTo($t);
+			});
+			$b.append($('<div class="table-responsive">').append($('<table class="table table-sm cal-table mb-0"><thead><tr><th>일시</th><th>처리</th><th>처리자</th><th>메모</th></tr></thead></table>').append($t)));
+		}
+		$v.append(backBar('#p=' + j.PRJ_SQ));
+	}
+
+	// ── 일지 등록·수정 팝업 ──
+	function setEditor() {
+		if (editorReady) oEditors.getById.editor.exec('SET_IR', [editorHtml]);
+	}
+
+	function openJournal(r) {
+		editing = r ? r.journal : null;
+		$('#journalTitle').text(r ? '일지 수정' : '일지 등록');
+		$('#jProject').val(r ? r.journal.PRJ_NM : project.project.PRJ_NM);
+		var d = new Date();
+		$('#jYm').val(r ? r.journal.YM : d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2)).prop('readOnly', !!r);
+		editorHtml = r ? (r.journal.CONTENT || '') : '';
+		if (r) $('#jMembers').val(r.members); else loadMembers();
+		$('#journalModal').modal('show');
+	}
+
+	function loadMembers() {
+		if (!$('#jYm').val()) return;
+		hrPost('/admin/lab/monthMembersData.do', { TEAM_SQ: project.project.TEAM_SQ, YM: $('#jYm').val() }, function(res) { $('#jMembers').val(res.result); });
+	}
+
+	function saveJournal() {
+		oEditors.getById.editor.exec('UPDATE_CONTENTS_FIELD', []);
+		var html = $('#editor').val(), $btn = $('#jSave').prop('disabled', true), enable = function() { $btn.prop('disabled', false); };
+		if (editing) {
+			hrPost('/admin/lab/saveJournalData.do', { JRN_SQ: editing.JRN_SQ, CONTENT: html }, function() { enable(); $('#journalModal').modal('hide'); showCurrent(); }, enable);
+		} else {
+			hrPost('/admin/lab/createJournalData.do', { PRJ_SQ: project.project.PRJ_SQ, YM: $('#jYm').val(), CONTENT: html }, function(res) {
+				enable();
+				$('#journalModal').modal('hide');
+				loadList();
+				location.hash = '#j=' + res.result;
+			}, enable);
+		}
+	}
+
+	// iframe 에디터는 보이는 상태에서 만들어야 크기가 맞아 팝업이 처음 열릴 때 만든다
+	$('#journalModal').on('shown.bs.modal', function() {
+		if (oEditors.getById && oEditors.getById.editor) { setEditor(); return; }
+		nhn.husky.EZCreator.createInIFrame({
+			oAppRef: oEditors,
+			elPlaceHolder: 'editor',
+			sSkinURI: '/resources/navereditor/SmartEditor2Skin.html',
+			htParams: { bUseToolbar: true, bUseVerticalResizer: true, bUseModeChanger: false, fOnBeforeUnload: function() {} },
+			fOnAppLoad: function() {
+				editorReady = true;
+				setEditor();
+			},
+			fCreator: 'createSEditor2'
+		});
+	});
+	$('#jYm').on('change', function() { if (!editing) loadMembers(); });
+
+	// ── 화면 전환 ──
+	function showCurrent() {
+		var m = /^#(p|j)=(\d+)$/.exec(location.hash);
+		$('.lab-view').hide();
+		if (!m) { $('#viewList').show(); loadList(); }
+		else if (m[1] === 'p') { $('#viewProject').show(); loadProject(m[2]); }
+		else {
+			$('#viewJournal').show();
+			hrPost('/admin/lab/journalDetailData.do', { JRN_SQ: m[2] }, function(res) {
+				journal = res.result;
+				// 수정 팝업과 일지 등록이 과제 정보를 쓰므로 함께 읽는다
+				loadProject(journal.journal.PRJ_SQ, drawJournal);
+			});
+		}
+		window.scrollTo(0, 0);
+	}
+
+	$(window).on('hashchange', function() { prjTab = 0; jrnTab = 0; showCurrent(); });
+	$('#fTeam, #fRun').on('change', drawList);
+	$('#fName').on('input', drawList);
 	hrPost('/admin/lab/optionsData.do', {}, function(res) {
-		$('#fPrj').append('<option value="">전체</option>');
-		$('#newPrj').append('<option value=""></option>');
-		res.result.projects.forEach(function(p) { $('#fPrj, #newPrj').append($('<option>').val(p.PRJ_SQ).text(p.PRJ_NM)); });
-		load();
+		teams = res.result.teams.filter(function(t) { return t.USE_YN === 'Y'; });
+		teams.forEach(function(t) { $('#fTeam, #TEAM_SQ').append($('<option>').val(t.TEAM_SQ).text(t.TEAM_NM)); });
+		showCurrent();
 	});
 	</script>
 </body>

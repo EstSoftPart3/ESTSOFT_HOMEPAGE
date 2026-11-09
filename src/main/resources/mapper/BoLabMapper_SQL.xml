@@ -3,7 +3,7 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<!-- 연구소: 연구원, 연구과제, 월간 연구일지와 결재 이력 -->
+<!-- 연구소: 연구팀, 연구원, 연구과제, 월간 연구일지와 결재 이력, 결재자 서명 -->
 <mapper namespace="com.eep.mapper.BoLabMapper">
 
 	<!-- 운영 DB 스키마 변경 경로가 앱 계정뿐이라 기동 때 맞춘다 (BoBatchServiceImpl.ensureSchema 와 같은 방식) -->
@@ -26,8 +26,8 @@
 			, START_DT         date NOT NULL
 			, END_DT           date NOT NULL
 			, PLACE            varchar(200) NOT NULL
-			, MANAGER_EMPLY_ID varchar(50) NOT NULL COMMENT '결재자: 부서장 계정'
-			, CEO_EMPLY_ID     varchar(50) NOT NULL COMMENT '결재자: 대표 계정'
+			, MANAGER_EMPLY_ID varchar(50) NULL COMMENT '안 씀: 결재라인은 연구팀으로 옮겼다'
+			, CEO_EMPLY_ID     varchar(50) NULL COMMENT '안 씀: 결재라인은 연구팀으로 옮겼다'
 			, DRIVE_FOLDER_ID  varchar(100) NOT NULL COMMENT '드라이브 과제 폴더 ID'
 			, UPDT_EMPLY_ID    varchar(50) NULL
 			, UPDT_DT          datetime NULL
@@ -65,10 +65,45 @@
 			, PRIMARY KEY (HIS_SQ)
 			, KEY IX_LAB_HIS_JOURNAL (JRN_SQ)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='월간 연구일지 처리 이력';
+
+		CREATE TABLE IF NOT EXISTS TB_EEP_LAB_TEAM_M (
+			  TEAM_SQ          int NOT NULL AUTO_INCREMENT
+			, TEAM_NM          varchar(100) NOT NULL
+			, FIELD_NM         varchar(200) NULL COMMENT '연구 분야'
+			, PLACE            varchar(200) NULL COMMENT '소재지'
+			, USE_YN           char(1) NOT NULL DEFAULT 'Y'
+			, MEMO             varchar(1000) NULL
+			, MANAGER_EMPLY_ID varchar(50) NULL COMMENT '결재자: 부서장 계정'
+			, CEO_EMPLY_ID     varchar(50) NULL COMMENT '결재자: 대표 계정'
+			, UPDT_EMPLY_ID    varchar(50) NULL
+			, UPDT_DT          datetime NULL
+			, PRIMARY KEY (TEAM_SQ)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='연구팀';
+
+		CREATE TABLE IF NOT EXISTS TB_EEP_LAB_SIGN_H (
+			  SIGN_SQ  int NOT NULL AUTO_INCREMENT
+			, EMPLY_ID varchar(50) NOT NULL
+			, SIGN_IMG mediumtext NOT NULL COMMENT 'PNG data URI'
+			, REG_DT   datetime NOT NULL COMMENT 'KST'
+			, PRIMARY KEY (SIGN_SQ)
+			, KEY IX_LAB_SIGN_EMPLY (EMPLY_ID)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='결재자 서명. 바꿔도 새 행을 쌓아 과거 승인의 서명을 남긴다';
+
+		ALTER TABLE TB_EEP_LAB_RESEARCHER_M ADD COLUMN IF NOT EXISTS TEAM_SQ int NULL AFTER RSCH_SQ;
+		ALTER TABLE TB_EEP_LAB_PROJECT_M ADD COLUMN IF NOT EXISTS TEAM_SQ int NULL AFTER PRJ_SQ;
+		ALTER TABLE TB_EEP_LAB_PROJECT_M MODIFY MANAGER_EMPLY_ID varchar(50) NULL, MODIFY CEO_EMPLY_ID varchar(50) NULL;
+		ALTER TABLE TB_EEP_LAB_JOURNAL_H ADD COLUMN IF NOT EXISTS SIGN_SQ int NULL AFTER NOTE;
+
+		<!-- 연구팀 도입 전 데이터를 기본 연구팀 하나로 옮긴다. 결재라인은 기존 과제의 지정값을 쓴다 -->
+		INSERT INTO TB_EEP_LAB_TEAM_M (TEAM_NM, USE_YN, MANAGER_EMPLY_ID, CEO_EMPLY_ID, UPDT_DT)
+		SELECT '기본 연구팀', 'Y', MAX(MANAGER_EMPLY_ID), MAX(CEO_EMPLY_ID), NOW() FROM TB_EEP_LAB_PROJECT_M
+		WHERE NOT EXISTS (SELECT 1 FROM TB_EEP_LAB_TEAM_M) HAVING COUNT(*) &gt; 0;
+		UPDATE TB_EEP_LAB_RESEARCHER_M SET TEAM_SQ = (SELECT MIN(TEAM_SQ) FROM TB_EEP_LAB_TEAM_M) WHERE TEAM_SQ IS NULL;
+		UPDATE TB_EEP_LAB_PROJECT_M SET TEAM_SQ = (SELECT MIN(TEAM_SQ) FROM TB_EEP_LAB_TEAM_M) WHERE TEAM_SQ IS NULL;
 	</update>
 
 	<select id="selectStaffOptions" resultType="hashMap">
-		SELECT STAFF_SQ, STAFF_NM, DEPT_NM, STATUS_CD FROM TB_EEP_HR_STAFF_M ORDER BY STATUS_CD DESC, STAFF_NM
+		SELECT STAFF_SQ, STAFF_NM, DEPT_NM, POSITION_NM, STATUS_CD FROM TB_EEP_HR_STAFF_M ORDER BY STAFF_NM
 	</select>
 
 	<select id="selectAdminAccounts" resultType="hashMap">
@@ -77,100 +112,151 @@
 		ORDER BY EMPLY_NM
 	</select>
 
+	<!-- 연구팀 -->
+
+	<select id="selectTeams" parameterType="hashMap" resultType="hashMap">
+		SELECT T.TEAM_SQ, T.TEAM_NM, T.FIELD_NM, T.PLACE, T.USE_YN, T.MEMO, T.MANAGER_EMPLY_ID, T.CEO_EMPLY_ID
+			, M.EMPLY_NM AS MANAGER_NM, C.EMPLY_NM AS CEO_NM
+			, (SELECT COUNT(*) FROM TB_EEP_LAB_RESEARCHER_M R WHERE R.TEAM_SQ = T.TEAM_SQ AND (R.END_DT IS NULL OR R.END_DT &gt;= CURDATE())) AS RSCH_CNT
+			, (SELECT COUNT(*) FROM TB_EEP_LAB_PROJECT_M P WHERE P.TEAM_SQ = T.TEAM_SQ) AS PRJ_CNT
+		FROM TB_EEP_LAB_TEAM_M T
+		LEFT JOIN TB_EEP_EMPLY_M M ON M.EMPLY_ID = T.MANAGER_EMPLY_ID
+		LEFT JOIN TB_EEP_EMPLY_M C ON C.EMPLY_ID = T.CEO_EMPLY_ID
+		<if test="TEAM_SQ != null">WHERE T.TEAM_SQ = #{TEAM_SQ}</if>
+		ORDER BY T.USE_YN DESC, T.TEAM_NM
+	</select>
+
+	<insert id="insertTeam" parameterType="hashMap" useGeneratedKeys="true" keyProperty="NEW_TEAM_SQ">
+		INSERT INTO TB_EEP_LAB_TEAM_M (TEAM_NM, FIELD_NM, PLACE, USE_YN, MEMO, UPDT_EMPLY_ID, UPDT_DT)
+		VALUES (#{TEAM_NM}, NULLIF(#{FIELD_NM}, ''), NULLIF(#{PLACE}, ''), #{USE_YN}, NULLIF(#{MEMO}, ''), #{UPDT_EMPLY_ID}, NOW())
+	</insert>
+
+	<update id="updateTeam" parameterType="hashMap">
+		UPDATE TB_EEP_LAB_TEAM_M
+		SET TEAM_NM = #{TEAM_NM}, FIELD_NM = NULLIF(#{FIELD_NM}, ''), PLACE = NULLIF(#{PLACE}, ''), USE_YN = #{USE_YN}, MEMO = NULLIF(#{MEMO}, ''), UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE TEAM_SQ = #{TEAM_SQ}
+	</update>
+
+	<update id="updateTeamApproval" parameterType="hashMap">
+		UPDATE TB_EEP_LAB_TEAM_M
+		SET MANAGER_EMPLY_ID = #{MANAGER_EMPLY_ID}, CEO_EMPLY_ID = #{CEO_EMPLY_ID}, UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE TEAM_SQ = #{TEAM_SQ}
+	</update>
+
+	<!-- 서명 -->
+
+	<select id="selectLatestSign" parameterType="string" resultType="hashMap">
+		SELECT SIGN_SQ, SIGN_IMG FROM TB_EEP_LAB_SIGN_H WHERE EMPLY_ID = #{emplyId} ORDER BY SIGN_SQ DESC LIMIT 1
+	</select>
+
+	<insert id="insertSign" parameterType="hashMap">
+		INSERT INTO TB_EEP_LAB_SIGN_H (EMPLY_ID, SIGN_IMG, REG_DT) VALUES (#{EMPLY_ID}, #{SIGN_IMG}, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 9 HOUR))
+	</insert>
+
 	<!-- 연구원 -->
 
-	<select id="selectResearchers" resultType="hashMap">
-		SELECT R.RSCH_SQ, R.STAFF_SQ, S.STAFF_NM, S.DEPT_NM, R.ROLE_CD
+	<select id="selectResearchers" parameterType="hashMap" resultType="hashMap">
+		SELECT R.RSCH_SQ, R.TEAM_SQ, R.STAFF_SQ, S.STAFF_NM, S.DEPT_NM, R.ROLE_CD
 			, DATE_FORMAT(R.START_DT, '%Y-%m-%d') AS START_DT, DATE_FORMAT(R.END_DT, '%Y-%m-%d') AS END_DT
 		FROM TB_EEP_LAB_RESEARCHER_M R
 		JOIN TB_EEP_HR_STAFF_M S ON S.STAFF_SQ = R.STAFF_SQ
+		WHERE R.TEAM_SQ = #{TEAM_SQ}
 		ORDER BY R.END_DT IS NULL DESC, R.END_DT DESC, R.ROLE_CD, S.STAFF_NM
 	</select>
 
 	<!-- 대상 월에 소속 기간이 하루라도 걸친 사람 -->
-	<select id="selectMonthResearchers" parameterType="string" resultType="hashMap">
+	<select id="selectMonthResearchers" resultType="hashMap">
 		SELECT S.STAFF_NM, R.ROLE_CD
 		FROM TB_EEP_LAB_RESEARCHER_M R
 		JOIN TB_EEP_HR_STAFF_M S ON S.STAFF_SQ = R.STAFF_SQ
-		WHERE R.START_DT &lt;= LAST_DAY(CONCAT(#{ym}, '-01'))
+		WHERE R.TEAM_SQ = #{teamSq}
+		  AND R.START_DT &lt;= LAST_DAY(CONCAT(#{ym}, '-01'))
 		  AND (R.END_DT IS NULL OR R.END_DT &gt;= CONCAT(#{ym}, '-01'))
 		ORDER BY R.ROLE_CD, S.STAFF_NM
 	</select>
 
 	<select id="countResearcherOverlap" parameterType="hashMap" resultType="int">
 		SELECT COUNT(*) FROM TB_EEP_LAB_RESEARCHER_M
-		WHERE STAFF_SQ = #{STAFF_SQ} AND RSCH_SQ &lt;&gt; #{RSCH_SQ}
+		WHERE TEAM_SQ = #{TEAM_SQ} AND STAFF_SQ = #{STAFF_SQ} AND RSCH_SQ &lt;&gt; #{RSCH_SQ}
 		  AND START_DT &lt;= IFNULL(NULLIF(#{END_DT}, ''), '9999-12-31')
 		  AND IFNULL(END_DT, '9999-12-31') &gt;= #{START_DT}
 	</select>
 
 	<insert id="insertResearcher" parameterType="hashMap">
-		INSERT INTO TB_EEP_LAB_RESEARCHER_M (STAFF_SQ, ROLE_CD, START_DT, END_DT, UPDT_EMPLY_ID, UPDT_DT)
-		VALUES (#{STAFF_SQ}, #{ROLE_CD}, #{START_DT}, NULLIF(#{END_DT}, ''), #{UPDT_EMPLY_ID}, NOW())
+		INSERT INTO TB_EEP_LAB_RESEARCHER_M (TEAM_SQ, STAFF_SQ, ROLE_CD, START_DT, END_DT, UPDT_EMPLY_ID, UPDT_DT)
+		VALUES (#{TEAM_SQ}, #{STAFF_SQ}, #{ROLE_CD}, #{START_DT}, NULLIF(#{END_DT}, ''), #{UPDT_EMPLY_ID}, NOW())
 	</insert>
 
 	<update id="updateResearcher" parameterType="hashMap">
 		UPDATE TB_EEP_LAB_RESEARCHER_M
 		SET STAFF_SQ = #{STAFF_SQ}, ROLE_CD = #{ROLE_CD}, START_DT = #{START_DT}, END_DT = NULLIF(#{END_DT}, ''), UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
-		WHERE RSCH_SQ = #{RSCH_SQ}
+		WHERE RSCH_SQ = #{RSCH_SQ} AND TEAM_SQ = #{TEAM_SQ}
 	</update>
 
 	<!-- 연구과제 -->
 
 	<select id="selectProjects" resultType="hashMap">
-		SELECT P.PRJ_SQ, P.PRJ_NM, P.PLACE, P.MANAGER_EMPLY_ID, P.CEO_EMPLY_ID, P.DRIVE_FOLDER_ID
+		SELECT P.PRJ_SQ, P.TEAM_SQ, T.TEAM_NM, P.PRJ_NM, P.PLACE
 			, DATE_FORMAT(P.START_DT, '%Y-%m-%d') AS START_DT, DATE_FORMAT(P.END_DT, '%Y-%m-%d') AS END_DT
-			, M.EMPLY_NM AS MANAGER_NM, C.EMPLY_NM AS CEO_NM
+			, (SELECT COUNT(*) FROM TB_EEP_LAB_JOURNAL_M J WHERE J.PRJ_SQ = P.PRJ_SQ) AS JRN_CNT
+			, (SELECT J.YM FROM TB_EEP_LAB_JOURNAL_M J WHERE J.PRJ_SQ = P.PRJ_SQ ORDER BY J.YM DESC LIMIT 1) AS LAST_YM
+			, (SELECT J.STATUS_CD FROM TB_EEP_LAB_JOURNAL_M J WHERE J.PRJ_SQ = P.PRJ_SQ ORDER BY J.YM DESC LIMIT 1) AS LAST_STATUS
 		FROM TB_EEP_LAB_PROJECT_M P
-		LEFT JOIN TB_EEP_EMPLY_M M ON M.EMPLY_ID = P.MANAGER_EMPLY_ID
-		LEFT JOIN TB_EEP_EMPLY_M C ON C.EMPLY_ID = P.CEO_EMPLY_ID
+		LEFT JOIN TB_EEP_LAB_TEAM_M T ON T.TEAM_SQ = P.TEAM_SQ
 		ORDER BY P.END_DT DESC, P.PRJ_SQ DESC
 	</select>
 
 	<insert id="insertProject" parameterType="hashMap">
-		INSERT INTO TB_EEP_LAB_PROJECT_M (PRJ_NM, START_DT, END_DT, PLACE, MANAGER_EMPLY_ID, CEO_EMPLY_ID, DRIVE_FOLDER_ID, UPDT_EMPLY_ID, UPDT_DT)
-		VALUES (#{PRJ_NM}, #{START_DT}, #{END_DT}, #{PLACE}, #{MANAGER_EMPLY_ID}, #{CEO_EMPLY_ID}, #{DRIVE_FOLDER_ID}, #{UPDT_EMPLY_ID}, NOW())
+		INSERT INTO TB_EEP_LAB_PROJECT_M (TEAM_SQ, PRJ_NM, START_DT, END_DT, PLACE, DRIVE_FOLDER_ID, UPDT_EMPLY_ID, UPDT_DT)
+		VALUES (#{TEAM_SQ}, #{PRJ_NM}, #{START_DT}, #{END_DT}, #{PLACE}, #{DRIVE_FOLDER_ID}, #{UPDT_EMPLY_ID}, NOW())
 	</insert>
 
 	<update id="updateProject" parameterType="hashMap">
 		UPDATE TB_EEP_LAB_PROJECT_M
-		SET PRJ_NM = #{PRJ_NM}, START_DT = #{START_DT}, END_DT = #{END_DT}, PLACE = #{PLACE}, MANAGER_EMPLY_ID = #{MANAGER_EMPLY_ID}
-			, CEO_EMPLY_ID = #{CEO_EMPLY_ID}, DRIVE_FOLDER_ID = #{DRIVE_FOLDER_ID}, UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		SET TEAM_SQ = #{TEAM_SQ}, PRJ_NM = #{PRJ_NM}, START_DT = #{START_DT}, END_DT = #{END_DT}, PLACE = #{PLACE}, DRIVE_FOLDER_ID = #{DRIVE_FOLDER_ID}, UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
 		WHERE PRJ_SQ = #{PRJ_SQ}
 	</update>
 
 	<select id="selectProjectOne" parameterType="hashMap" resultType="hashMap">
-		SELECT PRJ_SQ, DATE_FORMAT(START_DT, '%Y-%m-%d') AS START_DT, DATE_FORMAT(END_DT, '%Y-%m-%d') AS END_DT
-		FROM TB_EEP_LAB_PROJECT_M WHERE PRJ_SQ = #{PRJ_SQ}
+		SELECT P.PRJ_SQ, P.TEAM_SQ, T.TEAM_NM, P.PRJ_NM, P.PLACE, P.DRIVE_FOLDER_ID
+			, DATE_FORMAT(P.START_DT, '%Y-%m-%d') AS START_DT, DATE_FORMAT(P.END_DT, '%Y-%m-%d') AS END_DT
+		FROM TB_EEP_LAB_PROJECT_M P
+		LEFT JOIN TB_EEP_LAB_TEAM_M T ON T.TEAM_SQ = P.TEAM_SQ
+		WHERE P.PRJ_SQ = #{PRJ_SQ}
 	</select>
 
 	<!-- 월간 연구일지 -->
 
-	<select id="selectJournals" resultType="hashMap">
-		SELECT J.JRN_SQ, J.PRJ_SQ, J.YM, J.STATUS_CD, J.WRITER_NM, J.PDF_LINK, J.UPLOAD_ERR, COALESCE(J.SNAP_PRJ_NM, P.PRJ_NM) AS PRJ_NM
+	<select id="selectJournals" parameterType="hashMap" resultType="hashMap">
+		SELECT J.JRN_SQ, J.PRJ_SQ, J.YM, J.STATUS_CD, J.WRITER_NM, J.PDF_LINK, J.UPLOAD_ERR
+			, (SELECT DATE_FORMAT(MAX(H.REG_DT), '%Y-%m-%d') FROM TB_EEP_LAB_JOURNAL_H H WHERE H.JRN_SQ = J.JRN_SQ AND H.ACTION_CD IN ('CREATE', 'SUBMIT')) AS WRITE_DT
 		FROM TB_EEP_LAB_JOURNAL_M J
-		JOIN TB_EEP_LAB_PROJECT_M P ON P.PRJ_SQ = J.PRJ_SQ
-		ORDER BY J.YM DESC, J.JRN_SQ DESC
+		WHERE J.PRJ_SQ = #{PRJ_SQ}
+		ORDER BY J.YM DESC
 	</select>
 
 	<select id="selectJournalOne" parameterType="hashMap" resultType="hashMap">
-		SELECT J.JRN_SQ, J.PRJ_SQ, J.YM, J.CONTENT, J.STATUS_CD, J.WRITER_NM, J.SNAP_MEMBERS, J.PDF_FILE_ID, J.PDF_LINK, J.UPLOAD_ERR
+		SELECT J.JRN_SQ, J.PRJ_SQ, P.TEAM_SQ, J.YM, J.CONTENT, J.STATUS_CD, J.WRITER_NM, J.SNAP_MEMBERS, J.PDF_FILE_ID, J.PDF_LINK, J.UPLOAD_ERR
 			, COALESCE(J.SNAP_PRJ_NM, P.PRJ_NM) AS PRJ_NM, COALESCE(J.SNAP_PLACE, P.PLACE) AS PLACE
 			, COALESCE(J.SNAP_PERIOD, CONCAT(P.START_DT, ' ~ ', P.END_DT)) AS PERIOD
-			, P.MANAGER_EMPLY_ID, P.CEO_EMPLY_ID, P.DRIVE_FOLDER_ID
+			, T.MANAGER_EMPLY_ID, T.CEO_EMPLY_ID, P.DRIVE_FOLDER_ID
 		FROM TB_EEP_LAB_JOURNAL_M J
 		JOIN TB_EEP_LAB_PROJECT_M P ON P.PRJ_SQ = J.PRJ_SQ
+		LEFT JOIN TB_EEP_LAB_TEAM_M T ON T.TEAM_SQ = P.TEAM_SQ
 		WHERE J.JRN_SQ = #{JRN_SQ}
 	</select>
 
 	<select id="selectJournalHistory" parameterType="hashMap" resultType="hashMap">
-		SELECT ACTION_CD, STATUS_CD, ACTOR_ID, ACTOR_NM, NOTE, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
-		FROM TB_EEP_LAB_JOURNAL_H WHERE JRN_SQ = #{JRN_SQ} ORDER BY HIS_SQ
+		SELECT H.ACTION_CD, H.STATUS_CD, H.ACTOR_ID, H.ACTOR_NM, H.NOTE, DATE_FORMAT(H.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+			<if test="WITH_SIGN != null">, S.SIGN_IMG</if>
+		FROM TB_EEP_LAB_JOURNAL_H H
+		<if test="WITH_SIGN != null">LEFT JOIN TB_EEP_LAB_SIGN_H S ON S.SIGN_SQ = H.SIGN_SQ</if>
+		WHERE H.JRN_SQ = #{JRN_SQ} ORDER BY H.HIS_SQ
 	</select>
 
 	<insert id="insertJournal" parameterType="hashMap" useGeneratedKeys="true" keyProperty="JRN_SQ">
-		INSERT INTO TB_EEP_LAB_JOURNAL_M (PRJ_SQ, YM, STATUS_CD, WRITER_EMPLY_ID, WRITER_NM)
-		VALUES (#{PRJ_SQ}, #{YM}, 'DRAFT', #{ACTOR_ID}, #{ACTOR_NM})
+		INSERT INTO TB_EEP_LAB_JOURNAL_M (PRJ_SQ, YM, CONTENT, STATUS_CD, WRITER_EMPLY_ID, WRITER_NM)
+		VALUES (#{PRJ_SQ}, #{YM}, #{CONTENT}, 'DRAFT', #{ACTOR_ID}, #{ACTOR_NM})
 	</insert>
 
 	<update id="updateJournalContent" parameterType="hashMap">
@@ -203,7 +289,7 @@
 
 	<!-- 서버 시간대가 UTC 라 감사 기록은 시간대와 무관하게 KST 로 남긴다 -->
 	<insert id="insertJournalHistory" parameterType="hashMap">
-		INSERT INTO TB_EEP_LAB_JOURNAL_H (JRN_SQ, ACTION_CD, STATUS_CD, ACTOR_ID, ACTOR_NM, NOTE, REG_DT)
-		VALUES (#{JRN_SQ}, #{ACTION_CD}, #{STATUS_CD}, #{ACTOR_ID}, #{ACTOR_NM}, NULLIF(#{NOTE}, ''), DATE_ADD(UTC_TIMESTAMP(), INTERVAL 9 HOUR))
+		INSERT INTO TB_EEP_LAB_JOURNAL_H (JRN_SQ, ACTION_CD, STATUS_CD, ACTOR_ID, ACTOR_NM, NOTE, SIGN_SQ, REG_DT)
+		VALUES (#{JRN_SQ}, #{ACTION_CD}, #{STATUS_CD}, #{ACTOR_ID}, #{ACTOR_NM}, NULLIF(#{NOTE}, ''), #{SIGN_SQ}, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 9 HOUR))
 	</insert>
 </mapper>

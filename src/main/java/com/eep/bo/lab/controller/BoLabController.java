@@ -14,26 +14,21 @@ import org.springframework.web.servlet.ModelAndView;
 
 import com.eep.bo.lab.service.BoLabService;
 
-/** 연구소 - 연구원, 연구과제, 월간 연구일지. 권한은 /admin/** 인터셉터(관리자만 통과)와 서비스의 결재자 확인이 맡는다 */
+/** 연구소 - 연구일지, 연구소 관리. 권한은 /admin/** 인터셉터(관리자만 통과)와 서비스의 결재자 확인이 맡는다 */
 @Controller
 public class BoLabController {
 
 	@Autowired
 	private BoLabService lab;
 
-	@RequestMapping("/admin/lab/openResearcherList.do")
-	public String openResearcherList() {
-		return "bo/lab/researcher_list";
-	}
-
-	@RequestMapping("/admin/lab/openProjectList.do")
-	public String openProjectList() {
-		return "bo/lab/project_list";
-	}
-
 	@RequestMapping("/admin/lab/openJournalList.do")
 	public String openJournalList() {
 		return "bo/lab/journal_list";
+	}
+
+	@RequestMapping("/admin/lab/openLabManage.do")
+	public String openLabManage() {
+		return "bo/lab/lab_manage";
 	}
 
 	@RequestMapping(value = "/admin/lab/optionsData.do", method = RequestMethod.POST)
@@ -41,9 +36,26 @@ public class BoLabController {
 		return result(lab::options);
 	}
 
-	@RequestMapping(value = "/admin/lab/researcherListData.do", method = RequestMethod.POST)
-	public ModelAndView researcherListData() {
-		return result(lab::researchers);
+	// ── 연구소 관리 ──
+
+	@RequestMapping(value = "/admin/lab/teamListData.do", method = RequestMethod.POST)
+	public ModelAndView teamListData() {
+		return result(lab::teams);
+	}
+
+	@RequestMapping(value = "/admin/lab/teamDetailData.do", method = RequestMethod.POST)
+	public ModelAndView teamDetailData(@RequestParam("TEAM_SQ") int teamSq, HttpSession session) {
+		return result(() -> lab.teamDetail(teamSq, login(session)));
+	}
+
+	@RequestMapping(value = "/admin/lab/saveTeamData.do", method = RequestMethod.POST)
+	public ModelAndView saveTeamData(@RequestParam Map<String, Object> param, HttpSession session) {
+		return result(() -> lab.saveTeam(param, login(session)));
+	}
+
+	@RequestMapping(value = "/admin/lab/saveApprovalData.do", method = RequestMethod.POST)
+	public ModelAndView saveApprovalData(@RequestParam Map<String, Object> param, HttpSession session) {
+		return result(() -> { lab.saveApproval(param, login(session)); return "OK"; });
 	}
 
 	@RequestMapping(value = "/admin/lab/saveResearcherData.do", method = RequestMethod.POST)
@@ -51,9 +63,21 @@ public class BoLabController {
 		return result(() -> { lab.saveResearcher(param, login(session)); return "OK"; });
 	}
 
+	@RequestMapping(value = "/admin/lab/saveSignData.do", method = RequestMethod.POST)
+	public ModelAndView saveSignData(@RequestParam("IMG") String image, HttpSession session) {
+		return result(() -> { lab.saveSign(image, login(session)); return "OK"; });
+	}
+
+	// ── 연구일지 ──
+
 	@RequestMapping(value = "/admin/lab/projectListData.do", method = RequestMethod.POST)
 	public ModelAndView projectListData() {
 		return result(lab::projects);
+	}
+
+	@RequestMapping(value = "/admin/lab/projectDetailData.do", method = RequestMethod.POST)
+	public ModelAndView projectDetailData(@RequestParam("PRJ_SQ") int prjSq) {
+		return result(() -> lab.projectDetail(prjSq));
 	}
 
 	@RequestMapping(value = "/admin/lab/saveProjectData.do", method = RequestMethod.POST)
@@ -61,9 +85,9 @@ public class BoLabController {
 		return result(() -> { lab.saveProject(param, login(session)); return "OK"; });
 	}
 
-	@RequestMapping(value = "/admin/lab/journalListData.do", method = RequestMethod.POST)
-	public ModelAndView journalListData() {
-		return result(lab::journals);
+	@RequestMapping(value = "/admin/lab/monthMembersData.do", method = RequestMethod.POST)
+	public ModelAndView monthMembersData(@RequestParam("TEAM_SQ") int teamSq, @RequestParam("YM") String ym) {
+		return result(() -> lab.monthMembers(teamSq, ym));
 	}
 
 	@RequestMapping(value = "/admin/lab/journalDetailData.do", method = RequestMethod.POST)
@@ -82,8 +106,8 @@ public class BoLabController {
 	}
 
 	@RequestMapping(value = "/admin/lab/submitJournalData.do", method = RequestMethod.POST)
-	public ModelAndView submitJournalData(@RequestParam("JRN_SQ") int sq, @RequestParam("CONTENT") String content, HttpSession session) {
-		return result(() -> { lab.submitJournal(sq, content, login(session)); return "OK"; });
+	public ModelAndView submitJournalData(@RequestParam("JRN_SQ") int sq, HttpSession session) {
+		return result(() -> { lab.submitJournal(sq, login(session)); return "OK"; });
 	}
 
 	@RequestMapping(value = "/admin/lab/approveJournalData.do", method = RequestMethod.POST)

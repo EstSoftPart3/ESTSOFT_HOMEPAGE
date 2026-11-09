@@ -161,21 +161,15 @@
 	            </a>
 	            <ul class="nav nav-treeview">
 	              <li class="nav-item">
-	                <a href="/admin/lab/openResearcherList.do" class="nav-link">
-	                  <i class="far fa-circle nav-icon sTitle"></i>
-	                  <p class="sTitle">연구원</p>
-	                </a>
-	              </li>
-	              <li class="nav-item">
-	                <a href="/admin/lab/openProjectList.do" class="nav-link">
-	                  <i class="far fa-circle nav-icon sTitle"></i>
-	                  <p class="sTitle">연구과제</p>
-	                </a>
-	              </li>
-	              <li class="nav-item">
 	                <a href="/admin/lab/openJournalList.do" class="nav-link">
 	                  <i class="far fa-circle nav-icon sTitle"></i>
-	                  <p class="sTitle">월간 연구일지</p>
+	                  <p class="sTitle">연구일지</p>
+	                </a>
+	              </li>
+	              <li class="nav-item">
+	                <a href="/admin/lab/openLabManage.do" class="nav-link">
+	                  <i class="far fa-circle nav-icon sTitle"></i>
+	                  <p class="sTitle">연구소 관리</p>
 	                </a>
 	              </li>
 	            </ul>

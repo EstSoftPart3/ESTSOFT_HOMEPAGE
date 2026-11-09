@@ -11,6 +11,9 @@ import java.util.Map;
  */
 public class BoLabServiceCheck {
 
+	/** 1x1 투명 PNG */
+	private static final String PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
 	public static void main(String[] args) {
 		// 결재 단계
 		same(BoLabService.approverColumn("SUBMITTED"), "MANAGER_EMPLY_ID", "제출은 부서장이 결재");
@@ -36,18 +39,34 @@ public class BoLabServiceCheck {
 			System.out.println("ok  잘못된 폴더 ID 거부");
 		}
 
-		// PDF: 입력 이스케이프, 줄바꿈, 반려 후 다시 결재하면 마지막 기록
+		// 서명 이미지와 에디터 빈 내용
+		BoLabService.checkSign(PNG);
+		System.out.println("ok  PNG 서명 통과");
+		for (String bad : new String[] { null, "", "data:image/svg+xml;base64,PHN2Zz4=", "data:image/png;base64,AAAA", "data:image/png;base64,\"><script>" }) {
+			try {
+				BoLabService.checkSign(bad);
+				throw new AssertionError("잘못된 서명을 받음: " + bad);
+			} catch (IllegalArgumentException expected) {
+				System.out.println("ok  잘못된 서명 거부");
+			}
+		}
+		yes(BoLabService.isBlankHtml("<p>&nbsp;</p><br>"), "에디터 빈 내용");
+		yes(!BoLabService.isBlankHtml("<p>내용</p>"), "에디터 내용 있음");
+
+		// PDF: 입력 이스케이프, 에디터 서식, 서명, 반려 후 다시 결재하면 마지막 기록
 		Map<String, Object> j = new HashMap<>();
 		j.put("YM", "2026-11");
 		j.put("WRITER_NM", "작성자");
 		j.put("PRJ_NM", "<script>alert(1)</script>");
 		j.put("SNAP_MEMBERS", "홍길동(연구소장)");
-		j.put("CONTENT", "첫 줄\n둘째 줄 & <b>");
+		j.put("CONTENT", "<p><b>첫 줄</b></p><table><tr><td>칸</td></tr></table>");
 		List<Map<String, Object>> h = Arrays.asList(row("SUBMIT", "작성자", "2026-11-09 10:00:00"), row("APPROVE_MANAGER", "옛부서장", "2026-11-09 11:00:00"),
 				row("SUBMIT", "작성자", "2026-11-10 10:00:00"), row("APPROVE_MANAGER", "새부서장", "2026-11-10 11:00:00"), row("APPROVE_CEO", "대표", "2026-11-10 12:00:00"));
+		h.get(3).put("SIGN_IMG", PNG);
 		String html = BoLabService.pdfHtml(j, h);
 		yes(!html.contains("<script>") && html.contains("&lt;script&gt;"), "태그 이스케이프");
-		yes(html.contains("첫 줄<br>둘째 줄 &amp; &lt;b&gt;"), "줄바꿈·특수문자");
+		yes(html.contains("<p><b>첫 줄</b></p><table>"), "에디터 서식 유지");
+		yes(html.contains("<img src=\"" + PNG + "\""), "서명 이미지");
 		yes(html.contains("홍길동(연구소장)"), "한글 유지");
 		yes(html.contains("새부서장") && !html.contains("옛부서장"), "마지막 결재자");
 		yes(html.contains("2026-11-10 10:00:00") && !html.contains("2026-11-09 10:00:00"), "마지막 제출일");

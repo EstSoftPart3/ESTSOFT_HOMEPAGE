@@ -228,7 +228,11 @@
 	var revealed = {}; // 'STAFF_SQ|FIELD' -> 원문. 화면을 닫으면 사라진다
 
 	$(function() {
-		load();
+		// 다른 메뉴의 인사카드 링크(?STAFF_SQ=번호)로 오면 그 사람 카드를 바로 연다
+		var linked = /[?&]STAFF_SQ=(\d+)/.exec(location.search);
+		load(function() {
+			if (linked && rows.some(function(r) { return String(r.STAFF_SQ) === linked[1]; })) openCard(Number(linked[1]));
+		});
 		$('#keyword').on('input', render);
 		$('#sortSel, .st-filter').on('change', render);
 		hrBuildFields('#newFields', [['STAFF_NM', '성명 *', 6], ['STATUS_CD', '재직 상태', 6, { values: STATUS }], ['ORG_NM', '소속', 4], ['DEPT_NM', '부서', 4],
