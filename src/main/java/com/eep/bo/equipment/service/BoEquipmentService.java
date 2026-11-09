@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 import javax.sql.DataSource;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -66,7 +67,7 @@ public class BoEquipmentService {
 	private TransactionTemplate tx;
 
 	@Autowired
-	public void setDataSource(DataSource ds) {
+	public void setDataSource(@Qualifier("dataSource") DataSource ds) { // dataSourceSpied 와 2개라 이름을 지정해야 기동된다
 		tx = new TransactionTemplate(new DataSourceTransactionManager(ds));
 	}
 
