@@ -35,7 +35,33 @@
     .mode-switch { display: inline-flex; align-self: center; padding: 3px; gap: 2px; border-radius: 999px; background: #F2F8FE; border: 1px solid rgba(17,17,17,.08); white-space: nowrap; }
     .mode-switch[hidden] { display: none; }
     .sidebar-collapse .main-sidebar:not(:hover) .nav-treeview { display: none !important; }
-    .nav-sidebar .nav-treeview .nav-treeview .nav-link { padding-left: 1.75rem; }
+    /* 상단: 로고 한 줄 고정 높이, 접속자는 메뉴 위 별도 칸 */
+    .main-sidebar .brand-link { height: calc(3.5rem + 1px); white-space: nowrap; overflow: hidden; }
+    .main-sidebar .brand-link .brand-text { font-size: 15px; font-weight: 600; color: #fff; }
+    .layout-fixed .main-sidebar .sidebar { margin-top: calc(3.5rem + 1px); height: calc(100vh - 3.5rem - 1px); overflow-y: auto; overflow-x: hidden; }
+    .bo-user { display: flex; align-items: center; gap: 8px; margin: 10px 4px 6px; padding: 8px 8px; border-radius: 8px; background: rgba(255,255,255,.06); white-space: nowrap; }
+    .bo-user-icon { font-size: 26px; color: #9aa4ad; flex: 0 0 auto; width: 2.1rem; text-align: center; }
+    .bo-user-info { flex: 1 1 auto; min-width: 0; display: grid; line-height: 1.25; }
+    .bo-user-info b { color: #fff; font-size: 13px; overflow: hidden; text-overflow: ellipsis; }
+    .bo-user-info small { color: #9aa4ad; font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+    .bo-user-btn { flex: 0 0 auto; width: 28px; height: 28px; border: 0; border-radius: 6px; background: rgba(255,255,255,.08); color: #c2c7d0; font-size: 12px; }
+    .bo-user-btn:hover { background: rgba(255,255,255,.18); color: #fff; }
+    .bo-user-btn.bo-logout:hover { background: #dc3545; }
+    .bo-user-btn:focus-visible { outline: 2px solid #16D5FF; outline-offset: 1px; }
+    .sidebar-collapse .main-sidebar:not(:hover) .bo-user { justify-content: center; background: none; padding-inline: 0; }
+    .sidebar-collapse .main-sidebar:not(:hover) .bo-user > :not(.bo-user-icon) { display: none; }
+    /* 단계 구분: 1단계 굵은 흰 글씨, 2단계 실선 안내선 아래 작은 아이콘, 3단계 점선 안내선 아래 점 */
+    .nav-sidebar .sTitle { height: auto; }
+    .nav-sidebar > .nav-item > .nav-link p.sTitle { font-size: 13.5px; font-weight: 600; color: #f1f3f5; }
+    .nav-sidebar > .nav-item > .nav-treeview { margin: 2px 0 8px 1.55rem; border-left: 1px solid rgba(255,255,255,.14); }
+    .nav-sidebar .nav-treeview > .nav-item > .nav-link { padding: .4rem .6rem; margin-left: 4px; width: calc(100% - 8px); }
+    .nav-sidebar .nav-treeview > .nav-item > .nav-link p.sTitle { font-size: 13px; font-weight: 400; color: #c9d0d6; }
+    .nav-sidebar .nav-treeview > .nav-item > .nav-link > .nav-icon { font-size: 12px; width: 1.2rem; margin-right: .35rem; }
+    .nav-sidebar .nav-treeview .nav-treeview { margin: 0 0 4px 1.3rem; border-left: 1px dashed rgba(255,255,255,.2); }
+    .nav-sidebar .nav-treeview .nav-treeview > .nav-item > .nav-link p.sTitle { font-size: 12.5px; color: #a9b3bc; }
+    .nav-sidebar .nav-treeview .nav-treeview > .nav-item > .nav-link > .nav-icon { font-size: 6px; width: .9rem; }
+    .nav-sidebar .nav-sidebar .has-treeview.menu-open > .nav-link p.sTitle, .nav-sidebar .nav-treeview .menu-open > .nav-link p.sTitle { color: #fff; font-weight: 600; }
+    .sidebar-collapse .main-sidebar:not(:hover) .nav-sidebar > .nav-item > .nav-treeview { margin: 0; border: 0; }
     .nav-sidebar a.nav-link.bo-current, .nav-sidebar a.nav-link.bo-current:hover { background: #16D5FF !important; color: #06222B !important; font-weight: 700; box-shadow: inset 4px 0 0 #fff; }
     .nav-sidebar a.nav-link.bo-parent { color: #fff !important; font-weight: 600; }
     .sidebar-collapse .main-sidebar:not(:hover) .nav-sidebar > .nav-item > a.bo-parent { box-shadow: inset 4px 0 0 #16D5FF; }
@@ -52,30 +78,19 @@
   <!-- Main Sidebar Container -->
   <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <!-- Brand Logo -->
-    <a href="#" class="brand-link">
-      <img src="/resources/img/logo.png"
-           alt="AdminLTE Logo"
-           class="brand-image elevation-12">
-      <span class="brand-text font-weight-light" style="font-size: 16px;">주식회사 이에스티소프트</span><br>
-      <span class="brand-text font-weight-light" style="font-size: 12px;">&nbsp;&nbsp;&nbsp;&nbsp;
-      	${loginInfo.loginInfo[0].emplyNm}(${loginInfo.loginInfo[0].emplyId})님 접속
-      	&nbsp;&nbsp;<button type="button" class="btn-sm-sm btn-danger" onclick="logout();">logout</button>
-      	<button type="button" class="btn-sm-sm btn-secondary" title="비밀번호 변경" aria-label="비밀번호 변경" onclick="location.href='/eep/account/changePassword.do'; return false;"><i class="fas fa-key"></i></button>
-      </span>
+    <a href="/admin/home.do" class="brand-link">
+      <img src="/resources/img/logo.png" alt="" class="brand-image">
+      <span class="brand-text">주식회사 이에스티소프트</span>
     </a>
-    
-	
+
     <!-- Sidebar -->
     <div class="sidebar">
-      <!-- Sidebar user (optional) -->
-     <!--  <div class="user-panel mt-3 pb-3 mb-3 d-flex" style="display:none">
-        <div class="image">
-          <img src="/resources/dist/img/user2-160x160.jpg" class="img-circle elevation-2" alt="User Image">
-        </div>
-        <div class="info">
-          <a href="#" class="d-block">SWORDBASS</a>
-        </div>
-      </div> -->
+      <div class="bo-user">
+        <i class="fas fa-user-circle bo-user-icon" aria-hidden="true"></i>
+        <div class="bo-user-info"><b><c:out value="${loginInfo.loginInfo[0].emplyNm}"/></b><small><c:out value="${loginInfo.loginInfo[0].emplyId}"/></small></div>
+        <button type="button" class="bo-user-btn" title="비밀번호 변경" aria-label="비밀번호 변경" onclick="location.href='/eep/account/changePassword.do';"><i class="fas fa-key" aria-hidden="true"></i></button>
+        <button type="button" class="bo-user-btn bo-logout" title="로그아웃" aria-label="로그아웃" onclick="logout();"><i class="fas fa-sign-out-alt" aria-hidden="true"></i></button>
+      </div>
 
       <!-- Sidebar Menu -->
       <nav class="mt-2">
@@ -120,12 +135,8 @@
 <%-- 현재 화면의 메뉴 동그라미를 채우고 그 그룹만 펼친다. 게시글 상세처럼 메뉴에 없는 화면은 같은 폴더의 메뉴를 쓴다 --%>
 <script>
 (function() {
-	// 스크롤해도 상단·왼쪽 메뉴를 고정한다. 모든 BO 화면이 이 파일을 쓰므로 body 클래스를 여기서 붙인다. 로고 영역이 두 줄이라 메뉴 시작 위치를 실제 높이로 맞춘다
+	// 스크롤해도 상단·왼쪽 메뉴를 고정한다. 모든 BO 화면이 이 파일을 쓰므로 body 클래스를 여기서 붙인다
 	document.body.classList.add('layout-fixed', 'layout-navbar-fixed');
-	var brandHeight = document.querySelector('aside .brand-link').offsetHeight, menu = document.querySelector('aside .sidebar');
-	menu.style.marginTop = brandHeight + 'px';
-	menu.style.height = 'calc(100vh - ' + brandHeight + 'px)';
-	menu.style.overflowY = 'auto';
 	// AdminLTE 는 window load 뒤에 접은 상태를 복원해 화면 전환마다 펼쳐졌다 접히므로 그리기 전에 먼저 적용한다
 	if (localStorage.getItem('remember.lte.pushmenu') === 'sidebar-collapse') document.body.classList.add('sidebar-collapse');
 	[].forEach.call(document.querySelectorAll('aside .has-treeview.menu-open'), function(li) { li.classList.remove('menu-open'); });
