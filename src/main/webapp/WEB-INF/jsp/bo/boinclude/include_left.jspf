@@ -62,10 +62,12 @@
     .nav-sidebar .nav-treeview .nav-treeview > .nav-item > .nav-link > .nav-icon { font-size: 6px; width: .9rem; }
     .nav-sidebar .nav-sidebar .has-treeview.menu-open > .nav-link p.sTitle, .nav-sidebar .nav-treeview .menu-open > .nav-link p.sTitle { color: #fff; font-weight: 600; }
     .sidebar-collapse .main-sidebar:not(:hover) .nav-sidebar > .nav-item > .nav-treeview { margin: 0; border: 0; }
-    .nav-sidebar a.nav-link.bo-current, .nav-sidebar a.nav-link.bo-current:hover { background: #16D5FF !important; color: #06222B !important; font-weight: 700; box-shadow: inset 4px 0 0 #fff; }
+    .nav-sidebar a.nav-link.bo-current, .nav-sidebar a.nav-link.bo-current:hover { background: #fff !important; color: #111 !important; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+    /* 단계별 글자색 규칙이 글자에 직접 걸려 있어 글자와 아이콘에도 직접 지정한다 */
+    .nav-sidebar a.nav-link.bo-current p.sTitle, .nav-sidebar a.nav-link.bo-current .nav-icon { color: #111 !important; font-weight: 700 !important; }
     .nav-sidebar a.nav-link.bo-parent { color: #fff !important; font-weight: 600; }
-    .sidebar-collapse .main-sidebar:not(:hover) .nav-sidebar > .nav-item > a.bo-parent { box-shadow: inset 4px 0 0 #16D5FF; }
-    .sidebar-collapse .main-sidebar:not(:hover) .nav-sidebar > .nav-item > a.bo-parent .nav-icon { color: #16D5FF !important; }
+    .sidebar-collapse .main-sidebar:not(:hover) .nav-sidebar > .nav-item > a.bo-parent { box-shadow: inset 4px 0 0 #fff; }
+    .sidebar-collapse .main-sidebar:not(:hover) .nav-sidebar > .nav-item > a.bo-parent .nav-icon { color: #fff !important; }
     .mode-switch-item { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; line-height: 1; color: #555; text-decoration: none; transition: background-color .15s, color .15s; }
     .mode-switch-item:hover { color: #111; background: rgba(22,213,255,.18); text-decoration: none; }
     .mode-switch-item.active { color: #fff; background: #111; box-shadow: 0 1px 3px rgba(0,0,0,.2); pointer-events: none; }
