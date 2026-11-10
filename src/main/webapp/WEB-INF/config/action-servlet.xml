@@ -28,6 +28,14 @@
 				<mvc:exclude-mapping path="/admin/logout.do"/>
 				<bean id="bologgerInterceptor" class="com.common.logger.boLoggerInterceptor"></bean>
 			</mvc:interceptor>
+			<!-- 초기 비밀번호 검사보다 먼저 세션을 복원해야 한다 -->
+			<mvc:interceptor>
+				<mvc:mapping path="/eep/**" />
+				<mvc:exclude-mapping path="/eep/login/**"/>
+				<mvc:exclude-mapping path="/eep/logout.do"/>
+				<mvc:exclude-mapping path="/eep/signup/**"/>
+				<bean class="com.common.logger.FoAutoLoginInterceptor"></bean>
+			</mvc:interceptor>
 		</mvc:interceptors>
 		
 		<!-- 초기 비밀번호 변경 강제 -->

@@ -32,7 +32,13 @@ public class FoLoginController {
 	private BoMemberService memberService;
 
 	@RequestMapping(value = "/eep/login/loginPage.do")
-	public String openLoginPage() {
+	public String openLoginPage(HttpServletRequest request, HttpServletResponse response) {
+		HttpSession session = request.getSession(false);
+		if((session == null || session.getAttribute("loginInfo") == null) && BoLoginRememberService.restore(request, response)) {
+			return "redirect:/eep/mainPage.do";
+		}
+		request.setAttribute("savedId", BoLoginRememberService.savedId(request));
+		request.setAttribute("savedAutoCheck", BoLoginRememberService.savedAutoCheck(request));
 
 		return "/fo/login/login_page";
 	}
@@ -41,7 +47,7 @@ public class FoLoginController {
 	//LOGIN DATA
 	@RequestMapping("/eep/login/loginData.do")
 	@ResponseBody
-	public ModelAndView loginData(@RequestParam Map<String, Object> param,HttpServletRequest request) {
+	public ModelAndView loginData(@RequestParam Map<String, Object> param,HttpServletRequest request,HttpServletResponse response) {
 		
 		HttpSession session = request.getSession();
 		ModelAndView mv = new ModelAndView("jsonView");	
@@ -70,6 +76,7 @@ public class FoLoginController {
 			session.setAttribute("loginInfo", result);	
 			session.setAttribute("emplyAuthCheck", emplyAuthCheck);
 			memberService.touchLogin(emplyId);
+			BoLoginRememberService.afterLogin(emplyId, param, request, response);
 		}
 
 		return mv;

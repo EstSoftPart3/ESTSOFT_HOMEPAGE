@@ -162,7 +162,7 @@
 		if (tab === 'pending') return data.pending.filter(function(s) { return !q || has(s.STAFF_NM, q) || has(s.EMAIL, q); });
 		return data.accounts.filter(function(a) {
 			if (leftOnly ? !isLeft(a) : kindOf(a) !== tab) return false;
-			if (pw && a.PW_INIT_YN !== pw) return false;
+			if (pw && (a.PW_INIT_YN === 'N' ? 'N' : 'Y') !== pw) return false;
 			return !q || has(a.EMPLY_NM, q) || has(a.EMPLY_ID, q) || has(a.EMPLY_EMAIL, q);
 		});
 	}
@@ -185,7 +185,7 @@
 	function pill(text, cls) { return $('<span class="sys-pill">').addClass(cls || '').text(text); }
 	function statusPill(a) { return a.DEL_YN === 'Y' ? pill('퇴사', 'bad') : a.USE_YN === 'N' ? pill('사용중지', 'bad') : pill('사용중', 'ok'); }
 	function staffPill(a) { return !a.STAFF_SQ ? pill('미연결') : a.STAFF_STATUS === 'WORK' ? pill('재직', 'info') : pill('퇴사', 'bad'); }
-	function pwPill(a) { return a.PW_INIT_YN === 'Y' ? pill('초기 비밀번호', 'warn') : pill('변경 완료', 'ok'); }
+	function pwPill(a) { return a.PW_INIT_YN !== 'N' ? pill('초기 비밀번호', 'warn') : pill('변경 완료', 'ok'); }
 	function typeText(a) { return a.EMPLY_AUTH_TYP_CD === '1' ? '직원' : a.EMPLY_AUTH_TYP_CD === '2' ? '관리자' : '미지정'; }
 
 	function head(cols) { $('#listHead').html('<tr>' + cols.map(function(c) { return '<th>' + c + '</th>'; }).join('') + '</tr>'); }
@@ -467,7 +467,7 @@
 	function downloadCsv() {
 		function cell(v) { var s = String(v === undefined || v === null ? '' : v); if (/^[=+\-@]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; }
 		var rows = tab === 'pending' && !leftOnly ? [['이름', '소속', '부서', '이메일']].concat(shown().map(function(s) { return [s.STAFF_NM, s.ORG_NM, s.DEPT_NM, s.EMAIL]; }))
-			: [['이름', '아이디', '구분', '권한', '이메일', '비밀번호', '최근 로그인']].concat(shown().map(function(a) { return [a.EMPLY_NM, a.EMPLY_ID, typeText(a), a.ROLE_NMS, a.EMPLY_EMAIL, a.PW_INIT_YN === 'Y' ? '초기' : '변경 완료', a.LAST_LOGIN_DT]; }));
+			: [['이름', '아이디', '구분', '권한', '이메일', '비밀번호', '최근 로그인']].concat(shown().map(function(a) { return [a.EMPLY_NM, a.EMPLY_ID, typeText(a), a.ROLE_NMS, a.EMPLY_EMAIL, a.PW_INIT_YN !== 'N' ? '초기' : '변경 완료', a.LAST_LOGIN_DT]; }));
 		var url = URL.createObjectURL(new Blob(['﻿' + rows.map(function(r) { return r.map(cell).join(','); }).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
 		$('<a>').attr({ href: url, download: '계정목록.csv' })[0].click();
 		URL.revokeObjectURL(url);

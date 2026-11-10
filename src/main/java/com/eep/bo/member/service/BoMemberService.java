@@ -28,6 +28,8 @@ import common.util.RrnCipher;
 public class BoMemberService {
 
 	static final String STAFF = "1", ADMIN = "2";
+	// PW_INIT_YN: Y 는 관리자 발급이라 변경 강제, R 은 본인 가입이라 로그인 때 변경 권고만 한다
+	private static final String PW_FORCE = "Y", PW_ADVISE = "R";
 	private static final Pattern ID = Pattern.compile("^[A-Za-z0-9._-]{2,50}$");
 	private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+$");
 	// 전달할 때 헷갈리는 글자(0 O 1 l I)는 뺀다
@@ -78,7 +80,7 @@ public class BoMemberService {
 				require(blank(staff.get("EMPLY_ID")), name + "님은 이미 계정이 있습니다.");
 				require(idFromEmail((String) staff.get("EMAIL")) != null, name + "님은 이메일이 없어 발급할 수 없습니다.");
 				String id = text(ids.get(i));
-				Map<String, Object> created = create(id, name, (String) staff.get("EMAIL"), (String) staff.get("PHONE"), type);
+				Map<String, Object> created = create(id, name, (String) staff.get("EMAIL"), (String) staff.get("PHONE"), type, PW_FORCE);
 				Map<String, Object> link = new HashMap<>();
 				link.put("EMPLY_ID", id);
 				link.put("STAFF_SQ", staffSqs.get(i));
@@ -98,7 +100,7 @@ public class BoMemberService {
 		require(text(name) != null && name.trim().length() <= 50, "이름을 입력해 주세요.");
 		validateEmail(text(email));
 		return tx.execute(s -> {
-			Map<String, Object> created = create(text(id), name.trim(), text(email), null, ADMIN);
+			Map<String, Object> created = create(text(id), name.trim(), text(email), null, ADMIN, PW_FORCE);
 			system.addRoleUser(roleSq, text(id), actor.id, actor.superUser);
 			List<Map<String, Object>> issued = new ArrayList<>();
 			issued.add(created);
@@ -106,7 +108,34 @@ public class BoMemberService {
 		});
 	}
 
-	private Map<String, Object> create(String id, String name, String email, String phone, String type) {
+	// ── 직원 본인 가입 ──
+
+	/** 가입할 수 있는 재직자면 인사정보를 돌려준다. 메일을 보내기 전과 계정을 만들 때 모두 확인한다 */
+	public Map<String, Object> signupStaff(int staffSq) {
+		Map<String, Object> staff = mapper.selectStaffForIssue(staffSq);
+		require(staff != null && "WORK".equals(staff.get("STATUS_CD")) && blank(staff.get("EMPLY_ID")), "가입할 수 없는 직원입니다. 인사 담당자에게 문의해 주세요.");
+		String id = idFromEmail((String) staff.get("EMAIL"));
+		Map<String, Object> p = new HashMap<>();
+		p.put("EMPLY_ID", id);
+		require(id != null && ID.matcher(id).matches() && mapper.countId(p) == 0, "계정을 자동으로 만들 수 없습니다. 인사 담당자에게 문의해 주세요.");
+		return staff;
+	}
+
+	/** 인증을 마친 직원의 계정을 만든다. 하나라도 실패하면 모두 취소한다 */
+	public Map<String, Object> issueBySignup(int staffSq) {
+		return tx.execute(s -> {
+			Map<String, Object> staff = signupStaff(staffSq);
+			String id = idFromEmail((String) staff.get("EMAIL"));
+			Map<String, Object> created = create(id, (String) staff.get("STAFF_NM"), ((String) staff.get("EMAIL")).trim(), (String) staff.get("PHONE"), STAFF, PW_ADVISE);
+			Map<String, Object> link = new HashMap<>();
+			link.put("EMPLY_ID", id);
+			link.put("STAFF_SQ", staffSq);
+			require(mapper.linkStaff(link) == 1, "이미 가입된 계정이 있습니다.");
+			return created;
+		});
+	}
+
+	private Map<String, Object> create(String id, String name, String email, String phone, String type, String pwInit) {
 		validateId(id, null);
 		String password = tempPassword();
 		Map<String, Object> p = new HashMap<>();
@@ -116,6 +145,7 @@ public class BoMemberService {
 		p.put("EMPLY_EMAIL", email);
 		p.put("EMPLY_PH_NUM", phone);
 		p.put("TYPE_CD", type);
+		p.put("PW_INIT_YN", pwInit);
 		mapper.insertAccount(p);
 		return credential(id, name, password);
 	}

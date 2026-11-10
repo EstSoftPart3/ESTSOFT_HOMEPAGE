@@ -31,7 +31,7 @@
 			<div id="pwError" role="alert"></div>
 			<button type="submit" class="btn btn-ink btn-block" id="saveBtn">변경</button>
 		</form>
-		<c:if test="${sessionScope.loginInfo.loginInfo[0].pwInitYn != 'Y'}"><p class="mt-3 mb-0 text-center"><a href="javascript:history.back()">돌아가기</a></p></c:if>
+		<c:if test="${sessionScope.loginInfo.loginInfo[0].pwInitYn != 'Y'}"><p class="mt-3 mb-0 text-center"><a href="${sessionScope.loginInfo.loginInfo[0].pwInitYn == 'R' ? '/eep/mainPage.do' : 'javascript:history.back()'}">돌아가기</a></p></c:if>
 	</div></div>
 </div>
 <script src="/resources/bo/plugins/jquery/jquery.min.js"></script>

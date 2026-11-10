@@ -38,6 +38,8 @@ public interface BoMemberMapper {
 
 	List<Map<String, Object>> searchStaff(String keyword);
 
+	List<Map<String, Object>> selectSignupStaff(Map<String, Object> param);
+
 	String selectStaffRrn(int staffSq);
 
 	void unlinkStaff(String emplyId);

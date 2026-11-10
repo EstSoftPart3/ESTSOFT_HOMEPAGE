@@ -51,7 +51,7 @@
 
 	<insert id="insertAccount" parameterType="hashmap">
 		INSERT INTO TB_EEP_EMPLY_M (EMPLY_ID, EMPLY_PW, EMPLY_NM, EMPLY_AUTH_TYP_CD, EMPLY_PH_NUM, EMPLY_EMAIL, USE_YN, DEL_YN, PW_INIT_YN, EMPLY_REG_DT)
-		VALUES (#{EMPLY_ID}, #{EMPLY_PW}, #{EMPLY_NM}, #{TYPE_CD}, #{EMPLY_PH_NUM,jdbcType=VARCHAR}, #{EMPLY_EMAIL,jdbcType=VARCHAR}, 'Y', 'N', 'Y', NOW())
+		VALUES (#{EMPLY_ID}, #{EMPLY_PW}, #{EMPLY_NM}, #{TYPE_CD}, #{EMPLY_PH_NUM,jdbcType=VARCHAR}, #{EMPLY_EMAIL,jdbcType=VARCHAR}, 'Y', 'N', #{PW_INIT_YN}, NOW())
 	</insert>
 
 	<update id="updateAccount" parameterType="hashmap">
@@ -102,6 +102,18 @@
 			OR EMAIL LIKE CONCAT('%', #{keyword}, '%')
 			OR REPLACE(PHONE, '-', '') LIKE CONCAT('%', REPLACE(#{keyword}, '-', ''), '%')
 		ORDER BY STATUS_CD = 'WORK' DESC, STAFF_NM, STAFF_SQ
+		LIMIT 20
+	</select>
+
+	<!-- 직원 본인 가입. 인사정보는 하이픈·점이 섞여 있어 숫자만 비교한다. 생년월일은 복호화해 서비스에서 비교한다 -->
+	<select id="selectSignupStaff" parameterType="hashmap" resultType="hashmap">
+		SELECT STAFF_SQ, STAFF_NM, RRN_ENC, ORG_NM, DEPT_NM, POSITION_NM, EMPLY_ID
+		FROM TB_EEP_HR_STAFF_M
+		WHERE STATUS_CD = 'WORK'
+			AND TRIM(STAFF_NM) = #{NAME}
+			AND REPLACE(REPLACE(REPLACE(PHONE, '-', ''), ' ', ''), '.', '') = #{PHONE}
+			AND REPLACE(REPLACE(REPLACE(JOIN_DT, '-', ''), '.', ''), '/', '') = #{JOIN}
+		ORDER BY STAFF_SQ
 		LIMIT 20
 	</select>
 

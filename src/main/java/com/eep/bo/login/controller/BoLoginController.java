@@ -35,7 +35,7 @@ public class BoLoginController {
 
 	@RequestMapping(value = "/admin/login/loginPage.do")
 	public String openLoginPage(HttpServletRequest request, HttpServletResponse response) {
-		if(BoLoginRememberService.restore(request, response)) {
+		if(BoLoginRememberService.restoreAdmin(request, response)) {
 			return "redirect:/admin/home.do";
 		}
 		request.setAttribute("savedId", BoLoginRememberService.savedId(request));
@@ -75,15 +75,7 @@ public class BoLoginController {
 			session.setAttribute("emplyAuthCheck", emplyAuthCheck);
 			memberService.touchLogin(emplyId);
 
-			if("Y".equals(param.get("saveId"))) {
-				BoLoginRememberService.saveId(emplyId, request, response);
-			} else {
-				BoLoginRememberService.forgetId(request, response);
-			}
-			BoLoginRememberService.saveAutoCheck("Y".equals(param.get("autoLogin")), request, response);
-			if("Y".equals(param.get("autoLogin"))) {
-				BoLoginRememberService.issue(emplyId, request, response);
-			}	
+			BoLoginRememberService.afterLogin(emplyId, param, request, response);	
 		} 
 
 		return mv;

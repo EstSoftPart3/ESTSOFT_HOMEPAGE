@@ -66,7 +66,7 @@ public class boLoggerInterceptor extends HandlerInterceptorAdapter {
 		Object obj = session.getAttribute("loginInfo");
 		String authCheck = (String) session.getAttribute("emplyAuthCheck");
 		// 세션이 끊겼으면 자동로그인 쿠키로 다시 만든다
-		if(obj == null && BoLoginRememberService.restore(request, response)) {
+		if(obj == null && BoLoginRememberService.restoreAdmin(request, response)) {
 			session = request.getSession();
 			obj = session.getAttribute("loginInfo");
 			authCheck = (String) session.getAttribute("emplyAuthCheck");

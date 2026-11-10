@@ -21,12 +21,12 @@
          	AND IFNULL(DEL_YN, 'N') = 'N' AND IFNULL(USE_YN, 'Y') = 'Y'
     </select>
 	
-	<!-- 자동로그인 토큰. 관리자 계정에만 발급한다 -->
+	<!-- 자동로그인 토큰. 직원·관리자 계정에 발급하고, 관리자 화면 복원은 서비스에서 관리자만 허용한다 -->
 	<insert id="insertLoginToken" parameterType="hashmap">
 		INSERT INTO TB_EEP_EMPLY_LOGIN_TKN (TOKEN_HASH, EMPLY_SQ, PW_HASH, EXPIRE_DT, REG_DT)
 		SELECT #{TOKEN_HASH}, EMPLY_SQ, SHA2(EMPLY_PW, 256), DATE_ADD(NOW(), INTERVAL #{DAYS} DAY), NOW()
 		FROM TB_EEP_EMPLY_M
-		WHERE EMPLY_ID = #{EMPLY_ID} AND EMPLY_AUTH_TYP_CD IN ('2') AND IFNULL(DEL_YN, 'N') = 'N' AND IFNULL(USE_YN, 'Y') = 'Y'
+		WHERE EMPLY_ID = #{EMPLY_ID} AND EMPLY_AUTH_TYP_CD IN ('1','2') AND IFNULL(DEL_YN, 'N') = 'N' AND IFNULL(USE_YN, 'Y') = 'Y'
 	</insert>
 
 	<!-- 만료, 비밀번호 변경, 관리자 권한 해제 중 하나라도 해당하면 나오지 않는다 -->
@@ -42,7 +42,7 @@
 		WHERE T.TOKEN_HASH = #{TOKEN_HASH}
 			AND T.EXPIRE_DT &gt; NOW()
 			AND T.PW_HASH = SHA2(E.EMPLY_PW, 256)
-			AND E.EMPLY_AUTH_TYP_CD IN ('2')
+			AND E.EMPLY_AUTH_TYP_CD IN ('1','2')
 			AND IFNULL(E.DEL_YN, 'N') = 'N' AND IFNULL(E.USE_YN, 'Y') = 'Y'
 	</select>
 

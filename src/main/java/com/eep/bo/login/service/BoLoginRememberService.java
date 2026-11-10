@@ -24,7 +24,7 @@ import org.springframework.stereotype.Service;
 import com.eep.mapper.BoLoginMapper;
 
 /**
- * 관리자 아이디 저장·자동로그인 쿠키
+ * 직원·관리자 아이디 저장·자동로그인 쿠키
  * 비밀번호는 쿠키에 넣지 않는다. 자동로그인 쿠키에는 무작위 토큰만 넣고 DB 에는 그 해시만 둔다
  * 토큰은 교체하지 않는다: 만료 전 세션이 끊긴 화면에서 요청이 동시에 나가면 교체 때문에 로그아웃되기 때문이다
  */
@@ -56,8 +56,31 @@ public class BoLoginRememberService {
 		addCookie(AUTO_COOKIE, token, AUTO_SECONDS, request, response);
 	}
 
-	/** 쿠키의 토큰이 유효하면 관리자 세션을 만든다. 쿠키가 없거나 무효면 false */
+	/** 로그인 성공 후 아이디 저장·자동로그인 선택을 반영한다 */
+	public void afterLogin(String emplyId, Map<String, Object> param, HttpServletRequest request, HttpServletResponse response) {
+		if ("Y".equals(param.get("saveId"))) {
+			saveId(emplyId, request, response);
+		} else {
+			forgetId(request, response);
+		}
+		boolean auto = "Y".equals(param.get("autoLogin"));
+		saveAutoCheck(auto, request, response);
+		if (auto) {
+			issue(emplyId, request, response);
+		}
+	}
+
+	/** 쿠키의 토큰이 유효하면 세션을 만든다. 쿠키가 없거나 무효면 false */
 	public boolean restore(HttpServletRequest request, HttpServletResponse response) {
+		return restore(request, response, false);
+	}
+
+	/** 직원 토큰으로 관리자 화면을 복원하면 튕겨 나온 뒤 다시 복원을 반복하므로, 관리자 화면은 이쪽을 쓴다 */
+	public boolean restoreAdmin(HttpServletRequest request, HttpServletResponse response) {
+		return restore(request, response, true);
+	}
+
+	private boolean restore(HttpServletRequest request, HttpServletResponse response, boolean adminOnly) {
 		String token = cookie(AUTO_COOKIE, request);
 		if (token == null) {
 			return false;
@@ -67,6 +90,9 @@ public class BoLoginRememberService {
 		Map<String, Object> emply = BoLoginMapper.selectLoginToken(param);
 		if (emply == null) {
 			clear(request, response);
+			return false;
+		}
+		if (adminOnly && !"2".equals(emply.get("emplyAuthTypCd"))) {
 			return false;
 		}
 		// 비로그인 때 쓰던 세션 ID 를 이어 쓰지 않는다
