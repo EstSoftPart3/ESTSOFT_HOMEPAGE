@@ -20,7 +20,8 @@
 	.sys-drop { border: 2px dashed #0b6e8a; border-radius: 6px; background: rgba(22,213,255,.12); visibility: visible !important; }
 	.ui-sortable-helper { background: #fff; box-shadow: 0 5px 16px rgba(0,0,0,.28); border-radius: 6px; cursor: grabbing; }
 	#sortMsg:empty { display: none; }
-	.sys-icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 6px; }
+	.sys-icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 6px; max-height: 300px; overflow-y: auto; align-content: start; padding: 2px; }
+	.sys-icon-cat { grid-column: 1 / -1; font-size: 12px; font-weight: 700; color: #555; margin-top: 4px; }
 	.sys-icon { height: 40px; border: 1px solid rgba(17,17,17,.12); border-radius: 7px; background: #f7f9fb; color: #333; font-size: 18px; }
 	.sys-icon:hover { background: rgba(22,213,255,.12); }
 	.sys-icon:focus-visible { outline: 2px solid #16d5ff; outline-offset: 1px; }
