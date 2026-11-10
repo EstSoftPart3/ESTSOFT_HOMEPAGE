@@ -186,6 +186,17 @@ public class PayCalcCheck {
 		same(m.get("BIZ_ITEM"), "소프트웨어 개발", "종목");
 		m = BizLicenseParser.parse("상호: 신규상사\n성명: 김예시 생년월일: 1980년 01월 01일\n");
 		same(m.get("PARTNER_NM") + "/" + m.get("CEO_NM"), "신규상사/김예시", "개인사업자");
+		// 서류 종류와 통장사본
+		same(BizLicenseParser.kindByName("MCS_사업자등록증_2020.pdf"), "LICENSE", "이름-사업자");
+		same(BizLicenseParser.kindByName("mcs_logo.png") + BizLicenseParser.kindByName("CI.jpg"), "LOGOLOGO", "이름-로고");
+		same(BizLicenseParser.kindByName("도장.png") + BizLicenseParser.kindByName("통장사본.pdf"), "SEALBANK", "이름-직인·통장");
+		same(BizLicenseParser.kindByName("scan001.pdf") + "/" + BizLicenseParser.kindByName("circle.png"), "null/null", "이름-모름");
+		String bank = "통장사본\n신한은행\n계좌번호 140-012-345678\n예금주 (주)가나시스템\n";
+		same(BizLicenseParser.kindByText(bank), "BANK", "글자-통장");
+		same(BizLicenseParser.kindByText("사 업 자 등 록 증\n등록번호 : 123-45-67890"), "LICENSE", "글자-사업자");
+		same(BizLicenseParser.kindByText("안녕하세요"), "null", "글자-모름");
+		Map<String, String> b = BizLicenseParser.bank(bank);
+		same(b.get("BANK_NM") + "/" + b.get("ACCOUNT_NO") + "/" + b.get("ACCOUNT_HOLDER"), "신한/140-012-345678/(주)가나시스템", "통장 칸");
 	}
 
 	private static Map<String, Object> deploy(int staff, String start, String end, String status) {

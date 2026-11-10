@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -94,12 +96,24 @@ public class BoDeployController {
 	}
 
 	@RequestMapping(value = "/admin/partner/savePartnerData.do", method = RequestMethod.POST)
-	public ModelAndView savePartnerData(@RequestParam Map<String, Object> param, @RequestParam(value = "file", required = false) MultipartFile file, HttpSession session) {
+	/** 서류 파일은 종류 이름(LICENSE·LOGO·SEAL·BANK)으로, 지울 종류는 REMOVE 에 쉼표로 받는다 */
+	public ModelAndView savePartnerData(@RequestParam Map<String, Object> param, MultipartHttpServletRequest request, HttpSession session) {
 		return run(() -> {
-			param.remove("file");
+			String remove = String.valueOf(param.getOrDefault("REMOVE", ""));
+			param.remove("REMOVE");
 			param.put("UPDT_EMPLY_ID", loginId(session));
-			boolean has = file != null && !file.isEmpty();
-			deployService.savePartner(param, has ? file.getOriginalFilename() : null, has ? file.getContentType() : null, has ? file.getBytes() : null);
+			Map<String, Map<String, Object>> files = new HashMap<>();
+			for (Map.Entry<String, MultipartFile> e : request.getFileMap().entrySet()) {
+				MultipartFile f = e.getValue();
+				if (!f.isEmpty()) {
+					Map<String, Object> m = new HashMap<>();
+					m.put("FILE_NM", f.getOriginalFilename());
+					m.put("FILE_TYPE", f.getContentType());
+					m.put("FILE_DATA", f.getBytes());
+					files.put(e.getKey(), m);
+				}
+			}
+			deployService.savePartner(param, files, remove.isEmpty() ? new ArrayList<>() : Arrays.asList(remove.split(",")));
 			return "OK";
 		});
 	}
@@ -112,9 +126,9 @@ public class BoDeployController {
 		});
 	}
 
-	@RequestMapping(value = "/admin/partner/readLicenseData.do", method = RequestMethod.POST)
-	public ModelAndView readLicenseData(@RequestParam("file") MultipartFile file) {
-		return run(() -> deployService.readLicense(file.getOriginalFilename(), file.getContentType(), file.getBytes()));
+	@RequestMapping(value = "/admin/partner/readDocData.do", method = RequestMethod.POST)
+	public ModelAndView readDocData(@RequestParam("file") MultipartFile file, @RequestParam(value = "KIND", required = false) String kind) {
+		return run(() -> deployService.readDoc(file.getOriginalFilename(), file.getContentType(), file.getBytes(), kind));
 	}
 
 	@RequestMapping(value = "/admin/partner/partnerFile.do", method = RequestMethod.GET)

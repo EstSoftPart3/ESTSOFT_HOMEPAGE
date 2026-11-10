@@ -26,6 +26,9 @@ public interface BoDeployMapper {
 	public int insertPartner(Map<String, Object> param);
 	public int updatePartner(Map<String, Object> param);
 	public int deletePartner(Map<String, Object> param);
+	public Map<String, Object> selectPartnerAttach(Map<String, Object> param);	//PARTNER_SQ, FILE_CD 의 FILE_NM, FILE_TYPE, FILE_DATA
+	public int savePartnerFile(Map<String, Object> param);						//PARTNER_SQ, FILE_CD, FILE_NM, FILE_TYPE, FILE_DATA
+	public int deletePartnerFile(Map<String, Object> param);					//PARTNER_SQ (+ FILE_CD 있으면 그것만)
 
 	public List<Map<String, Object>> selectDeployList();						//전체 투입 건 + 직원·거래처 이름
 	public int insertDeploy(Map<String, Object> param);

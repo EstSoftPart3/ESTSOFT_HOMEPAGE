@@ -25,7 +25,8 @@ import com.eep.mapper.BoDeployMapper;
 public class BoDeployService {
 
 	private static final Pattern BIZ_NO = Pattern.compile("\\d{3}-\\d{2}-\\d{5}");
-	private static final String[] PARTNER_TEXT = { "BIZ_NO", "CEO_NM", "OPEN_DT", "ADDR", "BIZ_TYPE", "BIZ_ITEM", "MGR_NM", "MGR_POS", "MGR_TEL", "MGR_HP", "MGR_EMAIL", "TAX_EMAIL" };
+	private static final String[] PARTNER_TEXT = { "BIZ_NO", "CEO_NM", "OPEN_DT", "ADDR", "BIZ_TYPE", "BIZ_ITEM", "MGR_NM", "MGR_POS", "MGR_TEL", "MGR_HP", "MGR_EMAIL", "TAX_EMAIL", "BANK_NM", "ACCOUNT_NO", "ACCOUNT_HOLDER" };
+	private static final List<String> FILE_KINDS = Arrays.asList("LICENSE", "LOGO", "SEAL", "BANK");
 	private static final String[] DEPLOY_TEXT = { "SALE_PARTNER_SQ", "BUY_PARTNER_SQ", "CLIENT_NM", "PRJ_NM", "WORK_AREA", "GRADE_CD", "END_DT", "PROB_END_DT", "MEMO" };
 	private static final List<String> COLUMNS = Arrays.asList("STAFF_NM", "EMP_TYPE_CD", "SALE_PARTNER_NM", "BUY_PARTNER_NM", "SALE_PRICE", "COST_PRICE", "CLIENT_NM", "PRJ_NM", "WORK_AREA", "GRADE_CD", "START_DT", "END_DT", "REMAIN", "TENURE");
 	private static final String COLUMN_PREF = "DEPLOY_COLUMNS";
@@ -163,7 +164,11 @@ public class BoDeployService {
 		return mapper.selectPartnerList();
 	}
 
-	public void savePartner(Map<String, Object> p, String fileName, String fileType, byte[] data) {
+	/**
+	 * files: 종류(LICENSE·LOGO·SEAL·BANK) -> FILE_NM, FILE_TYPE, FILE_DATA. removes: 지울 종류.
+	 * 사업자등록증은 거래처 행에, 나머지는 TB_EEP_PARTNER_FILE_R 에 둔다.
+	 */
+	public void savePartner(Map<String, Object> p, Map<String, Map<String, Object>> files, List<String> removes) {
 		require(!text(p, "PARTNER_NM").isEmpty(), "상호를 입력해 주세요.");
 		require("Y".equals(p.get("SALE_YN")) || "Y".equals(p.get("BUY_YN")), "매출처·매입처 중 하나 이상 골라 주세요.");
 		for (String f : PARTNER_TEXT) {
@@ -181,47 +186,90 @@ public class BoDeployService {
 			q.put("PARTNER_SQ", sq.isEmpty() ? 0 : Integer.parseInt(sq));
 			require(mapper.countBizNo(q) == 0, "이미 등록된 사업자등록번호입니다.");
 		}
-		if (data != null && data.length > 0) {
-			checkFile(fileName, data);
-			p.put("FILE_NM", fileName);
-			p.put("FILE_TYPE", fileType);
-			p.put("FILE_DATA", data);
-		} else {
-			p.put("FILE_DATA", null);
+		for (String k : files.keySet()) {
+			require(FILE_KINDS.contains(k), "알 수 없는 서류 종류입니다.");
+			Map<String, Object> f = files.get(k);
+			checkFile((String) f.get("FILE_NM"), (byte[]) f.get("FILE_DATA"));
 		}
+		Map<String, Object> lic = files.get("LICENSE");
+		p.put("FILE_NM", lic == null ? null : lic.get("FILE_NM"));
+		p.put("FILE_TYPE", lic == null ? null : lic.get("FILE_TYPE"));
+		p.put("FILE_DATA", lic == null ? null : lic.get("FILE_DATA"));
+		p.put("LICENSE_DEL", lic == null && removes.contains("LICENSE"));
 		if (sq.isEmpty()) {
 			mapper.insertPartner(p);
 		} else {
 			mapper.updatePartner(p);
 		}
+		for (String k : removes) {
+			if (!"LICENSE".equals(k) && FILE_KINDS.contains(k) && !files.containsKey(k)) {
+				Map<String, Object> q = new HashMap<>();
+				q.put("PARTNER_SQ", p.get("PARTNER_SQ"));
+				q.put("FILE_CD", k);
+				mapper.deletePartnerFile(q);
+			}
+		}
+		for (Map.Entry<String, Map<String, Object>> e : files.entrySet()) {
+			if (!"LICENSE".equals(e.getKey())) {
+				Map<String, Object> q = new HashMap<>(e.getValue());
+				q.put("PARTNER_SQ", p.get("PARTNER_SQ"));
+				q.put("FILE_CD", e.getKey());
+				q.put("UPDT_EMPLY_ID", p.get("UPDT_EMPLY_ID"));
+				mapper.savePartnerFile(q);
+			}
+		}
 	}
 
 	public void deletePartner(Map<String, Object> p) {
 		require(mapper.countPartnerUse(p) == 0, "투입 기록이 있어 삭제할 수 없습니다. 사용 중지로 바꿔 주세요.");
+		mapper.deletePartnerFile(p);
 		mapper.deletePartner(p);
 	}
 
+	/** KIND 가 없거나 LICENSE 면 사업자등록증, 아니면 첨부 서류 */
 	public Map<String, Object> partnerFile(Map<String, Object> p) {
-		return mapper.selectPartnerFile(p);
+		String kind = text(p, "KIND");
+		if (kind.isEmpty() || "LICENSE".equals(kind)) {
+			return mapper.selectPartnerFile(p);
+		}
+		p.put("FILE_CD", kind);
+		return mapper.selectPartnerAttach(p);
 	}
 
-	/** 사업자등록증에서 칸 값을 찾는다. 글자 있는 PDF 는 바로, 스캔·사진은 구글 드라이브 OCR 로 읽는다 */
-	public Map<String, Object> readLicense(String fileName, String fileType, byte[] data) throws IOException {
+	/**
+	 * 서류 한 장을 읽어 종류와 칸 값을 돌려준다. kind 가 비면 파일 이름, 그다음 글자로 종류를 맞힌다.
+	 * 로고·직인은 글자를 읽지 않는다. 글자 있는 PDF 는 바로, 스캔·사진은 구글 드라이브 OCR 로 읽는다.
+	 */
+	public Map<String, Object> readDoc(String fileName, String fileType, byte[] data, String kind) throws IOException {
 		checkFile(fileName, data);
-		String text = isPdf(fileName) ? pdfText(data) : "";
+		String k = kind == null || kind.isEmpty() ? BizLicenseParser.kindByName(fileName) : kind;
+		require(k == null || FILE_KINDS.contains(k), "알 수 없는 서류 종류입니다.");
+		Map<String, Object> out = new HashMap<>();
 		String warning = "";
-		if (text.trim().length() < 20) {
-			try {
-				text = ocr(fileName, fileType, data);
-			} catch (IllegalArgumentException e) {
-				warning = "자동입력을 못 했습니다. " + e.getMessage();
-			} catch (Exception e) {
-				System.out.println("PARTNER_OCR_ERROR " + e.getClass().getSimpleName());
-				warning = "글자를 읽지 못했습니다. 직접 입력해 주세요.";
+		Map<String, String> fields = new HashMap<>();
+		if (!"LOGO".equals(k) && !"SEAL".equals(k)) {
+			String text = isPdf(fileName) ? pdfText(data) : "";
+			if (text.trim().length() < 20) {
+				try {
+					text = ocr(fileName, fileType, data);
+				} catch (IllegalArgumentException e) {
+					warning = "자동입력을 못 했습니다. " + e.getMessage();
+				} catch (Exception e) {
+					System.out.println("PARTNER_OCR_ERROR " + e.getClass().getSimpleName());
+					warning = "글자를 읽지 못했습니다. 직접 입력해 주세요.";
+				}
+			}
+			if (k == null) {
+				k = BizLicenseParser.kindByText(text);
+			}
+			if ("LICENSE".equals(k)) {
+				fields = BizLicenseParser.parse(text);
+			} else if ("BANK".equals(k)) {
+				fields = BizLicenseParser.bank(text);
 			}
 		}
-		Map<String, Object> out = new HashMap<>();
-		out.put("fields", BizLicenseParser.parse(text));
+		out.put("kind", k);
+		out.put("fields", fields);
 		out.put("warning", warning);
 		return out;
 	}
