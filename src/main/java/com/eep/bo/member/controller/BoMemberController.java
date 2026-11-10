@@ -70,9 +70,9 @@ public class BoMemberController {
 	}
 
 	@RequestMapping(value = "/admin/member/setStatusData.do", method = RequestMethod.POST)
-	public ModelAndView setStatusData(@RequestParam("EMPLY_SQ") int sq, @RequestParam("ACTION") String action, HttpSession session) {
+	public ModelAndView setStatusData(@RequestParam("EMPLY_SQ") List<Integer> sqs, @RequestParam("ACTION") String action, HttpSession session) {
 		Actor actor = actor(session);
-		return call(() -> { service.setStatus(sq, action, actor); return "OK"; });
+		return call(() -> { service.setStatus(sqs, action, actor); return "OK"; });
 	}
 
 

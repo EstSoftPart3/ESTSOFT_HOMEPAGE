@@ -273,8 +273,39 @@ public class BoMemberService {
 		return digits.length() < 7 ? null : (digits.charAt(6) - '0') % 2 == 1 ? "M" : "F";
 	}
 
+	/** 여러 계정에 한 번에. 하나라도 실패하면 모두 취소한다 */
+	public void setStatus(List<Integer> sqs, String action, Actor actor) {
+		require(sqs != null && !sqs.isEmpty(), "계정을 선택해 주세요.");
+		tx.execute(s -> {
+			for (Integer sq : sqs) {
+				if ("DELETE".equals(action)) {
+					delete(sq, actor);
+				} else {
+					setStatus(sq, action, actor);
+				}
+			}
+			return null;
+		});
+	}
+
+	/** 되돌릴 수 없다. 권한은 권한 규칙을 거쳐 빼고, 인사카드 연결·자동로그인·화면 설정을 지운다. 작성자 기록(REG_EMPLY_ID 등)은 남긴다 */
+	private void delete(int sq, Actor actor) {
+		Map<String, Object> row = target(sq, actor);
+		String id = (String) row.get("EMPLY_ID");
+		require(!actor.id.equals(id), "내 계정은 삭제할 수 없습니다.");
+		if (id != null) {
+			for (Integer r : roleSet(row.get("ROLE_SQS"))) {
+				system.removeRoleUser(r, id, actor.id);
+			}
+			mapper.unlinkStaff(id);
+			mapper.deletePrefs(id);
+		}
+		mapper.deleteLoginTokens(sq);
+		mapper.deleteAccount(sq);
+	}
+
 	/** SUSPEND, RESUME, RETIRE, RESTORE */
-	public void setStatus(int sq, String action, Actor actor) {
+	private void setStatus(int sq, String action, Actor actor) {
 		Map<String, Object> row = target(sq, actor);
 		boolean blocking = "SUSPEND".equals(action) || "RETIRE".equals(action);
 		require(!blocking || !actor.id.equals(row.get("EMPLY_ID")), "내 계정은 중지하거나 퇴사 처리할 수 없습니다.");

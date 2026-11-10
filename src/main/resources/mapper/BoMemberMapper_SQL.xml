@@ -88,6 +88,18 @@
 		UPDATE TB_EEP_EMPLY_M SET EMPLY_AUTH_TYP_CD = #{TYPE_CD}, EMPLY_UPDT_DT = NOW() WHERE EMPLY_SQ = #{EMPLY_SQ}
 	</update>
 
+	<delete id="deleteAccount" parameterType="int">
+		DELETE FROM TB_EEP_EMPLY_M WHERE EMPLY_SQ = #{sq}
+	</delete>
+
+	<delete id="deleteLoginTokens" parameterType="int">
+		DELETE FROM TB_EEP_EMPLY_LOGIN_TKN WHERE EMPLY_SQ = #{sq}
+	</delete>
+
+	<delete id="deletePrefs" parameterType="string">
+		DELETE FROM TB_EEP_USER_PREF_R WHERE EMPLY_ID = #{emplyId}
+	</delete>
+
 	<delete id="deleteUserRoles" parameterType="string">
 		DELETE FROM TB_EEP_USER_ROLE_R WHERE EMPLY_ID = #{emplyId}
 	</delete>

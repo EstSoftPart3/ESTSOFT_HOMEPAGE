@@ -32,6 +32,12 @@ public interface BoMemberMapper {
 
 	void updateType(Map<String, Object> param);
 
+	void deleteAccount(int sq);
+
+	void deleteLoginTokens(int sq);
+
+	void deletePrefs(String emplyId);
+
 	void deleteUserRoles(String emplyId);
 
 	int linkStaff(Map<String, Object> param);

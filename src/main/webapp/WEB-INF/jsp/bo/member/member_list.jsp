@@ -52,6 +52,12 @@
 					</div>
 					<div class="cal-panel">
 						<div class="cate-tabs" id="tabs" role="tablist" aria-label="계정 구분"></div>
+						<div id="bulkBar" class="px-3 pt-2" hidden>
+							<b id="bulkCount" class="mr-2"></b>
+							<button type="button" class="btn btn-xs btn-outline-secondary" onclick="bulk('SUSPEND');">전체 사용중지</button>
+							<button type="button" class="btn btn-xs btn-outline-danger" onclick="bulk('RETIRE');">전체 퇴사</button>
+							<button type="button" class="btn btn-xs btn-danger" onclick="bulk('DELETE');">전체 삭제</button>
+						</div>
 						<div class="table-responsive px-3">
 							<table class="table table-sm table-hover cal-table mb-0"><thead id="listHead"></thead><tbody id="listBody"></tbody></table>
 						</div>
@@ -195,20 +201,39 @@
 	function pwPill(a) { return a.PW_INIT_YN !== 'N' ? pill('초기 비밀번호', 'warn') : pill('변경 완료', 'ok'); }
 	function typeText(a) { return a.EMPLY_AUTH_TYP_CD === '1' ? '직원' : a.EMPLY_AUTH_TYP_CD === '2' ? '관리자' : '미지정'; }
 
-	function head(cols) { $('#listHead').html('<tr>' + cols.map(function(c) { return '<th>' + c + '</th>'; }).join('') + '</tr>'); }
+	function head(cols) { $('#listHead').html('<tr>' + cols.map(function(c) { return '<th>' + c + '</th>'; }).join('') + '</tr>'); $('#bulkBar').prop('hidden', true); }
 	function empty(cols, msg) { $('#listBody').empty().append($('<tr>').append($('<td class="cal-empty">').attr('colspan', cols).text(msg))); }
 
 	function renderAccounts() {
-		var admin = tab === 'admin' && !leftOnly, cols = ['이름', '아이디', '구분'].concat(admin ? ['권한'] : []).concat(['이메일', '연결 직원', '비밀번호', '최근 로그인', '상태']);
+		var admin = tab === 'admin' && !leftOnly, cols = ['<input type="checkbox" id="pickAll" aria-label="보이는 계정 전체 선택">', '이름', '아이디', '구분'].concat(admin ? ['권한'] : []).concat(['이메일', '연결 직원', '비밀번호', '최근 로그인', '상태']);
 		head(cols);
 		var rows = shown();
 		if (!rows.length) { empty(cols.length, '해당하는 계정이 없습니다.'); return; }
 		var $b = $('#listBody').empty();
 		rows.forEach(function(a) {
-			var $tr = $('<tr>').append($('<td>').append($('<button type="button" class="ac-link">').text(a.EMPLY_NM || '(이름 없음)').on('click', function() { openCard(a.EMPLY_SQ); })))
+			var $tr = $('<tr>').append($('<td>').append($('<input type="checkbox" class="acc-pick">').val(a.EMPLY_SQ).attr('aria-label', (a.EMPLY_NM || a.EMPLY_ID || '') + ' 선택')))
+				.append($('<td>').append($('<button type="button" class="ac-link">').text(a.EMPLY_NM || '(이름 없음)').on('click', function() { openCard(a.EMPLY_SQ); })))
 				.append($('<td class="sys-mono">').text(a.EMPLY_ID || '-')).append($('<td>').text(typeText(a)));
 			if (admin) $tr.append($('<td>').append(a.ROLE_NMS ? pill(a.ROLE_NMS, 'info') : pill('권한 없음', 'warn')));
 			$tr.append($('<td>').text(a.EMPLY_EMAIL || '')).append($('<td>').append(staffPill(a))).append($('<td>').append(pwPill(a))).append($('<td>').text(a.LAST_LOGIN_DT || '-')).append($('<td>').append(statusPill(a))).appendTo($b);
+		});
+	}
+
+	function picked() { return $('.acc-pick:checked').map(function() { return this.value; }).get(); }
+	function updateBulk() { var n = picked().length; $('#bulkBar').prop('hidden', !n); $('#bulkCount').text(n + '개 선택'); }
+	$('#listHead').on('change', '#pickAll', function() { $('.acc-pick').prop('checked', this.checked); updateBulk(); });
+	$('#listBody').on('change', '.acc-pick', updateBulk);
+
+	var ACTION_MSG = {
+		SUSPEND: '선택한 계정 {n}개를 사용중지할까요?',
+		RETIRE: '선택한 계정 {n}개를 퇴사 처리할까요? 로그인이 막히며 나중에 복구할 수 있습니다.',
+		DELETE: '선택한 계정 {n}개를 삭제할까요? 권한·인사카드 연결도 함께 지워지며 되돌릴 수 없습니다.'
+	};
+
+	function bulk(action) {
+		var sqs = picked();
+		bootbox.confirm(ACTION_MSG[action].replace('{n}', sqs.length), function(ok) {
+			if (ok) hrPost('/admin/member/setStatusData.do', $.param({ EMPLY_SQ: sqs, ACTION: action }, true), load);
 		});
 	}
 
@@ -360,6 +385,7 @@
 		else btn('사용중지', 'SUSPEND', 'btn-outline-secondary', '이 계정을 중지할까요? 다음 요청부터 관리자 화면 사용과 로그인이 막힙니다.');
 		if (card.DEL_YN === 'Y') btn('퇴사 취소', 'RESTORE', 'btn-outline-secondary', '퇴사 처리를 취소할까요?');
 		else btn('퇴사 처리', 'RETIRE', 'btn-outline-danger', '이 계정을 퇴사 처리할까요? 로그인이 막히며 나중에 복구할 수 있습니다.');
+		btn('삭제', 'DELETE', 'btn-danger', '이 계정을 삭제할까요? 권한·인사카드 연결도 함께 지워지며 되돌릴 수 없습니다.');
 	}
 
 	function confirmStatus(action, msg) {
