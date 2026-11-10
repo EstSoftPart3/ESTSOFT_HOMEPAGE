@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 투입현황·급여관리·매출/매입처. 표는 sql/deploy_payroll.sql -->
+<mapper namespace="com.eep.mapper.BoDeployMapper">
+
+	<select id="selectCodes" resultType="hashMap">
+		SELECT C.COMN_CD AS GRP, D.COMN_DTL_CD AS CD, D.COMN_DTL_CD_NM AS NM
+		FROM TB_EEP_COMN_CD_M C
+		JOIN TB_EEP_COMN_DTL_CD_S D ON D.COMN_CD_SQ = C.COMN_CD_SQ
+		WHERE C.COMN_CD IN ('HR_EMP_TYPE', 'HR_DEPLOY_GRADE')
+		  AND C.DEL_YN = 'N' AND C.USE_YN = 'Y' AND D.DEL_YN = 'N' AND D.USE_YN = 'Y'
+		ORDER BY C.COMN_CD, D.COMN_DTL_CD_ORD IS NULL, D.COMN_DTL_CD_ORD, D.COMN_DTL_CD_SQ
+	</select>
+
+	<select id="selectStaffOptions" resultType="hashMap">
+		SELECT STAFF_SQ, STAFF_NM, JOIN_DT
+		FROM TB_EEP_HR_STAFF_M
+		WHERE STATUS_CD IN ('WORK', 'WAIT')
+		ORDER BY STAFF_NM, JOIN_DT
+	</select>
+
+	<select id="selectPref" parameterType="hashMap" resultType="string">
+		SELECT PREF_VAL FROM TB_EEP_USER_PREF_R WHERE EMPLY_ID = #{EMPLY_ID} AND PREF_KEY = #{PREF_KEY}
+	</select>
+
+	<insert id="savePref" parameterType="hashMap">
+		INSERT INTO TB_EEP_USER_PREF_R (EMPLY_ID, PREF_KEY, PREF_VAL, UPDT_DT)
+		VALUES (#{EMPLY_ID}, #{PREF_KEY}, #{PREF_VAL}, NOW())
+		ON DUPLICATE KEY UPDATE PREF_VAL = VALUES(PREF_VAL), UPDT_DT = NOW()
+	</insert>
+
+	<delete id="deletePref" parameterType="hashMap">
+		DELETE FROM TB_EEP_USER_PREF_R WHERE EMPLY_ID = #{EMPLY_ID} AND PREF_KEY = #{PREF_KEY}
+	</delete>
+
+	<!-- 매출/매입처 -->
+	<select id="selectPartnerList" resultType="hashMap">
+		SELECT P.PARTNER_SQ, P.PARTNER_NM, P.BIZ_NO, P.CEO_NM, P.OPEN_DT, P.ADDR, P.BIZ_TYPE, P.BIZ_ITEM, P.SALE_YN, P.BUY_YN, P.USE_YN
+			, P.MGR_NM, P.MGR_POS, P.MGR_TEL, P.MGR_HP, P.MGR_EMAIL, P.TAX_EMAIL, P.FILE_NM
+			, (SELECT COUNT(*) FROM TB_EEP_DEPLOY_R D WHERE D.SALE_PARTNER_SQ = P.PARTNER_SQ OR D.BUY_PARTNER_SQ = P.PARTNER_SQ) AS USE_CNT
+		FROM TB_EEP_PARTNER_M P
+		ORDER BY P.USE_YN DESC, P.PARTNER_NM
+	</select>
+
+	<select id="selectPartnerFile" parameterType="hashMap" resultType="hashMap">
+		SELECT FILE_NM, FILE_TYPE, FILE_DATA FROM TB_EEP_PARTNER_M WHERE PARTNER_SQ = #{PARTNER_SQ}
+	</select>
+
+	<select id="countBizNo" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*) FROM TB_EEP_PARTNER_M WHERE BIZ_NO = #{BIZ_NO} AND PARTNER_SQ &lt;&gt; #{PARTNER_SQ}
+	</select>
+
+	<select id="countPartnerUse" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*) FROM TB_EEP_DEPLOY_R WHERE SALE_PARTNER_SQ = #{PARTNER_SQ} OR BUY_PARTNER_SQ = #{PARTNER_SQ}
+	</select>
+
+	<insert id="insertPartner" parameterType="hashMap" useGeneratedKeys="true" keyProperty="PARTNER_SQ">
+		INSERT INTO TB_EEP_PARTNER_M (PARTNER_NM, BIZ_NO, CEO_NM, OPEN_DT, ADDR, BIZ_TYPE, BIZ_ITEM, SALE_YN, BUY_YN, USE_YN, MGR_NM, MGR_POS, MGR_TEL, MGR_HP, MGR_EMAIL, TAX_EMAIL, FILE_NM, FILE_TYPE, FILE_DATA, UPDT_EMPLY_ID, UPDT_DT)
+		VALUES (#{PARTNER_NM}, NULLIF(#{BIZ_NO}, ''), #{CEO_NM}, #{OPEN_DT}, #{ADDR}, #{BIZ_TYPE}, #{BIZ_ITEM}, #{SALE_YN}, #{BUY_YN}, #{USE_YN}, #{MGR_NM}, #{MGR_POS}, #{MGR_TEL}, #{MGR_HP}, #{MGR_EMAIL}, #{TAX_EMAIL},
+			<choose>
+				<when test="FILE_DATA != null">#{FILE_NM}, #{FILE_TYPE}, #{FILE_DATA,jdbcType=BLOB}</when>
+				<otherwise>NULL, NULL, NULL</otherwise>
+			</choose>, #{UPDT_EMPLY_ID}, NOW())
+	</insert>
+
+	<update id="updatePartner" parameterType="hashMap">
+		UPDATE TB_EEP_PARTNER_M SET
+			  PARTNER_NM = #{PARTNER_NM}, BIZ_NO = NULLIF(#{BIZ_NO}, ''), CEO_NM = #{CEO_NM}, OPEN_DT = #{OPEN_DT}, ADDR = #{ADDR}, BIZ_TYPE = #{BIZ_TYPE}, BIZ_ITEM = #{BIZ_ITEM}
+			, SALE_YN = #{SALE_YN}, BUY_YN = #{BUY_YN}, USE_YN = #{USE_YN}, MGR_NM = #{MGR_NM}, MGR_POS = #{MGR_POS}, MGR_TEL = #{MGR_TEL}, MGR_HP = #{MGR_HP}, MGR_EMAIL = #{MGR_EMAIL}, TAX_EMAIL = #{TAX_EMAIL}
+			<if test="FILE_DATA != null">, FILE_NM = #{FILE_NM}, FILE_TYPE = #{FILE_TYPE}, FILE_DATA = #{FILE_DATA,jdbcType=BLOB}</if>
+			, UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE PARTNER_SQ = #{PARTNER_SQ}
+	</update>
+
+	<delete id="deletePartner" parameterType="hashMap">
+		DELETE FROM TB_EEP_PARTNER_M WHERE PARTNER_SQ = #{PARTNER_SQ}
+	</delete>
+
+	<!-- 투입 -->
+	<select id="selectDeployList" resultType="hashMap">
+		SELECT D.DEPLOY_SQ, D.STAFF_SQ, D.EMP_TYPE_CD, D.SALE_PARTNER_SQ, D.BUY_PARTNER_SQ, D.CLIENT_NM, D.PRJ_NM, D.WORK_AREA, D.GRADE_CD
+			, D.START_DT, D.END_DT, D.PROB_END_DT, D.SALE_PRICE, D.COST_PRICE, D.MEMO
+			, S.STAFF_NM, S.STATUS_CD, S.JOIN_DT, S.LEAVE_DT
+			, P1.PARTNER_NM AS SALE_PARTNER_NM, P2.PARTNER_NM AS BUY_PARTNER_NM
+		FROM TB_EEP_DEPLOY_R D
+		JOIN TB_EEP_HR_STAFF_M S ON S.STAFF_SQ = D.STAFF_SQ
+		LEFT JOIN TB_EEP_PARTNER_M P1 ON P1.PARTNER_SQ = D.SALE_PARTNER_SQ
+		LEFT JOIN TB_EEP_PARTNER_M P2 ON P2.PARTNER_SQ = D.BUY_PARTNER_SQ
+		ORDER BY D.STAFF_SQ, D.START_DT, D.DEPLOY_SQ
+	</select>
+
+	<insert id="insertDeploy" parameterType="hashMap" useGeneratedKeys="true" keyProperty="DEPLOY_SQ">
+		INSERT INTO TB_EEP_DEPLOY_R (STAFF_SQ, EMP_TYPE_CD, SALE_PARTNER_SQ, BUY_PARTNER_SQ, CLIENT_NM, PRJ_NM, WORK_AREA, GRADE_CD, START_DT, END_DT, PROB_END_DT, SALE_PRICE, COST_PRICE, MEMO, UPDT_EMPLY_ID, UPDT_DT)
+		VALUES (#{STAFF_SQ}, #{EMP_TYPE_CD}, NULLIF(#{SALE_PARTNER_SQ}, ''), NULLIF(#{BUY_PARTNER_SQ}, ''), #{CLIENT_NM}, #{PRJ_NM}, #{WORK_AREA}, #{GRADE_CD}, #{START_DT}, NULLIF(#{END_DT}, ''), NULLIF(#{PROB_END_DT}, ''), #{SALE_PRICE}, #{COST_PRICE}, #{MEMO}, #{UPDT_EMPLY_ID}, NOW())
+	</insert>
+
+	<update id="updateDeploy" parameterType="hashMap">
+		UPDATE TB_EEP_DEPLOY_R SET
+			  EMP_TYPE_CD = #{EMP_TYPE_CD}, SALE_PARTNER_SQ = NULLIF(#{SALE_PARTNER_SQ}, ''), BUY_PARTNER_SQ = NULLIF(#{BUY_PARTNER_SQ}, ''), CLIENT_NM = #{CLIENT_NM}, PRJ_NM = #{PRJ_NM}, WORK_AREA = #{WORK_AREA}, GRADE_CD = #{GRADE_CD}
+			, START_DT = #{START_DT}, END_DT = NULLIF(#{END_DT}, ''), PROB_END_DT = NULLIF(#{PROB_END_DT}, ''), MEMO = #{MEMO}
+			<if test="CAN_PAY">, SALE_PRICE = #{SALE_PRICE}, COST_PRICE = #{COST_PRICE}</if>
+			, UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE DEPLOY_SQ = #{DEPLOY_SQ}
+	</update>
+
+	<delete id="deleteDeploy" parameterType="hashMap">
+		DELETE FROM TB_EEP_DEPLOY_R WHERE DEPLOY_SQ = #{DEPLOY_SQ}
+	</delete>
+
+	<select id="countDeployClosed" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*) FROM TB_EEP_PAYROLL_D D JOIN TB_EEP_PAYROLL_CLOSE_M C ON C.PAY_YM = D.PAY_YM AND C.CLOSED_YN = 'Y' WHERE D.DEPLOY_SQ = #{DEPLOY_SQ}
+	</select>
+
+	<!-- 급여 -->
+	<select id="selectClosed" parameterType="hashMap" resultType="string">
+		SELECT CLOSED_YN FROM TB_EEP_PAYROLL_CLOSE_M WHERE PAY_YM = #{YM}
+	</select>
+
+	<insert id="saveClosed" parameterType="hashMap">
+		INSERT INTO TB_EEP_PAYROLL_CLOSE_M (PAY_YM, CLOSED_YN, EMPLY_ID, UPDT_DT) VALUES (#{YM}, #{CLOSED_YN}, #{EMPLY_ID}, NOW())
+		ON DUPLICATE KEY UPDATE CLOSED_YN = VALUES(CLOSED_YN), EMPLY_ID = VALUES(EMPLY_ID), UPDT_DT = NOW()
+	</insert>
+
+	<sql id="payrollWhere">
+		<where>
+			<if test="YM != null">P.PAY_YM = #{YM}</if>
+			<if test="YEAR != null">AND P.PAY_YM LIKE CONCAT(#{YEAR}, '-%')</if>
+			<if test="STAFF_SQ != null">AND P.STAFF_SQ = #{STAFF_SQ}</if>
+		</where>
+	</sql>
+
+	<select id="selectPayrollRows" parameterType="hashMap" resultType="hashMap">
+		SELECT P.*, S.STAFF_NM, S.JOIN_DT
+		FROM TB_EEP_PAYROLL_M P
+		JOIN TB_EEP_HR_STAFF_M S ON S.STAFF_SQ = P.STAFF_SQ
+		<include refid="payrollWhere"/>
+		ORDER BY P.PAY_YM DESC, S.STAFF_NM, P.STAFF_SQ
+	</select>
+
+	<select id="selectPayrollDetails" parameterType="hashMap" resultType="hashMap">
+		SELECT P.PAY_YM, P.DEPLOY_SQ, P.STAFF_SQ, P.WORK_DAYS, P.TOTAL_DAYS, P.SALE_PRICE, P.COST_PRICE, P.REAL_SALE, P.BASE_AMT, D.CLIENT_NM, D.PRJ_NM, D.START_DT
+		FROM TB_EEP_PAYROLL_D P
+		LEFT JOIN TB_EEP_DEPLOY_R D ON D.DEPLOY_SQ = P.DEPLOY_SQ
+		<include refid="payrollWhere"/>
+		ORDER BY P.PAY_YM, D.START_DT, P.DEPLOY_SQ
+	</select>
+
+	<insert id="savePayrollDetail" parameterType="hashMap">
+		INSERT INTO TB_EEP_PAYROLL_D (PAY_YM, DEPLOY_SQ, STAFF_SQ, WORK_DAYS, TOTAL_DAYS, SALE_PRICE, COST_PRICE, REAL_SALE, BASE_AMT)
+		VALUES (#{YM}, #{DEPLOY_SQ}, #{STAFF_SQ}, #{WORK_DAYS}, #{TOTAL_DAYS}, #{SALE_PRICE}, #{COST_PRICE}, #{REAL_SALE}, #{BASE_AMT})
+		ON DUPLICATE KEY UPDATE WORK_DAYS = VALUES(WORK_DAYS), TOTAL_DAYS = VALUES(TOTAL_DAYS), SALE_PRICE = VALUES(SALE_PRICE), COST_PRICE = VALUES(COST_PRICE), REAL_SALE = VALUES(REAL_SALE), BASE_AMT = VALUES(BASE_AMT)
+	</insert>
+
+	<delete id="deletePayrollDetailsExcept" parameterType="hashMap">
+		DELETE FROM TB_EEP_PAYROLL_D WHERE PAY_YM = #{YM}
+		<if test="KEEP != null and KEEP.size() > 0">
+			AND DEPLOY_SQ NOT IN <foreach collection="KEEP" item="k" open="(" separator="," close=")">#{k}</foreach>
+		</if>
+	</delete>
+
+	<insert id="insertPayroll" parameterType="hashMap">
+		INSERT INTO TB_EEP_PAYROLL_M (PAY_YM, STAFF_SQ, EMP_TYPE_CD, BASE_AMT, MEAL_AMT, BONUS_AMT, UPDT_DT)
+		VALUES (#{YM}, #{STAFF_SQ}, #{EMP_TYPE_CD}, #{BASE_AMT}, #{MEAL_AMT}, #{BONUS_AMT}, NOW())
+	</insert>
+
+	<update id="updatePayrollAuto" parameterType="hashMap">
+		UPDATE TB_EEP_PAYROLL_M SET EMP_TYPE_CD = #{EMP_TYPE_CD}, BASE_AMT = #{BASE_AMT}, MEAL_AMT = #{MEAL_AMT}, BONUS_AMT = #{BONUS_AMT}
+		WHERE PAY_YM = #{YM} AND STAFF_SQ = #{STAFF_SQ}
+	</update>
+
+	<delete id="deleteEmptyPayroll" parameterType="hashMap">
+		DELETE FROM TB_EEP_PAYROLL_M
+		WHERE PAY_YM = #{YM} AND MANUAL_FIELDS = '' AND LEDGER_PAY IS NULL
+		  AND RESEARCH_AMT = 0 AND DRIVE_AMT = 0 AND CHILD_AMT = 0 AND FUEL_AMT = 0
+		  AND NP_AMT = 0 AND HI_AMT = 0 AND LTC_AMT = 0 AND EI_AMT = 0 AND ACC_AMT = 0 AND IT_AMT = 0 AND LIT_AMT = 0
+		  AND NP_SETTLE = 0 AND HI_SETTLE = 0 AND EI_SETTLE = 0 AND LTC_SETTLE = 0 AND IT_SETTLE = 0 AND LIT_SETTLE = 0 AND MUTUAL_AMT = 0 AND ETC_DED = 0
+		<if test="KEEP != null and KEEP.size() > 0">
+			AND STAFF_SQ NOT IN <foreach collection="KEEP" item="k" open="(" separator="," close=")">#{k}</foreach>
+		</if>
+	</delete>
+
+	<update id="updatePayrollField" parameterType="hashMap">
+		UPDATE TB_EEP_PAYROLL_M SET ${FIELD} = #{VALUE}, MANUAL_FIELDS = #{MANUAL_FIELDS}, UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE PAY_YM = #{YM} AND STAFF_SQ = #{STAFF_SQ}
+	</update>
+
+	<update id="updatePayrollDeductions" parameterType="hashMap">
+		UPDATE TB_EEP_PAYROLL_M SET
+			  NP_AMT = #{NP_AMT}, HI_AMT = #{HI_AMT}, LTC_AMT = #{LTC_AMT}, EI_AMT = #{EI_AMT}, ACC_AMT = #{ACC_AMT}, IT_AMT = #{IT_AMT}, LIT_AMT = #{LIT_AMT}
+			, NP_SETTLE = #{NP_SETTLE}, HI_SETTLE = #{HI_SETTLE}, EI_SETTLE = #{EI_SETTLE}, LTC_SETTLE = #{LTC_SETTLE}, MUTUAL_AMT = #{MUTUAL_AMT}, ETC_DED = #{ETC_DED}
+			, LEDGER_PAY = #{LEDGER_PAY}, UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE PAY_YM = #{YM} AND STAFF_SQ = #{STAFF_SQ}
+	</update>
+
+	<insert id="insertPayrollChange" parameterType="hashMap">
+		INSERT INTO TB_EEP_PAYROLL_CHG_H (PAY_YM, STAFF_SQ, FIELD_NM, BEFORE_VAL, AFTER_VAL, REASON, EMPLY_ID)
+		VALUES (#{YM}, #{STAFF_SQ}, #{FIELD}, #{BEFORE_VAL}, #{AFTER_VAL}, #{REASON}, #{UPDT_EMPLY_ID})
+	</insert>
+
+	<select id="selectLedgerCodes" resultType="hashMap">
+		SELECT SRC_CD, LEDGER_CD, STAFF_SQ FROM TB_EEP_PAYROLL_CODE_R
+	</select>
+
+	<insert id="saveLedgerCode" parameterType="hashMap">
+		INSERT INTO TB_EEP_PAYROLL_CODE_R (SRC_CD, LEDGER_CD, STAFF_SQ) VALUES (#{SRC_CD}, #{LEDGER_CD}, #{STAFF_SQ})
+		ON DUPLICATE KEY UPDATE STAFF_SQ = VALUES(STAFF_SQ)
+	</insert>
+</mapper>

@@ -87,6 +87,11 @@ public class GoogleDriveApi {
 		return multipart("{\"name\":" + jsonStr(name) + ",\"parents\":[" + jsonStr(parentId) + "]}", mimeType, data, token);
 	}
 
+	/** 파일을 바로 지운다(휴지통을 거치지 않는다) */
+	public void delete(String fileId, String token) {
+		rest.exchange(URI.create(API_URL + "/files/" + enc(fileId) + "?supportsAllDrives=true"), HttpMethod.DELETE, new HttpEntity<Void>(auth(token)), Void.class);
+	}
+
 	/** HTML 을 구글 문서로 올려 PDF 로 받고 문서는 바로 지운다. 문서는 연결 계정의 내 드라이브(root)에 잠깐 생긴다 */
 	public byte[] htmlToPdf(String name, String html, String token) {
 		String meta = "{\"name\":" + jsonStr(name) + ",\"mimeType\":\"application/vnd.google-apps.document\",\"parents\":[\"root\"]}";
