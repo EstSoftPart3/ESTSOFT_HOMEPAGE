@@ -26,7 +26,8 @@ public class BoSystemService {
 
 	public static final String HOME = "/admin/home.do";
 	static final String SUPER = "SUPER";
-	private static final Set<String> CORE_MENUS = new HashSet<>(Arrays.asList("M001", "M00002", "C00002"));
+	// 화면만 지킨다. 담긴 그룹은 숨김 검사가 상위까지 보고, 하위가 있으면 삭제도 막힌다
+	private static final Set<String> CORE_MENUS = new HashSet<>(Arrays.asList("M00002", "C00002"));
 	private static final Pattern URL = Pattern.compile("^/[A-Za-z0-9_./-]*$");
 	private static final Pattern ICON = Pattern.compile("^fa-[a-z0-9-]+$");
 	private static final AntPathMatcher MATCHER = new AntPathMatcher();

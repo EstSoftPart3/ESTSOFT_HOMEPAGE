@@ -65,6 +65,9 @@ public class BoSystemServiceCheck {
 		rejectsTree(with(deep, menu("D", "F", null, null))); // 3단계 묶음
 		rejectsTree(with(deep, menu("D", "NONE", "/admin/d/open.do", null))); // 상위 없음
 		rejectsTree(Arrays.asList(menu("C1", "C2", null, null), menu("C2", "C1", null, null))); // 순환
+		Map<String, Object> emptyOldGroup = menu("M001", null, null, null);
+		emptyOldGroup.put("USE_YN", "N");
+		BoSystemService.validateMenuTree(Arrays.asList(emptyOldGroup)); // 비어 있는 옛 그룹은 숨길 수 있다
 		System.out.println("BoSystemServiceCheck OK");
 	}
 
