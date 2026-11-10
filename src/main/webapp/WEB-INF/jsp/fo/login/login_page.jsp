@@ -24,6 +24,12 @@
   <style>
     .join-line { border-top:1px solid #dde4ea; margin:14px 0 0; padding-top:12px; text-align:center; font-size:14px; color:#5a6670; }
     .join-line a { color:#0b6e8a; font-weight:600; text-decoration:underline; text-underline-offset:2px; }
+    .login-type { display:flex; border:1px solid #ced4da; border-radius:4px; overflow:hidden; margin-bottom:16px; }
+    .login-type label { flex:1; margin:0; cursor:pointer; font-weight:400; }
+    .login-type input { position:absolute; opacity:0; }
+    .login-type span { display:block; padding:7px 0; text-align:center; font-size:14px; color:#5a6670; }
+    .login-type input:checked + span { background:#0b6e8a; color:#fff; font-weight:600; }
+    .login-type input:focus-visible + span { outline:2px solid #16d5ff; outline-offset:-2px; }
   </style>
 </head>
 <body class="hold-transition login-page">
@@ -39,6 +45,10 @@
     <div class="card-body login-card-body">
       <p class="login-box-msg"></p>
 
+      <div class="login-type" role="radiogroup" aria-label="로그인 구분">
+        <label><input type="radio" name="loginType" value="staff" checked><span>일반 직원</span></label>
+        <label><input type="radio" name="loginType" value="admin"><span>관리자</span></label>
+      </div>
       <form action="#" method="post">
         <div class="input-group mb-3">
           <input type="email" class="form-control" id="emplyId"  placeholder="Admin Id" value="<c:out value='${savedId}'/>">
@@ -121,7 +131,8 @@
 
 	 $.ajax({
          type: "post",
-         url: "/eep/login/loginData.do",
+         // 관리자는 관리자 로그인 처리(관리자 계정만 통과)를 그대로 쓴다
+         url: isAdmin() ? "/admin/login/loginData.do" : "/eep/login/loginData.do",
          data: {
         	 emplyId : emplyId,
         	 emplyPw : emplyPw,
@@ -148,13 +159,13 @@
       	 	} else if(loginInfo.length == 1) {
 
       	 		bootbox.alert({
-      				message: "로그인 성공했습니다. 메인 페이지로 되돌아갑니다.",
+      				message: isAdmin() ? "로그인 성공했습니다. 관리자 화면으로 이동합니다." : "로그인 성공했습니다. 메인 페이지로 되돌아갑니다.",
       				locale: 'kr',
       				callback: goAfterLogin });
 
       	 	} else {
       	 		bootbox.alert({
-      				message: "아이디 또는 비밀번호가 올바르지 않습니다.",
+      				message: isAdmin() ? "관리자 계정이 아니거나 아이디·비밀번호가 올바르지 않습니다." : "아이디 또는 비밀번호가 올바르지 않습니다.",
       				locale: 'kr',
       				callback: function() {
       					location.href = '/eep/login/loginPage.do';
@@ -173,7 +184,12 @@
   }
 
   // 장비 확인이나 증서 서명이 남아 있으면 내 장비로 보낸다. 조회가 실패해도 로그인은 막지 않는다
+  function isAdmin() {
+	  return $('input[name="loginType"]:checked').val() === 'admin';
+  }
+
   function goAfterLogin() {
+	  if (isAdmin()) { location.href = '/admin/home.do'; return; }
 	  $.post('/eep/equipment/pendingData.do', function(res) {
 		  location.href = res.count > 0 ? '/eep/equipment/myEquipment.do' : '/eep/mainPage.do';
 	  }).fail(function() { location.href = '/eep/mainPage.do'; });
