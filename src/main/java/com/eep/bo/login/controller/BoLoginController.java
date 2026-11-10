@@ -38,10 +38,8 @@ public class BoLoginController {
 		if(BoLoginRememberService.restoreAdmin(request, response)) {
 			return "redirect:/admin/home.do";
 		}
-		request.setAttribute("savedId", BoLoginRememberService.savedId(request));
-		request.setAttribute("savedAutoCheck", BoLoginRememberService.savedAutoCheck(request));
-
-		return "/bo/login/login_page";
+		// 로그인 화면은 직원 로그인 하나로 쓰고, 관리자 탭을 골라 둔 채로 연다
+		return "redirect:/eep/login/loginPage.do?type=admin";
 	}
 	
 	

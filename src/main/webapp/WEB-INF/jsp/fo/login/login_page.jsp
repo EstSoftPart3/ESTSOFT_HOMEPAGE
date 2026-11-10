@@ -46,8 +46,8 @@
       <p class="login-box-msg"></p>
 
       <div class="login-type" role="radiogroup" aria-label="로그인 구분">
-        <label><input type="radio" name="loginType" value="staff" checked><span>일반 직원</span></label>
-        <label><input type="radio" name="loginType" value="admin"><span>관리자</span></label>
+        <label><input type="radio" name="loginType" value="staff" ${param.type == 'admin' ? '' : 'checked'}><span>일반 직원</span></label>
+        <label><input type="radio" name="loginType" value="admin" ${param.type == 'admin' ? 'checked' : ''}><span>관리자</span></label>
       </div>
       <form action="#" method="post">
         <div class="input-group mb-3">
