@@ -17,12 +17,15 @@ import com.eep.fo.signup.service.SignupService;
 @Controller
 public class SignupController {
 
+	// 회사 메일 기준 가입으로 바꾸는 동안 개인 메일로 아이디가 생기지 않게 막는다
+	private static final boolean PAUSED = true;
+
 	@Autowired
 	private SignupService service;
 
 	@RequestMapping("/eep/signup/page.do")
 	public String page() {
-		return "fo/signup/signup";
+		return PAUSED ? "fo/signup/paused" : "fo/signup/signup";
 	}
 
 	@RequestMapping(value = "/eep/signup/matchData.do", method = RequestMethod.POST)
@@ -43,6 +46,10 @@ public class SignupController {
 
 	private static ModelAndView call(Supplier<Object> work) {
 		ModelAndView mv = new ModelAndView("jsonView");
+		if (PAUSED) {
+			mv.addObject("error", "가입 신청을 준비하고 있습니다. 인사 담당자에게 문의해 주세요.");
+			return mv;
+		}
 		try {
 			mv.addObject("result", work.get());
 		} catch (IllegalArgumentException e) {
