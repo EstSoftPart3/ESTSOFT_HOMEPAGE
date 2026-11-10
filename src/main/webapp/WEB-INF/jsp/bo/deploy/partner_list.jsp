@@ -27,6 +27,15 @@
 	.pt-chip .x { border: 0; background: none; color: #dc3545; font-weight: bold; padding: 0 4px; line-height: 1; }
 	.pt-chip .big { display: none; position: absolute; left: 0; bottom: 30px; z-index: 5; max-width: 240px; max-height: 160px; padding: 4px; background: #fff; border: 1px solid #dee2e6; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,.15); }
 	.pt-chip:hover .big, .pt-chip:focus-within .big { display: block; }
+	.pt-seg { display: flex; position: relative; }
+	.pt-seg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+	.pt-seg label { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; height: calc(1.8125rem + 2px); margin: 0; border: 1px solid #ced4da; background: #fff; color: #495057; font-size: .875rem; font-weight: normal; cursor: pointer; user-select: none; }
+	.pt-seg label:first-of-type { border-radius: .2rem 0 0 .2rem; }
+	.pt-seg label:last-of-type { border-radius: 0 .2rem .2rem 0; border-left: 0; }
+	.pt-seg label:hover { background: #f1f3f5; }
+	.pt-seg input:checked + label { background: #007bff; border-color: #007bff; color: #fff; font-weight: bold; }
+	.pt-seg input:checked + label::before { content: '✓'; }
+	.pt-seg input:focus-visible + label { box-shadow: 0 0 0 .2rem rgba(0,123,255,.35); position: relative; }
 	#partnerForm .pt-auto { background: #e3f6fb; border-color: #7fcde0; }
 </style>
 
@@ -82,10 +91,11 @@
 						</ul>
 						<div class="pt-pane" data-pane="biz" role="tabpanel">
 							<div class="form-row" id="bizFields"></div>
-							<div class="form-row">
-								<div class="col-md-3 mb-2"><span class="d-block small text-muted mb-1">구분 *</span>
-									<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="f_SALE_YN" name="SALE_YN" value="Y"><label class="form-check-label" for="f_SALE_YN">매출처</label></div>
-									<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="f_BUY_YN" name="BUY_YN" value="Y"><label class="form-check-label" for="f_BUY_YN">매입처</label></div>
+							<div class="col-md-6 mb-2" id="typeField" role="group" aria-labelledby="typeLabel">
+								<span class="d-block mb-2 font-weight-bold" id="typeLabel">구분 *</span>
+								<div class="pt-seg">
+									<input type="checkbox" id="f_SALE_YN" name="SALE_YN" value="Y"><label for="f_SALE_YN">매출처</label>
+									<input type="checkbox" id="f_BUY_YN" name="BUY_YN" value="Y"><label for="f_BUY_YN">매입처</label>
 								</div>
 							</div>
 						</div>
@@ -119,6 +129,7 @@
 		hrBuildFields('#bizFields', BIZ);
 		hrBuildFields('#mgrFields', MGR);
 		hrBuildFields('#bankFields', BANK);
+		$('#typeField').insertBefore($('#f_USE_YN').parent());
 		$('#f_PARTNER_NM').prop('required', true);
 		$('#f_BIZ_NO').attr({ pattern: '\\d{3}-\\d{2}-\\d{5}', placeholder: '000-00-00000' });
 		$('#keyword').on('input', render);
