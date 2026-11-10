@@ -73,6 +73,8 @@ public class BoLoginController {
 			
 			session.setAttribute("loginInfo", result);	
 			session.setAttribute("emplyAuthCheck", emplyAuthCheck);
+			// 초기 비밀번호를 방금 직접 입력했으므로 바로 바꿀 때는 현재 비밀번호를 다시 묻지 않는다. 자동로그인 복원에는 없다
+			session.setAttribute("pwInitLogin", !"N".equals(AuthCheck.get(0).get("pwInitYn")));
 			memberService.touchLogin(emplyId);
 
 			BoLoginRememberService.afterLogin(emplyId, param, request, response);	

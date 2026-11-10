@@ -40,7 +40,16 @@
 		<form id="step1" novalidate>
 			<div class="su-title">본인 확인</div>
 			<div class="form-group"><label for="name">이름</label><input type="text" id="name" class="form-control" maxlength="50" autocomplete="name"></div>
-			<div class="form-group"><label for="joinDt">입사일</label><input type="date" id="joinDt" class="form-control"></div>
+			<div class="form-group"><label for="joinDt">입사일</label>
+				<div class="input-group">
+					<input type="text" id="joinDt" class="form-control" maxlength="10" inputmode="numeric" placeholder="예: 2024-03-02" autocomplete="off">
+					<div class="input-group-append">
+						<button type="button" class="btn btn-default" id="joinBtn" aria-label="달력에서 입사일 선택"><i class="far fa-calendar-alt" aria-hidden="true"></i></button>
+					</div>
+					<%-- 달력만 쓰는 숨은 입력. 화면에 그려져 있어야 showPicker 가 동작한다 --%>
+					<input type="date" id="joinPick" tabindex="-1" aria-hidden="true" style="position:absolute;right:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0">
+				</div>
+			</div>
 			<div class="form-group"><label for="birth">생년월일 6자리</label><input type="text" id="birth" class="form-control" maxlength="6" inputmode="numeric" placeholder="예: 900101"></div>
 			<div class="form-group"><label for="phone">전화번호</label><input type="tel" id="phone" class="form-control" maxlength="13" inputmode="tel" placeholder="010-0000-0000"></div>
 			<div class="su-error" id="err1" role="alert"></div>
@@ -113,19 +122,36 @@
 		$('#err1').text(msg);
 	}
 
-	// 오늘 이후 입사일은 고를 수 없다. toISOString 은 UTC 라 시차를 보정한다
+	// 오늘 이후 입사일은 입력·선택할 수 없다. toISOString 은 UTC 라 시차를 보정한다
 	var today = new Date();
 	today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
-	$('#joinDt').attr('max', today.toISOString().slice(0, 10)).on('click', function() {
-		try { if (this.showPicker) this.showPicker(); } catch (e) {}
+	var TODAY = today.toISOString().slice(0, 10), pick = document.getElementById('joinPick');
+	pick.max = TODAY;
+
+	// 숫자만 쳐도 2024-03-02 형태가 되게 하이픈을 넣는다
+	$('#joinDt').on('input', function() {
+		var d = this.value.replace(/[^0-9]/g, '').slice(0, 8);
+		this.value = d.length > 6 ? d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6) : d.length > 4 ? d.slice(0, 4) + '-' + d.slice(4) : d;
 	});
+	$('#joinBtn').on('click', function() {
+		if (validDate($('#joinDt').val())) { pick.value = $('#joinDt').val(); }
+		try { pick.showPicker(); } catch (e) { $('#joinDt').focus(); }
+	});
+	$(pick).on('change', function() { if (this.value) { $('#joinDt').val(this.value); } });
+
+	function validDate(s) {
+		var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+		if (!m || s > TODAY) { return false; }
+		var d = new Date(+m[1], m[2] - 1, +m[3]);
+		return d.getFullYear() === +m[1] && d.getMonth() === m[2] - 1 && d.getDate() === +m[3];
+	}
 
 	$('#step1').on('submit', function(e) {
 		e.preventDefault();
 		var name = $.trim($('#name').val()), joinDt = $('#joinDt').val(), birth = $.trim($('#birth').val()), phone = $('#phone').val().replace(/[^0-9]/g, '');
 		var $err = $('#err1');
 		if (!name) { $err.text('이름을 입력해 주세요.'); $('#name').focus(); return; }
-		if (!joinDt) { $err.text('입사일을 선택해 주세요.'); $('#joinDt').focus(); return; }
+		if (!validDate(joinDt)) { $err.text('입사일을 2024-03-02 형식으로 입력하거나 달력에서 선택해 주세요.'); $('#joinDt').focus(); return; }
 		if (!/^\d{6}$/.test(birth)) { $err.text('생년월일 6자리를 입력해 주세요.'); $('#birth').focus(); return; }
 		if (phone.length < 9) { $err.text('전화번호를 확인해 주세요.'); $('#phone').focus(); return; }
 		post('/eep/signup/matchData.do', { NAME: name, JOIN_DT: joinDt, BIRTH: birth, PHONE: phone }, $err, $('#matchBtn'), renderPicks);

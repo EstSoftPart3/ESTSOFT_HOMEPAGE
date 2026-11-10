@@ -24,9 +24,11 @@
 			<c:when test="${sessionScope.loginInfo.loginInfo[0].pwInitYn == 'Y'}"><p class="mb-3">초기 비밀번호로 로그인했습니다. 새 비밀번호를 설정해야 계속할 수 있습니다.</p></c:when>
 			<c:otherwise><p class="mb-3"><c:out value="${sessionScope.loginInfo.loginInfo[0].emplyNm}"/>님의 비밀번호를 변경합니다.</p></c:otherwise>
 		</c:choose>
+		<%-- 초기 비밀번호로 방금 직접 로그인했으면 현재 비밀번호를 다시 묻지 않는다 --%>
+		<c:set var="skipCur" value="${sessionScope.pwInitLogin == true && sessionScope.loginInfo.loginInfo[0].pwInitYn != 'N'}"/>
 		<form id="pwForm" novalidate>
-			<div class="form-group"><label for="cur">현재 비밀번호</label><input type="password" id="cur" class="form-control" autocomplete="current-password" required></div>
-			<div class="form-group"><label for="next">새 비밀번호</label><input type="password" id="next" class="form-control" autocomplete="new-password" required aria-describedby="pwRule"><div id="pwRule" class="pw-hint mt-1">10자 이상, 영문과 숫자 포함, 아이디와 다르게</div></div>
+			<c:if test="${!skipCur}"><div class="form-group"><label for="cur">현재 비밀번호</label><input type="password" id="cur" class="form-control" autocomplete="current-password" required></div></c:if>
+			<div class="form-group"><label for="next">새 비밀번호</label><input type="password" id="next" class="form-control" autocomplete="new-password" required aria-describedby="pwRule"><div id="pwRule" class="pw-hint mt-1">10자 이상, 영문과 숫자 포함, 아이디와 다르게 (특수문자 사용 가능)</div></div>
 			<div class="form-group"><label for="again">새 비밀번호 확인</label><input type="password" id="again" class="form-control" autocomplete="new-password" required></div>
 			<div id="pwError" role="alert"></div>
 			<button type="submit" class="btn btn-ink btn-block" id="saveBtn">변경</button>
@@ -39,17 +41,17 @@
 $('#pwForm').on('submit', function(e) {
 	e.preventDefault();
 	var next = $('#next').val(), $err = $('#pwError').text('');
-	if (!$('#cur').val() || !next) { $err.text('비밀번호를 입력해 주세요.'); return; }
+	if (($('#cur').length && !$('#cur').val()) || !next) { $err.text('비밀번호를 입력해 주세요.'); return; }
 	if (next !== $('#again').val()) { $err.text('새 비밀번호가 서로 다릅니다.'); $('#again').focus(); return; }
 	$('#saveBtn').prop('disabled', true);
-	$.post('/eep/account/changePasswordData.do', { CURRENT_PW: $('#cur').val(), NEW_PW: next }, function(res) {
+	$.post('/eep/account/changePasswordData.do', { CURRENT_PW: $('#cur').val() || '', NEW_PW: next }, function(res) {
 		$('#saveBtn').prop('disabled', false);
 		if (res.error) { $err.text(res.error); return; }
 		alert('비밀번호를 변경했습니다.');
 		location.replace(res.result);
 	}).fail(function() { $('#saveBtn').prop('disabled', false); $err.text('변경하지 못했습니다. 다시 로그인한 뒤 시도해 주세요.'); });
 });
-$('#cur').focus();
+$('#cur, #next').first().focus();
 </script>
 </body>
 </html>

@@ -304,8 +304,11 @@ public class BoMemberService {
 
 	// ── 본인 비밀번호 ──
 
+	/** current 가 null 이면 현재 비밀번호 확인을 건너뛴다. 초기 비밀번호로 방금 로그인한 세션에서만 null 로 부른다 */
 	public void changeOwnPassword(String emplyId, String current, String next) {
-		require(PasswordHasher.matches(current, mapper.selectPasswordHash(emplyId)), "현재 비밀번호가 맞지 않습니다.");
+		String hash = mapper.selectPasswordHash(emplyId);
+		require(current == null || PasswordHasher.matches(current, hash), "현재 비밀번호가 맞지 않습니다.");
+		require(!PasswordHasher.matches(next, hash), "아이디나 현재 비밀번호와 다르게 입력해 주세요.");
 		String problem = passwordProblem(emplyId, current, next);
 		require(problem == null, problem);
 		Map<String, Object> p = new HashMap<>();

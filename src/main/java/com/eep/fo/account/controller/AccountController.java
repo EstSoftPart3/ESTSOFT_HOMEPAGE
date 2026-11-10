@@ -27,7 +27,7 @@ public class AccountController {
 	}
 
 	@RequestMapping(value = "/eep/account/changePasswordData.do", method = RequestMethod.POST)
-	public ModelAndView changePasswordData(@RequestParam("CURRENT_PW") String current, @RequestParam("NEW_PW") String next, HttpSession session) {
+	public ModelAndView changePasswordData(@RequestParam(value = "CURRENT_PW", required = false) String current, @RequestParam("NEW_PW") String next, HttpSession session) {
 		ModelAndView mv = new ModelAndView("jsonView");
 		Map<String, Object> login = login(session);
 		if (login == null) {
@@ -35,8 +35,10 @@ public class AccountController {
 			return mv;
 		}
 		try {
-			service.changeOwnPassword((String) login.get("emplyId"), current, next);
+			boolean skipCurrent = Boolean.TRUE.equals(session.getAttribute("pwInitLogin")) && !"N".equals(login.get("pwInitYn"));
+			service.changeOwnPassword((String) login.get("emplyId"), skipCurrent ? null : current, next);
 			login.put("pwInitYn", "N");
+			session.removeAttribute("pwInitLogin");
 			mv.addObject("result", "2".equals(session.getAttribute("emplyAuthCheck")) ? "/admin/home.do" : "/eep/mainPage.do");
 		} catch (IllegalArgumentException e) {
 			mv.addObject("error", e.getMessage());
