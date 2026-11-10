@@ -34,7 +34,7 @@ public class BoMemberService {
 	private static final Pattern ID = Pattern.compile("^[A-Za-z0-9._-]{2,50}$");
 	private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+$");
 	// 전달할 때 헷갈리는 글자(0 O 1 l I)는 뺀다
-	private static final String LETTERS = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ", DIGITS = "23456789";
+	private static final String LETTERS = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ", DIGITS = "23456789", SPECIALS = "!@#$%*";
 	private static final SecureRandom RANDOM = new SecureRandom();
 
 	@Autowired
@@ -357,7 +357,7 @@ public class BoMemberService {
 	static String tempPassword() {
 		StringBuilder b = new StringBuilder();
 		for (int i = 0; i < 12; i++) {
-			String from = i % 4 == 3 ? DIGITS : LETTERS;
+			String from = i == 11 ? SPECIALS : i % 4 == 3 ? DIGITS : LETTERS;
 			b.append(from.charAt(RANDOM.nextInt(from.length())));
 		}
 		return b.toString();
@@ -367,8 +367,9 @@ public class BoMemberService {
 		if (next == null || next.length() < 10 || next.length() > 72) { // bcrypt 는 72바이트까지만 비교한다
 			return "새 비밀번호는 10~72자로 입력해 주세요.";
 		}
-		if (!next.matches(".*[A-Za-z].*") || !next.matches(".*[0-9].*")) {
-			return "새 비밀번호에 영문과 숫자를 모두 넣어 주세요.";
+		// 특수문자는 영문·숫자·공백이 아닌 모든 문자다. 대소문자는 bcrypt 비교에서 구분된다
+		if (!next.matches(".*[A-Za-z].*") || !next.matches(".*[0-9].*") || !next.matches(".*[^A-Za-z0-9\\s].*")) {
+			return "새 비밀번호에 영문, 숫자, 특수문자를 모두 넣어 주세요.";
 		}
 		if (next.equalsIgnoreCase(id) || next.equals(current)) {
 			return "아이디나 현재 비밀번호와 다르게 입력해 주세요.";

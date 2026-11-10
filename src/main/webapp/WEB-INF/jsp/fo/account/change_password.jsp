@@ -28,7 +28,7 @@
 		<c:set var="skipCur" value="${sessionScope.pwInitLogin == true && sessionScope.loginInfo.loginInfo[0].pwInitYn != 'N'}"/>
 		<form id="pwForm" novalidate>
 			<c:if test="${!skipCur}"><div class="form-group"><label for="cur">현재 비밀번호</label><input type="password" id="cur" class="form-control" autocomplete="current-password" required></div></c:if>
-			<div class="form-group"><label for="next">새 비밀번호</label><input type="password" id="next" class="form-control" autocomplete="new-password" required aria-describedby="pwRule"><div id="pwRule" class="pw-hint mt-1">10자 이상, 영문과 숫자 포함, 아이디와 다르게 (특수문자 사용 가능)</div></div>
+			<div class="form-group"><label for="next">새 비밀번호</label><input type="password" id="next" class="form-control" autocomplete="new-password" required aria-describedby="pwRule"><div id="pwRule" class="pw-hint mt-1">10자 이상, 영문·숫자·특수문자 포함, 아이디와 다르게 (대소문자 구분)</div></div>
 			<div class="form-group"><label for="again">새 비밀번호 확인</label><input type="password" id="again" class="form-control" autocomplete="new-password" required></div>
 			<div id="pwError" role="alert"></div>
 			<button type="submit" class="btn btn-ink btn-block" id="saveBtn">변경</button>

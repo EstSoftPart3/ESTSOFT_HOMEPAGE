@@ -21,9 +21,12 @@ public class BoMemberServiceCheck {
 
 		check(BoMemberService.passwordProblem("id", "old", "short1") != null, "짧은 비밀번호");
 		check(BoMemberService.passwordProblem("id", "old", "abcdefghijkl") != null, "숫자 없음");
-		check(BoMemberService.passwordProblem("id", "old", "1234567890") != null, "영문 없음");
-		check(BoMemberService.passwordProblem("sample1234", "old", "SAMPLE1234") != null, "아이디와 같음");
-		check(BoMemberService.passwordProblem("id", "same123456", "same123456") != null, "현재와 같음");
+		check(BoMemberService.passwordProblem("id", "old", "1234567890!") != null, "영문 없음");
+		check(BoMemberService.passwordProblem("id", "old", "goodpass123") != null, "특수문자 없음");
+		check(BoMemberService.passwordProblem("id", "old", "good pass 123") != null, "공백은 특수문자가 아님");
+		check(BoMemberService.passwordProblem("id", "old", "abcdefghij!") != null, "숫자 없음(특수문자 있음)");
+		check(BoMemberService.passwordProblem("sample12!@", "old", "SAMPLE12!@") != null, "아이디와 같음(대소문자만 다름)");
+		check(BoMemberService.passwordProblem("id", "same12345!", "same12345!") != null, "현재와 같음");
 		check(BoMemberService.passwordProblem("id", "old", "good-pass-123") == null, "통과");
 		check("M".equals(BoMemberService.sexFromRrn("900101-1234567")) && "F".equals(BoMemberService.sexFromRrn("0001014234567")), "주민번호 성별");
 		check(BoMemberService.sexFromRrn("900101") == null, "뒷자리 없는 주민번호");
