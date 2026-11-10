@@ -8,7 +8,7 @@ $ErrorActionPreference = 'Stop'
 # 엑셀 3행 제목(공백 제거) -> 컬럼. 같은 제목이 여러 번 나오면 왼쪽부터 차례로 쓴다
 $SPEC = @(
 	@('NO', 'SEQ_NO'), @('소속', 'ORG_NM'), @('부서', 'DEPT_NM'), @('직급', 'POSITION_NM'), @('성명', 'STAFF_NM'), @('주민등록번호', 'RRN'),
-	@('전화번호', 'PHONE'), @('이메일', 'EMAIL'), @('상세주소(시도)', 'ADDR'), @('인근지하철역', 'STATION'), @('입사일자', 'JOIN_DT'), @('퇴사일자', 'LEAVE_DT'),
+	@('전화번호', 'PHONE'), @('개인 메일', 'EMAIL'), @('회사 메일', 'COMPANY_EMAIL'), @('상세주소(시도)', 'ADDR'), @('인근지하철역', 'STATION'), @('입사일자', 'JOIN_DT'), @('퇴사일자', 'LEAVE_DT'),
 	@('학교명', 'HS_NM'), @('전공(부전공)', 'HS_MAJOR'), @('졸업년월', 'HS_GRAD'), @('학교명', 'UNIV_NM'), @('전공(부전공)', 'UNIV_MAJOR'), @('졸업년월', 'UNIV_GRAD'),
 	@('최종학력', 'FINAL_EDU'), @('입대일', 'MIL_IN_DT'), @('전역일', 'MIL_OUT_DT'), @('면제사유', 'MIL_EXEMPT'),
 	@('교육명', 'EDU_NM'), @('시작일|교육시작일', 'EDU_START_DT'), @('종료일|교육종료일', 'EDU_END_DT'), @('기관명', 'EDU_ORG'), @('정보처리기사취득일', 'CERT_DT'),

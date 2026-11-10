@@ -74,7 +74,7 @@
 						<label for="cStaffSearch">연결 직원</label>
 						<div id="staffChosen" class="d-flex align-items-center flex-wrap" style="gap:6px" hidden></div>
 						<div id="staffSearchBox">
-							<input id="cStaffSearch" class="form-control form-control-sm" autocomplete="off" maxlength="50" role="combobox" aria-expanded="false" aria-controls="staffResults" placeholder="이름·이메일·전화번호로 직원 검색">
+							<input id="cStaffSearch" class="form-control form-control-sm" autocomplete="off" maxlength="50" role="combobox" aria-expanded="false" aria-controls="staffResults" placeholder="이름·메일·전화번호로 직원 검색">
 							<div id="staffResults" class="ac-results" role="listbox" aria-label="직원 검색 결과" hidden></div>
 						</div>
 						<div id="staffNote" class="d-flex align-items-center small mt-1" style="gap:6px" hidden><span class="sys-pill info">인사카드에서 불러옴</span><span class="text-muted">저장을 눌러야 반영됩니다</span><button type="button" class="btn btn-xs btn-outline-secondary" onclick="undoStaff();">되돌리기</button></div>
@@ -83,7 +83,7 @@
 						<div class="col-md-4 mb-2"><label for="cId">아이디 *</label><input id="cId" name="EMPLY_ID" class="form-control form-control-sm sys-mono" maxlength="50" required></div>
 						<div class="col-md-4 mb-2"><label for="cName">이름 *</label><input id="cName" name="EMPLY_NM" class="form-control form-control-sm" maxlength="50" required></div>
 						<div class="col-md-4 mb-2"><label for="cSex">성별</label><select id="cSex" name="EMPLY_SEX_TYP_CD" class="form-control form-control-sm"><option value=""></option><option value="M">남</option><option value="F">여</option></select></div>
-						<div class="col-md-6 mb-2"><label for="cEmail">이메일</label><input id="cEmail" name="EMPLY_EMAIL" type="email" class="form-control form-control-sm" maxlength="200"></div>
+						<div class="col-md-6 mb-2"><label for="cEmail">회사 메일</label><input id="cEmail" name="EMPLY_EMAIL" type="email" class="form-control form-control-sm" maxlength="200"></div>
 						<div class="col-md-6 mb-2"><label for="cPhone">휴대전화</label><input id="cPhone" name="EMPLY_PH_NUM" class="form-control form-control-sm" maxlength="50"></div>
 						<div class="col-md-8 mb-2"><label for="cAddr">주소</label><input id="cAddr" name="EMPLY_HOME_ADDR" class="form-control form-control-sm" maxlength="500"></div>
 						<div class="col-md-4 mb-2"><label for="cRrn">주민등록번호 (바꿀 때만 전체 입력)</label><input id="cRrn" name="EMPLY_RRN" class="form-control form-control-sm" maxlength="14" autocomplete="off"></div>
@@ -111,9 +111,9 @@
 					<div class="col-md-4 mb-2" id="manualToggle" hidden><div class="form-check"><input class="form-check-input" type="checkbox" id="iManual"><label class="form-check-label" for="iManual">직원 외 담당자 직접 입력</label></div></div>
 				</div>
 				<div id="staffPick">
-					<input type="search" id="iSearch" class="form-control form-control-sm mb-2" placeholder="재직자 이름·이메일 검색" aria-label="재직자 검색">
+					<input type="search" id="iSearch" class="form-control form-control-sm mb-2" placeholder="재직자 이름·회사 메일 검색" aria-label="재직자 검색">
 					<div class="table-responsive" style="max-height:52vh;overflow-y:auto">
-						<table class="table table-sm cal-table mb-0"><thead><tr><th><input type="checkbox" id="iAll" aria-label="발급 가능한 재직자 전체 선택"></th><th>이름</th><th>소속</th><th>이메일</th><th>아이디</th><th>확인</th></tr></thead><tbody id="issueRows"></tbody></table>
+						<table class="table table-sm cal-table mb-0"><thead><tr><th><input type="checkbox" id="iAll" aria-label="발급 가능한 재직자 전체 선택"></th><th>이름</th><th>소속</th><th>회사 메일</th><th>아이디</th><th>확인</th></tr></thead><tbody id="issueRows"></tbody></table>
 					</div>
 				</div>
 				<div id="manualPick" class="form-row" hidden>
@@ -122,7 +122,7 @@
 					<div class="col-md-4 mb-2"><label for="mEmail">이메일</label><input id="mEmail" type="email" class="form-control form-control-sm" maxlength="200"></div>
 				</div>
 			</div>
-			<div class="modal-footer"><span class="small text-muted mr-auto">아이디는 이메일 @ 앞부분입니다. 초기 비밀번호는 발급 직후 한 번만 표시합니다.</span><button type="button" class="btn btn-sm btn-primary" id="issueBtn" onclick="issue();">발급</button></div>
+			<div class="modal-footer"><span class="small text-muted mr-auto">아이디는 회사 메일 @ 앞부분입니다. 초기 비밀번호는 발급 직후 한 번만 표시합니다.</span><button type="button" class="btn btn-sm btn-primary" id="issueBtn" onclick="issue();">발급</button></div>
 		</div></div>
 	</div>
 
@@ -166,7 +166,7 @@
 
 	function shown() {
 		var q = $.trim($('#keyword').val()).toLowerCase(), pw = $('#pwFilter').val();
-		if (tab === 'pending') return data.pending.filter(function(s) { return !q || has(s.STAFF_NM, q) || has(s.EMAIL, q); });
+		if (tab === 'pending') return data.pending.filter(function(s) { return !q || has(s.STAFF_NM, q) || has(s.COMPANY_EMAIL, q); });
 		return data.accounts.filter(function(a) {
 			if (leftOnly ? !isLeft(a) : kindOf(a) !== tab) return false;
 			if (pw && (a.PW_INIT_YN === 'N' ? 'N' : 'Y') !== pw) return false;
@@ -175,12 +175,12 @@
 	}
 
 	function render() {
-		var count = {}, left = data.accounts.filter(isLeft).length, noMail = data.pending.filter(function(s) { return !idOf(s.EMAIL); }).length;
+		var count = {}, left = data.accounts.filter(isLeft).length, noMail = data.pending.filter(function(s) { return !idOf(s.COMPANY_EMAIL); }).length;
 		data.accounts.forEach(function(a) { var k = kindOf(a); count[k] = (count[k] || 0) + 1; });
 		count.pending = data.pending.length;
 		var $a = $('#alerts').empty();
 		if (left) $('<button type="button">').toggleClass('on', leftOnly).attr('aria-pressed', leftOnly).text('퇴사한 직원의 사용 중 계정 ' + left + '건').on('click', function() { leftOnly = !leftOnly; render(); }).appendTo($a);
-		if (noMail) $('<span>').text('이메일이 없어 발급할 수 없는 재직자 ' + noMail + '명').appendTo($a);
+		if (noMail) $('<span>').text('회사 메일이 없어 발급할 수 없는 재직자 ' + noMail + '명').appendTo($a);
 		if (!left) leftOnly = false;
 		var $t = $('#tabs').empty();
 		TABS.forEach(function(x) { $t.append(hrTab(x[0], x[1], count[x[0]] || 0, !leftOnly && tab === x[0])); });
@@ -213,15 +213,15 @@
 	}
 
 	function renderPending() {
-		head(['이름', '소속', '부서', '이메일', '아이디', '']);
+		head(['이름', '소속', '부서', '회사 메일', '아이디', '']);
 		var rows = shown();
 		if (!rows.length) { empty(6, '계정이 없는 재직자가 없습니다.'); return; }
 		var $b = $('#listBody').empty();
 		rows.forEach(function(s) {
-			var id = idOf(s.EMAIL);
-			$('<tr>').append($('<td>').text(s.STAFF_NM)).append($('<td>').text(s.ORG_NM || '')).append($('<td>').text(s.DEPT_NM || '')).append($('<td>').text(s.EMAIL || ''))
+			var id = idOf(s.COMPANY_EMAIL);
+			$('<tr>').append($('<td>').text(s.STAFF_NM)).append($('<td>').text(s.ORG_NM || '')).append($('<td>').text(s.DEPT_NM || '')).append($('<td>').text(s.COMPANY_EMAIL || ''))
 				.append($('<td class="sys-mono">').text(id || '-'))
-				.append($('<td class="text-right">').append(id ? $('<button type="button" class="btn btn-xs btn-outline-primary">발급</button>').attr('aria-label', s.STAFF_NM + ' 계정 발급').on('click', function() { openIssue(s.STAFF_SQ); }) : pill('이메일 없음', 'bad'))).appendTo($b);
+				.append($('<td class="text-right">').append(id ? $('<button type="button" class="btn btn-xs btn-outline-primary">발급</button>').attr('aria-label', s.STAFF_NM + ' 계정 발급').on('click', function() { openIssue(s.STAFF_SQ); }) : pill('회사 메일 없음', 'bad'))).appendTo($b);
 		});
 	}
 
@@ -278,12 +278,12 @@
 		$('#cStaffSearch').attr('aria-expanded', 'true');
 		if (!rows.length) { $r.append('<div class="p-2 text-muted">검색 결과가 없습니다.</div>'); return; }
 		var $h = $('<div class="ac-result ac-result-head" role="presentation">');
-		['이름', '주민번호', '이메일', '전화번호', '소속', '상태'].forEach(function(t) { $h.append($('<span>').text(t)); });
+		['이름', '주민번호', '회사 메일', '전화번호', '소속', '상태'].forEach(function(t) { $h.append($('<span>').text(t)); });
 		$r.append($h);
 		rows.forEach(function(s, i) {
 			var ok = selectable(s), org = [s.ORG_NM, s.DEPT_NM].filter(Boolean).join(' ');
 			var $row = $('<div class="ac-result" role="option">').attr({ id: 'staffOpt' + i, 'aria-selected': 'false', 'aria-disabled': !ok })
-				.append($('<span>').append($('<b>').text(s.STAFF_NM))).append($('<span class="sys-mono">').text(s.RRN || '-')).append($('<span>').text(s.EMAIL || '-')).append($('<span>').text(s.PHONE || '-')).append($('<span>').text(org || '-'))
+				.append($('<span>').append($('<b>').text(s.STAFF_NM))).append($('<span class="sys-mono">').text(s.RRN || '-')).append($('<span>').text(s.COMPANY_EMAIL || '-')).append($('<span>').text(s.PHONE || '-')).append($('<span>').text(org || '-'))
 				.append($('<span>').append(!ok ? pill('다른 계정 연결') : s.STATUS_CD === 'WORK' ? pill('재직', 'info') : pill('퇴사', 'bad')));
 			if (ok) $row.on('mousedown', function(e) { e.preventDefault(); chooseStaff(s); });
 			$r.append($row);
@@ -307,7 +307,7 @@
 
 	function chooseStaff(s) {
 		linked = s;
-		[['#cName', s.STAFF_NM], ['#cSex', s.SEX_CD], ['#cEmail', s.EMAIL], ['#cPhone', s.PHONE], ['#cAddr', s.ADDR], ['#cRrn', s.RRN]].forEach(function(f) {
+		[['#cName', s.STAFF_NM], ['#cSex', s.SEX_CD], ['#cEmail', s.COMPANY_EMAIL], ['#cPhone', s.PHONE], ['#cAddr', s.ADDR], ['#cRrn', s.RRN]].forEach(function(f) {
 			if (f[1]) $(f[0]).val(f[1]).addClass('ac-filled');
 		});
 		$('#cCopyRrn').val(s.RRN ? 'Y' : '');
@@ -397,11 +397,11 @@
 	function buildRows() {
 		var $b = $('#issueRows').empty();
 		data.pending.forEach(function(s) {
-			var id = idOf(s.EMAIL);
+			var id = idOf(s.COMPANY_EMAIL);
 			var $box = $('<input type="checkbox" class="pick">').val(s.STAFF_SQ).prop({ disabled: !id, checked: pendingPick === s.STAFF_SQ }).attr('aria-label', s.STAFF_NM + ' 선택');
 			var $id = $('<input class="form-control form-control-sm sys-mono row-id" maxlength="50">').val(id || '').prop('disabled', !id).attr('aria-label', s.STAFF_NM + ' 아이디');
-			$('<tr>').attr('data-q', (s.STAFF_NM + ' ' + (s.EMAIL || '')).toLowerCase())
-				.append($('<td>').append($box)).append($('<td>').text(s.STAFF_NM)).append($('<td>').text(s.ORG_NM || '')).append($('<td>').text(s.EMAIL || '-')).append($('<td>').append($id)).append($('<td class="row-state">')).appendTo($b);
+			$('<tr>').attr('data-q', (s.STAFF_NM + ' ' + (s.COMPANY_EMAIL || '')).toLowerCase())
+				.append($('<td>').append($box)).append($('<td>').text(s.STAFF_NM)).append($('<td>').text(s.ORG_NM || '')).append($('<td>').text(s.COMPANY_EMAIL || '-')).append($('<td>').append($id)).append($('<td class="row-state">')).appendTo($b);
 		});
 		checkRows();
 	}
@@ -421,7 +421,7 @@
 		var used = {};
 		$('#issueRows tr').each(function() {
 			var $r = $(this), $id = $r.find('.row-id'), id = $.trim($id.val()).toLowerCase(), picked = $r.find('.pick').prop('checked'), $state = $r.find('.row-state').empty();
-			if ($id.prop('disabled')) { $state.append(pill('이메일 없음', 'bad')); return; }
+			if ($id.prop('disabled')) { $state.append(pill('회사 메일 없음', 'bad')); return; }
 			var bad = !/^[a-z0-9._-]{2,50}$/.test(id) ? '형식 오류' : taken[id] ? '아이디 중복' : (picked && used[id]) ? '선택 안에서 중복' : null;
 			if (picked) used[id] = true;
 			$r.toggleClass('has-error', !!bad && picked);
@@ -473,7 +473,7 @@
 
 	function downloadCsv() {
 		function cell(v) { var s = String(v === undefined || v === null ? '' : v); if (/^[=+\-@]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; }
-		var rows = tab === 'pending' && !leftOnly ? [['이름', '소속', '부서', '이메일']].concat(shown().map(function(s) { return [s.STAFF_NM, s.ORG_NM, s.DEPT_NM, s.EMAIL]; }))
+		var rows = tab === 'pending' && !leftOnly ? [['이름', '소속', '부서', '회사 메일']].concat(shown().map(function(s) { return [s.STAFF_NM, s.ORG_NM, s.DEPT_NM, s.COMPANY_EMAIL]; }))
 			: [['이름', '아이디', '구분', '권한', '이메일', '비밀번호', '최근 로그인']].concat(shown().map(function(a) { return [a.EMPLY_NM, a.EMPLY_ID, typeText(a), a.ROLE_NMS, a.EMPLY_EMAIL, a.PW_INIT_YN !== 'N' ? '초기' : '변경 완료', a.LAST_LOGIN_DT]; }));
 		var url = URL.createObjectURL(new Blob(['﻿' + rows.map(function(r) { return r.map(cell).join(','); }).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
 		$('<a>').attr({ href: url, download: '계정목록.csv' })[0].click();

@@ -11,6 +11,7 @@ import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.eep.bo.member.service.BoMemberService;
 import com.eep.mapper.BoStaffMapper;
 
 import common.util.RrnCipher;
@@ -40,7 +41,7 @@ public class BoStaffService {
 	}
 	// 컬럼명이 SQL 에 그대로 들어가므로 허용 목록으로만 받는다
 	private static final Set<String> TEXT_FIELDS = new HashSet<>(Arrays.asList(
-			"SEQ_NO", "ORG_NM", "DEPT_NM", "POSITION_NM", "STAFF_NM", "PHONE", "EMAIL", "ADDR", "STATION", "JOIN_DT", "LEAVE_DT",
+			"SEQ_NO", "ORG_NM", "DEPT_NM", "POSITION_NM", "STAFF_NM", "PHONE", "EMAIL", "COMPANY_EMAIL", "ADDR", "STATION", "JOIN_DT", "LEAVE_DT",
 			"HS_NM", "HS_MAJOR", "HS_GRAD", "HS_KIND", "HS_STATE", "UNIV_NM", "UNIV_MAJOR", "UNIV_GRAD", "UNIV_KIND", "UNIV_STATE", "FINAL_EDU", "MIL_IN_DT", "MIL_OUT_DT", "MIL_EXEMPT",
 			"EDU_NM", "EDU_START_DT", "EDU_END_DT", "EDU_ORG", "CERT_DT", "BANK_NM",
 			"DOC_REG", "DOC_ID", "DOC_GRAD", "DOC_BANK", "DOC_PHOTO", "DOC_HI", "DOC_CONTRACT", "DOC_BIZ", "DOC_EI", "DOC_SEC",
@@ -96,6 +97,12 @@ public class BoStaffService {
 			throw new IllegalArgumentException("성명을 입력해 주세요.");
 		} else if (("JOIN_DT".equals(field) || "LEAVE_DT".equals(field)) && !value.isEmpty()) {
 			checkDate(value);
+		} else if ("COMPANY_EMAIL".equals(field) && !value.isEmpty()) {
+			String mail = BoMemberService.companyEmail(value);
+			if (mail == null) {
+				throw new IllegalArgumentException("회사 메일은 @gmail.com 주소만 쓸 수 있습니다.");
+			}
+			param.put("VALUE", mail);
 		} else if ("EMPLY_ID".equals(field) && !value.isEmpty()) {
 			Map<String, Object> check = BoStaffMapper.selectEmplyLinkCheck(param);
 			if (((Number) check.get("ACCOUNT_CNT")).intValue() == 0) {

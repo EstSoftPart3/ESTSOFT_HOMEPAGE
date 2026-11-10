@@ -40,6 +40,12 @@ public interface BoMemberMapper {
 
 	List<Map<String, Object>> selectSignupStaff(Map<String, Object> param);
 
+	int countStaffCompanyEmail(Map<String, Object> param);
+
+	void updateStaffCompanyEmail(Map<String, Object> param);
+
+	int retireOldStaffAccounts(Map<String, Object> param);
+
 	String selectStaffRrn(int staffSq);
 
 	void unlinkStaff(String emplyId);

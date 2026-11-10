@@ -8,6 +8,9 @@ public class BoMemberServiceCheck {
 
 	public static void main(String[] args) {
 		check("sample.lee".equals(BoMemberService.idFromEmail(" sample.lee@example.com ")), "이메일 앞부분");
+		check("hong.gd@gmail.com".equals(BoMemberService.companyEmail(" Hong.GD@Gmail.com ")), "회사 메일 소문자 정리");
+		check(BoMemberService.companyEmail("hong@naver.com") == null && BoMemberService.companyEmail("h@gmail.com") == null
+				&& BoMemberService.companyEmail("hong+1@gmail.com") == null && BoMemberService.companyEmail(null) == null, "회사 메일은 아이디 규칙의 gmail 만");
 		check(BoMemberService.idFromEmail(null) == null && BoMemberService.idFromEmail("없음") == null && BoMemberService.idFromEmail("a@b@c") == null, "잘못된 이메일");
 
 		Set<String> seen = new HashSet<>();

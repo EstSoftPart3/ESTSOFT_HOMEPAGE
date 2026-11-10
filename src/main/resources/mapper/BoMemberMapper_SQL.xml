@@ -24,7 +24,7 @@
 	</select>
 
 	<select id="selectPendingStaff" resultType="hashmap">
-		SELECT STAFF_SQ, STAFF_NM, EMAIL, ORG_NM, DEPT_NM
+		SELECT STAFF_SQ, STAFF_NM, COMPANY_EMAIL, ORG_NM, DEPT_NM
 		FROM TB_EEP_HR_STAFF_M
 		WHERE STATUS_CD = 'WORK' AND IFNULL(EMPLY_ID, '') = ''
 		ORDER BY STAFF_NM
@@ -42,7 +42,7 @@
 	</select>
 
 	<select id="selectStaffForIssue" parameterType="int" resultType="hashmap">
-		SELECT STAFF_SQ, STAFF_NM, EMAIL, PHONE, STATUS_CD, EMPLY_ID FROM TB_EEP_HR_STAFF_M WHERE STAFF_SQ = #{staffSq}
+		SELECT STAFF_SQ, STAFF_NM, COMPANY_EMAIL, PHONE, STATUS_CD, EMPLY_ID FROM TB_EEP_HR_STAFF_M WHERE STAFF_SQ = #{staffSq}
 	</select>
 
 	<select id="countId" parameterType="hashmap" resultType="int">
@@ -97,10 +97,11 @@
 	</update>
 
 	<select id="searchStaff" parameterType="string" resultType="hashmap">
-		SELECT STAFF_SQ, STAFF_NM, RRN_ENC, EMAIL, PHONE, ADDR, ORG_NM, DEPT_NM, STATUS_CD, EMPLY_ID
+		SELECT STAFF_SQ, STAFF_NM, RRN_ENC, COMPANY_EMAIL, PHONE, ADDR, ORG_NM, DEPT_NM, STATUS_CD, EMPLY_ID
 		FROM TB_EEP_HR_STAFF_M
 		WHERE STAFF_NM LIKE CONCAT('%', #{keyword}, '%')
 			OR EMAIL LIKE CONCAT('%', #{keyword}, '%')
+			OR COMPANY_EMAIL LIKE CONCAT('%', #{keyword}, '%')
 			OR REPLACE(PHONE, '-', '') LIKE CONCAT('%', REPLACE(#{keyword}, '-', ''), '%')
 		ORDER BY STATUS_CD = 'WORK' DESC, STAFF_NM, STAFF_SQ
 		LIMIT 20
@@ -117,6 +118,24 @@
 		ORDER BY STAFF_SQ
 		LIMIT 20
 	</select>
+
+	<select id="countStaffCompanyEmail" parameterType="hashmap" resultType="int">
+		SELECT COUNT(*) FROM TB_EEP_HR_STAFF_M WHERE LOWER(TRIM(COMPANY_EMAIL)) = #{EMAIL} AND STAFF_SQ &lt;&gt; #{STAFF_SQ}
+	</select>
+
+	<update id="updateStaffCompanyEmail" parameterType="hashmap">
+		UPDATE TB_EEP_HR_STAFF_M SET COMPANY_EMAIL = #{EMAIL} WHERE STAFF_SQ = #{STAFF_SQ}
+	</update>
+
+	<!-- 회사 메일로 다시 가입한 직원의 예전 계정(인사정보 연결 없는 직원 계정, 같은 이름·전화번호)을 퇴사 처리해 1인 1계정을 지킨다 -->
+	<update id="retireOldStaffAccounts" parameterType="hashmap">
+		UPDATE TB_EEP_EMPLY_M E
+		SET E.DEL_YN = 'Y', E.USE_YN = 'N', E.EMPLY_UPDT_DT = NOW()
+		WHERE E.EMPLY_AUTH_TYP_CD = '1' AND IFNULL(E.DEL_YN, 'N') = 'N'
+			AND E.EMPLY_ID &lt;&gt; #{EMPLY_ID} AND E.EMPLY_NM = #{EMPLY_NM}
+			AND #{PHONE} &lt;&gt; '' AND REPLACE(REPLACE(IFNULL(E.EMPLY_PH_NUM, ''), '-', ''), ' ', '') = #{PHONE}
+			AND NOT EXISTS (SELECT 1 FROM TB_EEP_HR_STAFF_M S WHERE S.EMPLY_ID = E.EMPLY_ID)
+	</update>
 
 	<select id="selectStaffRrn" parameterType="int" resultType="string">
 		SELECT RRN_ENC FROM TB_EEP_HR_STAFF_M WHERE STAFF_SQ = #{staffSq}

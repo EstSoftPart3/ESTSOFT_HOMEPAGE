@@ -60,7 +60,7 @@
 						<div class="cal-panel-body">
 							<div class="form-row align-items-end">
 								<div class="col-md-3 col-12 mb-2">
-									<label for="keyword">검색 (성명·연락처·이메일·부서·비고)</label>
+									<label for="keyword">검색 (성명·연락처·메일·부서·비고)</label>
 									<input type="search" id="keyword" class="form-control form-control-sm">
 								</div>
 								<div class="col-md-1 col-6 mb-2"><label for="fOrg">소속</label><select id="fOrg" class="form-control form-control-sm st-filter" data-field="ORG_NM"></select></div>
@@ -238,7 +238,7 @@
 	// 인사카드 칸: [필드, 라벨, 종류]. 종류 'secret' 은 가린 값 + 원문 보기
 	var SECTIONS = [
 		['기초정보', [['STAFF_NM', '성명'], ['ORG_NM', '소속'], ['DEPT_NM', '부서'], ['POSITION_NM', '직급'], ['SEQ_NO', 'NO'],
-			['RRN', '주민등록번호', 'secret'], ['PHONE', '전화번호'], ['EMAIL', '이메일'], ['ADDR', '주소(시도)'], ['STATION', '인근지하철역'], ['EMPLY_ID', '로그인 계정']]],
+			['RRN', '주민등록번호', 'secret'], ['PHONE', '전화번호'], ['EMAIL', '개인 메일'], ['COMPANY_EMAIL', '회사 메일'], ['ADDR', '주소(시도)'], ['STATION', '인근지하철역'], ['EMPLY_ID', '로그인 계정']]],
 		['일자', [['JOIN_DT', '입사일자', 'date'], ['LEAVE_DT', '퇴사일자', 'date']]],
 		['학력', [['HS_NM', '고교'], ['HS_MAJOR', '고교 전공'], ['HS_GRAD', '고교 졸업'], ['UNIV_NM', '대학·대학원'], ['UNIV_MAJOR', '전공'], ['UNIV_GRAD', '졸업년월'], ['FINAL_EDU', '최종학력']]],
 		['병역', [['MIL_IN_DT', '입대일'], ['MIL_OUT_DT', '전역일'], ['MIL_EXEMPT', '면제사유']]],
@@ -314,7 +314,7 @@
 			var ok = true;
 			$('.st-filter').each(function() { if ($(this).val() && r[$(this).data('field')] !== $(this).val()) ok = false; });
 			if (!ok) return false;
-			return !kw || [r.STAFF_NM, r.PHONE, r.EMAIL, r.DEPT_NM, r.ORG_NM, r.MEMO].some(function(v) { return v && String(v).toLowerCase().indexOf(kw) >= 0; });
+			return !kw || [r.STAFF_NM, r.PHONE, r.EMAIL, r.COMPANY_EMAIL, r.DEPT_NM, r.ORG_NM, r.MEMO].some(function(v) { return v && String(v).toLowerCase().indexOf(kw) >= 0; });
 		}).sort(sorter($('#sortSel').val()));
 	}
 
@@ -347,7 +347,7 @@
 		renderOrgSeg();
 		var list = filtered();
 		renderSummary(list);
-		var cols = [['SEQ_NO', 'NO'], ['ORG_NM', '소속'], ['DEPT_NM', '부서'], ['POSITION_NM', '직급'], ['STAFF_NM', '성명'], ['PHONE', '전화번호'], ['EMAIL', '이메일'],
+		var cols = [['SEQ_NO', 'NO'], ['ORG_NM', '소속'], ['DEPT_NM', '부서'], ['POSITION_NM', '직급'], ['STAFF_NM', '성명'], ['PHONE', '전화번호'], ['EMAIL', '개인 메일'], ['COMPANY_EMAIL', '회사 메일'],
 			['JOIN_DT', '입사일'], current === 'LEFT' ? ['LEAVE_DT', '퇴사일'] : null, ['_TENURE', '근속'], ['_DOCS', '서류'], ['MEMO', '비고']].filter(Boolean);
 		$('#listHead').empty().append($('<tr>').append(cols.map(function(c) { return $('<th>').text(c[1]); })));
 		var $body = $('#listBody').empty();

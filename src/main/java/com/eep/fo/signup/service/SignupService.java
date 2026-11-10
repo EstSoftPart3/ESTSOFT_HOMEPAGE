@@ -26,7 +26,7 @@ import com.eep.mapper.BoMemberMapper;
 import common.util.RrnCipher;
 
 /**
- * 직원 본인 가입: 인사정보 4항목 일치 → 본인 선택 → 이메일 인증 → 계정 발급.
+ * 직원 본인 가입: 인사정보 4항목 일치 → 본인 선택 → 회사 메일 입력·인증 → 회사 메일 앞부분으로 계정 발급.
  * 진행 상태는 세션에만 두고, 시도 제한은 세션을 새로 열어 우회하지 못하게 서버 전체에서 센다.
  */
 @Service
@@ -93,11 +93,13 @@ public class SignupService {
 		return found;
 	}
 
-	/** 선택한 직원의 인사정보 이메일로 인증번호를 보낸다. 다시 받기도 여기로 온다 */
-	public Map<String, Object> send(int staffSq, HttpSession session) {
+	/** 직원이 입력한 회사 메일로 인증번호를 보낸다. 받을 수 있어야 그 주소가 본인 것으로 확인된다. 다시 받기도 여기로 온다 */
+	public Map<String, Object> send(int staffSq, String companyEmail, HttpSession session) {
 		State state = state(session);
 		require(state.staff.contains(staffSq), RESTART);
-		String email = ((String) memberService.signupStaff(staffSq).get("EMAIL")).trim();
+		String email = BoMemberService.companyEmail(companyEmail);
+		require(email != null, "회사 메일은 @gmail.com 주소만 쓸 수 있습니다.");
+		memberService.signupStaff(staffSq, email);
 		long now = System.currentTimeMillis();
 		require(throttle.allowMail(staffSq, now), "인증번호는 1분에 한 번만 받을 수 있습니다.");
 
@@ -105,6 +107,7 @@ public class SignupService {
 		mail(email, code);
 		synchronized (state) {
 			state.staffSq = staffSq;
+			state.email = email;
 			state.code = code;
 			state.tries = 0;
 			state.expire = now + WINDOW;
@@ -128,7 +131,7 @@ public class SignupService {
 				}
 				throw new IllegalArgumentException("인증번호가 맞지 않습니다.");
 			}
-			Map<String, Object> created = memberService.issueBySignup(state.staffSq);
+			Map<String, Object> created = memberService.issueBySignup(state.staffSq, state.email);
 			session.removeAttribute(STATE);
 			return created;
 		}
@@ -190,6 +193,7 @@ public class SignupService {
 		final HashSet<Integer> staff;
 		long expire;
 		int staffSq;
+		String email;
 		String code;
 		int tries;
 

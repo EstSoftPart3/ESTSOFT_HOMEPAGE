@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -33,6 +34,8 @@ public class BoMemberService {
 	private static final String PW_FORCE = "Y", PW_ADVISE = "R";
 	private static final Pattern ID = Pattern.compile("^[A-Za-z0-9._-]{2,50}$");
 	private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+$");
+	// 회사 계정도 gmail 이라 개인 gmail 과 구분할 수 없다. 앞부분이 아이디가 되므로 아이디 규칙과 같은 글자만 받는다
+	private static final Pattern COMPANY_EMAIL = Pattern.compile("^[a-z0-9._-]{2,50}@gmail\\.com$");
 	// 전달할 때 헷갈리는 글자(0 O 1 l I)는 뺀다
 	private static final String LETTERS = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ", DIGITS = "23456789", SPECIALS = "!@#$%*";
 	private static final SecureRandom RANDOM = new SecureRandom();
@@ -78,9 +81,9 @@ public class BoMemberService {
 				require(staff != null && "WORK".equals(staff.get("STATUS_CD")), "재직 중인 직원만 발급할 수 있습니다.");
 				String name = (String) staff.get("STAFF_NM");
 				require(blank(staff.get("EMPLY_ID")), name + "님은 이미 계정이 있습니다.");
-				require(idFromEmail((String) staff.get("EMAIL")) != null, name + "님은 이메일이 없어 발급할 수 없습니다.");
+				require(idFromEmail((String) staff.get("COMPANY_EMAIL")) != null, name + "님은 회사 메일이 없어 발급할 수 없습니다.");
 				String id = text(ids.get(i));
-				Map<String, Object> created = create(id, name, (String) staff.get("EMAIL"), (String) staff.get("PHONE"), type, PW_FORCE);
+				Map<String, Object> created = create(id, name, (String) staff.get("COMPANY_EMAIL"), (String) staff.get("PHONE"), type, PW_FORCE);
 				Map<String, Object> link = new HashMap<>();
 				link.put("EMPLY_ID", id);
 				link.put("STAFF_SQ", staffSqs.get(i));
@@ -111,28 +114,47 @@ public class BoMemberService {
 	// ── 직원 본인 가입 ──
 
 	/** 가입할 수 있는 재직자면 인사정보를 돌려준다. 메일을 보내기 전과 계정을 만들 때 모두 확인한다 */
-	public Map<String, Object> signupStaff(int staffSq) {
+	public Map<String, Object> signupStaff(int staffSq, String companyEmail) {
+		String mail = companyEmail(companyEmail);
+		require(mail != null, "회사 메일은 @gmail.com 주소만 쓸 수 있습니다.");
 		Map<String, Object> staff = mapper.selectStaffForIssue(staffSq);
 		require(staff != null && "WORK".equals(staff.get("STATUS_CD")) && blank(staff.get("EMPLY_ID")), "가입할 수 없는 직원입니다. 인사 담당자에게 문의해 주세요.");
-		String id = idFromEmail((String) staff.get("EMAIL"));
+		String registered = text(staff.get("COMPANY_EMAIL"));
+		require(registered == null || registered.equalsIgnoreCase(mail), "인사정보에 등록된 회사 메일과 다릅니다. 인사 담당자에게 문의해 주세요.");
 		Map<String, Object> p = new HashMap<>();
+		p.put("EMAIL", mail);
+		p.put("STAFF_SQ", staffSq);
+		require(mapper.countStaffCompanyEmail(p) == 0, "다른 직원이 쓰는 회사 메일입니다. 인사 담당자에게 문의해 주세요.");
+		String id = idFromEmail(mail);
 		p.put("EMPLY_ID", id);
-		require(id != null && ID.matcher(id).matches() && mapper.countId(p) == 0, "계정을 자동으로 만들 수 없습니다. 인사 담당자에게 문의해 주세요.");
+		require(ID.matcher(id).matches() && mapper.countId(p) == 0, "이미 사용 중인 아이디입니다. 인사 담당자에게 문의해 주세요.");
 		return staff;
 	}
 
-	/** 인증을 마친 직원의 계정을 만든다. 하나라도 실패하면 모두 취소한다 */
-	public Map<String, Object> issueBySignup(int staffSq) {
+	/** 인증을 마친 직원의 계정을 회사 메일로 만든다. 하나라도 실패하면 모두 취소한다 */
+	public Map<String, Object> issueBySignup(int staffSq, String companyEmail) {
 		return tx.execute(s -> {
-			Map<String, Object> staff = signupStaff(staffSq);
-			String id = idFromEmail((String) staff.get("EMAIL"));
-			Map<String, Object> created = create(id, (String) staff.get("STAFF_NM"), ((String) staff.get("EMAIL")).trim(), (String) staff.get("PHONE"), STAFF, PW_ADVISE);
-			Map<String, Object> link = new HashMap<>();
-			link.put("EMPLY_ID", id);
-			link.put("STAFF_SQ", staffSq);
-			require(mapper.linkStaff(link) == 1, "이미 가입된 계정이 있습니다.");
+			Map<String, Object> staff = signupStaff(staffSq, companyEmail);
+			String mail = companyEmail(companyEmail), id = idFromEmail(mail), name = (String) staff.get("STAFF_NM");
+			String phone = (String) staff.get("PHONE");
+			Map<String, Object> created = create(id, name, mail, phone, STAFF, PW_ADVISE);
+			Map<String, Object> p = new HashMap<>();
+			p.put("EMPLY_ID", id);
+			p.put("STAFF_SQ", staffSq);
+			require(mapper.linkStaff(p) == 1, "이미 가입된 계정이 있습니다.");
+			p.put("EMAIL", mail);
+			mapper.updateStaffCompanyEmail(p);
+			p.put("EMPLY_NM", name);
+			p.put("PHONE", phone == null ? "" : phone.replaceAll("[^0-9]", ""));
+			mapper.retireOldStaffAccounts(p);
 			return created;
 		});
+	}
+
+	/** 회사 메일은 @gmail.com 주소만 받는다. 소문자로 맞춘 주소, 형식이 틀리면 null */
+	public static String companyEmail(String value) {
+		String s = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+		return COMPANY_EMAIL.matcher(s).matches() ? s : null;
 	}
 
 	private Map<String, Object> create(String id, String name, String email, String phone, String type, String pwInit) {

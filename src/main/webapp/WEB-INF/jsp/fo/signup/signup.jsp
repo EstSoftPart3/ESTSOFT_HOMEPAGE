@@ -69,6 +69,18 @@
 			<p class="su-sub mt-3 mb-0">목록에 본인이 없으면 인사 담당자에게 문의해 주세요.</p>
 		</form>
 
+		<form id="stepMail" class="d-none" novalidate>
+			<div class="su-title">회사 메일 입력</div>
+			<p class="su-sub">회사에서 받은 gmail 주소를 입력해 주세요. 이 주소로 인증번호를 보내고, 앞부분이 로그인 아이디가 됩니다.</p>
+			<div class="form-group"><label for="companyMail">회사 메일</label><input type="email" id="companyMail" class="form-control" maxlength="200" autocomplete="email" placeholder="예: hong.gd@gmail.com"></div>
+			<div class="su-kv"><span>아이디</span><span id="idPreview">-</span></div>
+			<div class="su-error" id="errMail" role="alert"></div>
+			<div class="row">
+				<div class="col-5"><button type="button" class="btn btn-default btn-block" id="mailBackBtn">이전</button></div>
+				<div class="col-7"><button type="submit" class="btn btn-ink btn-block" id="mailBtn">인증번호 받기</button></div>
+			</div>
+		</form>
+
 		<form id="step2" class="d-none" novalidate>
 			<div class="su-title">이메일 인증</div>
 			<div class="su-mail">인증번호를 보냈습니다.<br><b id="maskedMail"></b></div>
@@ -97,10 +109,12 @@
 <script>
 (function() {
 	var FAIL = '요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
-	var picked = null, tick = null, joined = false;
+	var picked = null, tick = null, joined = false, mailAddr = null;
+	// 서버 BoMemberService.companyEmail 과 같은 규칙. 앞부분이 아이디가 된다
+	var COMPANY_MAIL = /^[a-z0-9._-]{2,50}@gmail\.com$/;
 
 	function show(id, bar) {
-		$('#step1,#step1b,#step2,#step3').addClass('d-none');
+		$('#step1,#step1b,#stepMail,#step2,#step3').addClass('d-none');
 		$('#' + id).removeClass('d-none');
 		$('#bar1').toggleClass('on', bar >= 1);
 		$('#bar2').toggleClass('on', bar >= 2);
@@ -184,7 +198,7 @@
 	$('#backBtn').on('click', function() { show('step1', 1); });
 
 	function sendCode($err, $btn, done) {
-		post('/eep/signup/sendCodeData.do', { STAFF_SQ: picked }, $err, $btn, function(r) {
+		post('/eep/signup/sendCodeData.do', { STAFF_SQ: picked, COMPANY_EMAIL: mailAddr }, $err, $btn, function(r) {
 			$('#maskedMail').text(r.EMAIL);
 			startTimer(r.SECONDS);
 			lockResend(r.RESEND_SECONDS);
@@ -195,7 +209,21 @@
 		e.preventDefault();
 		if (joined) { location.href = '/eep/login/loginPage.do'; return; }
 		if (!picked) { $('#err1b').text('본인을 선택해 주세요.'); return; }
-		sendCode($('#err1b'), $('#pickBtn'), function() { show('step2', 2); $('#code').focus(); });
+		show('stepMail', 2);
+		$('#companyMail').focus();
+	});
+
+	$('#companyMail').on('input', function() {
+		var v = $.trim(this.value).toLowerCase();
+		$('#idPreview').text(COMPANY_MAIL.test(v) ? v.split('@')[0] : '-');
+	});
+	$('#mailBackBtn').on('click', function() { show('step1b', 1); });
+	$('#stepMail').on('submit', function(e) {
+		e.preventDefault();
+		var v = $.trim($('#companyMail').val()).toLowerCase();
+		if (!COMPANY_MAIL.test(v)) { $('#errMail').text('회사 메일은 @gmail.com 주소만 쓸 수 있습니다.'); $('#companyMail').focus(); return; }
+		mailAddr = v;
+		sendCode($('#errMail'), $('#mailBtn'), function() { show('step2', 2); $('#code').focus(); });
 	});
 	$('#resendBtn').on('click', function() {
 		sendCode($('#err2'), $('#resendBtn'), function() { $('#code').val('').focus(); });
