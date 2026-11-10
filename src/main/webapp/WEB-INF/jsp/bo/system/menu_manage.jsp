@@ -28,7 +28,7 @@
 									<div class="col-md-4 mb-2"><label for="fParent">상위 메뉴</label><select id="fParent" name="REL_CODE" class="form-control form-control-sm"></select></div>
 									<div class="col-12 mb-2 only-item"><label for="fUrl">화면 주소 <small>(2단계에서 비워 두면 하위 메뉴를 담는 묶음)</small></label><input id="fUrl" name="MENU_URL" class="form-control form-control-sm sys-mono" maxlength="200" placeholder="/admin/업무/openList.do"></div>
 									<div class="col-12 mb-2 only-item"><label for="fPattern">접근 경로 (쉼표로 구분, 데이터 요청 주소까지 포함)</label><textarea id="fPattern" name="AUTH_PATTERN" rows="3" class="form-control form-control-sm sys-mono" maxlength="1000" placeholder="/admin/업무/**"></textarea></div>
-									<div class="col-12 mb-2 only-group"><label id="iconLabel">아이콘</label><input type="hidden" id="fIcon" name="ICON_NM"><input type="search" id="iconSearch" class="form-control form-control-sm mb-2" placeholder="분류 또는 영문 이름으로 검색 (예: 장비, user)" aria-label="아이콘 검색" maxlength="30" autocomplete="off"><div id="iconGrid" class="sys-icons" role="radiogroup" aria-labelledby="iconLabel"></div></div>
+									<div class="col-12 mb-2 only-icon"><label id="iconLabel">아이콘</label><input type="hidden" id="fIcon" name="ICON_NM"><input type="search" id="iconSearch" class="form-control form-control-sm mb-2" placeholder="분류 또는 영문 이름으로 검색 (예: 장비, user)" aria-label="아이콘 검색" maxlength="30" autocomplete="off"><div id="iconGrid" class="sys-icons" role="radiogroup" aria-labelledby="iconLabel"></div></div>
 									<div class="col-md-3 mb-2"><label for="fSort">순서</label><input id="fSort" name="SORT_NO" type="number" min="0" class="form-control form-control-sm" required></div>
 									<div class="col-md-4 mb-2"><label for="fUse">표시</label><select id="fUse" name="USE_YN" class="form-control form-control-sm"><option value="Y">사용</option><option value="N">숨김</option></select></div>
 									<div class="col-md-4 mb-2 only-item"><label for="fNew">열기</label><select id="fNew" name="NEW_WIN_YN" class="form-control form-control-sm"><option value="N">현재 창</option><option value="Y">새 창</option></select></div>
@@ -128,14 +128,16 @@
 	function renderIcons() {
 		var current = $('#fIcon').val(), q = $.trim($('#iconSearch').val()).toLowerCase(), $grid = $('#iconGrid').empty();
 		var known = ICON_GROUPS.some(function(g) { return g[1].indexOf(current) >= 0; });
+		// 2단계는 아이콘을 비우면 동그라미(묶음은 폴더)로 표시된다
+		var base = $('#fParent').val() ? [['기본', ['']]] : [];
 		// 목록에 없는 기존 값도 저장 때 사라지지 않게 보여 준다
-		(current && !known ? [['현재 아이콘', [current]]] : []).concat(ICON_GROUPS).forEach(function(g) {
+		base.concat(current && !known ? [['현재 아이콘', [current]]] : []).concat(ICON_GROUPS).forEach(function(g) {
 			var names = g[1].filter(function(n) { return !q || g[0].indexOf(q) >= 0 || n.indexOf(q) >= 0; });
 			if (!names.length) return;
 			$grid.append($('<div class="sys-icon-cat">').text(g[0]));
 			names.forEach(function(name) {
-				$grid.append($('<button type="button" class="sys-icon" role="radio">').attr({ title: name, 'aria-label': name, 'aria-checked': name === current }).toggleClass('on', name === current)
-					.append($('<i class="fas" aria-hidden="true">').addClass(name))
+				$grid.append($('<button type="button" class="sys-icon" role="radio">').attr({ title: name || '기본', 'aria-label': name || '기본 아이콘', 'aria-checked': name === current }).toggleClass('on', name === current)
+					.append($('<i aria-hidden="true">').addClass(name ? 'fas ' + name : 'far fa-circle'))
 					.on('click', function() {
 						$('#fIcon').val(name);
 						$('#iconGrid .sys-icon').removeClass('on').attr('aria-checked', false);
@@ -153,7 +155,8 @@
 		var $b = $('<button type="button" class="sys-node">').addClass(cls).attr('data-code', m.MENU_CODE).toggleClass('on', !!selected && selected.MENU_CODE === m.MENU_CODE).on('click', function() { if (Date.now() - draggedAt > 300) select(m); });
 		$b.append('<i class="fas fa-grip-vertical sys-grip" aria-hidden="true"></i>');
 		if (cls === 'sys-node-group') $b.append($('<i class="fas fa-fw" aria-hidden="true">').addClass(m.ICON_NM || 'fa-folder'));
-		if (cls === 'sys-node-folder') $b.append('<i class="far fa-folder-open" aria-hidden="true"></i>');
+		if (cls !== 'sys-node-group' && m.ICON_NM) $b.append($('<i class="fas fa-fw" aria-hidden="true">').addClass(m.ICON_NM));
+		else if (cls === 'sys-node-folder') $b.append('<i class="far fa-folder-open" aria-hidden="true"></i>');
 		$b.append($('<span>').text(m.MENU_NM));
 		if (m.USE_YN === 'N') $b.append('<span class="sys-pill">숨김</span>');
 		return $b;
@@ -169,9 +172,12 @@
 
 	function applyKind() {
 		var parent = $('#fParent').val(), group = !parent;
+		var depth3 = menus.some(function(m) { return m.MENU_CODE === parent && m.REL_CODE; });
 		$('.only-item').prop('hidden', group);
-		$('.only-group').prop('hidden', !group);
-		$('#fUrl').prop('required', menus.some(function(m) { return m.MENU_CODE === parent && m.REL_CODE; }));
+		$('.only-icon').prop('hidden', depth3);
+		$('#fUrl').prop('required', depth3);
+		if (group && !$('#fIcon').val()) $('#fIcon').val('fa-folder');
+		renderIcons();
 	}
 	$('#fParent').on('change', applyKind);
 
@@ -183,9 +189,8 @@
 		$('#fParent').val(m.REL_CODE || '');
 		$('#fUrl').val(m.MENU_URL || '');
 		$('#fPattern').val(m.AUTH_PATTERN || '');
-		$('#fIcon').val(m.ICON_NM || 'fa-folder');
+		$('#fIcon').val(m.ICON_NM || '');
 		$('#iconSearch').val('');
-		renderIcons();
 		$('#fSort').val(m.SORT_NO === undefined ? 0 : m.SORT_NO);
 		$('#fUse').val(m.USE_YN || 'Y');
 		$('#fNew').val(m.NEW_WIN_YN || 'N');

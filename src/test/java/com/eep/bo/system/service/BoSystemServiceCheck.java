@@ -53,6 +53,13 @@ public class BoSystemServiceCheck {
 		BoSystemService.Access hiddenFolder = BoSystemService.Access.of(Arrays.asList(menu("R", null, null, null), menu("L", "F", "/admin/l/open.do", "/admin/l/**")), Arrays.asList(grant("X", "L")));
 		check(!hiddenFolder.allows("/admin/l/open.do") && hiddenFolder.tree.isEmpty(), "숨긴 묶음 아래 화면 차단");
 		check(BoSystemService.validateMenuTree(deep).get("L") == 3, "3단계 허용");
+		List<Map<String, Object>> iconed = new ArrayList<>(deep);
+		Map<String, Object> s = new HashMap<>(deep.get(3));
+		s.put("ICON_NM", "fa-laptop");
+		iconed.set(3, s);
+		List<Map<String, Object>> moved = BoSystemService.menuOrderRows("R:,F:R,L:F,S:F,E:R", iconed);
+		check(moved.get(3).get("ICON_NM") == null && "3".equals(moved.get(3).get("MENU_DEPTH")), "3단계로 옮기면 아이콘 제거");
+		check("fa-laptop".equals(BoSystemService.menuOrderRows("R:,S:R,F:R,L:F,E:R", iconed).get(1).get("ICON_NM")), "2단계 아이콘 유지");
 		rejectsTree(with(deep, menu("D", "L", "/admin/d/open.do", null))); // 4단계이자 화면 아래
 		rejectsTree(with(deep, menu("D", "S", "/admin/d/open.do", null))); // 화면 아래
 		rejectsTree(with(deep, menu("D", "F", null, null))); // 3단계 묶음

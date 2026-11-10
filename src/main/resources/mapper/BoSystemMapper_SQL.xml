@@ -40,7 +40,7 @@
 	</insert>
 
 	<update id="updateMenuOrder" parameterType="hashmap">
-		UPDATE TB_EEP_MENU SET REL_CODE = #{REL_CODE,jdbcType=VARCHAR}, MENU_DEPTH = #{MENU_DEPTH}, SORT_NO = #{SORT_NO}, LAST_UPDT_DT = NOW() WHERE MENU_CODE = #{MENU_CODE}
+		UPDATE TB_EEP_MENU SET REL_CODE = #{REL_CODE,jdbcType=VARCHAR}, MENU_DEPTH = #{MENU_DEPTH}, ICON_NM = #{ICON_NM,jdbcType=VARCHAR}, SORT_NO = #{SORT_NO}, LAST_UPDT_DT = NOW() WHERE MENU_CODE = #{MENU_CODE}
 	</update>
 
 	<delete id="deleteMenu" parameterType="string">

@@ -145,9 +145,9 @@ public class BoSystemService {
 		String name = trim(p.get("MENU_NM")), code = trim(p.get("MENU_CODE")), parent = trim(p.get("REL_CODE"));
 		String url = trim(p.get("MENU_URL")), patterns = trim(p.get("AUTH_PATTERN")), icon = trim(p.get("ICON_NM"));
 		require(name != null && name.length() <= 50, "메뉴명을 50자 이내로 입력해 주세요.");
+		require(icon == null || ICON.matcher(icon).matches(), "아이콘은 fa-로 시작하는 이름으로 입력해 주세요.");
 		boolean group = parent == null;
 		if (group) {
-			require(icon == null || ICON.matcher(icon).matches(), "아이콘은 fa-로 시작하는 이름으로 입력해 주세요.");
 			url = null;
 			patterns = null;
 		} else {
@@ -156,7 +156,6 @@ public class BoSystemService {
 			if (url == null) {
 				patterns = null;
 			}
-			icon = null;
 		}
 		p.put("MENU_CODE", code != null ? code : "MN" + System.currentTimeMillis());
 		p.put("MENU_NM", name);
@@ -170,8 +169,17 @@ public class BoSystemService {
 		List<Map<String, Object>> after = new ArrayList<>(mapper.selectAllMenus());
 		after.removeIf(m -> p.get("MENU_CODE").equals(m.get("MENU_CODE")));
 		after.add(p);
-		p.put("MENU_DEPTH", String.valueOf(validateMenuTree(after).get(p.get("MENU_CODE"))));
+		setDepth(p, validateMenuTree(after));
 		mapper.upsertMenu(p);
+	}
+
+	/** 아이콘은 2단계까지만 쓰고 3단계는 동그라미로 표시한다 */
+	private static void setDepth(Map<String, Object> menu, Map<String, Integer> depths) {
+		int depth = depths.get(menu.get("MENU_CODE"));
+		menu.put("MENU_DEPTH", String.valueOf(depth));
+		if (depth == 3) {
+			menu.put("ICON_NM", null);
+		}
 	}
 
 	/** 저장 후의 전체 메뉴로 구조를 검사하고 메뉴별 단계를 돌려준다. 3단계 제한이 순환 참조도 막는다 */
@@ -247,7 +255,7 @@ public class BoSystemService {
 		}
 		require(remaining.isEmpty(), stale);
 		Map<String, Integer> depths = validateMenuTree(rows);
-		rows.forEach(r -> r.put("MENU_DEPTH", String.valueOf(depths.get(r.get("MENU_CODE")))));
+		rows.forEach(r -> setDepth(r, depths));
 		return rows;
 	}
 

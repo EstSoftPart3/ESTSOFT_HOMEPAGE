@@ -95,7 +95,7 @@
 	              <c:when test="${not empty item.children}">
 	              <li class="nav-item has-treeview">
 	                <a href="#" class="nav-link">
-	                  <i class="far fa-folder-open nav-icon sTitle"></i>
+	                  <i class="${empty item.ICON_NM ? 'far fa-folder-open' : 'fas'} <c:out value="${item.ICON_NM}"/> nav-icon sTitle"></i>
 	                  <p class="sTitle"><c:out value="${item.MENU_NM}"/><i class="right fas fa-angle-left"></i></p>
 	                </a>
 	                <ul class="nav nav-treeview">
