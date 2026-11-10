@@ -83,13 +83,13 @@ public class BoSystemController {
 	@RequestMapping(value = "/admin/system/role/addRoleUserData.do", method = RequestMethod.POST)
 	public ModelAndView addRoleUserData(@RequestParam("ROLE_SQ") int roleSq, @RequestParam("EMPLY_ID") String emplyId, HttpSession session) {
 		String login = loginId(session);
-		return call(() -> { service.addRoleUser(roleSq, emplyId, login, service.access(login).superUser); return "OK"; });
+		return call(() -> { service.addRoleUser(roleSq, emplyId, login); return "OK"; });
 	}
 
 	@RequestMapping(value = "/admin/system/role/removeRoleUserData.do", method = RequestMethod.POST)
 	public ModelAndView removeRoleUserData(@RequestParam("ROLE_SQ") int roleSq, @RequestParam("EMPLY_ID") String emplyId, HttpSession session) {
 		String login = loginId(session);
-		return call(() -> { service.removeRoleUser(roleSq, emplyId, login, service.access(login).superUser); return "OK"; });
+		return call(() -> { service.removeRoleUser(roleSq, emplyId, login); return "OK"; });
 	}
 
 	private interface Call {

@@ -65,10 +65,36 @@ public class BoSystemServiceCheck {
 		rejectsTree(with(deep, menu("D", "F", null, null))); // 3단계 묶음
 		rejectsTree(with(deep, menu("D", "NONE", "/admin/d/open.do", null))); // 상위 없음
 		rejectsTree(Arrays.asList(menu("C1", "C2", null, null), menu("C2", "C1", null, null))); // 순환
+		List<Map<String, Object>> roles = Arrays.asList(role(1, "SUPER"), role(2, "SYS"), role(3, "HR"), role(4, "EMPTY"));
+		List<Map<String, Object>> roleMenus = Arrays.asList(roleMenu(2, "A"), roleMenu(3, "A"), roleMenu(3, "HI"), roleMenu(3, "HT"));
+		List<Map<String, Object>> sys = BoSystemService.grantInfo(roles, roleMenus, Arrays.asList(grant("SYS", "A")), menus);
+		check("N".equals(sys.get(0).get("GRANTABLE")) && "Y".equals(sys.get(1).get("GRANTABLE")) && "Y".equals(sys.get(3).get("GRANTABLE")), "내 메뉴 안의 권한만 지정, 슈퍼는 불가");
+		check("N".equals(sys.get(2).get("GRANTABLE")) && ((String) sys.get(2).get("LOCK_REASON")).contains("외 1개"), "메뉴가 모자란 권한은 이유와 함께 잠금");
+		List<Map<String, Object>> wider = BoSystemService.grantInfo(roles, roleMenus, Arrays.asList(grant("SYS", "A"), grant("SYS", "HI"), grant("SYS", "HT")), menus);
+		check("Y".equals(wider.get(2).get("GRANTABLE")), "매핑을 늘리면 바로 지정 가능");
+		for (Map<String, Object> r : BoSystemService.grantInfo(roles, roleMenus, Arrays.asList(grant("SUPER", null)), menus)) {
+			check("Y".equals(r.get("GRANTABLE")), "슈퍼관리자는 전체 지정");
+		}
+
 		Map<String, Object> emptyOldGroup = menu("M001", null, null, null);
 		emptyOldGroup.put("USE_YN", "N");
 		BoSystemService.validateMenuTree(Arrays.asList(emptyOldGroup)); // 비어 있는 옛 그룹은 숨길 수 있다
 		System.out.println("BoSystemServiceCheck OK");
+	}
+
+	private static Map<String, Object> role(int sq, String code) {
+		Map<String, Object> r = new HashMap<>();
+		r.put("ROLE_SQ", sq);
+		r.put("ROLE_CD", code);
+		r.put("ROLE_NM", code);
+		return r;
+	}
+
+	private static Map<String, Object> roleMenu(int sq, String menu) {
+		Map<String, Object> r = new HashMap<>();
+		r.put("ROLE_SQ", sq);
+		r.put("MENU_CODE", menu);
+		return r;
 	}
 
 	private static List<Map<String, Object>> with(List<Map<String, Object>> menus, Map<String, Object> extra) {

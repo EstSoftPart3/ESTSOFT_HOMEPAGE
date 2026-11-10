@@ -3,9 +3,11 @@ package com.eep.bo.member.service;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import javax.sql.DataSource;
@@ -18,7 +20,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import com.eep.bo.system.service.BoSystemService;
 import com.eep.mapper.BoMemberMapper;
-import com.eep.mapper.BoSystemMapper;
 
 import common.util.PasswordHasher;
 import common.util.RrnCipher;
@@ -39,8 +40,6 @@ public class BoMemberService {
 	@Autowired
 	private BoMemberMapper mapper;
 	@Autowired
-	private BoSystemMapper systemMapper;
-	@Autowired
 	private BoSystemService system;
 
 	private TransactionTemplate tx;
@@ -50,11 +49,12 @@ public class BoMemberService {
 		tx = new TransactionTemplate(new DataSourceTransactionManager(ds));
 	}
 
-	public Map<String, Object> list() {
+	public Map<String, Object> list(Actor actor) {
 		Map<String, Object> out = new HashMap<>();
 		out.put("accounts", mapper.selectAccounts());
 		out.put("pending", mapper.selectPendingStaff());
-		out.put("roles", systemMapper.selectRoles());
+		out.put("roles", system.rolesFor(actor.id));
+		out.put("me", actor.id);
 		return out;
 	}
 
@@ -86,7 +86,7 @@ public class BoMemberService {
 				link.put("STAFF_SQ", staffSqs.get(i));
 				mapper.linkStaff(link);
 				if (roleSq != null) {
-					system.addRoleUser(roleSq, id, actor.id, actor.superUser);
+					system.addRoleUser(roleSq, id, actor.id);
 				}
 				issued.add(created);
 			}
@@ -101,7 +101,7 @@ public class BoMemberService {
 		validateEmail(text(email));
 		return tx.execute(s -> {
 			Map<String, Object> created = create(text(id), name.trim(), text(email), null, ADMIN, PW_FORCE);
-			system.addRoleUser(roleSq, text(id), actor.id, actor.superUser);
+			system.addRoleUser(roleSq, text(id), actor.id);
 			List<Map<String, Object>> issued = new ArrayList<>();
 			issued.add(created);
 			return issued;
@@ -196,12 +196,14 @@ public class BoMemberService {
 		// 가려 보여 준 값이 그대로 오면 저장값을 유지한다
 		p.put("EMPLY_RRN", staffRrn != null ? stored(staffRrn) : rrn == null || RrnCipher.isMasked(rrn) ? null : stored(rrn));
 		p.put("OLD_ID", oldId);
+		Set<Integer> current = roleSet(row.get("ROLE_SQS")), next = p.containsKey("ROLE_SQS") ? roleSet(p.get("ROLE_SQS")) : current;
 		tx.execute(s -> {
 			mapper.updateAccount(p);
 			if (oldId != null && !oldId.equals(id)) {
 				mapper.renameRoleUser(p);
 				mapper.renameStaffLink(p);
 			}
+			applyRoles(sq, id, (String) row.get("EMPLY_AUTH_TYP_CD"), current, next, actor);
 			if (relink) {
 				mapper.unlinkStaff(id);
 				if (staffSq != null) {
@@ -265,25 +267,39 @@ public class BoMemberService {
 		mapper.updateStatus(p);
 	}
 
-	public void setType(int sq, String type, Integer roleSq, Actor actor) {
-		requireType(type);
-		Map<String, Object> row = target(sq, actor);
-		String id = (String) row.get("EMPLY_ID");
-		require(id != null, "아이디를 먼저 입력해 주세요.");
-		require(!actor.id.equals(id), "내 계정의 구분은 바꿀 수 없습니다.");
-		require(ADMIN.equals(type) == (roleSq != null), "관리자 계정은 권한을 하나 골라야 합니다.");
+	/** 권한이 하나라도 있으면 관리자 계정, 없으면 직원 계정. 바뀐 권한만 권한 규칙을 거쳐 넣고 뺀다 */
+	private void applyRoles(int sq, String id, String type, Set<Integer> current, Set<Integer> next, Actor actor) {
+		String want = next.isEmpty() ? STAFF : ADMIN;
 		Map<String, Object> p = new HashMap<>();
 		p.put("EMPLY_SQ", sq);
-		p.put("TYPE_CD", type);
-		tx.execute(s -> {
-			mapper.updateType(p);
-			if (ADMIN.equals(type)) {
-				system.addRoleUser(roleSq, id, actor.id, actor.superUser);
-			} else {
-				mapper.deleteUserRoles(id);
+		p.put("TYPE_CD", want);
+		if (ADMIN.equals(want) && !want.equals(type)) {
+			mapper.updateType(p); // 권한을 넣기 전에 관리자 계정이어야 한다
+		}
+		for (Integer r : next) {
+			if (!current.contains(r)) {
+				system.addRoleUser(r, id, actor.id);
 			}
-			return null;
-		});
+		}
+		for (Integer r : current) {
+			if (!next.contains(r)) {
+				system.removeRoleUser(r, id, actor.id);
+			}
+		}
+		if (STAFF.equals(want) && !want.equals(type)) {
+			require(!actor.id.equals(id), "내 계정의 권한은 바꿀 수 없습니다.");
+			mapper.updateType(p);
+		}
+	}
+
+	static Set<Integer> roleSet(Object csv) {
+		Set<Integer> out = new HashSet<>();
+		for (String s : String.valueOf(csv == null ? "" : csv).split(",")) {
+			if (!s.trim().isEmpty()) {
+				out.add(number(s));
+			}
+		}
+		return out;
 	}
 
 	// ── 본인 비밀번호 ──

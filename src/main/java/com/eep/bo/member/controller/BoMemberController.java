@@ -32,8 +32,9 @@ public class BoMemberController {
 	}
 
 	@RequestMapping(value = "/admin/member/memberListData.do", method = RequestMethod.POST)
-	public ModelAndView memberListData() {
-		return call(service::list);
+	public ModelAndView memberListData(HttpSession session) {
+		Actor actor = actor(session);
+		return call(() -> service.list(actor));
 	}
 
 	@RequestMapping(value = "/admin/member/memberCardData.do", method = RequestMethod.POST)
@@ -74,11 +75,6 @@ public class BoMemberController {
 		return call(() -> { service.setStatus(sq, action, actor); return "OK"; });
 	}
 
-	@RequestMapping(value = "/admin/member/setTypeData.do", method = RequestMethod.POST)
-	public ModelAndView setTypeData(@RequestParam("EMPLY_SQ") int sq, @RequestParam("TYPE_CD") String type, @RequestParam(value = "ROLE_SQ", required = false) Integer roleSq, HttpSession session) {
-		Actor actor = actor(session);
-		return call(() -> { service.setType(sq, type, roleSq, actor); return "OK"; });
-	}
 
 	@RequestMapping(value = "/admin/member/searchStaffData.do", method = RequestMethod.POST)
 	public ModelAndView searchStaffData(@RequestParam("KEYWORD") String keyword) {

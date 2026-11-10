@@ -14,6 +14,13 @@
 	.ac-secret { font-family: Consolas, monospace; font-size: 14px; font-weight: 700; }
 	.ac-busy { opacity: .5; pointer-events: none; }
 	.ac-filled { background: #dff3f9 !important; }
+	.ac-roles { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
+	.ac-role { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 7px 9px; border: 1px solid rgba(17,17,17,.12); border-radius: 7px; font-size: 13px; font-weight: 600 !important; color: #222 !important; cursor: pointer; }
+	.ac-role input { margin-top: 3px; }
+	.ac-role small { display: block; font-weight: 400; color: #666; font-size: 11px; line-height: 1.35; }
+	.ac-role.on { border-color: #0b6e8a; background: #dff3f9; }
+	.ac-role.lock { opacity: .6; cursor: not-allowed; }
+	.ac-role:focus-within { outline: 2px solid #16d5ff; outline-offset: 1px; }
 	.ac-results { border: 1px solid rgba(17,17,17,.12); border-radius: 6px; max-height: 230px; overflow-y: auto; margin-top: 4px; font-size: 12px; }
 	.ac-result { display: grid; grid-template-columns: 90px 110px minmax(0, 1.4fr) 110px minmax(0, 1fr) 96px; gap: 8px; align-items: center; padding: 5px 8px; cursor: pointer; }
 	.ac-result > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -81,8 +88,8 @@
 						<div class="col-md-8 mb-2"><label for="cAddr">주소</label><input id="cAddr" name="EMPLY_HOME_ADDR" class="form-control form-control-sm" maxlength="500"></div>
 						<div class="col-md-4 mb-2"><label for="cRrn">주민등록번호 (바꿀 때만 전체 입력)</label><input id="cRrn" name="EMPLY_RRN" class="form-control form-control-sm" maxlength="14" autocomplete="off"></div>
 					</div>
-					<div class="ac-section">계정 구분</div>
-					<div id="cType" class="d-flex align-items-center flex-wrap mb-2" style="gap:6px"></div>
+					<div class="ac-section">계정 권한 <span id="cKind" class="sys-pill info"></span> <span class="small text-muted font-weight-normal">권한이 없으면 직원 계정, 하나라도 있으면 관리자 계정입니다</span></div>
+					<div id="cType" class="ac-roles mb-2" role="group" aria-label="계정 권한"></div>
 					<div class="ac-section">비밀번호</div>
 					<div class="d-flex align-items-center flex-wrap" style="gap:8px"><span id="cPw"></span><button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetPw();"><i class="fas fa-key" aria-hidden="true"></i> 초기 비밀번호 재발급</button><span class="small text-muted" id="cLogin"></span></div>
 				</div>
@@ -144,7 +151,7 @@
 		hrPost('/admin/member/memberListData.do', {}, function(res) {
 			data = res.result;
 			$('#iRole').empty().append('<option value="">권한 선택</option>');
-			data.roles.forEach(function(r) { $('#iRole').append($('<option>').val(r.ROLE_SQ).text(r.ROLE_NM)); });
+			data.roles.filter(function(r) { return r.GRANTABLE === 'Y'; }).forEach(function(r) { $('#iRole').append($('<option>').val(r.ROLE_SQ).text(r.ROLE_NM)); });
 			render();
 		});
 	}
@@ -228,7 +235,7 @@
 			$('#cardTitle').text((card.EMPLY_NM || '이름 없음') + ' · ' + typeText(card) + ' 계정');
 			$('#cSq').val(card.EMPLY_SQ);
 			fillCard();
-			paintType();
+			paintRoles();
 			$('#cPw').empty().append(pwPill(card));
 			$('#cLogin').text('최근 로그인 ' + (card.LAST_LOGIN_DT || '-'));
 			paintStatus();
@@ -326,29 +333,25 @@
 		else if (e.key === 'Escape' && !$('#staffResults').prop('hidden')) { e.preventDefault(); e.stopPropagation(); closeResults(); }
 	}).on('blur', closeResults);
 
-	function paintType() {
-		var $t = $('#cType').empty().append(pill(typeText(card), 'info'));
-		if (card.ROLE_NMS) $t.append(pill(card.ROLE_NMS));
-		if (card.EMPLY_AUTH_TYP_CD !== '2') {
-			var $role = $('<select class="form-control form-control-sm" style="width:auto" aria-label="관리자 권한">').append('<option value="">권한 선택</option>');
-			data.roles.forEach(function(r) { $role.append($('<option>').val(r.ROLE_SQ).text(r.ROLE_NM)); });
-			$t.append($role).append($('<button type="button" class="btn btn-sm btn-outline-primary text-nowrap">관리자로 지정</button>').on('click', function() {
-				if (!$role.val()) { bootbox.alert('부여할 권한을 먼저 골라 주세요.'); return; }
-				setType('2', $role.val());
-			}));
-		}
-		if (card.EMPLY_AUTH_TYP_CD !== '1') $t.append($('<button type="button" class="btn btn-sm btn-outline-secondary text-nowrap">직원으로 지정</button>').on('click', function() { setType('1'); }));
+	// 줄 수 없는 권한은 잠그고 이유를 보여 준다. 판단은 서버가 권한 관리의 메뉴 매핑으로 한다
+	function paintRoles() {
+		var have = String(card.ROLE_SQS || '').split(','), self = card.EMPLY_ID === data.me, $t = $('#cType').empty();
+		data.roles.forEach(function(r) {
+			var on = have.indexOf(String(r.ROLE_SQ)) >= 0, locked = self || r.GRANTABLE !== 'Y', id = 'role_' + r.ROLE_SQ;
+			$('<label class="ac-role">').attr('for', id).toggleClass('on', on).toggleClass('lock', locked)
+				.append($('<input type="checkbox" class="role-box">').attr('id', id).val(r.ROLE_SQ).prop({ checked: on, disabled: locked }))
+				.append($('<span>').append(locked ? '<i class="fas fa-lock" aria-hidden="true"></i> ' : '').append(document.createTextNode(r.ROLE_NM))
+					.append($('<small>').text(self ? '내 계정의 권한은 바꿀 수 없습니다' : locked ? r.LOCK_REASON : (r.ROLE_DESC || ''))))
+				.appendTo($t);
+		});
+		updateKind();
 	}
 
-	function setType(type, roleSq) {
-		var msg = type === '2' ? '이 계정을 관리자로 지정할까요? 관리자 화면에 접속할 수 있게 됩니다.' : '이 계정을 직원으로 지정할까요? 권한이 모두 해제되고 관리자 화면에 접속할 수 없습니다.';
-		bootbox.confirm(msg, function(ok) {
-			if (!ok) return;
-			var d = { EMPLY_SQ: card.EMPLY_SQ, TYPE_CD: type };
-			if (roleSq) d.ROLE_SQ = roleSq;
-			hrPost('/admin/member/setTypeData.do', d, afterChange);
-		});
+	function updateKind() {
+		$('.ac-role').each(function() { $(this).toggleClass('on', $(this).find('.role-box').prop('checked')); });
+		$('#cKind').text($('.role-box:checked').length ? '관리자 계정' : '직원 계정');
 	}
+	$('#cType').on('change', '.role-box', updateKind);
 
 	function paintStatus() {
 		var $b = $('#cStatusBtns').empty();
@@ -365,7 +368,11 @@
 
 	function afterChange() { $('#cardModal').modal('hide'); load(); }
 
-	function saveCard() { hrPost('/admin/member/saveMemberData.do', $('#cardForm').serialize(), afterChange); }
+	function saveCard() {
+		// 잠긴 권한도 체크 상태 그대로 보내야 서버가 바뀐 것으로 보지 않는다
+		var roles = $('.role-box:checked').map(function() { return this.value; }).get();
+		hrPost('/admin/member/saveMemberData.do', $('#cardForm').serialize() + '&ROLE_SQS=' + encodeURIComponent(roles.join(',')), afterChange);
+	}
 
 	function resetPw() {
 		bootbox.confirm('초기 비밀번호를 새로 발급할까요? 지금 비밀번호는 쓸 수 없게 됩니다.', function(ok) {

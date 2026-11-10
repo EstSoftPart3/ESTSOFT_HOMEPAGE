@@ -27,6 +27,7 @@ public class BoMemberServiceCheck {
 		check(BoMemberService.passwordProblem("id", "old", "good-pass-123") == null, "통과");
 		check("M".equals(BoMemberService.sexFromRrn("900101-1234567")) && "F".equals(BoMemberService.sexFromRrn("0001014234567")), "주민번호 성별");
 		check(BoMemberService.sexFromRrn("900101") == null, "뒷자리 없는 주민번호");
+		check(BoMemberService.roleSet(" 1,7,,1 ").size() == 2 && BoMemberService.roleSet(null).isEmpty() && BoMemberService.roleSet("").isEmpty(), "권한 목록 읽기");
 		System.out.println("BoMemberServiceCheck OK");
 	}
 

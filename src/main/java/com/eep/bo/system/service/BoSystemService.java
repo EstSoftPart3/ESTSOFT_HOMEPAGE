@@ -319,26 +319,70 @@ public class BoSystemService {
 		});
 	}
 
-	public void addRoleUser(int roleSq, String emplyId, String loginId, boolean actorSuper) {
-		guardSuperChange(roleSq, actorSuper);
+	public void addRoleUser(int roleSq, String emplyId, String loginId) {
+		guardGrant(roleSq, emplyId, loginId);
 		require(emplyId != null && mapper.countActiveAdmin(emplyId) > 0, "사용 중인 관리자 계정만 추가할 수 있습니다.");
 		mapper.insertRoleUser(userParam(roleSq, emplyId, loginId));
 	}
 
-	public void removeRoleUser(int roleSq, String emplyId, String loginId, boolean actorSuper) {
-		boolean superRole = guardSuperChange(roleSq, actorSuper);
-		if (superRole) {
-			require(!loginId.equals(emplyId), "내 계정은 슈퍼관리자에서 제외할 수 없습니다.");
+	public void removeRoleUser(int roleSq, String emplyId, String loginId) {
+		guardGrant(roleSq, emplyId, loginId);
+		if (SUPER.equals(role(roleSq).get("ROLE_CD"))) {
 			require(mapper.countRoleUsers(roleSq) > 1, "슈퍼관리자는 최소 1명이 필요합니다.");
 		}
 		mapper.deleteRoleUser(userParam(roleSq, emplyId, loginId));
 	}
 
-	/** 슈퍼관리자 소속은 슈퍼관리자만 바꿀 수 있다 */
-	private boolean guardSuperChange(int roleSq, boolean actorSuper) {
-		boolean superRole = SUPER.equals(role(roleSq).get("ROLE_CD"));
-		require(!superRole || actorSuper, "슈퍼관리자 소속은 슈퍼관리자만 변경할 수 있습니다.");
-		return superRole;
+	/** 권한별로 지금 접속한 사람이 주고 뺄 수 있는지(GRANTABLE)와 못 하는 이유(LOCK_REASON). 매핑을 바꾸면 다음 요청부터 바로 반영된다 */
+	public List<Map<String, Object>> rolesFor(String loginId) {
+		return grantInfo(mapper.selectRoles(), mapper.selectRoleMenus(), mapper.selectMyGrants(loginId), mapper.selectAllMenus());
+	}
+
+	private void guardGrant(int roleSq, String emplyId, String loginId) {
+		role(roleSq);
+		require(!loginId.equals(emplyId), "내 계정의 권한은 바꿀 수 없습니다.");
+		for (Map<String, Object> r : rolesFor(loginId)) {
+			if (((Number) r.get("ROLE_SQ")).intValue() == roleSq) {
+				require("Y".equals(r.get("GRANTABLE")), r.get("ROLE_NM") + " 권한은 바꿀 수 없습니다. " + r.get("LOCK_REASON"));
+			}
+		}
+	}
+
+	/** 슈퍼관리자가 아니면 권한의 메뉴가 모두 내 메뉴 안에 있을 때만 그 권한을 주고 뺄 수 있다 */
+	static List<Map<String, Object>> grantInfo(List<Map<String, Object>> roles, List<Map<String, Object>> roleMenus, List<Map<String, Object>> myGrants, List<Map<String, Object>> menus) {
+		boolean superUser = false;
+		Set<Object> mine = new HashSet<>();
+		for (Map<String, Object> g : myGrants) {
+			superUser |= SUPER.equals(g.get("ROLE_CD"));
+			mine.add(g.get("MENU_CODE"));
+		}
+		Map<Object, Object> names = new HashMap<>();
+		menus.forEach(m -> names.put(m.get("MENU_CODE"), m.get("MENU_NM")));
+		List<Map<String, Object>> out = new ArrayList<>();
+		for (Map<String, Object> role : roles) {
+			Map<String, Object> r = new HashMap<>(role);
+			String reason = null;
+			if (!superUser) {
+				if (SUPER.equals(role.get("ROLE_CD"))) {
+					reason = "슈퍼관리자만 지정할 수 있습니다.";
+				} else {
+					List<Object> missing = new ArrayList<>();
+					for (Map<String, Object> rm : roleMenus) {
+						if (role.get("ROLE_SQ").equals(rm.get("ROLE_SQ")) && !mine.contains(rm.get("MENU_CODE"))) {
+							Object name = names.get(rm.get("MENU_CODE"));
+							missing.add(name != null ? name : rm.get("MENU_CODE"));
+						}
+					}
+					if (!missing.isEmpty()) {
+						reason = "내 메뉴에 없음: " + missing.get(0) + (missing.size() > 1 ? " 외 " + (missing.size() - 1) + "개" : "");
+					}
+				}
+			}
+			r.put("GRANTABLE", reason == null ? "Y" : "N");
+			r.put("LOCK_REASON", reason);
+			out.add(r);
+		}
+		return out;
 	}
 
 	private static Map<String, Object> userParam(int roleSq, String emplyId, String loginId) {
