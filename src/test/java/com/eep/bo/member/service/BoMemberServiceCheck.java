@@ -22,7 +22,8 @@ public class BoMemberServiceCheck {
 		}
 		check(seen.size() == 200, "매번 다른 값");
 
-		check(BoMemberService.passwordProblem("id", "old", "short1") != null, "짧은 비밀번호");
+		check(BoMemberService.passwordProblem("id", "old", "ab1!xyz") != null, "7자는 거절");
+		check(BoMemberService.passwordProblem("id", "old", "ab1!xyzw") == null, "8자는 통과");
 		check(BoMemberService.passwordProblem("id", "old", "abcdefghijkl") != null, "숫자 없음");
 		check(BoMemberService.passwordProblem("id", "old", "1234567890!") != null, "영문 없음");
 		check(BoMemberService.passwordProblem("id", "old", "goodpass123") != null, "특수문자 없음");

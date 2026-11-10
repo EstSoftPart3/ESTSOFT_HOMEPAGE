@@ -417,8 +417,8 @@ public class BoMemberService {
 	}
 
 	static String passwordProblem(String id, String current, String next) {
-		if (next == null || next.length() < 10 || next.length() > 72) { // bcrypt 는 72바이트까지만 비교한다
-			return "새 비밀번호는 10~72자로 입력해 주세요.";
+		if (next == null || next.length() < 8 || next.length() > 72) { // bcrypt 는 72바이트까지만 비교한다
+			return "새 비밀번호는 8~72자로 입력해 주세요.";
 		}
 		// 특수문자는 영문·숫자·공백이 아닌 모든 문자다. 대소문자는 bcrypt 비교에서 구분된다
 		if (!next.matches(".*[A-Za-z].*") || !next.matches(".*[0-9].*") || !next.matches(".*[^A-Za-z0-9\\s].*")) {
