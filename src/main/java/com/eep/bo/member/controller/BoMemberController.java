@@ -45,9 +45,9 @@ public class BoMemberController {
 
 	@RequestMapping(value = "/admin/member/issueStaffData.do", method = RequestMethod.POST)
 	public ModelAndView issueStaffData(@RequestParam("STAFF_SQ") List<Integer> staffSqs, @RequestParam("EMPLY_ID") List<String> ids, @RequestParam("TYPE_CD") String type,
-			@RequestParam(value = "ROLE_SQ", required = false) Integer roleSq, HttpSession session) {
+			@RequestParam(value = "COMPANY_EMAIL", required = false) List<String> emails, @RequestParam(value = "ROLE_SQ", required = false) Integer roleSq, HttpSession session) {
 		Actor actor = actor(session);
-		return call(() -> service.issueFromStaff(staffSqs, ids, type, roleSq, actor));
+		return call(() -> service.issueFromStaff(staffSqs, ids, emails, type, roleSq, actor));
 	}
 
 	@RequestMapping(value = "/admin/member/issueManualData.do", method = RequestMethod.POST)

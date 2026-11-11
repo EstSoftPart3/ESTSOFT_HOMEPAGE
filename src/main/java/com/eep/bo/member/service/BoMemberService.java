@@ -89,7 +89,7 @@ public class BoMemberService {
 	// ── 발급 ──
 
 	/** 재직자 계정을 한 번에 발급한다. 하나라도 실패하면 모두 취소하고, 초기 비밀번호는 이 응답으로만 나간다 */
-	public List<Map<String, Object>> issueFromStaff(List<Integer> staffSqs, List<String> ids, String type, Integer roleSq, Actor actor) {
+	public List<Map<String, Object>> issueFromStaff(List<Integer> staffSqs, List<String> ids, List<String> emails, String type, Integer roleSq, Actor actor) {
 		require(staffSqs != null && ids != null && !staffSqs.isEmpty() && staffSqs.size() == ids.size(), "발급할 직원을 선택해 주세요.");
 		requireType(type);
 		require(ADMIN.equals(type) == (roleSq != null), "관리자 계정은 권한을 하나 골라야 합니다.");
@@ -100,12 +100,21 @@ public class BoMemberService {
 				require(staff != null && "WORK".equals(staff.get("STATUS_CD")), "재직 중인 직원만 발급할 수 있습니다.");
 				String name = (String) staff.get("STAFF_NM");
 				require(blank(staff.get("EMPLY_ID")), name + "님은 이미 계정이 있습니다.");
-				require(idFromEmail((String) staff.get("COMPANY_EMAIL")) != null, name + "님은 회사 메일이 없어 발급할 수 없습니다.");
-				String id = text(ids.get(i));
-				Map<String, Object> created = create(id, name, (String) staff.get("COMPANY_EMAIL"), (String) staff.get("PHONE"), type, PW_FORCE);
+				String mail = (String) staff.get("COMPANY_EMAIL"), typed = emails != null && i < emails.size() ? text(emails.get(i)) : null;
 				Map<String, Object> link = new HashMap<>();
-				link.put("EMPLY_ID", id);
 				link.put("STAFF_SQ", staffSqs.get(i));
+				// 인사정보에 회사 메일이 없으면 발급 화면에서 적은 메일을 인사정보에 저장하고 쓴다
+				if (idFromEmail(mail) == null && typed != null) {
+					mail = companyEmail(typed);
+					require(mail != null, name + "님의 회사 메일은 @gmail.com 주소만 쓸 수 있습니다.");
+					link.put("EMAIL", mail);
+					require(mapper.countStaffCompanyEmail(link) == 0, name + "님의 회사 메일은 다른 직원이 쓰고 있습니다.");
+					mapper.updateStaffCompanyEmail(link);
+				}
+				require(idFromEmail(mail) != null, name + "님은 회사 메일이 없어 발급할 수 없습니다.");
+				String id = text(ids.get(i));
+				Map<String, Object> created = create(id, name, mail, (String) staff.get("PHONE"), type, PW_FORCE);
+				link.put("EMPLY_ID", id);
 				mapper.linkStaff(link);
 				if (roleSq != null) {
 					system.addRoleUser(roleSq, id, actor.id);

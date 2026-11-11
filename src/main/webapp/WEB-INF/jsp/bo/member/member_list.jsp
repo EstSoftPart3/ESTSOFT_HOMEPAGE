@@ -139,7 +139,7 @@
 					<div class="col-md-4 mb-2"><label for="mEmail">이메일</label><input id="mEmail" type="email" class="form-control form-control-sm" maxlength="200"></div>
 				</div>
 			</div>
-			<div class="modal-footer"><span class="small text-muted mr-auto">아이디는 회사 메일 @ 앞부분입니다. 초기 비밀번호는 발급 직후 한 번만 표시합니다.</span><button type="button" class="btn btn-sm btn-primary" id="issueBtn" onclick="issue();">발급</button></div>
+			<div class="modal-footer"><span class="small text-muted mr-auto">아이디는 회사 메일 @ 앞부분입니다. 직접 적은 회사 메일은 인사정보에도 저장됩니다. 초기 비밀번호는 발급 직후 한 번만 표시합니다.</span><button type="button" class="btn btn-sm btn-primary" id="issueBtn" onclick="issue();">발급</button></div>
 		</div></div>
 	</div>
 
@@ -197,7 +197,7 @@
 		count.pending = data.pending.length;
 		var $a = $('#alerts').empty();
 		if (left) $('<button type="button">').toggleClass('on', leftOnly).attr('aria-pressed', leftOnly).text('퇴사한 직원의 사용 중 계정 ' + left + '건').on('click', function() { leftOnly = !leftOnly; render(); }).appendTo($a);
-		if (noMail) $('<span>').text('회사 메일이 없어 발급할 수 없는 재직자 ' + noMail + '명').appendTo($a);
+		if (noMail) $('<span>').text('회사 메일을 입력해야 발급할 수 있는 재직자 ' + noMail + '명').appendTo($a);
 		if (!left) leftOnly = false;
 		var $t = $('#tabs').empty();
 		TABS.forEach(function(x) { $t.append(hrTab(x[0], x[1], count[x[0]] || 0, !leftOnly && tab === x[0])); });
@@ -254,14 +254,26 @@
 		if (!rows.length) { empty(6, '계정이 없는 재직자가 없습니다.'); return; }
 		var $b = $('#listBody').empty();
 		rows.forEach(function(s) {
-			var id = idOf(s.COMPANY_EMAIL);
-			$('<tr>').append($('<td>').text(s.STAFF_NM)).append($('<td>').text(s.ORG_NM || '')).append($('<td>').text(s.DEPT_NM || '')).append($('<td>').text(s.COMPANY_EMAIL || ''))
-				.append($('<td class="sys-mono">').text(id || '-'))
-				.append($('<td class="text-right">').append(id ? $('<button type="button" class="btn btn-xs btn-outline-primary">발급</button>').attr('aria-label', s.STAFF_NM + ' 계정 발급').on('click', function() { openIssue(s.STAFF_SQ); }) : pill('회사 메일 없음', 'bad'))).appendTo($b);
+			var id = idOf(s.COMPANY_EMAIL), $mail = $('<td>').text(s.COMPANY_EMAIL || ''), $id = $('<td class="sys-mono">'), $act = $('<td class="text-right">');
+			function paint(id, err) {
+				$id.text(id || '-');
+				$act.empty().append(err ? pill(err, 'bad') : $('<button type="button" class="btn btn-xs btn-outline-primary">발급</button>').attr('aria-label', s.STAFF_NM + ' 계정 발급').on('click', function() { openIssue(s.STAFF_SQ); }));
+			}
+			// 회사 메일이 없으면 여기서 적는다. 발급할 때 인사정보에도 저장된다
+			function check() { var v = $.trim(s.TYPED_EMAIL || ''), t = typedId(v); paint(t, !v ? '회사 메일 없음' : !t ? '@gmail.com 주소만' : idTaken(t) ? '아이디 중복' : null); }
+			if (id) paint(id);
+			else {
+				$mail.append($('<input class="form-control form-control-sm" maxlength="200" placeholder="회사 메일(@gmail.com) 입력">').attr('aria-label', s.STAFF_NM + ' 회사 메일').val(s.TYPED_EMAIL || '').on('input', function() { s.TYPED_EMAIL = this.value; check(); }));
+				check();
+			}
+			$('<tr>').append($('<td>').text(s.STAFF_NM)).append($('<td>').text(s.ORG_NM || '')).append($('<td>').text(s.DEPT_NM || '')).append($mail).append($id).append($act).appendTo($b);
 		});
 	}
 
 	function idOf(email) { var m = /^([^@\s]+)@[^@\s]+$/.exec($.trim(email || '')); return m ? m[1] : null; }
+	// 직접 적는 회사 메일은 서버 규칙(BoMemberService.COMPANY_EMAIL)과 같게 @gmail.com 만 받는다
+	function typedId(email) { var v = $.trim(email || '').toLowerCase(); return /^[a-z0-9._-]{2,50}@gmail\.com$/.test(v) ? v.split('@')[0] : null; }
+	function idTaken(id) { return data.accounts.some(function(a) { return String(a.EMPLY_ID || '').toLowerCase() === id; }); }
 
 	// ── 계정 카드 ──
 
@@ -451,11 +463,13 @@
 	function buildRows() {
 		var $b = $('#issueRows').empty();
 		data.pending.forEach(function(s) {
-			var id = idOf(s.COMPANY_EMAIL);
-			var $box = $('<input type="checkbox" class="pick">').val(s.STAFF_SQ).prop({ disabled: !id, checked: pendingPick === s.STAFF_SQ }).attr('aria-label', s.STAFF_NM + ' 선택');
+			var fixed = idOf(s.COMPANY_EMAIL), id = fixed || typedId(s.TYPED_EMAIL);
+			var $box = $('<input type="checkbox" class="pick">').val(s.STAFF_SQ).prop({ disabled: !id, checked: !!id && pendingPick === s.STAFF_SQ }).attr('aria-label', s.STAFF_NM + ' 선택');
 			var $id = $('<input class="form-control form-control-sm sys-mono row-id" maxlength="50">').val(id || '').prop('disabled', !id).attr('aria-label', s.STAFF_NM + ' 아이디');
+			var $mail = fixed ? s.COMPANY_EMAIL : $('<input class="form-control form-control-sm row-mail" maxlength="200" placeholder="회사 메일(@gmail.com) 입력">').attr('aria-label', s.STAFF_NM + ' 회사 메일').val(s.TYPED_EMAIL || '')
+				.on('input', function() { s.TYPED_EMAIL = this.value; var t = typedId(this.value); $id.val(t || '').prop('disabled', !t); $box.prop({ disabled: !t, checked: !!t }); checkRows(); });
 			$('<tr>').attr('data-q', (s.STAFF_NM + ' ' + (s.COMPANY_EMAIL || '')).toLowerCase())
-				.append($('<td>').append($box)).append($('<td>').text(s.STAFF_NM)).append($('<td>').text(s.ORG_NM || '')).append($('<td>').text(s.COMPANY_EMAIL || '-')).append($('<td>').append($id)).append($('<td class="row-state">')).appendTo($b);
+				.append($('<td>').append($box)).append($('<td>').text(s.STAFF_NM)).append($('<td>').text(s.ORG_NM || '')).append($('<td>').append($mail)).append($('<td>').append($id)).append($('<td class="row-state">')).appendTo($b);
 		});
 		checkRows();
 	}
@@ -475,7 +489,7 @@
 		var used = {};
 		$('#issueRows tr').each(function() {
 			var $r = $(this), $id = $r.find('.row-id'), id = $.trim($id.val()).toLowerCase(), picked = $r.find('.pick').prop('checked'), $state = $r.find('.row-state').empty();
-			if ($id.prop('disabled')) { $state.append(pill('회사 메일 없음', 'bad')); return; }
+			if ($id.prop('disabled')) { $r.removeClass('has-error'); $state.append(pill($.trim($r.find('.row-mail').val() || '') ? '@gmail.com 주소만' : '회사 메일 없음', 'bad')); return; }
 			var bad = !/^[a-z0-9._-]{2,50}$/.test(id) ? '형식 오류' : taken[id] ? '아이디 중복' : (picked && used[id]) ? '선택 안에서 중복' : null;
 			if (picked) used[id] = true;
 			$r.toggleClass('has-error', !!bad && picked);
@@ -486,6 +500,8 @@
 	$('#issueRows').on('input change', '.row-id, .pick', checkRows);
 
 	$('#iSearch').on('input', function() { var q = $.trim(this.value).toLowerCase(); $('#issueRows tr').each(function() { $(this).toggle($(this).attr('data-q').indexOf(q) >= 0); }); });
+	// 팝업에서 적은 회사 메일을 목록에도 보여 준다
+	$('#issueModal').on('hidden.bs.modal', function() { if (tab === 'pending') render(); });
 	$('#iAll').on('change', function() { $('#issueRows tr:visible .pick:enabled').prop('checked', this.checked); checkRows(); });
 
 	function updateIssueBtn() {
@@ -501,9 +517,9 @@
 			hrPost('/admin/member/issueManualData.do', { EMPLY_ID: $.trim($('#mId').val()), EMPLY_NM: $.trim($('#mName').val()), EMPLY_EMAIL: $.trim($('#mEmail').val()), ROLE_SQ: role }, ok, finish);
 			return;
 		}
-		var sqs = [], ids = [];
-		$('#issueRows tr').each(function() { if ($(this).find('.pick').prop('checked')) { sqs.push($(this).find('.pick').val()); ids.push($.trim($(this).find('.row-id').val())); } });
-		var d = { STAFF_SQ: sqs, EMPLY_ID: ids, TYPE_CD: admin ? '2' : '1' };
+		var sqs = [], ids = [], mails = [];
+		$('#issueRows tr').each(function() { if ($(this).find('.pick').prop('checked')) { sqs.push($(this).find('.pick').val()); ids.push($.trim($(this).find('.row-id').val())); mails.push($.trim($(this).find('.row-mail').val() || '')); } });
+		var d = { STAFF_SQ: sqs, EMPLY_ID: ids, COMPANY_EMAIL: mails, TYPE_CD: admin ? '2' : '1' };
 		if (role) d.ROLE_SQ = role;
 		hrPost('/admin/member/issueStaffData.do', $.param(d, true), ok, finish);
 	}
