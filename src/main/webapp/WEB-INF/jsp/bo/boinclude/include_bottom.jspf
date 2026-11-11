@@ -46,5 +46,28 @@
 
 
 <script>
-
+// 체크박스 Shift+클릭 범위 선택: 같은 목록·같은 class 의 직전 클릭 칸부터 지금 칸까지 지금 칸 상태로 맞춘다
+(function() {
+	var last = null;
+	function group(box, key) {
+		return $(box).find('input[type=checkbox]').filter(function() { return !this.disabled && this.className + '|' + this.name === key; });
+	}
+	// Shift+클릭 때 글자가 같이 긁히지 않게
+	$(document).on('mousedown', 'input[type=checkbox]', function(e) { if (e.shiftKey) e.preventDefault(); });
+	$(document).on('click', 'input[type=checkbox]', function(e) {
+		var cb = this;
+		// 누르면 바로 저장되는 스위치, 헤더 전체 선택, class 없는 단독 체크박스는 제외
+		if (!cb.className || $(cb).is('.custom-control-input, [data-flag]') || $(cb).closest('thead').length) return;
+		var box = $(cb).closest('tbody, table, ul, .modal-body, form')[0] || document.body, key = cb.className + '|' + cb.name;
+		var idx = group(box, key).index(cb), on = cb.checked;
+		if (e.shiftKey && last && last.box === box && last.key === key && last.idx !== idx) {
+			for (var i = Math.min(last.idx, idx); i <= Math.max(last.idx, idx); i++) {
+				// change 처리에서 목록을 다시 그리는 화면(게시판 관리)이 있어 매번 순번으로 다시 찾는다
+				var el = group(box, key)[i];
+				if (el && el !== cb && el.checked !== on) $(el).prop('checked', on).trigger('change');
+			}
+		}
+		last = { box: box, key: key, idx: idx };
+	});
+})();
 </script>
