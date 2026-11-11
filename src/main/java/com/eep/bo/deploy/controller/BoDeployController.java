@@ -62,7 +62,8 @@ public class BoDeployController {
 	public ModelAndView deployListData(HttpSession session) {
 		String id = loginId(session);
 		SecretFilter.View v = secret.view(id);
-		Map<String, Object> out = v.filterMap(deployService.deployList(canPay(id)), "all", "current");
+		Map<String, Object> out = v.filterMap(deployService.deployList(canPay(id)), "all", "current", "memoCounts", "chgCounts");
+		out.put("me", id);
 		out.putAll(v.filterMap(deployService.options(id), "staff"));
 		out.put("secretViewer", v.secret);
 		return json("data", out);
@@ -85,6 +86,7 @@ public class BoDeployController {
 	@RequestMapping(value = "/admin/deploy/deleteDeployData.do", method = RequestMethod.POST)
 	public ModelAndView deleteDeployData(@RequestParam Map<String, Object> param, HttpSession session) {
 		return run(() -> {
+			param.put("UPDT_EMPLY_ID", loginId(session));
 			secret.view(loginId(session)).guard(secret.staffOfDeploy(param.get("DEPLOY_SQ")));
 			deployService.deleteDeploy(param);
 			return "OK";
@@ -106,6 +108,65 @@ public class BoDeployController {
 		return run(() -> {
 			secret.view(loginId(session)).guard(staffSq);
 			return deployService.projectHistory(staffSq, canPay(loginId(session)));
+		});
+	}
+
+	/** 목록 칸 바로 수정. 단가 칸은 급여 권한이 있어야 한다 */
+	@RequestMapping(value = "/admin/deploy/saveFieldData.do", method = RequestMethod.POST)
+	public ModelAndView saveDeployFieldData(@RequestParam("DEPLOY_SQ") int deploySq, @RequestParam("FIELD") String field, @RequestParam(value = "VALUE", defaultValue = "") String value, HttpSession session) {
+		return run(() -> {
+			String id = loginId(session);
+			secret.view(id).guard(secret.staffOfDeploy(deploySq));
+			deployService.saveField(deploySq, field, value, canPay(id), id, null);
+			return "OK";
+		});
+	}
+
+	@RequestMapping(value = "/admin/deploy/changeListData.do", method = RequestMethod.POST)
+	public ModelAndView deployChangeListData(@RequestParam("STAFF_SQ") int staffSq, HttpSession session) {
+		return run(() -> {
+			String id = loginId(session);
+			secret.view(id).guard(staffSq);
+			return deployService.changes(staffSq, canPay(id));
+		});
+	}
+
+	@RequestMapping(value = "/admin/deploy/revertData.do", method = RequestMethod.POST)
+	public ModelAndView deployRevertData(@RequestParam("CHG_SQ") long chgSq, @RequestParam("STAFF_SQ") int staffSq, HttpSession session) {
+		return run(() -> {
+			String id = loginId(session);
+			secret.view(id).guard(staffSq);
+			deployService.revert(chgSq, staffSq, canPay(id), id);
+			return "OK";
+		});
+	}
+
+	@RequestMapping(value = "/admin/deploy/memoListData.do", method = RequestMethod.POST)
+	public ModelAndView deployMemoListData(@RequestParam("STAFF_SQ") int staffSq, HttpSession session) {
+		return run(() -> {
+			secret.view(loginId(session)).guard(staffSq);
+			Map<String, Object> out = new HashMap<>();
+			out.put("list", deployService.memos(staffSq));
+			out.put("me", loginId(session));
+			return out;
+		});
+	}
+
+	@RequestMapping(value = "/admin/deploy/saveMemoData.do", method = RequestMethod.POST)
+	public ModelAndView deploySaveMemoData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("CONTENT") String content, HttpSession session) {
+		return run(() -> {
+			secret.view(loginId(session)).guard(staffSq);
+			deployService.addMemo(staffSq, content, loginId(session));
+			return "OK";
+		});
+	}
+
+	@RequestMapping(value = "/admin/deploy/deleteMemoData.do", method = RequestMethod.POST)
+	public ModelAndView deployDeleteMemoData(@RequestParam("MEMO_SQ") long memoSq, HttpSession session) {
+		return run(() -> {
+			secret.view(loginId(session)).guard(deployService.memoStaff(memoSq));
+			deployService.deleteMemo(memoSq, loginId(session));
+			return "OK";
 		});
 	}
 

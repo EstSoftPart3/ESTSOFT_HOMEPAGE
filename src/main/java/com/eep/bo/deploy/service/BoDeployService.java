@@ -28,7 +28,7 @@ public class BoDeployService {
 	private static final String[] PARTNER_TEXT = { "BIZ_NO", "CEO_NM", "OPEN_DT", "ADDR", "BIZ_TYPE", "BIZ_ITEM", "MGR_NM", "MGR_POS", "MGR_TEL", "MGR_HP", "MGR_EMAIL", "TAX_EMAIL", "BANK_NM", "ACCOUNT_NO", "ACCOUNT_HOLDER" };
 	private static final List<String> FILE_KINDS = Arrays.asList("LICENSE", "LOGO", "SEAL", "BANK");
 	private static final String[] DEPLOY_TEXT = { "SALE_PARTNER_SQ", "BUY_PARTNER_SQ", "CLIENT_NM", "PRJ_NM", "WORK_AREA", "GRADE_CD", "END_DT", "PROB_END_DT", "MEMO" };
-	private static final List<String> COLUMNS = Arrays.asList("STAFF_NM", "EMP_TYPE_CD", "SALE_PARTNER_NM", "BUY_PARTNER_NM", "SALE_PRICE", "COST_PRICE", "CLIENT_NM", "PRJ_NM", "WORK_AREA", "GRADE_CD", "START_DT", "END_DT", "REMAIN", "TENURE", "HOME_AREA", "PRJ");
+	private static final List<String> COLUMNS = Arrays.asList("STAFF_NM", "EMP_TYPE_CD", "SALE_PARTNER_NM", "BUY_PARTNER_NM", "SALE_PRICE", "COST_PRICE", "CLIENT_NM", "PRJ_NM", "WORK_AREA", "GRADE_CD", "START_DT", "END_DT", "REMAIN", "TENURE", "HOME_AREA", "PRJ", "DUP", "MEMOS", "HIST");
 	private static final String COLUMN_PREF = "DEPLOY_COLUMNS";
 	private static final int MAX_FILE = 5 * 1024 * 1024;
 
@@ -96,6 +96,8 @@ public class BoDeployService {
 		out.put("all", all);
 		out.put("current", current(all, LocalDate.now()));
 		out.put("canPay", canPay);
+		out.put("memoCounts", mapper.selectDeployMemoCounts());
+		out.put("chgCounts", mapper.selectDeployChangeCounts());
 		return out;
 	}
 
@@ -132,6 +134,119 @@ public class BoDeployService {
 		return out;
 	}
 
+	// ── 바로 수정·수정이력·메모 ──
+
+	/** 수정이력에 남기는 칸. 단가는 급여 권한이 있을 때만 남기고 보여 준다 */
+	static final List<String> TRACK = Arrays.asList("EMP_TYPE_CD", "SALE_PARTNER_SQ", "BUY_PARTNER_SQ", "CLIENT_NM", "PRJ_NM", "WORK_AREA", "GRADE_CD",
+			"START_DT", "END_DT", "PROB_END_DT", "SALE_PRICE", "COST_PRICE", "MEMO");
+	static final List<String> PRICES = Arrays.asList("SALE_PRICE", "COST_PRICE");
+
+	private Map<String, Object> deployOne(Object deploySq) {
+		Map<String, Object> q = new HashMap<>();
+		q.put("DEPLOY_SQ", deploySq);
+		return mapper.selectDeployOne(q);
+	}
+
+	private static String norm(Object v) {
+		return v == null ? "" : v.toString().trim();
+	}
+
+	private static String brief(Map<String, Object> d) {
+		return (norm(d.get("CLIENT_NM")) + " " + norm(d.get("PRJ_NM"))).trim() + " · " + norm(d.get("START_DT")) + " ~ " + (norm(d.get("END_DT")).isEmpty() ? "미정" : norm(d.get("END_DT")));
+	}
+
+	private void change(Object deploySq, Object staffSq, String field, String before, String after, String reason, String loginId) {
+		Map<String, Object> h = new HashMap<>();
+		h.put("DEPLOY_SQ", deploySq);
+		h.put("STAFF_SQ", staffSq);
+		h.put("FIELD", field);
+		h.put("BEFORE_VAL", before == null || before.isEmpty() ? null : before);
+		h.put("AFTER_VAL", after == null || after.isEmpty() ? null : after);
+		h.put("REASON", reason);
+		h.put("EMPLY_ID", loginId);
+		mapper.insertDeployChange(h);
+	}
+
+	/** 저장 전후 행을 칸별로 비교해 바뀐 것만 이력에 남긴다 */
+	private void diff(Map<String, Object> before, Map<String, Object> after, boolean canPay, String reason, String loginId) {
+		for (String f : TRACK) {
+			if (PRICES.contains(f) && !canPay) {
+				continue;
+			}
+			String b = norm(before.get(f)), a = norm(after.get(f));
+			boolean same = PRICES.contains(f) ? BoPayrollService.n(b.isEmpty() ? 0 : before.get(f)) == BoPayrollService.n(a.isEmpty() ? 0 : after.get(f)) : b.equals(a);
+			if (!same) {
+				change(after.get("DEPLOY_SQ"), after.get("STAFF_SQ"), f, b, a, reason, loginId);
+			}
+		}
+	}
+
+	/** 목록에서 칸 하나를 바로 고친다. 검사는 saveDeploy 와 같다 */
+	public void saveField(Object deploySq, String field, String value, boolean canPay, String loginId, String reason) {
+		require(TRACK.contains(field), "고칠 수 없는 칸입니다.");
+		require(canPay || !PRICES.contains(field), "단가는 급여 권한이 있어야 고칠 수 있습니다.");
+		Map<String, Object> row = deployOne(deploySq);
+		require(row != null, "투입 건을 찾지 못했습니다. 새로 고쳐 주세요.");
+		Map<String, Object> p = new HashMap<>();
+		row.forEach((k, v) -> p.put(k, v == null ? "" : v.toString()));
+		p.put(field, value == null ? "" : value.trim());
+		p.put("UPDT_EMPLY_ID", loginId);
+		p.put("_REASON", reason);
+		saveDeploy(p, canPay);
+	}
+
+	/** staffSq 는 화면이 보낸 직원. 이력의 직원과 같아야 한다(시크릿 검사를 그 직원으로 했으므로) */
+	public void revert(Object chgSq, Object staffSq, boolean canPay, String loginId) {
+		Map<String, Object> q = new HashMap<>();
+		q.put("CHG_SQ", chgSq);
+		Map<String, Object> h = mapper.selectDeployChange(q);
+		require(h != null && norm(h.get("STAFF_SQ")).equals(norm(staffSq)), "이력을 찾지 못했습니다.");
+		require(!"Y".equals(h.get("REVERTED_YN")), "이미 되돌린 이력입니다.");
+		require(TRACK.contains(norm(h.get("FIELD_NM"))), "칸을 고친 이력만 되돌릴 수 있습니다.");
+		require(deployOne(h.get("DEPLOY_SQ")) != null, "지운 투입 건은 되돌릴 수 없습니다.");
+		saveField(h.get("DEPLOY_SQ"), norm(h.get("FIELD_NM")), norm(h.get("BEFORE_VAL")), canPay, loginId, "되돌리기 #" + chgSq);
+		mapper.markDeployReverted(q);
+	}
+
+	public List<Map<String, Object>> changes(Object staffSq, boolean canPay) {
+		Map<String, Object> q = new HashMap<>();
+		q.put("STAFF_SQ", staffSq);
+		List<Map<String, Object>> list = mapper.selectDeployChanges(q);
+		if (!canPay) {
+			list.removeIf(h -> PRICES.contains(norm(h.get("FIELD_NM"))));
+		}
+		return list;
+	}
+
+	public List<Map<String, Object>> memos(Object staffSq) {
+		Map<String, Object> q = new HashMap<>();
+		q.put("STAFF_SQ", staffSq);
+		return mapper.selectDeployMemos(q);
+	}
+
+	public void addMemo(Object staffSq, String content, String loginId) {
+		String c = content == null ? "" : content.trim();
+		require(!c.isEmpty() && c.length() <= 1000, "메모는 1~1000자로 입력해 주세요.");
+		Map<String, Object> q = new HashMap<>();
+		q.put("STAFF_SQ", staffSq);
+		q.put("CONTENT", c);
+		q.put("EMPLY_ID", loginId);
+		mapper.insertDeployMemo(q);
+	}
+
+	public String memoStaff(Object memoSq) {
+		Map<String, Object> q = new HashMap<>();
+		q.put("MEMO_SQ", memoSq);
+		return mapper.selectDeployMemoStaff(q);
+	}
+
+	public void deleteMemo(Object memoSq, String loginId) {
+		Map<String, Object> q = new HashMap<>();
+		q.put("MEMO_SQ", memoSq);
+		q.put("EMPLY_ID", loginId);
+		require(mapper.deleteDeployMemo(q) == 1, "본인이 남긴 메모만 지울 수 있습니다.");
+	}
+
 	public void saveDeploy(Map<String, Object> p, boolean canPay) {
 		require(!text(p, "STAFF_SQ").isEmpty() || !text(p, "DEPLOY_SQ").isEmpty(), "직원을 목록에서 골라 주세요.");
 		require(!text(p, "EMP_TYPE_CD").isEmpty(), "고용형태를 골라 주세요.");
@@ -146,10 +261,15 @@ public class BoDeployService {
 		p.put("SALE_PRICE", canPay ? money(p.get("SALE_PRICE")) : 0L);
 		p.put("COST_PRICE", canPay ? money(p.get("COST_PRICE")) : 0L);
 		p.put("CAN_PAY", canPay);
+		String who = text(p, "UPDT_EMPLY_ID"), reason = text(p, "_REASON");
 		if (text(p, "DEPLOY_SQ").isEmpty()) {
 			mapper.insertDeploy(p);
+			change(p.get("DEPLOY_SQ"), p.get("STAFF_SQ"), "NEW", null, brief(p), null, who);
 		} else {
+			Map<String, Object> before = deployOne(p.get("DEPLOY_SQ"));
+			require(before != null, "투입 건을 찾지 못했습니다. 새로 고쳐 주세요.");
 			mapper.updateDeploy(p);
+			diff(before, deployOne(p.get("DEPLOY_SQ")), canPay, reason.isEmpty() ? null : reason, who);
 		}
 	}
 
@@ -163,7 +283,9 @@ public class BoDeployService {
 		p.put("COST_PRICE", canPay && !text(p, "COST_PRICE").isEmpty() ? money(p.get("COST_PRICE")) : null);
 		String memo = text(p, "MEMO");
 		p.put("MEMO", memo.isEmpty() ? "" : "[연장 " + LocalDate.now() + "] " + memo);
-		require(mapper.updateDeployEnd(p) == 1, "철수일은 투입일보다 빠를 수 없습니다.");
+		Map<String, Object> before = deployOne(p.get("DEPLOY_SQ"));
+		require(before != null && mapper.updateDeployEnd(p) == 1, "철수일은 투입일보다 빠를 수 없습니다.");
+		diff(before, deployOne(p.get("DEPLOY_SQ")), canPay, "연장", text(p, "UPDT_EMPLY_ID"));
 	}
 
 	/** 사내 투입 건과 인사카드 수행이력을 합쳐 최신 순으로. 진행 중이 맨 위 */
@@ -204,7 +326,11 @@ public class BoDeployService {
 
 	public void deleteDeploy(Map<String, Object> p) {
 		require(mapper.countDeployClosed(p) == 0, "마감된 급여에 들어간 투입 건은 삭제할 수 없습니다.");
+		Map<String, Object> before = deployOne(p.get("DEPLOY_SQ"));
 		mapper.deleteDeploy(p);
+		if (before != null) {
+			change(before.get("DEPLOY_SQ"), before.get("STAFF_SQ"), "DELETE", brief(before), null, null, text(p, "UPDT_EMPLY_ID"));
+		}
 	}
 
 	// ── 매출/매입처 ──

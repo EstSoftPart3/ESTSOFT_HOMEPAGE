@@ -72,6 +72,17 @@ public interface BoDeployMapper {
 	public int deleteBonus(Map<String, Object> param);							//켠 사람이 없을 때만 지운다
 	public int saveBonusApply(Map<String, Object> param);						//BONUS_SQ, STAFF_SQ, AMT, REFERRER_SQ, EMPLY_ID
 	public int deleteBonusApply(Map<String, Object> param);
+	public Map<String, Object> selectDeployOne(Map<String, Object> param);		//DEPLOY_SQ
+	public int insertDeployChange(Map<String, Object> param);					//DEPLOY_SQ, STAFF_SQ, FIELD, BEFORE_VAL, AFTER_VAL, REASON, EMPLY_ID
+	public List<Map<String, Object>> selectDeployChanges(Map<String, Object> param);	//STAFF_SQ
+	public Map<String, Object> selectDeployChange(Map<String, Object> param);		//CHG_SQ
+	public int markDeployReverted(Map<String, Object> param);
+	public List<Map<String, Object>> selectDeployChangeCounts();				//STAFF_SQ, CNT
+	public List<Map<String, Object>> selectDeployMemos(Map<String, Object> param);	//STAFF_SQ
+	public int insertDeployMemo(Map<String, Object> param);
+	public int deleteDeployMemo(Map<String, Object> param);						//MEMO_SQ, EMPLY_ID(본인 것만)
+	public String selectDeployMemoStaff(Map<String, Object> param);				//MEMO_SQ 의 STAFF_SQ
+	public List<Map<String, Object>> selectDeployMemoCounts();					//STAFF_SQ, CNT
 	public List<String> selectSecretStaff();									//시크릿 계정에 연결된 직원
 	public int countSecretViewer(Map<String, Object> param);					//EMPLY_ID 가 사용 중인 시크릿 계정인지
 	public String selectDeployStaff(Map<String, Object> param);					//DEPLOY_SQ 의 STAFF_SQ

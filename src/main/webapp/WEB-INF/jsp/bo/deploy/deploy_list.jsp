@@ -62,6 +62,25 @@
 	.prj-sk em { font-style: normal; color: #8a949c; font-size: 10.5px; }
 	.prj-pv { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; padding: 4px 12px; }
 	.prj-pv .k { width: 78px; color: #8a949c; font-size: 11px; font-weight: 700; }
+	/* 급여관리와 같은 목록: 체크 칩, 고정 머리글, 위 스크롤, 정렬, 두 줄 */
+	.pl-chks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 14px; }
+	.pl-chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(17,17,17,.15); font-weight: 700; font-size: 12.5px; color: #444; cursor: pointer; user-select: none; margin: 0; background: #fff; }
+	.pl-chip input { margin: 0; cursor: pointer; }
+	.pl-chip .cnt { background: rgba(17,17,17,.08); border-radius: 999px; padding: 0 7px; font-size: 11px; }
+	.pl-chip.on { border-color: #0b6e8a; background: #eef9fc; color: #0b6e8a; }
+	.pl-top { overflow-x: auto; overflow-y: hidden; height: 12px; }
+	.pl-top div { height: 1px; }
+	.pl-scroll { max-height: 70vh; overflow: auto; }
+	#dpHead th { position: sticky; top: 0; z-index: 3; background: #fafbfc; box-shadow: 0 1px 0 rgba(17,17,17,.1); }
+	#dpHead th:last-child { right: 0; z-index: 4; }
+	.pl-sort { background: none; border: 0; padding: 0 0 0 3px; color: #9aa4ac; font-size: 10px; cursor: pointer; }
+	.pl-sort.on { color: #0b6e8a; }
+	.pl-btn { border: 1px solid #b9dbe6; background: #f3fbfd; color: #0b6e8a; border-radius: 10px; padding: 0 7px; font-size: 11.5px; font-weight: 700; }
+	.pl-btn.zero { opacity: .55; font-weight: 400; }
+	#dpBody tr.dp-sub td { background: #fbfcfd; font-size: 12px; }
+	.dp-sub-mark { color: #8a949c; }
+	.pl-feed .it { border: 1px solid rgba(17,17,17,.1); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; white-space: pre-wrap; }
+	.pl-feed .who { font-size: 11.5px; color: #5f6b75; display: flex; gap: 8px; align-items: center; white-space: normal; }
 </style>
 <%@ include file="/WEB-INF/jsp/bo/deploy/deploy_common.jspf"%>
 
@@ -72,7 +91,13 @@
 			<section class="content cal-page">
 				<div class="card-header d-flex align-items-center">
 					<h3 class="card-title bTitle"><b>투입현황</b></h3>
-					<button type="button" class="btn btn-sm btn-primary ml-auto" id="btnAdd"><i class="fas fa-plus"></i> 추가</button>
+					<div class="ml-auto d-flex align-items-center" style="gap:6px" id="ymBox">
+						<label class="mb-0 small text-muted" for="ym">기준월</label>
+						<button type="button" class="btn btn-sm btn-outline-secondary" id="prevYm" aria-label="이전 달">◀</button>
+						<input type="month" id="ym" class="form-control form-control-sm" style="width:150px">
+						<button type="button" class="btn btn-sm btn-outline-secondary" id="nextYm" aria-label="다음 달">▶</button>
+					</div>
+					<button type="button" class="btn btn-sm btn-primary ml-2" id="btnAdd"><i class="fas fa-plus"></i> 추가</button>
 				</div>
 				<div class="card-body">
 					<div class="dp-views" id="views" role="tablist" aria-label="보기"></div>
@@ -80,7 +105,7 @@
 					<div class="cal-panel" id="altPanel" style="display:none"><div class="table-responsive" id="altView"></div></div>
 					<div class="cal-panel" id="mainPanel">
 						<div class="d-flex flex-wrap align-items-center pr-3">
-							<div class="cate-tabs" id="tabs" role="tablist" aria-label="고용형태"></div>
+							<div class="pl-chks" id="chks" role="group" aria-label="고용형태"></div>
 							<div class="btn-group btn-group-sm ml-auto" role="group" aria-label="보기">
 								<button type="button" class="btn btn-outline-secondary active" data-view="table">표</button>
 								<button type="button" class="btn btn-outline-secondary" data-view="timeline">타임라인</button>
@@ -95,13 +120,15 @@
 							<div class="ml-auto"><button type="button" class="btn btn-sm btn-outline-secondary" id="btnResetCols">컬럼 순서 초기화</button></div>
 						</div>
 						<div id="tableView">
-							<div class="table-responsive">
+							<div class="pl-top" id="topScroll" aria-hidden="true"><div></div></div>
+							<div class="pl-scroll" id="mainScroll">
 								<table class="table table-sm cal-table mb-0">
 									<thead id="dpHead"></thead>
 									<tbody id="dpBody"></tbody>
 								</table>
 							</div>
 							<div class="small text-muted px-3 py-2">
+								기준월에 걸친 투입 건을 보여 줍니다. 한 달에 두 건 이상이면 최근 건이 윗줄, 나머지는 └ 줄입니다. 칸을 누르면 바로 고치고 수정이력에 남습니다(되돌리기는 ✎ 이력에서).
 								머리글을 좌우로 끌면 순서가 바뀌고 이 계정에 저장됩니다(머리글에서 Alt+←/→ 도 됩니다). <b>추가</b>를 누르면 맨 아래에 입력 행이 생깁니다: Tab 이동, Enter 저장 후 다음 행, Esc 취소.
 								<span class="dp-pay-only">매출단가 옆 ⓘ 를 누르면 그 투입 건의 월별 단가·급여 이력이 보입니다.</span>
 							</div>
@@ -145,8 +172,19 @@
 
 	<script>
 	var COLS = [['STAFF_NM', '성명'], ['EMP_TYPE_CD', '형태'], ['HOME_AREA', '거주지역'], ['WORK_AREA', '근무지역'], ['SALE_PARTNER_NM', '매출처'], ['BUY_PARTNER_NM', '매입처'], ['SALE_PRICE', '매출단가', true], ['COST_PRICE', '계약단가', true],
-		['CLIENT_NM', '고객사'], ['PRJ_NM', '프로젝트'], ['GRADE_CD', '등급'], ['START_DT', '투입일'], ['END_DT', '철수일'], ['REMAIN', '남은 기간'], ['TENURE', '근속'], ['PRJ', '프로젝트 이력']];
-	var data = null, order = [], tab = '', view = 'table', drag = null, page = 'ACTIVE', prjCache = {};
+		['CLIENT_NM', '고객사'], ['PRJ_NM', '프로젝트'], ['DUP', '중복계약'], ['GRADE_CD', '등급'], ['START_DT', '투입일'], ['END_DT', '철수일'], ['REMAIN', '남은 기간'], ['TENURE', '근속'], ['PRJ', '프로젝트 이력'],
+		['MEMOS', '메모'], ['HIST', '이력']];
+	var data = null, order = [], view = 'table', drag = null, page = 'ACTIVE', prjCache = {};
+	// 기준월과 체크 칩(급여관리와 같은 구분). [키, 이름, 고용형태들]
+	var ym = moment().format('YYYY-MM'), sortKey = 'REMAIN', sortDir = 1;
+	var CHIPS = [['REGULAR', '정규', ['REGULAR']], ['PROBATION', '수습', ['PROBATION']], ['SPECIAL', '특고프리', ['SPECIAL']], ['BIZ', '사업자·기타', ['BIZ', 'EMP_INS', 'ETC']], ['EXTERNAL', '외부업체', ['EXTERNAL']]], checked = {};
+	CHIPS.forEach(function(c) { checked[c[0]] = true; });
+	function chipOf(type) { var c = CHIPS.filter(function(c) { return c[2].indexOf(type) >= 0; })[0]; return c ? c[0] : 'BIZ'; }
+	// 칸 바로 수정: 화면 칸 → [저장 칸, 입력 종류]
+	var EDIT = { EMP_TYPE_CD: ['EMP_TYPE_CD', { code: 'HR_EMP_TYPE' }], GRADE_CD: ['GRADE_CD', { code: 'HR_DEPLOY_GRADE' }], SALE_PARTNER_NM: ['SALE_PARTNER_SQ', 'SALE_YN'], BUY_PARTNER_NM: ['BUY_PARTNER_SQ', 'BUY_YN'],
+		CLIENT_NM: ['CLIENT_NM'], PRJ_NM: ['PRJ_NM'], WORK_AREA: ['WORK_AREA'], START_DT: ['START_DT', 'date'], END_DT: ['END_DT', 'date'], SALE_PRICE: ['SALE_PRICE'], COST_PRICE: ['COST_PRICE'] };
+	var FIELD_NM = { EMP_TYPE_CD: '형태', SALE_PARTNER_SQ: '매출처', BUY_PARTNER_SQ: '매입처', CLIENT_NM: '고객사', PRJ_NM: '프로젝트', WORK_AREA: '근무지역', GRADE_CD: '등급', START_DT: '투입일', END_DT: '철수일',
+		PROB_END_DT: '수습해제일', SALE_PRICE: '매출단가', COST_PRICE: '계약단가', MEMO: '메모', NEW: '등록', DELETE: '삭제' };
 	var today = moment().startOf('day'), YM = moment().format('YYYY-MM');
 	var SIDO = { '서울특별시': '서울', '서울시': '서울', '부산광역시': '부산', '대구광역시': '대구', '인천광역시': '인천', '광주광역시': '광주', '대전광역시': '대전', '울산광역시': '울산', '세종특별자치시': '세종',
 		'경기도': '경기', '강원도': '강원', '강원특별자치도': '강원', '충청북도': '충북', '충청남도': '충남', '전라북도': '전북', '전북특별자치도': '전북', '전라남도': '전남', '경상북도': '경북', '경상남도': '경남', '제주특별자치도': '제주' };
@@ -160,6 +198,16 @@
 		$('[data-view]').on('click', function() { view = $(this).data('view'); $('[data-view]').removeClass('active'); $(this).addClass('active'); render(); });
 		$('#btnAdd').on('click', function() { if (view !== 'table') $('[data-view=table]').click(); addRow(true); });
 		$('#btnResetCols').on('click', function() { saveOrder(''); order = defaultOrder(); arrangeAll(); });
+		$('#ym').val(ym).on('change', function() { if (this.value) { ym = this.value; render(); } });
+		$('#prevYm, #nextYm').on('click', function() { ym = moment(ym + '-01').add(this.id === 'prevYm' ? -1 : 1, 'months').format('YYYY-MM'); $('#ym').val(ym); render(); });
+		$('#chks').on('change', 'input.pl-chk', function() { checked[this.value] = this.checked; render(); });
+		$('#chks').on('click', '#chkAll', function() {
+			var all = CHIPS.every(function(c) { return checked[c[0]]; });
+			CHIPS.forEach(function(c) { checked[c[0]] = !all; });
+			render();
+		});
+		$('#topScroll').on('scroll', function() { $('#mainScroll').scrollLeft(this.scrollLeft); });
+		$('#mainScroll').on('scroll', function() { $('#topScroll').scrollLeft(this.scrollLeft); });
 	});
 
 	function load(after) {
@@ -189,8 +237,9 @@
 
 	function remain(r) {
 		if (r.STATE === 'WAIT') return { text: '대기 ' + today.diff(moment(r.END_DT), 'days') + '일', tone: 'warn', days: -1 };
-		if (r.STATE === 'FUTURE') return { text: moment(r.START_DT).diff(today, 'days') + '일 뒤 투입', tone: 'rent', days: 9998 };
+		if (r.STATE === 'FUTURE' || moment(r.START_DT).isAfter(today)) return { text: moment(r.START_DT).diff(today, 'days') + '일 뒤 투입', tone: 'rent', days: 9998 };
 		if (!r.END_DT) return { text: '미정', tone: '', days: 9999 };
+		if (moment(r.END_DT).isBefore(today)) return { text: moment(r.END_DT).format('M/D') + ' 철수', tone: '', days: -2 };
 		var d = moment(r.END_DT).diff(today, 'days');
 		return { text: 'D-' + d, tone: d <= 14 ? 'bad' : d <= 30 ? 'warn' : '', days: d };
 	}
@@ -206,7 +255,7 @@
 		var labels = { CLIENT_NM: '고객사', SALE_PARTNER_NM: '매출처', WORK_AREA: '지역', GRADE_CD: '등급' };
 		$('.dp-filter').each(function() {
 			var $s = $(this), f = $s.data('field'), keep = $s.val();
-			var vals = data.current.map(function(r) { return r[f]; }).filter(Boolean).filter(function(v, i, a) { return a.indexOf(v) === i; }).sort();
+			var vals = data.all.map(function(r) { return r[f]; }).filter(Boolean).filter(function(v, i, a) { return a.indexOf(v) === i; }).sort();
 			$s.empty().append($('<option value="">').text(labels[f] + ' 전체'));
 			vals.forEach(function(v) { $s.append($('<option>').val(v).text(v)); });
 			$s.val(keep || '');
@@ -220,11 +269,56 @@
 		var kw = $.trim($('#keyword').val()).toLowerCase();
 		return data.current.filter(function(r) {
 			if (r.STATE !== 'ACTIVE' || !showSecret(r)) return false;
-			if (tab && r.EMP_TYPE_CD !== tab) return false;
-			var ok = true;
-			$('.dp-filter').each(function() { if ($(this).val() && r[$(this).data('field')] !== $(this).val()) ok = false; });
-			return ok && (!kw || [r.STAFF_NM, r.PRJ_NM, r.CLIENT_NM].some(function(v) { return v && String(v).toLowerCase().indexOf(kw) >= 0; }));
+			return matches(r, kw);
 		}).sort(function(a, b) { return secretFirst(a, b) || remain(a).days - remain(b).days || String(a.STAFF_NM).localeCompare(String(b.STAFF_NM), 'ko'); });
+	}
+
+	function matches(r, kw, anyChip) {
+		if (!anyChip && !checked[chipOf(r.EMP_TYPE_CD)]) return false;
+		var ok = true;
+		$('.dp-filter').each(function() { if ($(this).val() && r[$(this).data('field')] !== $(this).val()) ok = false; });
+		return ok && (!kw || [r.STAFF_NM, r.PRJ_NM, r.CLIENT_NM].some(function(v) { return v && String(v).toLowerCase().indexOf(kw) >= 0; }));
+	}
+
+	// 기준월에 걸친 투입을 사람별로 묶는다. 최근 건이 윗줄(top), 나머지는 └ 줄
+	function monthGroups(anyChip) {
+		var first = moment(ym + '-01'), last = first.clone().endOf('month'), kw = $.trim($('#keyword').val()).toLowerCase(), by = {}, keys = [];
+		data.all.forEach(function(x) {
+			if (moment(x.START_DT).isAfter(last) || (x.END_DT && moment(x.END_DT).isBefore(first)) || !showSecret(x)) return;
+			if (!by[x.STAFF_SQ]) { by[x.STAFF_SQ] = []; keys.push(x.STAFF_SQ); }
+			by[x.STAFF_SQ].push(x);
+		});
+		return keys.map(function(k) {
+			var rows = by[k].slice().sort(function(a, b) { return b.START_DT.localeCompare(a.START_DT); });
+			return { top: rows[0], rows: rows };
+		}).filter(function(g) { return g.rows.some(function(x) { return matches(x, kw, anyChip); }); });
+	}
+
+	function counts(list) { var m = {}; (list || []).forEach(function(c) { m[c.STAFF_SQ] = Number(c.CNT); }); return m; }
+
+	var SORT = {
+		DUP: function(g) { return g.rows.length; }, REMAIN: function(g) { return remain(g.top).days; }, TENURE: function(g) { return g.top.JOIN_DT || ''; },
+		HOME_AREA: function(g) { return area(g.top.HOME_ADDR); }, EMP_TYPE_CD: function(g) { return typeName(g.top.EMP_TYPE_CD); },
+		MEMOS: function(g) { return counts(data.memoCounts)[g.top.STAFF_SQ] || 0; }, HIST: function(g) { return counts(data.chgCounts)[g.top.STAFF_SQ] || 0; },
+		PRJ: function(g) { return staffOf(g.top.STAFF_SQ).PRJ_CNT || 0; }
+	};
+	function sortVal(g) { var v = SORT[sortKey] ? SORT[sortKey](g) : g.top[sortKey]; return v === undefined || v === null ? '' : v; }
+	function sortGroups(list) {
+		return list.sort(function(a, b) {
+			var x = sortVal(a), y = sortVal(b);
+			return secretFirst(a.top, b.top) || sortDir * (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'ko', { numeric: true }))
+				|| String(a.top.STAFF_NM).localeCompare(String(b.top.STAFF_NM), 'ko');
+		});
+	}
+
+	function renderChips(groups) {
+		var all = CHIPS.every(function(c) { return checked[c[0]]; });
+		var $c = $('#chks').empty().append($('<button type="button" class="btn btn-sm btn-outline-secondary" id="chkAll">').text(all ? '☑ 전체 해제' : '☐ 전체 선택'));
+		CHIPS.forEach(function(c) {
+			var n = groups.filter(function(g) { return g.rows.some(function(x) { return chipOf(x.EMP_TYPE_CD) === c[0]; }); }).length;
+			$c.append($('<label class="pl-chip">').toggleClass('on', !!checked[c[0]]).append($('<input type="checkbox" class="pl-chk">').val(c[0]).prop('checked', !!checked[c[0]]))
+				.append($('<span>').text(c[1])).append($('<span class="cnt">').text(n)));
+		});
 	}
 
 	// ── 탭: 투입 현황 · 대기 현황 · 철수 임박 ──
@@ -277,44 +371,55 @@
 	}
 
 	function render() {
-		var idle = idleList(), ending = endingList();
+		var idle = idleList(), ending = endingList(), showYm = page === 'ACTIVE' && view === 'table';
 		renderViews(idle, ending);
+		$('#ymBox').toggleClass('d-flex', showYm).toggleClass('d-none', !showYm);
 		$('#mainPanel').toggle(page === 'ACTIVE');
 		$('#altPanel').toggle(page !== 'ACTIVE');
 		$('#btnAdd').toggle(page === 'ACTIVE');
 		if (page === 'IDLE') return renderIdle(idle);
 		if (page === 'ENDING') return renderEnding(ending);
-		var cur = data.current.filter(function(r) { return r.STATE === 'ACTIVE' && showSecret(r); });
-		$('#tabs').empty().append(hrTab('', '전체', cur.length, tab === ''));
-		(HR_CODES.HR_EMP_TYPE || []).forEach(function(c) {
-			var n = cur.filter(function(r) { return r.EMP_TYPE_CD === c.CD; }).length;
-			if (n) $('#tabs').append(hrTab(c.CD, c.NM, n, tab === c.CD));
-		});
-		$('#tabs .cate-tab').off('click').on('click', function() { tab = $(this).attr('data-tab'); render(); });
+		renderChips(monthGroups(true));
 		$('#tableView').toggle(view === 'table');
 		$('#timelineView').toggle(view === 'timeline');
-		if (view === 'timeline') renderTimeline(filtered()); else renderTable(filtered());
+		if (view === 'timeline') renderTimeline(filtered()); else renderTable(sortGroups(monthGroups()));
 	}
 
 	// ── 표 ──
 
-	function renderTable(list) {
+	function renderTable(groups) {
 		var $h = $('<tr>');
-		visibleCols().forEach(function(c) { $h.append($('<th>').attr('data-c', c[0]).toggleClass('dp-num', !!c[2]).text(colLabel(c[0]))); });
+		visibleCols().forEach(function(c) {
+			var on = sortKey === c[0];
+			$h.append($('<th>').attr('data-c', c[0]).toggleClass('dp-num', !!c[2]).text(colLabel(c[0]))
+				.append($('<button type="button" class="pl-sort">').toggleClass('on', on).attr('aria-label', c[1] + ' 정렬').text(on ? (sortDir > 0 ? '▲' : '▼') : '↕')
+					.on('click', function(e) { e.stopPropagation(); if (sortKey === c[0]) sortDir = -sortDir; else { sortKey = c[0]; sortDir = 1; } render(); })));
+		});
 		$h.append($('<th data-c="_ACT">').append('<span class="sr-only">작업</span>'));
 		$('#dpHead').empty().append($h);
 		bindDrag();
 		var $b = $('#dpBody').empty();
-		if (!list.length) $b.append($('<tr>').append($('<td class="text-center text-muted py-4">').attr('colspan', order.length + 1).text('해당하는 투입이 없습니다.')));
-		list.forEach(function(r) { $b.append(viewRow(r)); });
+		if (!groups.length) $b.append($('<tr>').append($('<td class="text-center text-muted py-4">').attr('colspan', order.length + 1).text(moment(ym + '-01').format('YYYY년 M월') + '에 걸친 투입이 없습니다. 체크나 기준월을 바꿔 보세요.')));
+		groups.forEach(function(g) { g.rows.forEach(function(r, i) { $b.append(viewRow(r, g, i > 0)); }); });
 		arrangeAll();
+		$('#topScroll div').width($('#mainScroll table').outerWidth());
+		$('#topScroll').toggle($('#mainScroll table').outerWidth() > $('#mainScroll').innerWidth());
 	}
 
-	function viewRow(r) {
-		var $tr = $('<tr>').toggleClass('dp-secret', !!r.SECRET), rm = remain(r);
+	// 사람 단위 칸(성명·근속·거주지역·이력 등)은 윗줄에만, 계약 단위 칸은 줄마다
+	var PERSON = ['TENURE', 'HOME_AREA', 'PRJ', 'DUP', 'MEMOS', 'HIST'];
+
+	function viewRow(r, g, child) {
+		var $tr = $('<tr>').toggleClass('dp-secret', !!r.SECRET).toggleClass('dp-sub', !!child), rm = remain(r);
 		visibleCols().forEach(function(c) {
 			var $td = $('<td>').attr('data-c', c[0]), v = r[c[0]];
-			if (c[0] === 'STAFF_NM') $td.append($('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { openDetail(r); }));
+			if (child && PERSON.indexOf(c[0]) >= 0) $td.text('');
+			else if (c[0] === 'STAFF_NM' && child) $td.append($('<span class="dp-sub-mark">').text('└ ' + (r.END_DT && moment(r.END_DT).isBefore(today) ? '철수' : '동시'))).append(dpInfoBtn(r.STAFF_NM + ' 투입 상세', function() { openDetail(r); }));
+			else if (c[0] === 'STAFF_NM') $td.append(r.SECRET ? $('<span title="시크릿">').text('🔒 ') : '').append($('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { openDetail(r); }));
+			else if (c[0] === 'DUP') $td.append(dupPill(g));
+			else if (c[0] === 'MEMOS') $td.append(countBtn('💬', counts(data.memoCounts)[r.STAFF_SQ], r.STAFF_NM + ' 메모', function() { memoPopup(r); }));
+			else if (c[0] === 'HIST') $td.append(countBtn('✎', counts(data.chgCounts)[r.STAFF_SQ], r.STAFF_NM + ' 수정이력', function() { historyPopup(r); }));
+			else if (EDIT[c[0]]) editCell($td, r, c);
 			else if (c[0] === 'EMP_TYPE_CD') $td.text(typeName(v));
 			else if (c[2]) $td.addClass('dp-num').text(v ? dpWon(v) : '').append(c[0] === 'SALE_PRICE' ? dpInfoBtn(r.STAFF_NM + ' 단가·급여 이력', function() { payHistory(r); }) : '');
 			else if (c[0] === 'REMAIN') $td.append($('<span class="dp-pill">').addClass(rm.tone).text(rm.text));
@@ -328,6 +433,106 @@
 		});
 		$tr.append($('<td data-c="_ACT">'));
 		return $tr;
+	}
+
+	// 칸 하나 바로 수정. 저장되면 다시 불러온다(이력 건수·두 줄 묶음이 바뀔 수 있어서)
+	function editCell($td, r, c) {
+		var e = EDIT[c[0]], field = e[0], type = e[1] === 'SALE_YN' || e[1] === 'BUY_YN' ? partnerOptions(e[1], r[field]) : e[1];
+		if (c[2]) $td.addClass('dp-num');
+		hrEditable($td, { url: '/admin/deploy/saveFieldData.do', key: { DEPLOY_SQ: r.DEPLOY_SQ }, field: field, type: type, label: r.STAFF_NM + ' ' + c[1],
+			show: function() { return r[c[0]]; }, value: function() { return r[field]; }, saved: function() { load(); },
+			paint: function($c, v) {
+				if (c[0] === 'EMP_TYPE_CD') $c.text(typeName(v));
+				else if (c[2]) $c.text(v ? dpWon(v) : '').append(c[0] === 'SALE_PRICE' ? dpInfoBtn(r.STAFF_NM + ' 단가·급여 이력', function() { payHistory(r); }) : '');
+				else if (c[0] === 'WORK_AREA') $c.text(v || '').append(farFrom(r.HOME_ADDR, v) ? $('<span class="dp-far">원거리</span>') : '');
+				else $c.text(v || '');
+			} });
+	}
+
+	// 그 달 투입이 두 건 이상이면 n건. 마우스를 올리면 건별 기간과 사이 공백일
+	function dupPill(g) {
+		if (g.rows.length < 2) return $('<span class="dp-mute">').text('—');
+		var $p = $('<span class="dp-pill rent" tabindex="0">').text(g.rows.length + '건');
+		dpHover($p, $p, function() {
+			var asc = g.rows.slice().reverse(), lines = [];
+			asc.forEach(function(x, i) {
+				lines.push(dpLine(typeName(x.EMP_TYPE_CD) + ' · ' + [x.CLIENT_NM, x.PRJ_NM].filter(Boolean).join(' '), x.START_DT + ' ~ ' + (x.END_DT || '미정')));
+				var next = asc[i + 1];
+				if (next && x.END_DT) {
+					var gap = moment(next.START_DT).diff(moment(x.END_DT), 'days') - 1;
+					if (gap > 0) lines.push('<div><span class="dp-mute">공백 ' + moment(x.END_DT).add(1, 'days').format('M/D') + '~' + moment(next.START_DT).subtract(1, 'days').format('M/D') + ' ' + gap + '일</span><span></span></div>');
+				}
+			});
+			return '<div class="dp-card sm"><div class="dp-card-top">' + dpEsc(g.top.STAFF_NM) + ' · ' + dpEsc(moment(ym + '-01').format('M월')) + ' 투입 ' + g.rows.length + '건</div><div class="dp-sec">' + lines.join('') + '</div></div>';
+		});
+		return $p;
+	}
+
+	function countBtn(icon, n, label, open) {
+		n = Number(n || 0);
+		return $('<button type="button" class="pl-btn">').toggleClass('zero', !n).attr('aria-label', label + ' ' + n + '건').text(icon + (n ? ' ' + n : '')).on('click', open);
+	}
+
+	// ── 메모 (쌓기만, 본인 것만 삭제) · 수정이력 (되돌리기는 여기서만) ──
+
+	function memoPopup(r) {
+		var $box = $('<div>');
+		function draw(first) {
+			hrPost('/admin/deploy/memoListData.do', { STAFF_SQ: r.STAFF_SQ }, function(res) {
+				var $f = $('<div class="pl-feed">');
+				res.result.list.forEach(function(m) {
+					var $who = $('<div class="who">').append($('<b>').text(m.EMPLY_NM || m.EMPLY_ID)).append($('<span>').text(m.REG_DT));
+					if (m.EMPLY_ID === res.result.me) $who.append($('<button type="button" class="btn btn-sm btn-link p-0 ml-auto text-danger">삭제</button>').on('click', function() {
+						hrPost('/admin/deploy/deleteMemoData.do', { MEMO_SQ: m.MEMO_SQ }, function() { draw(); load(); });
+					}));
+					$f.append($('<div class="it">').append($who).append($('<div>').text(m.CONTENT)));
+				});
+				if (!res.result.list.length) $f.append('<div class="text-muted small mb-2">메모가 없습니다.</div>');
+				var $ta = $('<textarea class="form-control form-control-sm" rows="2" maxlength="1000" aria-label="메모 입력" placeholder="메모 입력 (작성자·일시는 자동)">');
+				var $add = $('<button type="button" class="btn btn-sm btn-primary mt-1">남기기</button>').on('click', function() {
+					if (!$.trim($ta.val())) { $ta.focus(); return; }
+					hrPost('/admin/deploy/saveMemoData.do', { STAFF_SQ: r.STAFF_SQ, CONTENT: $ta.val() }, function() { draw(); load(); });
+				});
+				$box.empty().append($f).append($ta).append($('<div class="text-right">').append($add));
+				if (first) dpInfo(r.STAFF_NM + ' 투입 메모', $box);
+			});
+		}
+		draw(true);
+	}
+
+	function histVal(field, v) {
+		if (v === null || v === undefined || v === '') return '—';
+		if (field === 'SALE_PRICE' || field === 'COST_PRICE') return dpWon(v);
+		if (field === 'EMP_TYPE_CD') return typeName(v);
+		if (field === 'SALE_PARTNER_SQ' || field === 'BUY_PARTNER_SQ') { var p = data.partners.filter(function(x) { return String(x.PARTNER_SQ) === String(v); })[0]; return p ? p.PARTNER_NM : '#' + v; }
+		return v;
+	}
+
+	function historyPopup(r) {
+		var $box = $('<div>');
+		function draw(first) {
+			hrPost('/admin/deploy/changeListData.do', { STAFF_SQ: r.STAFF_SQ }, function(res) {
+				var $t = $('<table class="table table-sm cal-table mb-0">').append('<thead><tr><th>일시</th><th>누가</th><th>투입 건</th><th>칸</th><th>전 → 후</th><th>사유</th><th></th></tr></thead>');
+				var $b = $('<tbody>').appendTo($t);
+				res.result.forEach(function(h) {
+					var $act = $('<td>');
+					if (h.REVERTED_YN === 'Y') $act.append('<span class="dp-pill">되돌림됨</span>');
+					else if (h.FIELD_NM !== 'NEW' && h.FIELD_NM !== 'DELETE' && h.DEPLOY_NM != null) $act.append($('<button type="button" class="btn btn-sm btn-outline-secondary">↶ 되돌리기</button>').on('click', function() {
+						bootbox.confirm((FIELD_NM[h.FIELD_NM] || h.FIELD_NM) + ' 을(를) ' + histVal(h.FIELD_NM, h.BEFORE_VAL) + ' 으로 되돌릴까요?', function(ok) {
+							if (ok) hrPost('/admin/deploy/revertData.do', { CHG_SQ: h.CHG_SQ, STAFF_SQ: r.STAFF_SQ }, function() { draw(); load(); });
+						});
+					}));
+					$b.append($('<tr>').toggleClass('text-muted', h.REVERTED_YN === 'Y').append($('<td>').text(h.REG_DT)).append($('<td>').text(h.EMPLY_NM || h.EMPLY_ID || ''))
+						.append($('<td>').text(h.DEPLOY_NM == null ? '(삭제됨)' : h.DEPLOY_NM || '—')).append($('<td>').text(FIELD_NM[h.FIELD_NM] || h.FIELD_NM))
+						.append($('<td>').text(h.FIELD_NM === 'NEW' ? histVal('', h.AFTER_VAL) : h.FIELD_NM === 'DELETE' ? histVal('', h.BEFORE_VAL) : histVal(h.FIELD_NM, h.BEFORE_VAL) + ' → ' + histVal(h.FIELD_NM, h.AFTER_VAL)))
+						.append($('<td>').text(h.REASON || '')).append($act));
+				});
+				if (!res.result.length) $b.append('<tr><td colspan="7" class="text-center text-muted py-3">수정이력이 없습니다.</td></tr>');
+				$box.empty().append($('<div class="table-responsive" style="max-height:60vh">').append($t));
+				if (first) dpInfo(r.STAFF_NM + ' 투입 수정이력', $box);
+			});
+		}
+		draw(true);
 	}
 
 	function arrange($tr) {

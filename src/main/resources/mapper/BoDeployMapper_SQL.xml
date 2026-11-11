@@ -349,6 +349,60 @@
 		DELETE FROM TB_EEP_BONUS_STAFF_R WHERE BONUS_SQ = #{BONUS_SQ} AND STAFF_SQ = #{STAFF_SQ}
 	</delete>
 
+	<!-- 투입 수정이력·메모 (sql/deploy_v2.sql) -->
+	<select id="selectDeployOne" parameterType="hashMap" resultType="hashMap">
+		SELECT DEPLOY_SQ, STAFF_SQ, EMP_TYPE_CD, SALE_PARTNER_SQ, BUY_PARTNER_SQ, CLIENT_NM, PRJ_NM, WORK_AREA, GRADE_CD
+			, START_DT, END_DT, PROB_END_DT, SALE_PRICE, COST_PRICE, MEMO
+		FROM TB_EEP_DEPLOY_R WHERE DEPLOY_SQ = #{DEPLOY_SQ}
+	</select>
+
+	<insert id="insertDeployChange" parameterType="hashMap">
+		INSERT INTO TB_EEP_DEPLOY_CHG_H (DEPLOY_SQ, STAFF_SQ, FIELD_NM, BEFORE_VAL, AFTER_VAL, REASON, EMPLY_ID)
+		VALUES (#{DEPLOY_SQ}, #{STAFF_SQ}, #{FIELD}, #{BEFORE_VAL}, #{AFTER_VAL}, #{REASON}, #{EMPLY_ID})
+	</insert>
+
+	<select id="selectDeployChanges" parameterType="hashMap" resultType="hashMap">
+		SELECT H.CHG_SQ, H.DEPLOY_SQ, H.FIELD_NM, H.BEFORE_VAL, H.AFTER_VAL, H.REASON, H.REVERTED_YN, H.EMPLY_ID, DATE_FORMAT(H.REG_DT, '%Y-%m-%d %H:%i') AS REG_DT
+			, (SELECT E.EMPLY_NM FROM TB_EEP_EMPLY_M E WHERE E.EMPLY_ID = H.EMPLY_ID LIMIT 1) AS EMPLY_NM
+			, (SELECT CONCAT_WS(' ', D.CLIENT_NM, D.PRJ_NM) FROM TB_EEP_DEPLOY_R D WHERE D.DEPLOY_SQ = H.DEPLOY_SQ) AS DEPLOY_NM
+		FROM TB_EEP_DEPLOY_CHG_H H WHERE H.STAFF_SQ = #{STAFF_SQ}
+		ORDER BY H.CHG_SQ DESC
+	</select>
+
+	<select id="selectDeployChange" parameterType="hashMap" resultType="hashMap">
+		SELECT CHG_SQ, DEPLOY_SQ, STAFF_SQ, FIELD_NM, BEFORE_VAL, AFTER_VAL, REVERTED_YN FROM TB_EEP_DEPLOY_CHG_H WHERE CHG_SQ = #{CHG_SQ}
+	</select>
+
+	<update id="markDeployReverted" parameterType="hashMap">
+		UPDATE TB_EEP_DEPLOY_CHG_H SET REVERTED_YN = 'Y' WHERE CHG_SQ = #{CHG_SQ}
+	</update>
+
+	<select id="selectDeployChangeCounts" resultType="hashMap">
+		SELECT STAFF_SQ, COUNT(*) AS CNT FROM TB_EEP_DEPLOY_CHG_H GROUP BY STAFF_SQ
+	</select>
+
+	<select id="selectDeployMemos" parameterType="hashMap" resultType="hashMap">
+		SELECT M.MEMO_SQ, M.CONTENT, M.EMPLY_ID, DATE_FORMAT(M.REG_DT, '%Y-%m-%d %H:%i') AS REG_DT
+			, (SELECT E.EMPLY_NM FROM TB_EEP_EMPLY_M E WHERE E.EMPLY_ID = M.EMPLY_ID LIMIT 1) AS EMPLY_NM
+		FROM TB_EEP_DEPLOY_MEMO_R M WHERE M.STAFF_SQ = #{STAFF_SQ} ORDER BY M.MEMO_SQ DESC
+	</select>
+
+	<insert id="insertDeployMemo" parameterType="hashMap">
+		INSERT INTO TB_EEP_DEPLOY_MEMO_R (STAFF_SQ, CONTENT, EMPLY_ID) VALUES (#{STAFF_SQ}, #{CONTENT}, #{EMPLY_ID})
+	</insert>
+
+	<delete id="deleteDeployMemo" parameterType="hashMap">
+		DELETE FROM TB_EEP_DEPLOY_MEMO_R WHERE MEMO_SQ = #{MEMO_SQ} AND EMPLY_ID = #{EMPLY_ID}
+	</delete>
+
+	<select id="selectDeployMemoStaff" parameterType="hashMap" resultType="java.lang.String">
+		SELECT CAST(STAFF_SQ AS CHAR) FROM TB_EEP_DEPLOY_MEMO_R WHERE MEMO_SQ = #{MEMO_SQ}
+	</select>
+
+	<select id="selectDeployMemoCounts" resultType="hashMap">
+		SELECT STAFF_SQ, COUNT(*) AS CNT FROM TB_EEP_DEPLOY_MEMO_R GROUP BY STAFF_SQ
+	</select>
+
 	<!-- 시크릿 (sql/secret.sql) -->
 	<select id="selectSecretStaff" resultType="java.lang.String">
 		SELECT CAST(S.STAFF_SQ AS CHAR) FROM TB_EEP_HR_STAFF_M S JOIN TB_EEP_EMPLY_M E ON E.EMPLY_ID = S.EMPLY_ID WHERE E.SECRET_YN = 'Y'
