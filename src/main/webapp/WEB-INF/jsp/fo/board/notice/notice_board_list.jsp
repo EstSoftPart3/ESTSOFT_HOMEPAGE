@@ -226,7 +226,7 @@
 									"<td>" +
 										value.brdSq +
 									"</td>" +
-									"<td style='text-align:left;'><a style='text-decoration-line: none;' href='javascript:noticeDetail(" + value.brdSq + ")'>" + 
+									"<td style='text-align:left;'><a style='text-decoration-line: none;' href='" + (value.blindYn === 'Y' ? "javascript:void(0)" : "javascript:noticeDetail(" + value.brdSq + ")") + "'>" + 
 										value.brdTtl +
 									"</td>" +
 									"<td>" +

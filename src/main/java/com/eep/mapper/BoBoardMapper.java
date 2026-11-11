@@ -19,6 +19,7 @@ public interface BoBoardMapper {
 	public List noticeBoardListData(Map<String, Object> param);						//공지사항 게시판 리스트
 	public void noticeBoardInsertData(Map<String, Object> param);					//공지사항 게시판 등록
 	public List noticeBoardDetailData(Map<String, Object> param); 					//공지사항 게시판 상세
+	public int boardFlagData(Map<String, Object> param);   						//게시글 여러 건 블라인드·삭제 표시 변경
 	public void noticeBoardDeleteData(Map<String, Object> param);   				//공지사항 게시판 삭제
 	public void noticeBoardUpdateData(Map<String, Object> param);					//공지사항 게시판 수정
 	

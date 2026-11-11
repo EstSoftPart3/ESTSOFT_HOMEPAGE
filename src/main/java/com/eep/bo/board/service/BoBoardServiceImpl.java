@@ -74,6 +74,11 @@ public class BoBoardServiceImpl implements BoBoardService {
 	
 	//공지사항 게시판 삭제
 	@Override
+	public int boardFlagData(Map<String, Object> param){
+		return BoBoardDao.boardFlagData(param);
+	}
+
+	@Override
 	public void noticeBoardDeleteData(Map<String, Object> param){
 		BoBoardDao.noticeBoardDeleteData(param);
 	}

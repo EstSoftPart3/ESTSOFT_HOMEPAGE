@@ -28,6 +28,7 @@
 							<a class="btn btn-sm btn-outline-secondary" id="btnList" href="#"><i class="fas fa-arrow-left"></i> 목록</a>
 							<span class="mr-auto"></span>
 							<a class="btn btn-sm btn-outline-secondary" id="btnReply" href="#" hidden><i class="fas fa-reply"></i> 답글</a>
+							<button type="button" class="btn btn-sm btn-outline-secondary" id="btnBlind" hidden><i class="fas fa-eye-slash"></i> <span></span></button>
 							<a class="btn btn-sm btn-dark" id="btnEdit" href="#"><i class="fas fa-pen"></i> 수정</a>
 							<button type="button" class="btn btn-sm btn-outline-danger" id="btnDelete"><i class="fas fa-trash-alt"></i> 삭제</button>
 						</footer>
@@ -59,7 +60,9 @@
 		var r = ((res[B.key + 'BoardDetailData'] || {})[B.key + 'BoardDetailData'] || [])[0];
 		if (!r) { $('#title').text('글을 찾을 수 없습니다.'); $('.brd-bar .btn').not('#btnList').prop('hidden', true); return; }
 		document.title = r.brdTtl;
-		$('#title').text(r.brdTtl).append(r.useYn === 'N' ? ' <span class="cate-badge">미사용</span>' : '').append(r.delYn === 'Y' ? ' <span class="cate-badge brd-red">삭제됨</span>' : '');
+		$('#title').text(r.brdTtl).append(r.useYn === 'N' ? ' <span class="cate-badge">미사용</span>' : '').append(r.delYn === 'Y' ? ' <span class="cate-badge brd-red">삭제됨</span>' : '')
+			.append(r.blindYn === 'Y' ? ' <span class="cate-badge brd-blind">블라인드</span>' : '');
+		$('#btnBlind').prop('hidden', false).attr('data-val', r.blindYn === 'Y' ? 'N' : 'Y').find('span').text(r.blindYn === 'Y' ? '블라인드 해제' : '블라인드');
 		$('#meta').empty().append([['작성자', r.brdWrtr], ['등록', r.brdRegDt], ['수정', r.brdUpdtDt]].filter(function(m) { return m[1]; })
 			.map(function(m) { return $('<span>').text(m[0] + ' ' + m[1]); }));
 		if (B.extra) $('#extra').prop('hidden', false).empty().append(B.extra.map(function(e) { return $('<span>').append($('<b>').text(e[1])).append(document.createTextNode(' ' + (r[e[0]] || '-'))); }));
@@ -84,6 +87,12 @@
 			$('#thread').prop('hidden', false);
 		});
 	}
+
+	$('#btnBlind').on('click', function() {
+		$.post('/admin/board/boardFlagData.do', { field: 'blind', value: $(this).attr('data-val'), brdSq: brdSq }, null, 'json').done(function(res) {
+			if (res.error) fail(res.error); else location.reload();
+		}).fail(function() { fail(); });
+	});
 
 	$('#btnDelete').on('click', function() {
 		bootbox.confirm({ message: '이 글을 삭제할까요? 삭제한 글은 수정 화면에서 되살릴 수 있습니다.', locale: 'kr', buttons: { confirm: { label: '삭제', className: 'btn-danger' }, cancel: { label: '취소' } }, callback: function(ok) {

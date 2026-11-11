@@ -230,7 +230,7 @@
 	 	                    str += "<tr>";
 	 	                    str += "<td>"+ brdSq +"</td>";
 	 	                                        
-	 	                    str += "<td style='text-align:left;'><a style='text-decoration-line: none;' href='javascript:freedomDetail(" + brdSq + ")'>";
+	 	                    str += "<td style='text-align:left;'><a style='text-decoration-line: none;' href='" + (List[a].blindYn === 'Y' ? "javascript:void(0)" : "javascript:freedomDetail(" + brdSq + ")") + "'>";
 	 	                    
 	 	                    if(brdReLev > 0){
 	 	                        

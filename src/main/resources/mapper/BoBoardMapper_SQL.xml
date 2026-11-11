@@ -4,6 +4,17 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.eep.mapper.BoBoardMapper">
+
+	<!-- 게시글 여러 건 블라인드·삭제 표시. 삭제는 기존 삭제처럼 사용도 끄고, 되살리면 다시 켠다 -->
+	<update id="boardFlagData" parameterType="hashMap">
+		UPDATE TB_EEP_BRD_M
+		SET
+		<choose>
+			<when test='field == "blind"'>BLIND_YN = #{value}</when>
+			<otherwise>DEL_YN = #{value}, USE_YN = CASE WHEN #{value} = 'Y' THEN 'N' ELSE 'Y' END</otherwise>
+		</choose>
+		WHERE BRD_SQ IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+	</update>
 	
 	<!-- 원본, 답글 전체 리스트 데이터 조회 -->
 	<select id="boardListData" resultType="hashMap">
@@ -17,6 +28,7 @@
               , BOARD_CONTENT AS boardContent
               , BOARD_HITS AS boardHits
               , DEL_YN AS delYn
+              , BLIND_YN AS blindYn
               , INS_USER_ID AS insUserId
               , CAST( DATE_FORMAT( INS_DATE, '%Y-%m-%d %H:%i:%s' ) AS CHAR(19) ) AS insDate
         FROM 
@@ -45,6 +57,7 @@
               , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
               , USE_YN 										AS 		useYn
               , DEL_YN 										AS 		delYn
+              , BLIND_YN 										AS 		blindYn
  		FROM 
  				TB_EEP_BRD_M 
  		WHERE
@@ -120,6 +133,7 @@
               , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
               , USE_YN 										AS 		useYn
               , DEL_YN 										AS 		delYn
+              , BLIND_YN 										AS 		blindYn
  		FROM 
  				TB_EEP_BRD_M 
  		WHERE
@@ -172,6 +186,7 @@
               , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
               , USE_YN 										AS 		useYn
               , DEL_YN 										AS 		delYn
+              , BLIND_YN 										AS 		blindYn
  		FROM 
  				TB_EEP_BRD_M 
  		WHERE
@@ -255,6 +270,7 @@
               , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
               , USE_YN 										AS 		useYn
               , DEL_YN 										AS 		delYn
+              , BLIND_YN 										AS 		blindYn
  		FROM 
  				TB_EEP_BRD_M 
  		WHERE
@@ -309,6 +325,7 @@
               , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
               , USE_YN 										AS 		useYn
               , DEL_YN 										AS 		delYn
+              , BLIND_YN 										AS 		blindYn
  		FROM 
  				TB_EEP_BRD_M 
  		WHERE
@@ -415,6 +432,7 @@
               , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
               , USE_YN 										AS 		useYn
               , DEL_YN 										AS 		delYn
+              , BLIND_YN 										AS 		blindYn
  		FROM 
  				TB_EEP_BRD_M 
  		WHERE
@@ -510,6 +528,7 @@
               , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
               , USE_YN 										AS 		useYn
               , DEL_YN 										AS 		delYn
+              , BLIND_YN 										AS 		blindYn
  		FROM 
  				TB_EEP_BRD_M 
  		WHERE
@@ -616,6 +635,7 @@
               , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
               , USE_YN 										AS 		useYn
               , DEL_YN 										AS 		delYn
+              , BLIND_YN 										AS 		blindYn
  		FROM 
  				TB_EEP_BRD_M 
  		WHERE

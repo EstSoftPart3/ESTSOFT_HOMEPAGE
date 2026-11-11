@@ -10,7 +10,8 @@
 		<![CDATA[ 
         SELECT
         		BRD_SQ 																		   AS 		brdSq
-              , IF(LENGTH(BRD_TTL) <= 15, LEFT(BRD_TTL, 15), CONCAT(LEFT(BRD_TTL, 15), '..'))  AS 		brdTtl
+              , IF(BLIND_YN = 'Y', '관리자가 내용을 검토중입니다.', IF(LENGTH(BRD_TTL) <= 15, LEFT(BRD_TTL, 15), CONCAT(LEFT(BRD_TTL, 15), '..')))  AS 		brdTtl
+              , BLIND_YN AS blindYn
               , DATE_FORMAT(BRD_REG_DT, '%Y-%m-%d') 									   	   AS 		brdRegDt
  		FROM 
  				TB_EEP_BRD_M 
@@ -26,7 +27,8 @@
 		<![CDATA[
         SELECT
         		BRD_SQ 																		   AS 		brdSq
-              , IF(LENGTH(BRD_TTL) <= 15, LEFT(BRD_TTL, 15), CONCAT(LEFT(BRD_TTL, 15), '..'))  AS 		brdTtl
+              , IF(BLIND_YN = 'Y', '관리자가 내용을 검토중입니다.', IF(LENGTH(BRD_TTL) <= 15, LEFT(BRD_TTL, 15), CONCAT(LEFT(BRD_TTL, 15), '..')))  AS 		brdTtl
+              , BLIND_YN AS blindYn
               , DATE_FORMAT(BRD_REG_DT, '%Y-%m-%d') 									   	   AS 		brdRegDt
  		FROM 
  				TB_EEP_BRD_M 
@@ -42,7 +44,8 @@
 		<![CDATA[
         SELECT
         		BRD_SQ 																		   AS 		brdSq
-              , IF(LENGTH(BRD_TTL) <= 15, LEFT(BRD_TTL, 15), CONCAT(LEFT(BRD_TTL, 15), '..'))  AS 		brdTtl
+              , IF(BLIND_YN = 'Y', '관리자가 내용을 검토중입니다.', IF(LENGTH(BRD_TTL) <= 15, LEFT(BRD_TTL, 15), CONCAT(LEFT(BRD_TTL, 15), '..')))  AS 		brdTtl
+              , BLIND_YN AS blindYn
               , DATE_FORMAT(BRD_REG_DT, '%Y-%m-%d') 									   	   AS 		brdRegDt
  		FROM 
  				TB_EEP_BRD_M 
@@ -65,8 +68,8 @@
               , BRD_RE_REF 									AS 		brdReRep
               , BRD_RE_LEV 									AS 		brdReLev
               , BRD_RE_ORD 									AS 		brdReOrd
-              , BRD_TTL 									AS 		brdTtl
-              , BRD_CNTNT 									AS 		brdCntnt
+              , IF(BLIND_YN = 'Y', '관리자가 내용을 검토중입니다.', BRD_TTL) 									AS 		brdTtl
+              , IF(BLIND_YN = 'Y', '', BRD_CNTNT) 									AS 		brdCntnt
               , CASE WHEN CHAR_LENGTH(BRD_WRTR) > 2 THEN CONCAT(
             		 SUBSTRING(BRD_WRTR, 1, 1)
             		,LPAD('*', CHAR_LENGTH(BRD_WRTR) - 2, '*')
@@ -81,6 +84,7 @@
               , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
               , USE_YN 										AS 		useYn
               , DEL_YN 										AS 		delYn
+              , BLIND_YN 										AS 		blindYn
  		FROM 
  				TB_EEP_BRD_M 
  		WHERE
@@ -170,8 +174,8 @@
               , BRD_RE_REF 									AS 		brdReRep
               , BRD_RE_LEV 									AS 		brdReLev
               , BRD_RE_ORD 									AS 		brdReOrd
-              , BRD_TTL 									AS 		brdTtl
-              , BRD_CNTNT 									AS 		brdCntnt
+              , IF(BLIND_YN = 'Y', '관리자가 내용을 검토중입니다.', BRD_TTL) 									AS 		brdTtl
+              , IF(BLIND_YN = 'Y', '', BRD_CNTNT) 									AS 		brdCntnt
               , CASE WHEN CHAR_LENGTH(BRD_WRTR) > 2 THEN CONCAT(
             		 SUBSTRING(BRD_WRTR, 1, 1)
             		,LPAD('*', CHAR_LENGTH(BRD_WRTR) - 2, '*')
@@ -186,6 +190,7 @@
               , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
               , USE_YN 										AS 		useYn
               , DEL_YN 										AS 		delYn
+              , BLIND_YN 										AS 		blindYn
  		FROM 
  				TB_EEP_BRD_M 
  		WHERE
@@ -201,7 +206,7 @@
 			,BRD_CNTNT     		= 	#{brdCntnt}
 			,BRD_UPDT_DT      	= 	NOW()
    		WHERE
-         	1=1 AND BRD_TYP_CD = 'NT' AND BRD_SQ = #{brdSq}
+         	1=1 AND BRD_TYP_CD = 'NT' AND BRD_SQ = #{brdSq} AND BLIND_YN = 'N'
 	</update>
 	
 	<!-- 공지시항 삭제 -->
@@ -212,7 +217,7 @@
 			 DEL_YN	= 'Y'
 			,USE_YN	= 'N'
    		WHERE
-         	1=1 AND BRD_TYP_CD = 'NT' AND BRD_SQ = #{brdSq}
+         	1=1 AND BRD_TYP_CD = 'NT' AND BRD_SQ = #{brdSq} AND BLIND_YN = 'N'
 	</update>
 	
 	<!-- 교육 게시판 Mapper -->
@@ -227,8 +232,8 @@
               , BRD_RE_REF 									AS 		brdReRep
               , BRD_RE_LEV 									AS 		brdReLev
               , BRD_RE_ORD 									AS 		brdReOrd
-              , BRD_TTL 									AS 		brdTtl
-              , BRD_CNTNT 									AS 		brdCntnt
+              , IF(BLIND_YN = 'Y', '관리자가 내용을 검토중입니다.', BRD_TTL) 									AS 		brdTtl
+              , IF(BLIND_YN = 'Y', '', BRD_CNTNT) 									AS 		brdCntnt
               , CASE WHEN CHAR_LENGTH(BRD_WRTR) > 2 THEN CONCAT(
             		 SUBSTRING(BRD_WRTR, 1, 1)
             		,LPAD('*', CHAR_LENGTH(BRD_WRTR) - 2, '*')
@@ -243,6 +248,7 @@
               , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
               , USE_YN 										AS 		useYn
               , DEL_YN 										AS 		delYn
+              , BLIND_YN 										AS 		blindYn
  		FROM 
  				TB_EEP_BRD_M 
  		WHERE
@@ -343,8 +349,8 @@
               , BRD_RE_REF 									AS 		brdReRep
               , BRD_RE_LEV 									AS 		brdReLev
               , BRD_RE_ORD 									AS 		brdReOrd
-              , BRD_TTL 									AS 		brdTtl
-              , BRD_CNTNT 									AS 		brdCntnt
+              , IF(BLIND_YN = 'Y', '관리자가 내용을 검토중입니다.', BRD_TTL) 									AS 		brdTtl
+              , IF(BLIND_YN = 'Y', '', BRD_CNTNT) 									AS 		brdCntnt
               , CASE WHEN CHAR_LENGTH(BRD_WRTR) > 2 THEN CONCAT(
             		 SUBSTRING(BRD_WRTR, 1, 1)
             		,LPAD('*', CHAR_LENGTH(BRD_WRTR) - 2, '*')
@@ -359,6 +365,7 @@
               , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
               , USE_YN 										AS 		useYn
               , DEL_YN 										AS 		delYn
+              , BLIND_YN 										AS 		blindYn
  		FROM 
  				TB_EEP_BRD_M 
  		WHERE
@@ -376,7 +383,7 @@
 			,BRD_EDU_DT 		= 	#{brdEduDt}
 			,BRD_UPDT_DT      	= 	NOW()
    		WHERE
-         	1=1 AND BRD_TYP_CD = 'ED' AND BRD_SQ = #{brdSq}
+         	1=1 AND BRD_TYP_CD = 'ED' AND BRD_SQ = #{brdSq} AND BLIND_YN = 'N'
 	</update>
 	
 	<!-- 교육 삭제 -->
@@ -387,7 +394,7 @@
 			 DEL_YN	= 'Y'
 			,USE_YN	= 'N'
    		WHERE
-         	1=1 AND BRD_TYP_CD = 'ED' AND BRD_SQ = #{brdSq}
+         	1=1 AND BRD_TYP_CD = 'ED' AND BRD_SQ = #{brdSq} AND BLIND_YN = 'N'
 	</update>
 	
 	 <!-- 쟈유 게시판 Mapper -->
@@ -402,8 +409,8 @@
               , BRD_RE_REF 									AS 		brdReRep
               , BRD_RE_LEV 									AS 		brdReLev
               , BRD_RE_ORD 									AS 		brdReOrd
-              , BRD_TTL 									AS 		brdTtl
-              , BRD_CNTNT 									AS 		brdCntnt
+              , IF(BLIND_YN = 'Y', '관리자가 내용을 검토중입니다.', BRD_TTL) 									AS 		brdTtl
+              , IF(BLIND_YN = 'Y', '', BRD_CNTNT) 									AS 		brdCntnt
               , CASE WHEN CHAR_LENGTH(BRD_WRTR) > 2 THEN CONCAT(
             		 SUBSTRING(BRD_WRTR, 1, 1)
             		,LPAD('*', CHAR_LENGTH(BRD_WRTR) - 2, '*')
@@ -418,6 +425,7 @@
               , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
               , USE_YN 										AS 		useYn
               , DEL_YN 										AS 		delYn
+              , BLIND_YN 										AS 		blindYn
  		FROM 
  				TB_EEP_BRD_M 
  		WHERE
@@ -532,8 +540,8 @@
               , BRD_RE_REF 									AS 		brdReRep
               , BRD_RE_LEV 									AS 		brdReLev
               , BRD_RE_ORD 									AS 		brdReOrd
-              , BRD_TTL 									AS 		brdTtl
-              , BRD_CNTNT 									AS 		brdCntnt
+              , IF(BLIND_YN = 'Y', '관리자가 내용을 검토중입니다.', BRD_TTL) 									AS 		brdTtl
+              , IF(BLIND_YN = 'Y', '', BRD_CNTNT) 									AS 		brdCntnt
               , CASE WHEN CHAR_LENGTH(BRD_WRTR) > 2 THEN CONCAT(
             		 SUBSTRING(BRD_WRTR, 1, 1)
             		,LPAD('*', CHAR_LENGTH(BRD_WRTR) - 2, '*')
@@ -548,6 +556,7 @@
               , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
               , USE_YN 										AS 		useYn
               , DEL_YN 										AS 		delYn
+              , BLIND_YN 										AS 		blindYn
  		FROM 
  				TB_EEP_BRD_M 
  		WHERE
@@ -606,7 +615,7 @@
 			,BRD_CNTNT     		= 	#{brdCntnt}
 			,BRD_UPDT_DT      	= 	NOW()
    		WHERE
-         	1=1 AND BRD_TYP_CD = 'FD' AND BRD_SQ = #{brdSq}
+         	1=1 AND BRD_TYP_CD = 'FD' AND BRD_SQ = #{brdSq} AND BLIND_YN = 'N'
 	</update>
 	
 	<!-- 자유 게시판 삭제 -->
@@ -617,7 +626,7 @@
 			 DEL_YN	= 'Y'
 			,USE_YN	= 'N'
    		WHERE
-         	1=1 AND BRD_TYP_CD = 'FD' AND BRD_SQ = #{brdSq}
+         	1=1 AND BRD_TYP_CD = 'FD' AND BRD_SQ = #{brdSq} AND BLIND_YN = 'N'
 	</update>
 	
 	<!-- 기술문의 게시판 Mapper -->
@@ -632,8 +641,8 @@
               , BRD_RE_REF 									AS 		brdReRep
               , BRD_RE_LEV 									AS 		brdReLev
               , BRD_RE_ORD 									AS 		brdReOrd
-              , BRD_TTL 									AS 		brdTtl
-              , BRD_CNTNT 									AS 		brdCntnt
+              , IF(BLIND_YN = 'Y', '관리자가 내용을 검토중입니다.', BRD_TTL) 									AS 		brdTtl
+              , IF(BLIND_YN = 'Y', '', BRD_CNTNT) 									AS 		brdCntnt
               , CASE WHEN CHAR_LENGTH(BRD_WRTR) > 2 THEN CONCAT(
             		 SUBSTRING(BRD_WRTR, 1, 1)
             		,LPAD('*', CHAR_LENGTH(BRD_WRTR) - 2, '*')
@@ -648,6 +657,7 @@
               , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
               , USE_YN 										AS 		useYn
               , DEL_YN 										AS 		delYn
+              , BLIND_YN 										AS 		blindYn
  		FROM 
  				TB_EEP_BRD_M 
  		WHERE
@@ -762,8 +772,8 @@
               , BRD_RE_REF 									AS 		brdReRep
               , BRD_RE_LEV 									AS 		brdReLev
               , BRD_RE_ORD 									AS 		brdReOrd
-              , BRD_TTL 									AS 		brdTtl
-              , BRD_CNTNT 									AS 		brdCntnt
+              , IF(BLIND_YN = 'Y', '관리자가 내용을 검토중입니다.', BRD_TTL) 									AS 		brdTtl
+              , IF(BLIND_YN = 'Y', '', BRD_CNTNT) 									AS 		brdCntnt
               , CASE WHEN CHAR_LENGTH(BRD_WRTR) > 2 THEN CONCAT(
             		 SUBSTRING(BRD_WRTR, 1, 1)
             		,LPAD('*', CHAR_LENGTH(BRD_WRTR) - 2, '*')
@@ -778,6 +788,7 @@
               , DATE_FORMAT(BRD_UPDT_DT, '%Y-%m-%d %H:%i') 	AS 		brdUpdtDt
               , USE_YN 										AS 		useYn
               , DEL_YN 										AS 		delYn
+              , BLIND_YN 										AS 		blindYn
  		FROM 
  				TB_EEP_BRD_M 
  		WHERE
@@ -836,7 +847,7 @@
 			,BRD_CNTNT     		= 	#{brdCntnt}
 			,BRD_UPDT_DT      	= 	NOW()
    		WHERE
-         	1=1 AND BRD_TYP_CD = 'TL' AND BRD_SQ = #{brdSq}
+         	1=1 AND BRD_TYP_CD = 'TL' AND BRD_SQ = #{brdSq} AND BLIND_YN = 'N'
 	</update>
 	
 	<!-- 기술문의 게시판 삭제 -->
@@ -847,7 +858,7 @@
 			 DEL_YN	= 'Y'
 			,USE_YN	= 'N'
    		WHERE
-         	1=1 AND BRD_TYP_CD = 'TL' AND BRD_SQ = #{brdSq}
+         	1=1 AND BRD_TYP_CD = 'TL' AND BRD_SQ = #{brdSq} AND BLIND_YN = 'N'
 	</update>
 	
 </mapper>

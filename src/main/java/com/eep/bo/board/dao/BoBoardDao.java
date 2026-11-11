@@ -87,6 +87,10 @@ public class BoBoardDao {
 	}
 	
 	//공지사항 게시판 삭제
+	public int boardFlagData(Map<String, Object> param){
+		return BoBoardMapper.boardFlagData(param);
+	}
+
 	public void noticeBoardDeleteData(Map<String, Object> param){
 		
 		System.out.println("DATA = " + param);

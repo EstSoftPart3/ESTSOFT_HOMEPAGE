@@ -166,6 +166,8 @@ th, td {
 		           success: function(data) {
 		        	    
 		        	 dataContent = data.noticeBoardDetailData.noticeBoardDetailData[0];
+		        	    
+		        	 if (!dataContent || dataContent.blindYn === 'Y') { alert('관리자가 내용을 검토중입니다.'); location.replace('/eep/board/Notice/openNoticeBoardList.do'); return; }
 
 		        	 var brdCntnt 	= dataContent.brdCntnt;
 		        	 var brdTtl 	= dataContent.brdTtl;

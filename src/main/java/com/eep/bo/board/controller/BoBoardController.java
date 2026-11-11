@@ -100,6 +100,28 @@ public class BoBoardController {
 		model.addAttribute("mode", mode);
 		return "view".equals(mode) ? "bo/board/board_view" : "bo/board/board_form";
 	}
+
+	// 목록의 스위치·일괄 처리: field=blind|del, value=Y|N, brdSq=쉼표로 이은 글 번호
+	@RequestMapping("/admin/board/boardFlagData.do")
+	public ModelAndView boardFlagData(@RequestParam String field, @RequestParam String value, @RequestParam String brdSq) {
+		ModelAndView mv = new ModelAndView("jsonView");
+		List<Integer> ids = new java.util.ArrayList<>();
+		try {
+			for (String s : brdSq.split(",")) if (!s.trim().isEmpty()) ids.add(Integer.valueOf(s.trim()));
+		} catch (NumberFormatException e) {
+			ids.clear();
+		}
+		if (!("blind".equals(field) || "del".equals(field)) || !("Y".equals(value) || "N".equals(value)) || ids.isEmpty() || ids.size() > 500) {
+			mv.addObject("error", "잘못된 요청입니다.");
+			return mv;
+		}
+		Map<String, Object> param = new HashMap<>();
+		param.put("field", field);
+		param.put("value", value);
+		param.put("ids", ids);
+		mv.addObject("count", BoBoardService.boardFlagData(param));
+		return mv;
+	}
 	
 	//공지사항 게시판 목록 데이터
 	@RequestMapping("/admin/board/notice/noticeBoardListData.do")

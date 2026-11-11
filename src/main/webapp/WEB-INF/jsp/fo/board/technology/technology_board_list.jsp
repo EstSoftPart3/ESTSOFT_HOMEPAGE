@@ -230,7 +230,7 @@
 	 	                    str += "<tr>";
 	 	                    str += "<td>"+ brdSq +"</td>";
 	 	                                        
-	 	                    str += "<td style='text-align:left;'><a style='text-decoration-line: none;' href='javascript:technologyDetail(" + brdSq + ")'>";
+	 	                    str += "<td style='text-align:left;'><a style='text-decoration-line: none;' href='" + (List[a].blindYn === 'Y' ? "javascript:void(0)" : "javascript:technologyDetail(" + brdSq + ")") + "'>";
 	 	                    
 	 	                    if(brdReLev > 0){
 	 	                        

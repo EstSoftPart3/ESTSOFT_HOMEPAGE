@@ -125,7 +125,7 @@ th, td {
 												<tr style="text-align:center;background-color:#ffffff">
 													<td>
 														<a style="text-decoration:none" 
-														   href="javascript:noticeBoardList(${noticeData.brdSq})">
+														   href="javascript:${noticeData.blindYn eq 'Y' ? 'void' : 'noticeBoardList'}(${noticeData.brdSq})">
 															<c:out value="${noticeData.brdTtl}" />
 														</a>
 													</td>
@@ -169,7 +169,7 @@ th, td {
 												<tr style="text-align:center;background-color:#ffffff">
 													<td>
 														<a style="text-decoration:none" 
-														   href="javascript:technologyBoardList(${technologyData.brdSq})">
+														   href="javascript:${technologyData.blindYn eq 'Y' ? 'void' : 'technologyBoardList'}(${technologyData.brdSq})">
 															<c:out value="${technologyData.brdTtl}" />
 														</a>
 													</td>
@@ -213,7 +213,7 @@ th, td {
 												<tr style="text-align:center;background-color:#ffffff">
 													<td>
 														<a style="text-decoration:none" 
-														   href="javascript:educationBoardList(${educationData.brdSq})">
+														   href="javascript:${educationData.blindYn eq 'Y' ? 'void' : 'educationBoardList'}(${educationData.brdSq})">
 															<c:out value="${educationData.brdTtl}" />
 														</a>
 													</td>
