@@ -3,7 +3,14 @@
 <%@ include file="/WEB-INF/jsp/bo/boinclude/include_top.jspf"%>
 <%@ include file="/WEB-INF/jsp/bo/calendar/calendar_style.jspf"%>
 <%@ include file="/WEB-INF/jsp/bo/hr/hr_common.jspf"%>
+<%@ include file="/WEB-INF/jsp/bo/deploy/deploy_common.jspf"%>
 <style>
+	.st-bonus { white-space: normal; min-width: 260px; }
+	.st-bn { display: inline-flex; align-items: center; gap: 4px; margin: 1px 4px 1px 0; }
+	.st-bn .dp-pill { cursor: pointer; margin: 0; }
+	.st-bn .dp-pill:focus { outline: 2px solid #16d5ff; }
+	.st-bn input { width: 92px; height: 22px; font-size: 11px; padding: 0 4px; text-align: right; }
+	.st-bn select { width: 100px; height: 22px; font-size: 11px; padding: 0 2px; }
 	.st-name { background: none; border: 0; padding: 0; color: #0b6e8a; font-weight: 600; text-decoration: underline; cursor: pointer; }
 	.st-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 2px 18px; }
 	.st-grid .hr-card-label { flex-basis: 84px; }
@@ -90,7 +97,13 @@
 
 					<div class="cal-panel">
 						<div class="cate-tabs" id="tabs" role="tablist" aria-label="재직 상태"></div>
-						<div class="btn-group btn-group-sm mx-3 mt-2 mb-2" id="orgSeg" role="group" aria-label="소속 빠른 선택"></div>
+						<div class="d-flex flex-wrap align-items-center">
+							<div class="btn-group btn-group-sm mx-3 mt-2 mb-2" id="orgSeg" role="group" aria-label="소속 빠른 선택"></div>
+							<div class="ml-auto mr-3 d-none align-items-center" id="bonusBar" style="gap:6px">
+								<label for="fBonus" class="mb-0 small text-muted">상여 항목</label>
+								<select id="fBonus" class="form-control form-control-sm" style="width:170px"><option value="">전체</option></select>
+							</div>
+						</div>
 						<div class="table-responsive px-3">
 							<table class="table table-sm table-hover cal-table mb-0">
 								<thead id="listHead"></thead>
@@ -288,6 +301,68 @@
 			render();
 			if (then) then();
 		});
+		loadBonus();
+	}
+
+	// ── 상여 적용 칩 (상여관리 권한이 있을 때만: 권한이 없으면 주소가 막혀 열이 안 생긴다) ──
+	var BN = null;
+	function loadBonus() {
+		$.post('/admin/bonus/staffBonusData.do').done(function(res) {
+			if (!res || !res.result || !res.result.items) return;
+			BN = res.result;
+			var keep = $('#fBonus').val();
+			$('#fBonus').empty().append('<option value="">전체</option>').append(BN.items.filter(function(b) { return b.USE_YN === 'Y'; }).map(function(b) { return $('<option>').val(b.BONUS_SQ).text(b.BONUS_NM); })).val(keep || '');
+			$('#bonusBar').removeClass('d-none').addClass('d-flex');
+			render();
+		});
+	}
+	$(document).on('change', '#fBonus', function() { render(); });
+
+	function bonusCell($td, r) {
+		var pick = $('#fBonus').val();
+		BN.items.filter(function(b) { return b.USE_YN === 'Y' && (!pick || String(b.BONUS_SQ) === pick); }).forEach(function(b) {
+			var a = BN.applies.filter(function(x) { return x.BONUS_SQ === b.BONUS_SQ && x.STAFF_SQ === r.STAFF_SQ; })[0], on = !!a;
+			var $chip = $('<span class="dp-pill" role="switch" tabindex="0">').toggleClass('ok', on).attr({ 'aria-checked': on, 'aria-label': r.STAFF_NM + ' ' + b.BONUS_NM + (on ? ' 켜짐' : ' 꺼짐') }).text((on ? '● ' : '○ ') + b.BONUS_NM);
+			function send(extra) { hrPost('/admin/bonus/applyBonusData.do', $.extend({ BONUS_SQ: b.BONUS_SQ, STAFF_SQ: r.STAFF_SQ, ON: 'Y' }, extra), function() { dpHide(); loadBonus(); }); }
+			$chip.on('click keydown', function(e) {
+				if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+				e.preventDefault();
+				send(on ? { ON: 'N' } : {});
+			});
+			dpHover($chip, $chip, function() { return bonusCard(b, a, r); });
+			var $w = $('<span class="st-bn">').append($chip);
+			if (on && b.PER_AMT_YN === 'Y') {
+				$w.append($('<input class="form-control" inputmode="numeric">').attr({ 'aria-label': r.STAFF_NM + ' ' + b.BONUS_NM + ' 금액', placeholder: dpWon(dpSteps(b.STEPS)[0].a) })
+					.val(a.AMT === null || a.AMT === undefined ? '' : Number(a.AMT).toLocaleString('ko-KR')).on('change', function() { send({ AMT: this.value }); }));
+			}
+			if (on && b.TARGET_CD === 'REFERRER') {
+				var $s = $('<select class="form-control">').attr('aria-label', r.STAFF_NM + ' 추천인').append('<option value="">추천인 ▾</option>');
+				BN.staff.filter(function(s) { return s.STAFF_SQ !== r.STAFF_SQ; }).forEach(function(s) { $s.append($('<option>').val(s.STAFF_SQ).text(s.STAFF_NM)); });
+				$w.append($s.val(a.REFERRER_SQ || '').on('change', function() { send({ REFERRER_SQ: this.value }); }));
+			}
+			$td.append($w);
+		});
+	}
+
+	// 칩에 마우스를 올리면: 항목 조건 + 이 사람 적용(기준일·달성일·조건 충족·지급 월), 꺼진 칩은 적용 방식
+	function bonusCard(b, a, r) {
+		var now = moment().format('YYYY-MM'), on = !!a, steps = dpSteps(b.STEPS);
+		var h = '<div class="dp-card sm"><div class="dp-card-top">' + dpEsc(b.BONUS_NM) + '<span>' + (on ? '적용 중' : '꺼짐') + '</span></div><div class="dp-sec"><div class="s"><span>항목 조건</span><span></span></div>'
+			+ dpLine('기준일', dpBaseText(b)) + steps.map(function(s, i) { return dpLine(i ? '' : '지급 단계', dpStepText(s)); }).join('')
+			+ dpLine('지급', '달성 익월 급여 · ' + (b.TARGET_CD === 'REFERRER' ? '추천인' : '본인')) + '</div>';
+		if (!on) return h + '<div class="dp-sec"><div class="s"><span>적용 방식</span><span></span></div><div><span style="white-space:normal">'
+			+ (b.TARGET_CD === 'REFERRER' ? '추천받아 들어온 사람에게 켜고 추천인을 고르면, 단계마다 추천인의 익월 급여에 들어갑니다.' : '누르면 켭니다. 단계를 채우면 이 사람의 익월 급여 상여 칸에 자동으로 들어갑니다.') + '</span></div></div></div>';
+		var plans = BN.plans.filter(function(p) { return p.BONUS_SQ === b.BONUS_SQ && p.PERSON_SQ === r.STAFF_SQ; });
+		h += '<div class="dp-sec"><div class="s"><span>이 사람 적용</span><span></span></div>';
+		if (a.AMT !== null && a.AMT !== undefined) h += dpLine('금액', dpWon(a.AMT) + ' (사람별)');
+		if (b.TARGET_CD === 'REFERRER') h += dpLine('추천인', a.REFERRER_NM || '미지정 · 지급 안 됨');
+		if (!plans.length) h += dpLine('기준일', '없음 · 입사일이나 투입 기록이 필요합니다');
+		else h += dpLine('기준일', plans[0].BASE_DT);
+		plans.forEach(function(p) {
+			var st = !p.OK ? p.WHY : p.YM < now ? p.YM + ' 급여 (지난 달)' : p.YM === now ? p.YM + ' 급여 · 이번 달' : p.YM + ' 급여 · 예정';
+			h += dpLine(p.LABEL + ' ' + dpWon(p.AMT), p.ACHIEVE_DT + ' 달성') + '<div><span></span><span class="' + (p.OK ? '' : 'text-danger') + '">' + dpEsc(st) + '</span></div>';
+		});
+		return h + '<div class="s"><span>켠 사람 · ' + dpEsc((a.EMPLY_NM || a.EMPLY_ID) + ' ' + a.REG_DT) + '</span><span></span></div></div></div>';
 	}
 
 	function fillFilters() {
@@ -348,7 +423,7 @@
 		var list = filtered();
 		renderSummary(list);
 		var cols = [['SEQ_NO', 'NO'], ['ORG_NM', '소속'], ['DEPT_NM', '부서'], ['POSITION_NM', '직급'], ['STAFF_NM', '성명'], ['PHONE', '전화번호'], ['EMAIL', '개인 메일'], ['COMPANY_EMAIL', '회사 메일'],
-			['JOIN_DT', '입사일'], current === 'LEFT' ? ['LEAVE_DT', '퇴사일'] : null, ['_TENURE', '근속'], ['_DOCS', '서류'], ['MEMO', '비고']].filter(Boolean);
+			['JOIN_DT', '입사일'], current === 'LEFT' ? ['LEAVE_DT', '퇴사일'] : null, ['_TENURE', '근속'], ['_DOCS', '서류'], BN && current !== 'LEFT' ? ['_BONUS', '상여 적용'] : null, ['MEMO', '비고']].filter(Boolean);
 		$('#listHead').empty().append($('<tr>').append(cols.map(function(c) { return $('<th>').text(c[1]); })));
 		var $body = $('#listBody').empty();
 		if (!list.length) { $body.append($('<tr>').append($('<td class="text-center text-muted py-4">').attr('colspan', cols.length).text('해당하는 직원이 없습니다.'))); return; }
@@ -365,6 +440,8 @@
 					var miss = missingDocs(r);
 					$td.text(miss.length ? '미제출 ' + miss.length : '완료').attr('data-tone', miss.length ? 'warn' : 'good')
 						.attr('title', miss.map(function(d) { return d[1]; }).join(', '));
+				} else if (c[0] === '_BONUS') {
+					bonusCell($td.addClass('st-bonus'), r);
 				} else {
 					editable($td, r, c[0], /_DT$/.test(c[0]) ? 'date' : null);
 					if (c[0] === 'MEMO') $td.addClass('hr-memo');

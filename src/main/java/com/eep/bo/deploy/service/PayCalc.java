@@ -4,10 +4,6 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /** 월 급여 계산. '이에스티_투입현황' 엑셀의 수식을 그대로 옮겼다. DB 를 쓰지 않는다 */
 public final class PayCalc {
@@ -17,8 +13,6 @@ public final class PayCalc {
 	// 엑셀 시트 위쪽 고정값(R1, R2). shortcut: 코드 상수라 금액이 바뀌면 배포가 필요하다, 자주 바뀌면 공통코드로 옮긴다
 	static final long PROBATION_PAY = 2160000L;
 	static final long MEAL = 200000L;
-	private static final long WELCOME_BONUS = 500000L;
-	private static final long TENURE_BONUS = 500000L;
 
 	private PayCalc() {
 	}
@@ -80,34 +74,4 @@ public final class PayCalc {
 		return (base + meal + research + fuel + bonus) / 10;
 	}
 
-	/** 취업축하(입사 익월), 근속 3·6·9·12개월(달성 익월). 정규·수습만. { LABEL, YM, AMT } */
-	public static List<Map<String, Object>> bonusPlan(String type, LocalDate join) {
-		List<Map<String, Object>> out = new ArrayList<>();
-		if (!isSalaried(type) || join == null) {
-			return out;
-		}
-		out.add(bonus("취업축하", YearMonth.from(join).plusMonths(1), WELCOME_BONUS));
-		for (int months : new int[] { 3, 6, 9, 12 }) {
-			out.add(bonus("근속 " + months + "개월", YearMonth.from(join.plusMonths(months)).plusMonths(1), TENURE_BONUS));
-		}
-		return out;
-	}
-
-	public static long bonusFor(List<Map<String, Object>> plan, String ym) {
-		long sum = 0;
-		for (Map<String, Object> b : plan) {
-			if (ym.equals(b.get("YM"))) {
-				sum += (Long) b.get("AMT");
-			}
-		}
-		return sum;
-	}
-
-	private static Map<String, Object> bonus(String label, YearMonth ym, long amt) {
-		Map<String, Object> m = new HashMap<>();
-		m.put("LABEL", label);
-		m.put("YM", ym.toString());
-		m.put("AMT", amt);
-		return m;
-	}
 }

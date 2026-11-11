@@ -43,13 +43,7 @@ public class PayCalcCheck {
 		r = PayCalc.salaried("PROBATION", 3000000, "2027-01", LocalDate.parse("2026-09-14"), LocalDate.parse("2026-12-14"), LocalDate.parse("2027-01-31"));
 		same(r[0], 2800000L, "해제 지난 수습");
 		same(PayCalc.retire(4000000, 200000, 0, 0, 500000), 470000L, "퇴직금 적립");
-		// 상여: 입사 2025-10-13 -> 취업축하 2025-11, 근속 3개월 2026-02, 12개월 2026-11
-		List<Map<String, Object>> plan = PayCalc.bonusPlan("REGULAR", LocalDate.parse("2025-10-13"));
-		same(plan.get(0).get("YM"), "2025-11", "취업축하 익월");
-		same(plan.get(1).get("YM"), "2026-02", "근속 3개월");
-		same(plan.get(4).get("YM"), "2026-11", "근속 12개월");
-		same(PayCalc.bonusFor(plan, "2026-11"), 500000L, "이번 달 상여");
-		same(PayCalc.bonusPlan("SPECIAL", LocalDate.parse("2025-10-13")).size(), 0, "특고는 자동 상여 없음");
+		bonus();
 
 		// 대장 합계·손익 (엑셀 BP, BQ, BV)
 		Map<String, Object> row = new HashMap<>();
@@ -214,6 +208,64 @@ public class PayCalcCheck {
 		same(BizLicenseParser.kindByText("안녕하세요"), "null", "글자-모름");
 		Map<String, String> b = BizLicenseParser.bank(bank);
 		same(b.get("BANK_NM") + "/" + b.get("ACCOUNT_NO") + "/" + b.get("ACCOUNT_HOLDER"), "신한/140-012-345678/(주)가나시스템", "통장 칸");
+	}
+
+	/** 상여: 기준일 + n개월 달성 → 익월, 만근·근속 조건, 사람별 금액, 추천인 */
+	private static void bonus() {
+		List<Map<String, Object>> bonuses = new ArrayList<>(), applies = new ArrayList<>(), deploys = new ArrayList<>();
+		bonuses.add(item(1, "1년 근속상여", "JOIN", "SELF", "12:FULL:500000", "Y"));
+		bonuses.add(item(2, "연차수당", "JOIN_OR_CONTRACT", "SELF", "3:FULL:500000,6:FULL:500000", "N"));
+		bonuses.add(item(3, "인재추천", "CONTRACT", "REFERRER", "0:NONE:100000,3:TENURE:200000", "N"));
+		// 1번 정규: 입사 2025-10-13. 2번 프리: 2026-03-02 시작, 2026-05-10~05-19 공백. 3번은 1번이 추천
+		Map<String, Object> d1 = deploy(1, "2025-10-13", null, "WORK");
+		d1.put("JOIN_DT", "2025-10-13");
+		d1.put("EMP_TYPE_CD", "REGULAR");
+		Map<String, Object> d2 = deploy(2, "2026-03-02", "2026-05-09", "WORK"), d2b = deploy(2, "2026-05-20", null, "WORK");
+		d2.put("EMP_TYPE_CD", "SPECIAL");
+		d2b.put("EMP_TYPE_CD", "SPECIAL");
+		Map<String, Object> d3 = deploy(3, "2026-09-01", null, "WORK");
+		d3.put("EMP_TYPE_CD", "SPECIAL");
+		d3.put("STAFF_NM", "가나다");
+		deploys.addAll(java.util.Arrays.asList(d1, d2, d2b, d3));
+		applies.add(apply(1, 1, 800000L, null));
+		applies.add(apply(2, 2, null, null));
+		applies.add(apply(3, 3, null, 1));
+		Map<String, List<Map<String, Object>>> by = BonusCalc.byRecipient(BonusCalc.plans(bonuses, applies, deploys));
+		same(BonusCalc.sumFor(by.get("1"), "2026-11"), 800000L, "1년 근속 2026-11, 사람별 금액");
+		same(BonusCalc.sumFor(by.get("2"), "2026-07"), 0L, "공백이 있으면 3개월 만근 미달");
+		same(by.get("2").get(0).get("WHY"), "만근 미달: 2026-05 근무 21/31일", "만근 미달 이유");
+		same(BonusCalc.sumFor(by.get("1"), "2026-10"), 100000L, "추천 계약 시 → 추천인 익월");
+		same(BonusCalc.sumFor(by.get("1"), "2027-01"), 200000L, "추천 3개월 근속");
+		same(by.get("1").get(1).get("LABEL"), "인재추천 계약 (가나다)", "추천 항목 이름");
+		bonuses.get(0).put("USE_YN", "N");
+		same(BonusCalc.byRecipient(BonusCalc.plans(bonuses, applies, deploys)).get("1").size(), 2, "사용 끈 항목은 빠짐");
+		try {
+			BonusCalc.steps("3:FULL:abc");
+			throw new AssertionError("틀린 단계를 받았다");
+		} catch (IllegalArgumentException expected) {
+			// 저장 전에 막는다
+		}
+	}
+
+	private static Map<String, Object> item(int sq, String nm, String base, String target, String steps, String per) {
+		Map<String, Object> m = new HashMap<>();
+		m.put("BONUS_SQ", sq);
+		m.put("BONUS_NM", nm);
+		m.put("BASE_CD", base);
+		m.put("TARGET_CD", target);
+		m.put("STEPS", steps);
+		m.put("PER_AMT_YN", per);
+		m.put("USE_YN", "Y");
+		return m;
+	}
+
+	private static Map<String, Object> apply(int bonus, int staff, Long amt, Integer referrer) {
+		Map<String, Object> m = new HashMap<>();
+		m.put("BONUS_SQ", bonus);
+		m.put("STAFF_SQ", staff);
+		m.put("AMT", amt);
+		m.put("REFERRER_SQ", referrer);
+		return m;
 	}
 
 	private static Map<String, Object> deploy(int staff, String start, String end, String status) {

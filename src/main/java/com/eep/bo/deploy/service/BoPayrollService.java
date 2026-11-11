@@ -32,6 +32,8 @@ public class BoPayrollService {
 	/** 공제가 있어야 하는 고용형태. 기타계약·외부업체·사업자프리는 공제가 없는 것이 정상이다 */
 	private static final Set<String> NEED_DED = new HashSet<>(Arrays.asList("REGULAR", "PROBATION", "SPECIAL", "EMP_INS"));
 	private static final String SS_IMPORT = "payImport";
+	/** 상여 칩 키워드. 이 칩의 ✕ 는 숨김이 아니라 그 달 상여 제외다 */
+	static final String BONUS_K = "상여";
 
 	@Autowired
 	private BoDeployMapper mapper;
@@ -50,7 +52,9 @@ public class BoPayrollService {
 		List<Map<String, Object>> rows = derive(mapper.selectPayrollRows(one("YM", ym)), mapper.selectPayrollDetails(one("YM", ym)));
 		Map<Object, Map<String, Object>> prev = new HashMap<>();
 		derive(mapper.selectPayrollRows(one("YM", YearMonth.parse(ym).minusMonths(1).toString())), new ArrayList<>()).forEach(r -> prev.put(r.get("STAFF_SQ"), r));
+		Map<String, List<Map<String, Object>>> plans = BonusCalc.byRecipient(bonusPlans());
 		for (Map<String, Object> r : rows) {
+			r.put("BONUS_PLAN", plans.getOrDefault(String.valueOf(r.get("STAFF_SQ")), new ArrayList<>()));
 			Map<String, Object> p = prev.get(r.get("STAFF_SQ"));
 			List<Map<String, Object>> flags = flags(r);
 			if (p != null && n(p.get("NET")) > 0 && n(r.get("NET")) > 0) {
@@ -98,7 +102,19 @@ public class BoPayrollService {
 		q.put("STAFF_SQ", staffSq);
 		q.put("FLAG_K", keyword);
 		q.put("EMPLY_ID", loginId);
+		if (BONUS_K.equals(keyword)) {
+			require(!closed(ym), "마감된 달은 상여를 뺄 수 없습니다.");
+			if (mapper.saveAck(q) == 1) {
+				change(ym, staffSq, "BONUS_EXCLUDE", null, null, "이번 달 상여 제외", loginId);
+			}
+			return;
+		}
 		mapper.saveAck(q);
+	}
+
+	/** 켠 상여 전체의 단계별 지급 예정 */
+	public List<Map<String, Object>> bonusPlans() {
+		return BonusCalc.plans(mapper.selectBonusList(), mapper.selectBonusApplies(), mapper.selectDeployList());
 	}
 
 	public void payDate(String ym, String date, String loginId) {
@@ -184,31 +200,44 @@ public class BoPayrollService {
 		Map<String, Object> out = new HashMap<>();
 		out.put("card", card);
 		out.put("year", rows.stream().filter(r -> str(r.get("PAY_YM")).startsWith(ym.substring(0, 4))).toArray());
+		// 지급 = 마감된 달, 이번 달 = 작성중인 달, 예정 = 앞으로, 제외 = 상여 칩 ✕, 미달 = 조건 못 채움, 직접 입력 = 조건 밖 금액
+		List<Map<String, Object>> plan = BonusCalc.byRecipient(bonusPlans()).getOrDefault(String.valueOf(staffSq), new ArrayList<>());
+		Map<String, Map<String, Object>> byYm = new HashMap<>(), excluded = new HashMap<>();
+		rows.forEach(r -> byYm.put(str(r.get("PAY_YM")), r));
+		mapper.selectStaffAcks(one("STAFF_SQ", staffSq)).forEach(a -> excluded.put(str(a.get("PAY_YM")), a));
+		Map<String, Boolean> closedYm = new HashMap<>();
 		List<Map<String, Object>> bonus = new ArrayList<>();
-		List<Map<String, Object>> plan = new ArrayList<>();
-		for (Map<String, Object> r : rows) {
-			plan = (List<Map<String, Object>>) r.get("BONUS_PLAN");
-			if (n(r.get("BONUS_AMT")) == 0) {
-				continue;
+		for (Map<String, Object> p : plan) {
+			String m = str(p.get("YM"));
+			Map<String, Object> row = byYm.get(m);
+			if (m.compareTo(ym) <= 0 && row == null) {
+				continue; // 이 시스템 이전 달
 			}
-			Map<String, Object> b = new HashMap<>();
-			String m = str(r.get("PAY_YM"));
-			List<String> labels = new ArrayList<>();
-			for (Map<String, Object> p : plan) {
-				if (m.equals(p.get("YM"))) {
-					labels.add(str(p.get("LABEL")));
-				}
+			Map<String, Object> b = new HashMap<>(p);
+			Map<String, Object> ex = excluded.get(m);
+			b.put("BASIS", "기준 " + p.get("BASE_DT") + " → " + p.get("MONTHS") + "개월 " + p.get("ACHIEVE_DT") + ("FULL".equals(p.get("COND")) ? " · 만근" : "TENURE".equals(p.get("COND")) ? " · 근속" : ""));
+			if (ex != null) {
+				b.put("STATUS", "제외");
+				b.put("NOTE", str(ex.get("EMPLY_NM")) + " · " + str(ex.get("REG_DT")));
+			} else if (!Boolean.TRUE.equals(p.get("OK"))) {
+				b.put("STATUS", "미달");
+				b.put("NOTE", p.get("WHY"));
+			} else if (m.compareTo(ym) > 0) {
+				b.put("STATUS", "예정");
+			} else {
+				b.put("STATUS", closedYm.computeIfAbsent(m, this::closed) ? "지급" : "이번 달");
 			}
-			b.put("YM", m);
-			b.put("AMT", n(r.get("BONUS_AMT")));
-			b.put("LABEL", !labels.isEmpty() && !manual(r).contains("BONUS_AMT") ? String.join(", ", labels) : "엑셀 이관".equals(r.get("MEMO")) ? "상여(엑셀 이관)" : "상여(직접 입력)");
-			b.put("STATUS", closed(m) ? "지급" : "이번 달");
 			bonus.add(b);
 		}
-		for (Map<String, Object> p : plan) {
-			if (str(p.get("YM")).compareTo(ym) > 0) {
-				Map<String, Object> b = new HashMap<>(p);
-				b.put("STATUS", "예정");
+		for (Map<String, Object> r : rows) {
+			String m = str(r.get("PAY_YM"));
+			if (n(r.get("BONUS_AMT")) > 0 && (manual(r).contains("BONUS_AMT") || BonusCalc.sumFor(plan, m) == 0 || excluded.containsKey(m))) {
+				Map<String, Object> b = new HashMap<>();
+				b.put("YM", m);
+				b.put("AMT", n(r.get("BONUS_AMT")));
+				b.put("LABEL", "엑셀 이관".equals(r.get("MEMO")) ? "상여(엑셀 이관)" : "상여(직접 입력)");
+				b.put("BASIS", "상여관리 조건 밖");
+				b.put("STATUS", closedYm.computeIfAbsent(m, this::closed) ? "지급" : "이번 달");
 				bonus.add(b);
 			}
 		}
@@ -301,9 +330,17 @@ public class BoPayrollService {
 		YearMonth m = YearMonth.parse(ym);
 		int total = m.lengthOfMonth();
 		Map<Object, List<Map<String, Object>>> byStaff = new LinkedHashMap<>();
-		for (Map<String, Object> d : mapper.selectDeployList()) {
+		List<Map<String, Object>> deploys = mapper.selectDeployList();
+		for (Map<String, Object> d : deploys) {
 			byStaff.computeIfAbsent(d.get("STAFF_SQ"), k -> new ArrayList<>()).add(d);
 		}
+		Map<String, List<Map<String, Object>>> plans = BonusCalc.byRecipient(BonusCalc.plans(mapper.selectBonusList(), mapper.selectBonusApplies(), deploys));
+		Set<String> noBonus = new HashSet<>(); // 상여 칩 ✕ 로 이번 달 상여에서 뺀 사람
+		mapper.selectAcks(one("YM", ym)).forEach(a -> {
+			if (BONUS_K.equals(a.get("FLAG_K"))) {
+				noBonus.add(String.valueOf(a.get("STAFF_SQ")));
+			}
+		});
 		Map<Object, Map<String, Object>> existing = new HashMap<>();
 		mapper.selectPayrollRows(one("YM", ym)).forEach(r -> existing.put(r.get("STAFF_SQ"), r));
 		List<Object> keepDeploy = new ArrayList<>(), keepStaff = new ArrayList<>();
@@ -364,7 +401,8 @@ public class BoPayrollService {
 				mapper.savePayrollDetail(row);
 				keepDeploy.add(d.get("DEPLOY_SQ"));
 			}
-			long bonus = PayCalc.bonusFor(PayCalc.bonusPlan(type, PayCalc.date(staff.get("JOIN_DT"))), ym);
+			String sq = String.valueOf(staff.get("STAFF_SQ"));
+			long bonus = noBonus.contains(sq) ? 0 : BonusCalc.sumFor(plans.get(sq), ym);
 			Map<String, Object> cur = existing.get(staff.get("STAFF_SQ"));
 			Map<String, Object> auto = new HashMap<>();
 			auto.put("YM", ym);
@@ -443,7 +481,6 @@ public class BoPayrollService {
 			r.put("TOTAL_DAYS", totalDays);
 			r.put("SALE_PRICE", latest == null ? 0 : n(latest.get("SALE_PRICE")));
 			r.put("COST_PRICE", latest == null ? 0 : n(latest.get("COST_PRICE")));
-			r.put("BONUS_PLAN", PayCalc.bonusPlan(type, PayCalc.date(r.get("JOIN_DT"))));
 		}
 		return rows;
 	}
@@ -467,14 +504,24 @@ public class BoPayrollService {
 			}
 			flag(f, "일할", d.toString());
 		}
+		List<Map<String, Object>> plan = (List<Map<String, Object>>) r.getOrDefault("BONUS_PLAN", new ArrayList<>());
 		if (n(r.get("BONUS_AMT")) > 0) {
 			StringBuilder d = new StringBuilder();
-			for (Map<String, Object> b : (List<Map<String, Object>>) r.getOrDefault("BONUS_PLAN", new ArrayList<>())) {
-				if (str(b.get("YM")).equals(r.get("PAY_YM"))) {
-					d.append(b.get("LABEL")).append(" ").append(won(n(b.get("AMT")))).append("\n");
+			for (Map<String, Object> b : plan) {
+				if (str(b.get("YM")).equals(r.get("PAY_YM")) && Boolean.TRUE.equals(b.get("OK"))) {
+					d.append(b.get("LABEL")).append(" ").append(won(n(b.get("AMT")))).append(" (").append(b.get("ACHIEVE_DT")).append(" 달성)\n");
 				}
 			}
-			flag(f, "상여", d + "상여 칸 " + won(n(r.get("BONUS_AMT"))) + (manual(r).contains("BONUS_AMT") ? " (직접 입력)" : ""));
+			flag(f, BONUS_K, d + "상여 칸 " + won(n(r.get("BONUS_AMT"))) + (manual(r).contains("BONUS_AMT") ? " (직접 입력)" : "") + "\n✕ 를 누르면 이번 달 상여에서 뺍니다.");
+		}
+		StringBuilder miss = new StringBuilder();
+		for (Map<String, Object> b : plan) {
+			if (str(b.get("YM")).equals(r.get("PAY_YM")) && !Boolean.TRUE.equals(b.get("OK"))) {
+				miss.append(b.get("LABEL")).append(" ").append(won(n(b.get("AMT")))).append("\n").append(b.get("WHY")).append("\n");
+			}
+		}
+		if (miss.length() > 0) {
+			flag(f, "만근미달", miss + "조건을 못 채워 상여에 넣지 않았습니다. 지급하려면 상여 칸을 직접 고치세요.");
 		}
 		if (!manual(r).isEmpty()) {
 			List<String> names = new ArrayList<>();
@@ -664,7 +711,7 @@ public class BoPayrollService {
 
 	// ── 도움 ──
 
-	private void change(String ym, Object staffSq, String field, Object before, Object after, String reason, String loginId) {
+	void change(String ym, Object staffSq, String field, Object before, Object after, String reason, String loginId) {
 		Map<String, Object> h = one("YM", ym);
 		h.put("STAFF_SQ", staffSq);
 		h.put("FIELD", field);

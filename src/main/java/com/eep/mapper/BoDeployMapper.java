@@ -63,6 +63,15 @@ public interface BoDeployMapper {
 	public int updatePayrollField(Map<String, Object> param);					//YM, STAFF_SQ, FIELD(서비스의 허용 목록), VALUE, MANUAL_FIELDS
 	public int updatePayrollDeductions(Map<String, Object> param);				//대장의 공제 칸과 LEDGER_PAY
 	public int insertPayrollChange(Map<String, Object> param);
+	public List<Map<String, Object>> selectStaffAcks(Map<String, Object> param);	//STAFF_SQ 의 상여 제외(✕) 달
+	public List<Map<String, Object>> selectBonusList();							//상여 조건 + 켠 사람 수
+	public List<Map<String, Object>> selectBonusApplies();						//직원관리에서 켠 상여 전체
+	public int insertBonus(Map<String, Object> param);
+	public int updateBonus(Map<String, Object> param);
+	public int updateBonusUse(Map<String, Object> param);						//BONUS_SQ, USE_YN
+	public int deleteBonus(Map<String, Object> param);							//켠 사람이 없을 때만 지운다
+	public int saveBonusApply(Map<String, Object> param);						//BONUS_SQ, STAFF_SQ, AMT, REFERRER_SQ, EMPLY_ID
+	public int deleteBonusApply(Map<String, Object> param);
 	public List<Map<String, Object>> selectLedgerCodes();						//SRC_CD, LEDGER_CD, STAFF_SQ
 	public int saveLedgerCode(Map<String, Object> param);
 }

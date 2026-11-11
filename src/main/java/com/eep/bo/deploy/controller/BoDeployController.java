@@ -21,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 import org.springframework.web.servlet.ModelAndView;
 
+import com.eep.bo.deploy.service.BoBonusService;
 import com.eep.bo.deploy.service.BoDeployService;
 import com.eep.bo.deploy.service.BoPayrollService;
 import com.eep.bo.system.service.BoSystemService;
@@ -42,6 +43,9 @@ public class BoDeployController {
 
 	@Autowired
 	private BoSystemService systemService;
+
+	@Autowired
+	private BoBonusService bonusService;
 
 	// ── 투입현황 ──
 
@@ -275,6 +279,56 @@ public class BoDeployController {
 	@RequestMapping(value = "/admin/pay/importApplyData.do", method = RequestMethod.POST)
 	public ModelAndView importApplyData(@RequestParam Map<String, Object> param, HttpSession session) {
 		return run(() -> payrollService.importApply(String.valueOf(param.get("YM")), param, new SessionMap(session), loginId(session)));
+	}
+
+	// ── 상여관리 (조건) · 직원관리 상여 토글 ──
+
+	@RequestMapping("/admin/bonus/openBonusList.do")
+	public ModelAndView openBonusList() {
+		return new ModelAndView("bo/deploy/bonus_list");
+	}
+
+	@RequestMapping(value = "/admin/bonus/bonusListData.do", method = RequestMethod.POST)
+	public ModelAndView bonusListData() {
+		return run(() -> bonusService.list());
+	}
+
+	@RequestMapping(value = "/admin/bonus/saveBonusData.do", method = RequestMethod.POST)
+	public ModelAndView saveBonusData(@RequestParam Map<String, Object> param, HttpSession session) {
+		return run(() -> {
+			bonusService.save(param, loginId(session));
+			return "OK";
+		});
+	}
+
+	@RequestMapping(value = "/admin/bonus/useBonusData.do", method = RequestMethod.POST)
+	public ModelAndView useBonusData(@RequestParam("BONUS_SQ") int bonusSq, @RequestParam("USE_YN") String use, HttpSession session) {
+		return run(() -> {
+			bonusService.setUse(bonusSq, "Y".equals(use), loginId(session));
+			return "OK";
+		});
+	}
+
+	@RequestMapping(value = "/admin/bonus/deleteBonusData.do", method = RequestMethod.POST)
+	public ModelAndView deleteBonusData(@RequestParam("BONUS_SQ") int bonusSq) {
+		return run(() -> {
+			bonusService.delete(bonusSq);
+			return "OK";
+		});
+	}
+
+	/** 직원관리 화면이 부른다. 상여관리 권한이 없으면 인터셉터가 막아 칩 열이 안 생긴다 */
+	@RequestMapping(value = "/admin/bonus/staffBonusData.do", method = RequestMethod.POST)
+	public ModelAndView staffBonusData() {
+		return run(() -> bonusService.staffData());
+	}
+
+	@RequestMapping(value = "/admin/bonus/applyBonusData.do", method = RequestMethod.POST)
+	public ModelAndView applyBonusData(@RequestParam Map<String, Object> param, HttpSession session) {
+		return run(() -> {
+			bonusService.apply(param, loginId(session));
+			return "OK";
+		});
 	}
 
 	// ── 도움 ──

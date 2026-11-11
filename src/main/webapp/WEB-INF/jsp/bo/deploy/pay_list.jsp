@@ -151,7 +151,7 @@
 	var ALLOW = [['MEAL_AMT', '식대'], ['RESEARCH_AMT', '연구비'], ['DRIVE_AMT', '운전보조'], ['CHILD_AMT', '자녀보육'], ['BONUS_AMT', '상여'], ['FUEL_AMT', '유류비']];
 	var DED = [['NP_AMT', '국민연금'], ['HI_AMT', '건강보험'], ['LTC_AMT', '장기요양'], ['EI_AMT', '고용보험'], ['ACC_AMT', '산재'], ['IT_AMT', '소득세'], ['LIT_AMT', '지방소득세'], ['_SETTLE', '정산'], ['MUTUAL_AMT', '상조회비'], ['ETC_DED', '기타공제']];
 	var SETTLES = ['NP_SETTLE', 'HI_SETTLE', 'EI_SETTLE', 'LTC_SETTLE', 'IT_SETTLE', 'LIT_SETTLE'];
-	var LABEL = { CLOSE: '마감', REOPEN: '마감 해제', MEMO: '메모' };
+	var LABEL = { CLOSE: '마감', REOPEN: '마감 해제', MEMO: '메모', BONUS: '상여 적용', BONUS_EXCLUDE: '상여 제외' };
 	DP_PAY.concat(DP_DED).forEach(function(d) { LABEL[d[0]] = d[1]; });
 	var ym = moment().format('YYYY-MM'), rows = [], closed = false, shown = {}, checked = {}, sortKey = 'STAFF_NM', sortDir = 1, detailTab = 0, detailRow = null;
 	CHIPS.forEach(function(c) { checked[c[0]] = true; });
@@ -322,9 +322,13 @@
 
 	function flagChip(r, f) {
 		var $p = dpFlag(f);
-		if (!closed) $p.append($('<button type="button" class="pl-x" title="확인 완료(숨김)">').attr('aria-label', f.K + ' 확인 완료').text('✕').on('click', function(e) {
+		// 상여 칩의 ✕ 는 이번 달 상여 제외, 그 밖의 칩은 확인 완료(숨김)
+		var bonus = f.K === '상여', what = bonus ? '이번 달 상여 제외' : '확인 완료(숨김)';
+		if (!closed) $p.append($('<button type="button" class="pl-x">').attr({ title: what, 'aria-label': r.STAFF_NM + ' ' + f.K + ' ' + what }).text('✕').on('click', function(e) {
 			e.stopPropagation(); dpHide();
-			hrPost('/admin/pay/ackData.do', { YM: ym, STAFF_SQ: r.STAFF_SQ, FLAG_K: f.K }, function() { load(); });
+			function send() { hrPost('/admin/pay/ackData.do', { YM: ym, STAFF_SQ: r.STAFF_SQ, FLAG_K: f.K }, function() { load(); }); }
+			if (!bonus) return send();
+			bootbox.confirm(r.STAFF_NM + '의 ' + dpYmLabel(ym) + ' 상여 ' + dpWon(r.BONUS_AMT) + '원을 뺄까요? 수정이력과 상세의 상여 탭에 제외로 남습니다.', function(ok) { if (ok) send(); });
 		}));
 		return $p;
 	}
@@ -477,13 +481,15 @@
 		$body.append($('<div class="mb-2">').append($('<span class="dp-pill ok">').text('지급 누계 ' + dpWon(paid.reduce(function(s, b) { return s + Number(b.AMT || 0); }, 0))))
 			.append($('<span class="dp-pill warn">').text('이번 달 ' + dpWon(now.reduce(function(s, b) { return s + Number(b.AMT || 0); }, 0))))
 			.append($('<span class="dp-pill">').text('예정 ' + plan.length + '건')));
-		var $t = $('<table class="table table-sm cal-table mb-0">').append('<thead><tr><th>지급월</th><th>상여</th><th class="dp-num">금액</th><th>상태</th></tr></thead>');
-		var $b = $('<tbody>').appendTo($t);
+		var $t = $('<table class="table table-sm cal-table mb-0">').append('<thead><tr><th>지급월</th><th>상여</th><th>근거</th><th class="dp-num">금액</th><th>상태</th><th>비고</th></tr></thead>');
+		var $b = $('<tbody>').appendTo($t), TONE = { '지급': 'ok', '이번 달': 'warn', '제외': 'bad', '미달': 'bad' };
 		bonus.forEach(function(b) {
-			$b.append($('<tr>').toggleClass('pl-manual', b.STATUS === '이번 달').append($('<td>').text(b.YM)).append($('<td>').text(b.LABEL || ''))
-				.append($('<td class="dp-num">').text(dpWon(b.AMT))).append($('<td>').append($('<span class="dp-pill">').addClass(b.STATUS === '지급' ? 'ok' : b.STATUS === '이번 달' ? 'warn' : '').text(b.STATUS))));
+			var off = b.STATUS === '제외' || b.STATUS === '미달';
+			$b.append($('<tr>').toggleClass('pl-manual', b.STATUS === '이번 달').toggleClass('text-muted', off).append($('<td>').text(b.YM)).append($('<td>').text(b.LABEL || ''))
+				.append($('<td class="small">').text(b.BASIS || '')).append($('<td class="dp-num">').append(off ? $('<s>').text(dpWon(b.AMT)) : dpWon(b.AMT)))
+				.append($('<td>').append($('<span class="dp-pill">').addClass(TONE[b.STATUS] || '').text(b.STATUS))).append($('<td class="small">').text(b.NOTE || '')));
 		});
-		if (!bonus.length) $b.append('<tr><td colspan="4" class="text-center text-muted py-3">상여 내역이 없습니다.</td></tr>');
+		if (!bonus.length) $b.append('<tr><td colspan="6" class="text-center text-muted py-3">상여 내역이 없습니다. 상여는 직원관리에서 켭니다.</td></tr>');
 		$body.append($('<div class="table-responsive">').append($t));
 	}
 

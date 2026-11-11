@@ -301,6 +301,54 @@
 		SELECT STAFF_NM, RRN_ENC, POSITION_NM, DEPT_NM, ORG_NM, JOIN_DT FROM TB_EEP_HR_STAFF_M WHERE STAFF_SQ = #{STAFF_SQ}
 	</select>
 
+	<select id="selectStaffAcks" parameterType="hashMap" resultType="hashMap">
+		SELECT A.PAY_YM, A.EMPLY_ID, DATE_FORMAT(A.REG_DT, '%Y-%m-%d %H:%i') AS REG_DT
+			, (SELECT E.EMPLY_NM FROM TB_EEP_EMPLY_M E WHERE E.EMPLY_ID = A.EMPLY_ID LIMIT 1) AS EMPLY_NM
+		FROM TB_EEP_PAYROLL_ACK_R A WHERE A.STAFF_SQ = #{STAFF_SQ} AND A.FLAG_K = '상여'
+	</select>
+
+	<!-- 상여관리 (sql/bonus.sql) -->
+	<select id="selectBonusList" resultType="hashMap">
+		SELECT B.BONUS_SQ, B.BONUS_NM, B.BASE_CD, B.TARGET_CD, B.STEPS, B.PER_AMT_YN, B.USE_YN, B.SORT_NO
+			, (SELECT COUNT(*) FROM TB_EEP_BONUS_STAFF_R R WHERE R.BONUS_SQ = B.BONUS_SQ) AS APPLY_CNT
+		FROM TB_EEP_BONUS_M B ORDER BY B.SORT_NO, B.BONUS_SQ
+	</select>
+
+	<select id="selectBonusApplies" resultType="hashMap">
+		SELECT R.BONUS_SQ, R.STAFF_SQ, R.AMT, R.REFERRER_SQ, R.EMPLY_ID, DATE_FORMAT(R.REG_DT, '%Y-%m-%d') AS REG_DT, S.STAFF_NM
+			, (SELECT X.STAFF_NM FROM TB_EEP_HR_STAFF_M X WHERE X.STAFF_SQ = R.REFERRER_SQ) AS REFERRER_NM
+			, (SELECT E.EMPLY_NM FROM TB_EEP_EMPLY_M E WHERE E.EMPLY_ID = R.EMPLY_ID LIMIT 1) AS EMPLY_NM
+		FROM TB_EEP_BONUS_STAFF_R R JOIN TB_EEP_HR_STAFF_M S ON S.STAFF_SQ = R.STAFF_SQ
+		ORDER BY R.BONUS_SQ, S.STAFF_NM
+	</select>
+
+	<insert id="insertBonus" parameterType="hashMap">
+		INSERT INTO TB_EEP_BONUS_M (BONUS_NM, BASE_CD, TARGET_CD, STEPS, PER_AMT_YN, USE_YN, SORT_NO, UPDT_EMPLY_ID)
+		SELECT #{BONUS_NM}, #{BASE_CD}, #{TARGET_CD}, #{STEPS}, #{PER_AMT_YN}, #{USE_YN}, IFNULL(MAX(X.SORT_NO), 0) + 1, #{UPDT_EMPLY_ID} FROM TB_EEP_BONUS_M X
+	</insert>
+
+	<update id="updateBonus" parameterType="hashMap">
+		UPDATE TB_EEP_BONUS_M SET BONUS_NM = #{BONUS_NM}, BASE_CD = #{BASE_CD}, TARGET_CD = #{TARGET_CD}, STEPS = #{STEPS}, PER_AMT_YN = #{PER_AMT_YN}, USE_YN = #{USE_YN}, UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}
+		WHERE BONUS_SQ = #{BONUS_SQ}
+	</update>
+
+	<update id="updateBonusUse" parameterType="hashMap">
+		UPDATE TB_EEP_BONUS_M SET USE_YN = #{USE_YN}, UPDT_EMPLY_ID = #{UPDT_EMPLY_ID} WHERE BONUS_SQ = #{BONUS_SQ}
+	</update>
+
+	<delete id="deleteBonus" parameterType="hashMap">
+		DELETE FROM TB_EEP_BONUS_M WHERE BONUS_SQ = #{BONUS_SQ} AND NOT EXISTS (SELECT 1 FROM TB_EEP_BONUS_STAFF_R R WHERE R.BONUS_SQ = #{BONUS_SQ})
+	</delete>
+
+	<insert id="saveBonusApply" parameterType="hashMap">
+		INSERT INTO TB_EEP_BONUS_STAFF_R (BONUS_SQ, STAFF_SQ, AMT, REFERRER_SQ, EMPLY_ID) VALUES (#{BONUS_SQ}, #{STAFF_SQ}, #{AMT}, #{REFERRER_SQ}, #{EMPLY_ID})
+		ON DUPLICATE KEY UPDATE AMT = VALUES(AMT), REFERRER_SQ = VALUES(REFERRER_SQ)
+	</insert>
+
+	<delete id="deleteBonusApply" parameterType="hashMap">
+		DELETE FROM TB_EEP_BONUS_STAFF_R WHERE BONUS_SQ = #{BONUS_SQ} AND STAFF_SQ = #{STAFF_SQ}
+	</delete>
+
 	<select id="selectLedgerCodes" resultType="hashMap">
 		SELECT SRC_CD, LEDGER_CD, STAFF_SQ FROM TB_EEP_PAYROLL_CODE_R
 	</select>
