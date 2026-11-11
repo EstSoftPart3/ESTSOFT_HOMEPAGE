@@ -27,8 +27,20 @@
 	.dp-net { display: flex; justify-content: space-between; align-items: baseline; padding: 9px 12px; background: #e6f6ea; color: #17692f; font-weight: 700; }
 	.dp-net b { font-size: 17px; font-variant-numeric: tabular-nums; }
 	.dp-net.minus { background: #fdeaea; color: #a32020; }
+	.dp-card.sm { width: 340px; }
+	.dp-pill[tabindex] { cursor: help; }
+	.dp-info { border: 0; background: none; color: #0b6e8a; font-size: 13px; line-height: 1; padding: 0 3px; cursor: pointer; vertical-align: middle; }
+	.dp-info:hover, .dp-info:focus { color: #06222b; outline: 2px solid #16d5ff; border-radius: 3px; }
 </style>
 <div id="dpCard" aria-hidden="true"></div>
+<div class="modal fade" id="dpInfo" tabindex="-1" role="dialog" aria-labelledby="dpInfoTitle" aria-hidden="true" style="z-index:1065">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header"><h5 class="modal-title" id="dpInfoTitle"></h5><button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button></div>
+			<div class="modal-body" id="dpInfoBody"></div>
+		</div>
+	</div>
+</div>
 <script>
 var DP_PAY = [['BASE_AMT', '기본'], ['MEAL_AMT', '식대'], ['RESEARCH_AMT', '연구비'], ['DRIVE_AMT', '운전보조금'], ['CHILD_AMT', '자녀보육'], ['BONUS_AMT', '상여'], ['FUEL_AMT', '유류비']];
 var DP_DED = [['NP_AMT', '국민연금'], ['HI_AMT', '건강보험'], ['LTC_AMT', '장기요양'], ['EI_AMT', '고용보험'], ['ACC_AMT', '산재보험'], ['IT_AMT', '소득세'], ['LIT_AMT', '지방소득세'],
@@ -37,35 +49,30 @@ var DP_DED = [['NP_AMT', '국민연금'], ['HI_AMT', '건강보험'], ['LTC_AMT'
 function dpWon(v) { return v === null || v === undefined || v === '' ? '—' : Number(v).toLocaleString('ko-KR'); }
 function dpEsc(s) { return $('<div>').text(s === null || s === undefined ? '' : String(s)).html(); }
 function dpLine(k, v, cls) { return '<div class="' + (cls || '') + '"><span>' + dpEsc(k) + '</span><span>' + dpEsc(v) + '</span></div>'; }
-function dpItems(row, defs) {
-	var out = defs.filter(function(d) { return Number(row[d[0]] || 0) !== 0; }).map(function(d) { return dpLine(d[1], dpWon(row[d[0]])); });
-	return out.length ? out.join('') : dpLine('없음', '0', 's');
-}
-function dpPayDed(row) {
-	return '<div class="dp-two"><div class="dp-sec">' + dpLine('지급', '', 's') + dpItems(row, DP_PAY) + dpLine('지급계', dpWon(row.PAY_TOTAL), 'big') + '</div>'
-		+ '<div class="dp-sec">' + dpLine('공제', '', 's') + dpItems(row, DP_DED) + dpLine('공제계', dpWon(row.DED_TOTAL), 'big') + '</div></div>'
-		+ '<div class="dp-sec">' + dpLine('실지급', dpWon(row.NET), 'big') + '</div>';
-}
-function dpNet(label, profit, base) {
-	var rate = base ? (profit / base * 100).toFixed(1) + '%' : '—';
-	return '<div class="dp-net' + (profit < 0 ? ' minus' : '') + '"><span>' + dpEsc(label) + ' · ' + rate + '</span><b>' + dpWon(profit) + '</b></div>';
-}
 function dpYmLabel(ym) { return ym ? ym.substring(0, 4) + '년 ' + Number(ym.substring(5)) + '월' : ''; }
-// 상여 일정: 이번 달과 앞으로 두 건, 지난 건은 지급으로
-function dpBonus(row, ym) {
-	var plan = row.BONUS_PLAN || [], future = plan.filter(function(b) { return b.YM >= ym; }).slice(0, 3);
-	if (!future.length) return '';
-	return '<div class="dp-sec">' + dpLine('상여 일정', '', 's') + future.map(function(b) {
-		return dpLine(b.LABEL, (b.YM === ym ? '이번 달 ' : b.YM + ' 예정 ') + dpWon(b.AMT));
-	}).join('') + '</div>';
+// 확인 사항 키워드 칩. 마우스를 올리거나 Tab 으로 고르면 계산·근거가 뜬다. flag: { K, D }
+function dpFlag(flag) {
+	var $p = $('<span class="dp-pill" tabindex="0">').addClass(/공제없음|대장차/.test(flag.K) ? 'bad' : 'warn').text(flag.K).attr('aria-label', flag.K + ': ' + flag.D);
+	dpHover($p, $p, function() {
+		return '<div class="dp-card sm"><div class="dp-card-top">' + dpEsc(flag.K) + '</div><div class="dp-sec">'
+			+ String(flag.D).split('\n').map(function(l) { return '<div><span>' + dpEsc(l) + '</span></div>'; }).join('') + '</div></div>';
+	});
+	return $p;
 }
-function dpMonthCard(name, row, ym) {
-	return '<div class="dp-card"><div class="dp-card-top">' + dpEsc(name) + '<span>' + dpYmLabel(ym) + ' · 근무 ' + dpEsc(row.WORK_DAYS + '/' + row.TOTAL_DAYS) + '</span></div>'
-		+ '<div class="dp-sec">' + dpLine('단가', '', 's') + dpLine('월 매출단가', dpWon(row.SALE_PRICE)) + dpLine('월 계약단가', dpWon(row.COST_PRICE)) + '</div>'
-		+ dpPayDed(row) + dpBonus(row, ym)
-		+ '<div class="dp-sec">' + dpLine('손익', '', 's') + dpLine('실매출', dpWon(row.REAL_SALE)) + dpLine('지급계', '−' + dpWon(row.PAY_TOTAL)) + dpLine('회사부담', '−' + dpWon(row.COMPANY)) + '</div>'
-		+ dpNet('영업이익', row.PROFIT, row.REAL_SALE) + '</div>';
+// 작은 ⓘ 버튼. 누르면 open() 이 dpInfo 로 팝업을 띄운다
+function dpInfoBtn(label, open) {
+	return $('<button type="button" class="dp-info">').attr({ 'aria-label': label, title: label }).text('ⓘ').on('click', function(e) { e.stopPropagation(); open(); });
 }
+// rows: [[이름, 값]] 또는 jQuery 내용
+function dpInfo(title, body) {
+	$('#dpInfoTitle').text(title);
+	var $b = $('#dpInfoBody').empty();
+	if (body instanceof $) $b.append(body);
+	else $b.append($('<table class="table table-sm mb-0">').append(body.map(function(r) { return $('<tr>').append($('<th class="text-muted font-weight-normal" style="width:140px">').text(r[0])).append($('<td>').text(r[1] || '—')); })));
+	$('#dpInfo').modal('show');
+}
+$(document).on('shown.bs.modal', '#dpInfo', function() { $('.modal-backdrop').last().css('z-index', 1062); })
+	.on('hidden.bs.modal', '#dpInfo', function() { if ($('.modal.show').length) $('body').addClass('modal-open'); });
 function dpPlace(x, y) {
 	var $c = $('#dpCard'), w = $c.outerWidth(), h = $c.outerHeight();
 	$c.css({ left: Math.max(8, Math.min(x + 16, window.innerWidth - w - 8)), top: Math.max(8, Math.min(y + 12, window.innerHeight - h - 8)) });

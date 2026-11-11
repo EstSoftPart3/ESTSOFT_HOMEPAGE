@@ -85,7 +85,10 @@ public class PayCalcCheck {
 		same(row.get("NET"), 4099550L, "실지급");
 		same(row.get("COMPANY"), 852450L, "회사부담");
 		same(row.get("PROFIT"), 1447550L, "영업이익");
-		same(BoPayrollService.flags(row).toString(), "[상여]", "확인 사항");
+		same(BoPayrollService.flags(row).get(0).get("K"), "상여", "확인 사항 키워드");
+		row.put("LEDGER_PAY", 4900000L);
+		same(BoPayrollService.flags(row).get(1).get("D").toString().split("\n")[2], "차이 +200,000", "대장차 설명");
+		row.remove("LEDGER_PAY");
 		// 정규 행 + 소액 계약 행: 퇴직금 적립은 정규 행 기본에만 (엑셀 BP 열은 행마다 계산)
 		d.put("DEPLOY_TYPE", "REGULAR");
 		Map<String, Object> split = new HashMap<>();

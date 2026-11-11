@@ -16,7 +16,8 @@
 	tr.dp-edit .form-control { height: 26px; padding: 0 4px; font-size: 12px; min-width: 84px; }
 	tr.dp-edit input[type=date] { min-width: 125px; }
 	tr.dp-edit .is-invalid { box-shadow: 0 0 0 2px #e2a5a5; }
-	tr[data-hover]:hover td, tr.dp-hist:hover td { background: #eef9fc; }
+	tr.dp-hist:hover td { background: #eef9fc; }
+	.pl-changed { font-weight: 700; }
 	.dp-gantt { min-width: 960px; }
 	.dp-g-row { display: grid; grid-template-columns: 170px 1fr; border-bottom: 1px solid rgba(17,17,17,.06); align-items: center; min-height: 34px; }
 	.dp-g-who { padding: 0 12px; display: flex; gap: 6px; align-items: center; }
@@ -66,7 +67,7 @@
 							</div>
 							<div class="small text-muted px-3 py-2">
 								머리글을 좌우로 끌면 순서가 바뀌고 이 계정에 저장됩니다(머리글에서 Alt+←/→ 도 됩니다). <b>추가</b>를 누르면 맨 아래에 입력 행이 생깁니다: Tab 이동, Enter 저장 후 다음 행, Esc 취소.
-								<span class="dp-pay-only">행에 마우스를 올리면 이번 달 단가·급여·영업이익이 보입니다.</span>
+								<span class="dp-pay-only">매출단가 옆 ⓘ 를 누르면 그 투입 건의 월별 단가·급여 이력이 보입니다.</span>
 							</div>
 						</div>
 						<div id="timelineView" class="table-responsive" style="display:none"></div>
@@ -87,7 +88,7 @@
 					<input type="hidden" name="DEPLOY_SQ"><input type="hidden" name="STAFF_SQ">
 					<div class="modal-body">
 						<div class="form-row" id="detailFields"></div>
-						<div class="hr-section">투입 이력 <span class="small text-muted font-weight-normal dp-pay-only">행에 마우스를 올리면 그때의 단가·급여가 보입니다</span></div>
+						<div class="hr-section">투입 이력 <span class="small text-muted font-weight-normal dp-pay-only">기간 옆 ⓘ 를 누르면 그 건의 월별 단가·급여가 보입니다</span></div>
 						<table class="table table-sm cal-table mb-0">
 							<thead><tr><th>기간</th><th>형태</th><th>고객사</th><th>프로젝트</th><th>지역</th><th>등급</th></tr></thead>
 							<tbody id="histBody"></tbody>
@@ -109,7 +110,7 @@
 	<script>
 	var COLS = [['STAFF_NM', '성명'], ['EMP_TYPE_CD', '형태'], ['SALE_PARTNER_NM', '매출처'], ['BUY_PARTNER_NM', '매입처'], ['SALE_PRICE', '매출단가', true], ['COST_PRICE', '계약단가', true],
 		['CLIENT_NM', '고객사'], ['PRJ_NM', '프로젝트'], ['WORK_AREA', '지역'], ['GRADE_CD', '등급'], ['START_DT', '투입일'], ['END_DT', '철수일'], ['REMAIN', '남은 기간'], ['TENURE', '근속']];
-	var data = null, order = [], tab = '', kpi = '', view = 'table', months = null, histCache = {}, drag = null;
+	var data = null, order = [], tab = '', kpi = '', view = 'table', drag = null;
 	var today = moment().startOf('day'), YM = moment().format('YYYY-MM');
 
 	$(function() {
@@ -133,18 +134,8 @@
 			data.staff.forEach(function(s) { $dl.append($('<option>').val(staffLabel(s))); });
 			fillFilters();
 			render();
-			if (data.canPay && !months) loadMonth();
 			if (after) after();
 		});
-	}
-
-	function loadMonth() {
-		months = $.Deferred();
-		$.post('/admin/pay/monthData.do', { YM: YM }, function(res) {
-			var by = {};
-			((res.result || {}).rows || []).forEach(function(r) { by[r.STAFF_SQ] = r; });
-			months.resolve(by);
-		}).fail(function() { months.resolve({}); });
 	}
 
 	function visibleCols() { return COLS.filter(function(c) { return !c[2] || data.canPay; }); }
@@ -235,7 +226,7 @@
 			var $td = $('<td>').attr('data-c', c[0]), v = r[c[0]];
 			if (c[0] === 'STAFF_NM') $td.append($('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { openDetail(r); }));
 			else if (c[0] === 'EMP_TYPE_CD') $td.text(typeName(v));
-			else if (c[2]) $td.addClass('dp-num').text(v ? dpWon(v) : '');
+			else if (c[2]) $td.addClass('dp-num').text(v ? dpWon(v) : '').append(c[0] === 'SALE_PRICE' ? dpInfoBtn(r.STAFF_NM + ' 단가·급여 이력', function() { payHistory(r); }) : '');
 			else if (c[0] === 'REMAIN') $td.append($('<span class="dp-pill">').addClass(rm.tone).text(rm.text));
 			else if (c[0] === 'TENURE') $td.text(tenure(r.JOIN_DT));
 			else if (c[0] === 'CLIENT_NM' && r.STATE === 'WAIT') $td.addClass('dp-mute').text('—');
@@ -243,15 +234,6 @@
 			$tr.append($td);
 		});
 		$tr.append($('<td data-c="_ACT">'));
-		if (data.canPay) {
-			$tr.attr('data-hover', 1);
-			dpHover($tr, $tr.find('.dp-name'), function() {
-				return months.then(function(by) {
-					var m = by[r.STAFF_SQ];
-					return m ? dpMonthCard(r.STAFF_NM, m, YM) : '<div class="dp-card"><div class="dp-card-top">' + dpEsc(r.STAFF_NM) + '<span>' + dpYmLabel(YM) + '</span></div><div class="dp-sec">' + dpLine('이번 달 급여 행이 없습니다', '', 's') + '</div></div>';
-				});
-			});
-		}
 		return $tr;
 	}
 
@@ -334,7 +316,6 @@
 			if (!p.START_DT) { inputs.START_DT.addClass('is-invalid').focus(); return; }
 			if (p.END_DT && p.END_DT < p.START_DT) { inputs.END_DT.addClass('is-invalid').focus(); return; }
 			hrPost('/admin/deploy/saveDeployData.do', p, function() {
-				months = null;
 				load(function() { if (next) addRow(true); });
 			});
 		}
@@ -373,29 +354,44 @@
 		var $hb = $('#histBody').empty();
 		data.all.filter(function(x) { return x.STAFF_SQ === r.STAFF_SQ; }).slice().reverse().forEach(function(x) {
 			var $tr = $('<tr class="dp-hist" tabindex="0">').toggleClass('font-weight-bold', x.DEPLOY_SQ === r.DEPLOY_SQ)
-				.append($('<td>').text(x.START_DT + ' ~ ' + (x.END_DT || '미정'))).append($('<td>').text(typeName(x.EMP_TYPE_CD)))
+				.append($('<td>').text(x.START_DT + ' ~ ' + (x.END_DT || '미정')).append(data.canPay ? dpInfoBtn('단가·급여 이력', function() { payHistory(x); }) : ''))
+				.append($('<td>').text(typeName(x.EMP_TYPE_CD)))
 				.append($('<td>').text(x.CLIENT_NM || '')).append($('<td>').text(x.PRJ_NM || '')).append($('<td>').text(x.WORK_AREA || '')).append($('<td>').text(x.GRADE_CD || ''))
 				.on('click', function() { openDetail(x); });
-			if (data.canPay) dpHover($tr, $tr, function() { return histCard(x); });
 			$hb.append($tr);
 		});
 		$('#detailModal').modal('show');
 	}
 
-	function histCard(x) {
-		if (!histCache[x.DEPLOY_SQ]) {
-			histCache[x.DEPLOY_SQ] = $.post('/admin/pay/deployHistoryData.do', { STAFF_SQ: x.STAFF_SQ, DEPLOY_SQ: x.DEPLOY_SQ }).then(function(res) { return res.result; });
-		}
-		return histCache[x.DEPLOY_SQ].then(function(h) {
-			if (!h) return null;
-			var title = (x.CLIENT_NM || '') + (x.PRJ_NM ? ' · ' + x.PRJ_NM : '');
-			var rates = h.rates.length ? h.rates : [{ FROM_YM: x.START_DT.substring(0, 7), TO_YM: (x.END_DT || '').substring(0, 7), SALE_PRICE: x.SALE_PRICE, COST_PRICE: x.COST_PRICE }];
-			var html = '<div class="dp-card"><div class="dp-card-top">' + dpEsc(title || '투입') + '<span>' + dpEsc(x.GRADE_CD || '') + '</span></div>'
-				+ '<div class="dp-sec">' + dpLine('당시 단가', '매출단가 / 계약단가', 's') + rates.map(function(r) { return dpLine(r.FROM_YM + (r.TO_YM && r.TO_YM !== r.FROM_YM ? ' ~ ' + r.TO_YM : ''), dpWon(r.SALE_PRICE) + ' / ' + dpWon(r.COST_PRICE)); }).join('') + '</div>';
-			if (!h.last) return html + '<div class="dp-sec">' + dpLine('급여 기록이 없습니다', '', 's') + '</div></div>';
-			return html + '<div class="dp-sec">' + dpLine(dpYmLabel(h.last.PAY_YM) + ' 급여 (마지막 달)', '', 's') + '</div>' + dpPayDed(h.last)
-				+ '<div class="dp-sec">' + dpLine('투입 기간 누적', '', 's') + dpLine('실매출', dpWon(h.SALE)) + dpLine('지급계', '−' + dpWon(h.PAY)) + '</div>'
-				+ dpNet('누적 영업이익', h.PROFIT, h.SALE) + '</div>';
+	// 투입 건 하나의 월별 단가·급여 이력 표
+	function payHistory(x) {
+		var title = x.STAFF_NM ? x.STAFF_NM + ' · ' : '';
+		title += [x.CLIENT_NM, x.PRJ_NM].filter(Boolean).join(' · ') || '투입';
+		hrPost('/admin/pay/deployHistoryData.do', { STAFF_SQ: x.STAFF_SQ, DEPLOY_SQ: x.DEPLOY_SQ }, function(res) {
+			var h = res.result, months = (h.MONTHS || []).slice().reverse(), shared = months.some(function(m) { return m.SHARED; });
+			var $box = $('<div>').append($('<div class="small text-muted mb-2">').text('투입 ' + x.START_DT + ' ~ ' + (x.END_DT || '미정') + ' · 현재 단가 ' + dpWon(x.SALE_PRICE) + ' / ' + dpWon(x.COST_PRICE)));
+			if (!months.length) {
+				$box.append('<div class="text-muted py-3">급여 기록이 없습니다. 급여관리에서 그 달을 열면 만들어집니다.</div>');
+			} else {
+				var cols = [['PAY_YM', '월'], ['_DAYS', '근무일'], ['SALE_PRICE', '매출단가'], ['COST_PRICE', '계약단가'], ['REAL_SALE', '실매출'], ['PAY', '지급계'], ['DED', '공제계'], ['NET', '실지급'], ['PROFIT', '영업이익']];
+				var $t = $('<table class="table table-sm cal-table mb-0">').append($('<thead>').append($('<tr>').append(cols.map(function(c) { return $('<th>').toggleClass('dp-num', c[0] !== 'PAY_YM').text(c[1]); }))));
+				var $b = $('<tbody>').appendTo($t);
+				months.forEach(function(m, i) {
+					var prev = months[i + 1], changed = prev && (prev.SALE_PRICE !== m.SALE_PRICE || prev.COST_PRICE !== m.COST_PRICE);
+					$b.append($('<tr>').append(cols.map(function(c) {
+						if (c[0] === 'PAY_YM') return $('<td>').text(m.PAY_YM + (m.SHARED ? ' *' : ''));
+						if (c[0] === '_DAYS') return $('<td class="dp-num">').text(m.WORK_DAYS + '/' + m.TOTAL_DAYS);
+						return $('<td class="dp-num">').toggleClass('font-weight-bold', c[0] === 'PROFIT').toggleClass('text-danger', c[0] === 'PROFIT' && m.PROFIT < 0)
+							.toggleClass('pl-changed', changed && /PRICE/.test(c[0])).text(m[c[0]] === null || m[c[0]] === undefined ? '—' : dpWon(m[c[0]]));
+					})));
+				});
+				$b.append($('<tr class="font-weight-bold" style="background:#f6f8fa">').append('<td>누적</td><td></td><td></td><td></td>')
+					.append($('<td class="dp-num">').text(dpWon(h.SALE))).append($('<td class="dp-num">').text(dpWon(h.PAY))).append('<td></td><td></td>')
+					.append($('<td class="dp-num">').toggleClass('text-danger', h.PROFIT < 0).text(dpWon(h.PROFIT))));
+				$box.append($('<div class="table-responsive" style="max-height:60vh">').append($t));
+				$box.append($('<div class="small text-muted mt-2">').text('굵은 단가는 전달과 달라진 달입니다.' + (shared ? ' * 표시는 같은 달에 다른 투입 건이 함께 있어 이 건의 기본만 보입니다(공제는 사람 단위).' : '')));
+			}
+			dpInfo(title, $box);
 		});
 	}
 
@@ -403,13 +399,13 @@
 		var p = {};
 		$('#detailForm').serializeArray().forEach(function(x) { p[x.name] = x.value; });
 		delete p.STAFF_NM;
-		hrPost('/admin/deploy/saveDeployData.do', p, function() { $('#detailModal').modal('hide'); months = null; histCache = {}; load(); });
+		hrPost('/admin/deploy/saveDeployData.do', p, function() { $('#detailModal').modal('hide'); load(); });
 	}
 
 	function deleteDetail() {
 		bootbox.confirm('이 투입 건을 삭제할까요? 마감 전 달의 급여에서도 빠집니다.', function(ok) {
 			if (!ok) return;
-			hrPost('/admin/deploy/deleteDeployData.do', { DEPLOY_SQ: $('#detailForm [name=DEPLOY_SQ]').val() }, function() { $('#detailModal').modal('hide'); months = null; load(); });
+			hrPost('/admin/deploy/deleteDeployData.do', { DEPLOY_SQ: $('#detailForm [name=DEPLOY_SQ]').val() }, function() { $('#detailModal').modal('hide'); load(); });
 		});
 	}
 

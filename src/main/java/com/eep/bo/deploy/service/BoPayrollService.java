@@ -52,12 +52,12 @@ public class BoPayrollService {
 		derive(mapper.selectPayrollRows(one("YM", YearMonth.parse(ym).minusMonths(1).toString())), new ArrayList<>()).forEach(r -> prev.put(r.get("STAFF_SQ"), r));
 		for (Map<String, Object> r : rows) {
 			Map<String, Object> p = prev.get(r.get("STAFF_SQ"));
-			List<String> flags = flags(r);
+			List<Map<String, Object>> flags = flags(r);
 			if (p != null && n(p.get("NET")) > 0 && n(r.get("NET")) > 0) {
-				double pct = (n(r.get("NET")) - n(p.get("NET"))) * 100.0 / n(p.get("NET"));
-				r.put("DELTA_PCT", Math.round(pct * 10) / 10.0);
+				double pct = Math.round((n(r.get("NET")) - n(p.get("NET"))) * 1000.0 / n(p.get("NET"))) / 10.0;
+				r.put("DELTA_PCT", pct);
 				if (Math.abs(pct) >= 10) {
-					flags.add("전월 대비 " + (pct > 0 ? "+" : "") + Math.round(pct * 10) / 10.0 + "%");
+					flag(flags, "전월", "전월 실지급 " + won(n(p.get("NET"))) + "\n이번 달 실지급 " + won(n(r.get("NET"))) + "\n차이 " + signed(n(r.get("NET")) - n(p.get("NET"))) + " (" + (pct > 0 ? "+" : "") + pct + "%)");
 				}
 			}
 		}
@@ -85,6 +85,7 @@ public class BoPayrollService {
 		List<Map<String, Object>> rates = new ArrayList<>();
 		long sale = 0, pay = 0, company = 0;
 		Map<String, Object> last = null;
+		List<Map<String, Object>> months = new ArrayList<>();
 		for (Map<String, Object> d : details) {
 			if (!String.valueOf(deploySq).equals(String.valueOf(d.get("DEPLOY_SQ")))) {
 				continue;
@@ -94,6 +95,20 @@ public class BoPayrollService {
 			sale += n(d.get("REAL_SALE"));
 			pay += only ? n(month.get("PAY_TOTAL")) : n(d.get("BASE_AMT"));
 			company += only ? n(month.get("COMPANY")) : 0;
+			// 한 달에 투입 건이 여럿이면 공제는 사람 단위라 나눌 수 없어 이 건의 기본만 보인다
+			Map<String, Object> mo = new HashMap<>();
+			mo.put("PAY_YM", d.get("PAY_YM"));
+			mo.put("WORK_DAYS", d.get("WORK_DAYS"));
+			mo.put("TOTAL_DAYS", d.get("TOTAL_DAYS"));
+			mo.put("SALE_PRICE", n(d.get("SALE_PRICE")));
+			mo.put("COST_PRICE", n(d.get("COST_PRICE")));
+			mo.put("REAL_SALE", n(d.get("REAL_SALE")));
+			mo.put("PAY", only ? n(month.get("PAY_TOTAL")) : n(d.get("BASE_AMT")));
+			mo.put("DED", only ? month.get("DED_TOTAL") : null);
+			mo.put("NET", only ? month.get("NET") : null);
+			mo.put("PROFIT", only ? n(month.get("PROFIT")) : n(d.get("REAL_SALE")) - n(d.get("BASE_AMT")));
+			mo.put("SHARED", !only);
+			months.add(mo);
 			Map<String, Object> prevRate = rates.isEmpty() ? null : rates.get(rates.size() - 1);
 			if (prevRate != null && n(prevRate.get("SALE_PRICE")) == n(d.get("SALE_PRICE")) && n(prevRate.get("COST_PRICE")) == n(d.get("COST_PRICE"))) {
 				prevRate.put("TO_YM", d.get("PAY_YM"));
@@ -112,6 +127,7 @@ public class BoPayrollService {
 		Map<String, Object> out = new HashMap<>();
 		out.put("rates", rates);
 		out.put("last", last);
+		out.put("MONTHS", months);
 		out.put("SALE", sale);
 		out.put("PAY", pay);
 		out.put("PROFIT", sale - pay - company);
@@ -271,26 +287,67 @@ public class BoPayrollService {
 		return rows;
 	}
 
-	static List<String> flags(Map<String, Object> r) {
-		List<String> f = new ArrayList<>();
+	/** 확인 사항: { K 짧은 키워드, D 마우스를 올리면 보일 계산·근거(줄바꿈 구분) } */
+	@SuppressWarnings("unchecked")
+	static List<Map<String, Object>> flags(Map<String, Object> r) {
+		List<Map<String, Object>> f = new ArrayList<>();
 		if (NEED_DED.contains(str(r.get("EMP_TYPE_CD"))) && n(r.get("DED_TOTAL")) == 0) {
-			f.add("공제 미입력");
+			flag(f, "공제없음", "공제 합계가 0원입니다.\n공제 불러오기로 대장을 넣거나 칸을 눌러 입력하세요.");
 		}
-		if (n(r.get("WORK_DAYS")) < n(r.get("TOTAL_DAYS"))) {
-			f.add(n(r.get("WORK_DAYS")) == 0 ? "대기" : "일할 " + r.get("WORK_DAYS") + "/" + r.get("TOTAL_DAYS"));
+		if (n(r.get("WORK_DAYS")) == 0 && n(r.get("TOTAL_DAYS")) > 0) {
+			flag(f, "대기", "이번 달 투입이 없습니다.\n고정급 기본 " + won(n(r.get("BASE_AMT"))) + " 은 그대로 지급합니다.");
+		} else if (n(r.get("WORK_DAYS")) < n(r.get("TOTAL_DAYS"))) {
+			StringBuilder d = new StringBuilder();
+			for (Map<String, Object> x : (List<Map<String, Object>>) r.get("DETAILS")) {
+				if (n(x.get("WORK_DAYS")) < n(x.get("TOTAL_DAYS"))) {
+					d.append(d.length() > 0 ? "\n" : "").append(label(x)).append(": ").append(x.get("WORK_DAYS")).append("일 ÷ ").append(x.get("TOTAL_DAYS"))
+							.append("일 × 계약단가 ").append(won(n(x.get("COST_PRICE")))).append(" = ").append(won(n(x.get("BASE_AMT"))));
+				}
+			}
+			flag(f, "일할", d.toString());
 		}
 		if (n(r.get("BONUS_AMT")) > 0) {
-			f.add("상여");
+			StringBuilder d = new StringBuilder();
+			for (Map<String, Object> b : (List<Map<String, Object>>) r.getOrDefault("BONUS_PLAN", new ArrayList<>())) {
+				if (str(b.get("YM")).equals(r.get("PAY_YM"))) {
+					d.append(b.get("LABEL")).append(" ").append(won(n(b.get("AMT")))).append("\n");
+				}
+			}
+			flag(f, "상여", d + "상여 칸 " + won(n(r.get("BONUS_AMT"))) + (manual(r).contains("BONUS_AMT") ? " (직접 입력)" : ""));
 		}
 		if (!manual(r).isEmpty()) {
-			f.add("수기 수정");
+			List<String> names = new ArrayList<>();
+			for (String m : manual(r)) {
+				names.add(m.equals("BASE_AMT") ? "기본" : m.equals("MEAL_AMT") ? "식대" : m.equals("BONUS_AMT") ? "상여" : m);
+			}
+			flag(f, "수기", "사람이 고친 칸: " + String.join(", ", names) + "\n자동계산을 덮어쓰지 않습니다. 빈칸으로 저장하면 자동값으로 돌아갑니다.");
 		}
 		if (r.get("LEDGER_PAY") != null && n(r.get("LEDGER_PAY")) != n(r.get("PAY_TOTAL"))) {
-			long diff = n(r.get("LEDGER_PAY")) - n(r.get("PAY_TOTAL"));
-			f.add("대장 지급 " + (diff > 0 ? "+" : "") + String.format("%,d", diff));
+			flag(f, "대장차", "대장 지급합계 " + won(n(r.get("LEDGER_PAY"))) + "\n화면 지급계 " + won(n(r.get("PAY_TOTAL"))) + "\n차이 " + signed(n(r.get("LEDGER_PAY")) - n(r.get("PAY_TOTAL")))
+					+ "\n대장이 맞으면 해당 지급 칸을 고치세요.");
 		}
 		r.put("FLAGS", f);
 		return f;
+	}
+
+	private static void flag(List<Map<String, Object>> f, String keyword, String detail) {
+		Map<String, Object> m = new HashMap<>();
+		m.put("K", keyword);
+		m.put("D", detail);
+		f.add(m);
+	}
+
+	private static String label(Map<String, Object> d) {
+		String s = (str(d.get("CLIENT_NM")) + " " + str(d.get("PRJ_NM"))).trim();
+		return s.isEmpty() ? "투입" : s;
+	}
+
+	private static String won(long v) {
+		return String.format("%,d", v);
+	}
+
+	private static String signed(long v) {
+		return (v > 0 ? "+" : "") + String.format("%,d", v);
 	}
 
 	// ── 수정·마감 ──

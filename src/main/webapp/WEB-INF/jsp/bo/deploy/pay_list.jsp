@@ -199,7 +199,7 @@
 			var $tr = $('<tr>')
 				.append($('<td>').append($('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { picked = r.STAFF_SQ; $('[data-view=staff]').click(); })))
 				.append($('<td>').text(TYPE_NM[r.EMP_TYPE_CD] || r.EMP_TYPE_CD)).append($('<td>').text(clients(r)).append(r.DETAILS.length > 1 ? $('<span class="dp-pill ml-1">').text(r.DETAILS.length + '건') : ''))
-				.append($('<td>').text(projects(r))).append($('<td class="dp-num">').text(r.WORK_DAYS + '/' + r.TOTAL_DAYS)).append($('<td class="dp-num">').text(dpWon(r.SALE_PRICE)))
+				.append($('<td>').text(projects(r)).append(r.DETAILS.length ? dpInfoBtn(r.STAFF_NM + ' 투입 정보', function() { deployInfo(r); }) : '')).append($('<td class="dp-num">').text(r.WORK_DAYS + '/' + r.TOTAL_DAYS)).append($('<td class="dp-num">').text(dpWon(r.SALE_PRICE)))
 				.append(cell(r, 'BASE_AMT', ''));
 			ALLOW.forEach(function(a) { $tr.append(cell(r, a[0], 'x-allow')); });
 			$tr.append($('<td class="dp-num c-allow font-weight-bold">').text(dpWon(r.PAY_TOTAL)));
@@ -208,10 +208,22 @@
 				.append($('<td class="dp-num">').text(r.DELTA_PCT === undefined ? '' : (r.DELTA_PCT > 0 ? '+' : '') + r.DELTA_PCT + '%').toggleClass('text-danger', Math.abs(r.DELTA_PCT || 0) >= 10))
 				.append('<td class="pl-stub"></td>')
 				.append($('<td class="dp-num x-pl">').text(dpWon(r.REAL_SALE))).append($('<td class="dp-num x-pl">').text(dpWon(r.COMPANY))).append($('<td class="dp-num x-pl font-weight-bold">').text(dpWon(r.PROFIT)))
-				.append($('<td>').append(r.FLAGS.map(function(f) { return $('<span class="dp-pill">').addClass(/미입력|대장/.test(f) ? 'bad' : 'warn').text(f); })));
+				.append($('<td>').append(r.FLAGS.map(dpFlag)));
 			$b.append($tr);
 		});
 		applyBands();
+	}
+
+	// 급여대장에 없는 투입 정보만 보인다 (고객사·프로젝트·근무일·매출단가는 표에 있다)
+	function deployInfo(r) {
+		var $box = $('<div>');
+		r.DETAILS.forEach(function(d, i) {
+			$box.append($('<div class="font-weight-bold mb-1">').toggleClass('mt-3', i > 0).text([d.CLIENT_NM, d.PRJ_NM].filter(Boolean).join(' · ') || '투입 ' + (i + 1)));
+			$box.append($('<table class="table table-sm mb-0">').append([['매출처', d.SALE_PARTNER_NM], ['매입처', d.BUY_PARTNER_NM], ['근무지역', d.WORK_AREA], ['투입등급', d.GRADE_CD],
+				['투입기간', (d.START_DT || '') + ' ~ ' + (d.END_DT || '미정')], ['수습해제일', d.PROB_END_DT], ['월 계약단가', d.COST_PRICE ? dpWon(d.COST_PRICE) : ''], ['메모', d.MEMO]]
+				.map(function(x) { return $('<tr>').append($('<th class="text-muted font-weight-normal" style="width:140px">').text(x[0])).append($('<td>').text(x[1] || '—')); })));
+		});
+		dpInfo(r.STAFF_NM + ' 투입 정보', $box);
 	}
 
 	function band(t, cls, label, span) {
