@@ -1,0 +1,17 @@
+-- 게시판·댓글 등록이 번호·등록일·사용여부 NULL 로 들어가던 문제를 바로잡는다.
+-- 매퍼는 BRD_SQ 를 넣지 않고 BRD_REG_DT·USE_YN·DEL_YN 에 default 를 넣으며, 댓글은 CMMNT_SQ 에 NULL 을 넣고 ON DUPLICATE KEY UPDATE 로 수정·삭제한다.
+-- 즉 AUTO_INCREMENT·기본값·키가 있다고 가정한 코드라 테이블을 그 가정에 맞춘다.
+-- 번호가 NULL 인 옛 행에는 MAX+n 번호만 매기고 USE_YN·DEL_YN 은 건드리지 않는다(숨김 상태 유지).
+--
+-- 되돌리기:
+-- ALTER TABLE TB_EEP_BRD_M MODIFY BRD_SQ int(11) DEFAULT NULL, MODIFY BRD_REG_DT varchar(50) DEFAULT NULL, MODIFY USE_YN varchar(50) DEFAULT NULL, MODIFY DEL_YN varchar(50) DEFAULT NULL;
+-- ALTER TABLE TB_EEP_BRD_CMMNT_M MODIFY CMMNT_SQ int(11) DEFAULT NULL, DROP PRIMARY KEY, MODIFY CMMNT_REG_DT varchar(50) DEFAULT NULL;
+
+SET @b = (SELECT IFNULL(MAX(BRD_SQ), 0) FROM TB_EEP_BRD_M);
+UPDATE TB_EEP_BRD_M SET BRD_SQ = (@b := @b + 1) WHERE BRD_SQ IS NULL ORDER BY BRD_REG_DT;
+ALTER TABLE TB_EEP_BRD_M MODIFY BRD_SQ int(11) NOT NULL AUTO_INCREMENT, MODIFY BRD_REG_DT datetime DEFAULT current_timestamp(), MODIFY USE_YN varchar(50) DEFAULT 'Y', MODIFY DEL_YN varchar(50) DEFAULT 'N';
+
+-- 키가 없어 번호가 겹친 댓글이 있다(서로 다른 글의 별개 댓글). 다른 곳에서 CMMNT_SQ 를 참조하지 않으므로 등록일 순으로 다시 매긴다.
+SET @c = 0;
+UPDATE TB_EEP_BRD_CMMNT_M SET CMMNT_SQ = (@c := @c + 1) ORDER BY CMMNT_REG_DT, CMMNT_SQ;
+ALTER TABLE TB_EEP_BRD_CMMNT_M MODIFY CMMNT_SQ int(11) NOT NULL AUTO_INCREMENT, ADD PRIMARY KEY (CMMNT_SQ), MODIFY CMMNT_REG_DT datetime DEFAULT current_timestamp();
