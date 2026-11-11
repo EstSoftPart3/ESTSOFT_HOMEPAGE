@@ -75,6 +75,11 @@ public class BoMemberController {
 		return call(() -> { service.setStatus(sqs, action, actor); return "OK"; });
 	}
 
+	@RequestMapping(value = "/admin/member/setSecretData.do", method = RequestMethod.POST)
+	public ModelAndView setSecretData(@RequestParam("EMPLY_SQ") int sq, @RequestParam("SECRET_YN") String on, HttpSession session) {
+		Actor actor = actor(session);
+		return call(() -> { service.setSecret(sq, "Y".equals(on), actor); return "OK"; });
+	}
 
 	@RequestMapping(value = "/admin/member/searchStaffData.do", method = RequestMethod.POST)
 	public ModelAndView searchStaffData(@RequestParam("KEYWORD") String keyword) {

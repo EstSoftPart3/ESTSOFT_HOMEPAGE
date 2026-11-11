@@ -76,6 +76,7 @@
 				</div>
 				<div class="card-body">
 					<div class="dp-views" id="views" role="tablist" aria-label="보기"></div>
+					<div id="secretBox" class="mb-2" hidden><label class="dp-secret-chip"><input type="checkbox" class="dp-secret-chk" id="showSecret" checked> 🔒 시크릿 <b id="secretCnt"></b></label></div>
 					<div class="cal-panel" id="altPanel" style="display:none"><div class="table-responsive" id="altView"></div></div>
 					<div class="cal-panel" id="mainPanel">
 						<div class="d-flex flex-wrap align-items-center pr-3">
@@ -153,6 +154,7 @@
 	$(function() {
 		load();
 		$('#views').on('click', 'button', function() { page = $(this).attr('data-page'); render(); });
+		$('#showSecret').on('change', function() { render(); });
 		$('#keyword').on('input', render);
 		$(document).on('change', '.dp-filter', render);
 		$('[data-view]').on('click', function() { view = $(this).data('view'); $('[data-view]').removeClass('active'); $(this).addClass('active'); render(); });
@@ -170,6 +172,9 @@
 			$('#staffList').remove();
 			var $dl = $('<datalist id="staffList">').appendTo('body');
 			data.staff.forEach(function(s) { $dl.append($('<option>').val(staffLabel(s))); });
+			// 시크릿 계정에게만 서버가 secretViewer 와 시크릿 행(SECRET)을 준다
+			$('#secretBox').prop('hidden', !data.secretViewer);
+			$('#secretCnt').text(data.staff.filter(function(s) { return s.SECRET; }).length);
 			fillFilters();
 			render();
 			if (after) after();
@@ -208,15 +213,18 @@
 		});
 	}
 
+	function showSecret(r) { return !r.SECRET || $('#showSecret').prop('checked'); }
+	function secretFirst(a, b) { return (b.SECRET ? 1 : 0) - (a.SECRET ? 1 : 0); }
+
 	function filtered() {
 		var kw = $.trim($('#keyword').val()).toLowerCase();
 		return data.current.filter(function(r) {
-			if (r.STATE !== 'ACTIVE') return false;
+			if (r.STATE !== 'ACTIVE' || !showSecret(r)) return false;
 			if (tab && r.EMP_TYPE_CD !== tab) return false;
 			var ok = true;
 			$('.dp-filter').each(function() { if ($(this).val() && r[$(this).data('field')] !== $(this).val()) ok = false; });
 			return ok && (!kw || [r.STAFF_NM, r.PRJ_NM, r.CLIENT_NM].some(function(v) { return v && String(v).toLowerCase().indexOf(kw) >= 0; }));
-		}).sort(function(a, b) { return remain(a).days - remain(b).days || String(a.STAFF_NM).localeCompare(String(b.STAFF_NM), 'ko'); });
+		}).sort(function(a, b) { return secretFirst(a, b) || remain(a).days - remain(b).days || String(a.STAFF_NM).localeCompare(String(b.STAFF_NM), 'ko'); });
 	}
 
 	// ── 탭: 투입 현황 · 대기 현황 · 철수 임박 ──
@@ -227,7 +235,7 @@
 
 	// 재직인데 오늘 진행 중인 투입이 없는 사람. 외부업체 인력은 뺀다
 	function idleList() {
-		return data.staff.map(function(s) {
+		return data.staff.filter(showSecret).map(function(s) {
 			var deps = depsOf(s.STAFF_SQ);
 			if (deps.some(isActive)) return null;
 			var last = deps[deps.length - 1];
@@ -237,16 +245,16 @@
 			var kind = future ? 'FUTURE' : past ? 'WAIT' : 'NONE';
 			var since = kind === 'WAIT' ? moment(past.END_DT).add(1, 'days') : moment(s.JOIN_DT, 'YYYY-MM-DD', true);
 			return { s: s, kind: kind, future: future, last: past || last, days: since.isValid() ? today.diff(since, 'days') : 0 };
-		}).filter(Boolean).sort(function(a, b) { return (a.kind === 'FUTURE') - (b.kind === 'FUTURE') || b.days - a.days; });
+		}).filter(Boolean).sort(function(a, b) { return secretFirst(a.s, b.s) || (a.kind === 'FUTURE') - (b.kind === 'FUTURE') || b.days - a.days; });
 	}
 
 	// 철수일이 이번 달 또는 다음 달인 진행 중 투입
 	function endingList() {
 		var limit = moment().add(1, 'month').endOf('month');
-		return data.all.filter(function(x) { return isActive(x) && x.END_DT && !moment(x.END_DT).isAfter(limit); }).map(function(x) {
+		return data.all.filter(function(x) { return showSecret(x) && isActive(x) && x.END_DT && !moment(x.END_DT).isAfter(limit); }).map(function(x) {
 			var next = depsOf(x.STAFF_SQ).filter(function(y) { return y.DEPLOY_SQ !== x.DEPLOY_SQ && y.START_DT > x.END_DT; })[0];
 			return { x: x, next: next };
-		}).sort(function(a, b) { return a.x.END_DT.localeCompare(b.x.END_DT); });
+		}).sort(function(a, b) { return secretFirst(a.x, b.x) || a.x.END_DT.localeCompare(b.x.END_DT); });
 	}
 
 	function area(addr) {
@@ -262,7 +270,7 @@
 	}
 
 	function renderViews(idle, ending) {
-		var active = data.current.filter(function(r) { return r.STATE === 'ACTIVE'; }).length;
+		var active = data.current.filter(function(r) { return r.STATE === 'ACTIVE' && showSecret(r); }).length;
 		$('#views').empty().append([['ACTIVE', '투입 현황', active, ''], ['IDLE', '대기 현황', idle.length, 'warn'], ['ENDING', '철수 임박', ending.length, 'bad']].map(function(v) {
 			return $('<button type="button" role="tab">').addClass(v[3]).attr({ 'data-page': v[0], 'aria-selected': page === v[0] }).text(v[1]).append($('<b>').text(v[2]));
 		}));
@@ -276,7 +284,7 @@
 		$('#btnAdd').toggle(page === 'ACTIVE');
 		if (page === 'IDLE') return renderIdle(idle);
 		if (page === 'ENDING') return renderEnding(ending);
-		var cur = data.current.filter(function(r) { return r.STATE === 'ACTIVE'; });
+		var cur = data.current.filter(function(r) { return r.STATE === 'ACTIVE' && showSecret(r); });
 		$('#tabs').empty().append(hrTab('', '전체', cur.length, tab === ''));
 		(HR_CODES.HR_EMP_TYPE || []).forEach(function(c) {
 			var n = cur.filter(function(r) { return r.EMP_TYPE_CD === c.CD; }).length;
@@ -303,7 +311,7 @@
 	}
 
 	function viewRow(r) {
-		var $tr = $('<tr>'), rm = remain(r);
+		var $tr = $('<tr>').toggleClass('dp-secret', !!r.SECRET), rm = remain(r);
 		visibleCols().forEach(function(c) {
 			var $td = $('<td>').attr('data-c', c[0]), v = r[c[0]];
 			if (c[0] === 'STAFF_NM') $td.append($('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { openDetail(r); }));
@@ -514,7 +522,7 @@
 		list.forEach(function(it) {
 			var s = it.s, k = KIND[it.kind];
 			var wait = it.kind === 'FUTURE' ? moment(it.future.START_DT).diff(today, 'days') + '일 뒤 투입' : it.days + '일' + (it.kind === 'NONE' ? ' (입사 후)' : '');
-			var $tr = $('<tr>').append($('<td>').append($('<button type="button" class="dp-name">').text(s.STAFF_NM).on('click', function() { if (it.last || it.future) openDetail(it.future || it.last); })))
+			var $tr = $('<tr>').toggleClass('dp-secret', !!s.SECRET).append($('<td>').append($('<button type="button" class="dp-name">').text(s.STAFF_NM).on('click', function() { if (it.last || it.future) openDetail(it.future || it.last); })))
 				.append($('<td>').append($('<span class="dp-pill">').addClass(k[1]).text(k[0])))
 				.append($('<td>').text([s.POSITION_NM, s.DEPT_NM || s.ORG_NM].filter(Boolean).join(' · ')))
 				.append(regionCell(s.ADDR)).append(wantCell(s)).append($('<td>').text(s.JOIN_DT || ''))
@@ -583,7 +591,7 @@
 		if (!list.length) $b.append('<tr><td colspan="10" class="text-center text-muted py-4">이번 달·다음 달 철수 예정자가 없습니다.</td></tr>');
 		list.forEach(function(it) {
 			var x = it.x, s = staffOf(x.STAFF_SQ), d = moment(x.END_DT).diff(today, 'days');
-			var $tr = $('<tr>').append($('<td>').append($('<button type="button" class="dp-name">').text(x.STAFF_NM).on('click', function() { openDetail(x); })))
+			var $tr = $('<tr>').toggleClass('dp-secret', !!x.SECRET).append($('<td>').append($('<button type="button" class="dp-name">').text(x.STAFF_NM).on('click', function() { openDetail(x); })))
 				.append($('<td>').text(typeName(x.EMP_TYPE_CD))).append(regionCell(x.HOME_ADDR))
 				.append($('<td>').text(x.WORK_AREA || '').append(farFrom(x.HOME_ADDR, x.WORK_AREA) ? $('<span class="dp-far">원거리</span>') : ''))
 				.append($('<td class="dp-want">').text(x.WISH_LOC || ''))

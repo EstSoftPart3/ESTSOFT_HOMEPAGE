@@ -22,6 +22,9 @@
 	.btn.t-ded { border-color: #b4531a; color: #b4531a; font-weight: 700; } .show-ded .btn.t-ded { background: #b4531a; color: #fff; }
 	.btn.t-pl { border-color: #6b3fa0; color: #6b3fa0; font-weight: 700; } .show-pl .btn.t-pl { background: #6b3fa0; color: #fff; }
 	.pl-manual { background: #fff8e3 !important; }
+	/* 시크릿 행: 시크릿 계정에게만 보이고 맨 위에 옅은 보라 */
+	#lBody tr.pl-secret td { background-color: #f4effc; }
+	.pl-chip.secret.on { border-color: #6b3fa0; background: #f4effc; color: #6b3fa0; }
 	/* 체크 칩: 진짜 체크박스라 공통 Shift+클릭 범위 선택을 받는다 */
 	.pl-chks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 14px; }
 	.pl-chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(17,17,17,.15); font-weight: 700; font-size: 12.5px; color: #444; cursor: pointer; user-select: none; margin: 0; background: #fff; }
@@ -189,6 +192,8 @@
 		hrPost('/admin/pay/monthData.do', { YM: ym }, function(res) {
 			rows = res.result.rows;
 			closed = res.result.closed;
+			// 시크릿 계정에게만 서버가 secretViewer 와 시크릿 행(SECRET)을 준다
+			if (res.result.secretViewer && CHIPS[0][0] !== '_SECRET') { CHIPS.unshift(['_SECRET', '🔒 시크릿']); checked._SECRET = true; }
 			$('#payDt').val(res.result.PAY_DT || '');
 			render();
 			if (after) after();
@@ -201,6 +206,7 @@
 	function chipOf(type) { var c = CHIPS.filter(function(c) { return c[2] && c[2].indexOf(type) >= 0; })[0]; return c ? c[0] : ''; }
 	function typesOf(r) { return [r.EMP_TYPE_CD].concat(r.DETAILS.map(typeOf)).filter(Boolean); }
 	function visible(r) {
+		if (r.SECRET) return !!checked._SECRET;
 		if (checked._FLAG && r.FLAGS.length) return true;
 		return typesOf(r).some(function(t) { return checked[chipOf(t)]; });
 	}
@@ -239,8 +245,8 @@
 		var all = CHIPS.every(function(c) { return checked[c[0]]; });
 		var $c = $('#chks').empty().append($('<button type="button" class="btn btn-sm btn-outline-secondary" id="chkAll">').text(all ? '☑ 전체 해제' : '☐ 전체 선택'));
 		CHIPS.forEach(function(c) {
-			var n = c[0] === '_FLAG' ? rows.filter(function(r) { return r.FLAGS.length; }).length : rows.filter(function(r) { return typesOf(r).some(function(t) { return chipOf(t) === c[0]; }); }).length;
-			$c.append($('<label class="pl-chip">').toggleClass('on', !!checked[c[0]]).toggleClass('alert', c[0] === '_FLAG')
+			var n = c[0] === '_SECRET' ? rows.filter(function(r) { return r.SECRET; }).length : c[0] === '_FLAG' ? rows.filter(function(r) { return r.FLAGS.length; }).length : rows.filter(function(r) { return typesOf(r).some(function(t) { return chipOf(t) === c[0]; }); }).length;
+			$c.append($('<label class="pl-chip">').toggleClass('on', !!checked[c[0]]).toggleClass('alert', c[0] === '_FLAG').toggleClass('secret', c[0] === '_SECRET')
 				.append($('<input type="checkbox" class="pl-chk">').val(c[0]).prop('checked', !!checked[c[0]])).append($('<span>').text(c[1])).append($('<span class="cnt">').text(n)));
 		});
 	}
@@ -267,13 +273,13 @@
 		var $b = $('#lBody').empty();
 		list.sort(function(a, b) {
 			var x = sortVal(a), y = sortVal(b);
-			return sortDir * (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'ko', { numeric: true }));
+			return (b.SECRET ? 1 : 0) - (a.SECRET ? 1 : 0) || sortDir * (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'ko', { numeric: true }));
 		});
 		if (!list.length) $b.append('<tr><td colspan="40" class="text-center text-muted py-4">해당하는 급여가 없습니다. 체크를 바꾸거나, 투입현황에 투입을 등록하면 자동으로 생깁니다.</td></tr>');
 		list.forEach(function(r) {
 			var cs = contracts(r), span = Math.max(1, cs.length);
 			function rs($td) { return $td.attr('rowspan', span); }
-			var $tr = $('<tr>').append(rs($('<td>')).append($('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { openDetail(r); })))
+			var $tr = $('<tr>').toggleClass('pl-secret', !!r.SECRET).append(rs($('<td>')).append(r.SECRET ? $('<span title="시크릿">').text('🔒 ') : '').append($('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { openDetail(r); })))
 				.append(rs($('<td>')).append(dupCell(r, cs)));
 			contractCells(r, cs[0] || {}, true).forEach(function($td) { $tr.append($td); });
 			$tr.append(rs(cell(r, 'BASE_AMT', '')));
@@ -288,7 +294,7 @@
 				.append(rs($('<td>')).append(countBtn('💬', r.MEMO_CNT, r.STAFF_NM + ' 메모', function() { memoPopup(r); })))
 				.append(rs($('<td>')).append(countBtn('✎', r.CHG_CNT, r.STAFF_NM + ' 수정이력', function() { historyPopup(r); })));
 			$b.append($tr);
-			cs.slice(1).forEach(function(d) { $b.append($('<tr class="pl-child">').append(contractCells(r, d, false))); });
+			cs.slice(1).forEach(function(d) { $b.append($('<tr class="pl-child">').toggleClass('pl-secret', !!r.SECRET).append(contractCells(r, d, false))); });
 		});
 		applyBands();
 		// 두 번째 머리글 줄은 색 띠 아래에 붙고, 위 스크롤 막대 길이는 표 너비에 맞춘다

@@ -75,7 +75,9 @@
 				<input type="hidden" name="EMPLY_SQ" id="cSq">
 				<input type="hidden" name="STAFF_SQ" id="cStaffSq">
 				<input type="hidden" name="COPY_RRN" id="cCopyRrn">
+				<div class="cate-tabs" id="cardTabs" role="tablist" aria-label="계정 카드 구분"></div>
 				<div class="modal-body">
+					<div class="ac-pane" data-pane="basic">
 					<div class="mb-2">
 						<label for="cStaffSearch">연결 직원</label>
 						<div id="staffChosen" class="d-flex align-items-center flex-wrap" style="gap:6px" hidden></div>
@@ -94,10 +96,19 @@
 						<div class="col-md-8 mb-2"><label for="cAddr">주소</label><input id="cAddr" name="EMPLY_HOME_ADDR" class="form-control form-control-sm" maxlength="500"></div>
 						<div class="col-md-4 mb-2"><label for="cRrn">주민등록번호 (바꿀 때만 전체 입력)</label><input id="cRrn" name="EMPLY_RRN" class="form-control form-control-sm" maxlength="14" autocomplete="off"></div>
 					</div>
-					<div class="ac-section">계정 권한 <span id="cKind" class="sys-pill info"></span> <span class="small text-muted font-weight-normal">권한이 없으면 직원 계정, 하나라도 있으면 관리자 계정입니다</span></div>
-					<div id="cType" class="ac-roles mb-2" role="group" aria-label="계정 권한"></div>
-					<div class="ac-section">비밀번호</div>
-					<div class="d-flex align-items-center flex-wrap" style="gap:8px"><span id="cPw"></span><button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetPw();"><i class="fas fa-key" aria-hidden="true"></i> 초기 비밀번호 재발급</button><span class="small text-muted" id="cLogin"></span></div>
+					</div>
+					<div class="ac-pane" data-pane="role" hidden>
+						<div class="mb-2"><span id="cKind" class="sys-pill info"></span> <span class="small text-muted">권한이 없으면 직원 계정, 하나라도 있으면 관리자 계정입니다</span></div>
+						<div id="cType" class="ac-roles mb-2" role="group" aria-label="계정 권한"></div>
+					</div>
+					<div class="ac-pane" data-pane="pw" hidden>
+						<div class="d-flex align-items-center flex-wrap" style="gap:8px"><span id="cPw"></span><button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetPw();"><i class="fas fa-key" aria-hidden="true"></i> 초기 비밀번호 재발급</button><span class="small text-muted" id="cLogin"></span></div>
+					</div>
+					<div class="ac-pane" data-pane="secret" hidden>
+						<div class="custom-control custom-switch mb-2"><input type="checkbox" class="custom-control-input" id="cSecret"><label class="custom-control-label font-weight-bold" for="cSecret">🔒 시크릿 계정</label></div>
+						<div class="small text-muted">켜면 이 계정에 연결된 직원의 투입현황·급여관리 행과 합계·건수·엑셀이 시크릿이 아닌 사람에게 모두 빠집니다. 시크릿 계정끼리는 서로 보입니다. 이 탭은 시크릿 계정인 슈퍼관리자에게만 보이고, 바로 저장됩니다.</div>
+						<div class="small mt-2" id="cSecretNote"></div>
+					</div>
 				</div>
 				<div class="modal-footer"><span id="cStatusBtns" class="mr-auto"></span><button type="submit" class="btn btn-sm btn-primary">저장</button></div>
 			</form>
@@ -264,9 +275,26 @@
 			$('#cPw').empty().append(pwPill(card));
 			$('#cLogin').text('최근 로그인 ' + (card.LAST_LOGIN_DT || '-'));
 			paintStatus();
+			$('#cSecret').prop({ checked: card.SECRET_YN === 'Y', disabled: card.EMPLY_ID === data.me && card.SECRET_YN === 'Y' });
+			$('#cSecretNote').text(card.EMPLY_ID === data.me ? '내 계정의 시크릿은 다른 시크릿 계정에서만 끌 수 있습니다.' : card.STAFF_SQ ? '' : '연결된 직원이 없어 숨길 투입·급여가 없습니다.');
+			showPane('basic');
 			$('#cardModal').modal('show');
 		});
 	}
+
+	// 기본정보·권한정보·비밀번호는 한 폼이라 저장은 함께, 시크릿은 서버가 허락한 사람에게만 탭이 생긴다
+	function showPane(key) {
+		var tabs = [['basic', '기본정보'], ['role', '권한정보'], ['pw', '비밀번호']].concat(data.canSecret ? [['secret', '🔒 시크릿']] : []);
+		$('#cardTabs').empty().append(tabs.map(function(t) { return hrTab(t[0], t[1], '', t[0] === key); }));
+		$('.ac-pane').each(function() { $(this).prop('hidden', $(this).attr('data-pane') !== key); });
+	}
+	$('#cardTabs').on('click', '.cate-tab', function() { showPane($(this).attr('data-tab')); });
+	// 다른 탭에서 저장했는데 기본정보 칸이 비었으면 그 탭을 열어 브라우저가 칸을 가리킬 수 있게 한다
+	document.getElementById('cardForm').addEventListener('invalid', function() { showPane('basic'); }, true);
+	$('#cSecret').on('change', function() {
+		var box = this;
+		hrPost('/admin/member/setSecretData.do', { EMPLY_SQ: card.EMPLY_SQ, SECRET_YN: box.checked ? 'Y' : 'N' }, function() { card.SECRET_YN = box.checked ? 'Y' : 'N'; }, function() { box.checked = !box.checked; });
+	});
 
 	function fillCard() {
 		$('#cId').val(card.EMPLY_ID || ''); $('#cName').val(card.EMPLY_NM || ''); $('#cSex').val(card.EMPLY_SEX_TYP_CD || '');

@@ -61,4 +61,11 @@ public interface BoMemberMapper {
 	void changePassword(Map<String, Object> param);
 
 	void touchLogin(String emplyId);
+
+	/** 시크릿 (sql/secret.sql) */
+	int countSecret(String emplyId);
+
+	String selectSecretYn(int sq);
+
+	int updateSecretYn(Map<String, Object> param);
 }

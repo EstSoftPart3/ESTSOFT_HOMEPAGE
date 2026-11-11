@@ -349,6 +349,19 @@
 		DELETE FROM TB_EEP_BONUS_STAFF_R WHERE BONUS_SQ = #{BONUS_SQ} AND STAFF_SQ = #{STAFF_SQ}
 	</delete>
 
+	<!-- 시크릿 (sql/secret.sql) -->
+	<select id="selectSecretStaff" resultType="java.lang.String">
+		SELECT CAST(S.STAFF_SQ AS CHAR) FROM TB_EEP_HR_STAFF_M S JOIN TB_EEP_EMPLY_M E ON E.EMPLY_ID = S.EMPLY_ID WHERE E.SECRET_YN = 'Y'
+	</select>
+
+	<select id="countSecretViewer" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*) FROM TB_EEP_EMPLY_M WHERE EMPLY_ID = #{EMPLY_ID} AND SECRET_YN = 'Y' AND IFNULL(USE_YN, 'Y') = 'Y' AND IFNULL(DEL_YN, 'N') = 'N'
+	</select>
+
+	<select id="selectDeployStaff" parameterType="hashMap" resultType="java.lang.String">
+		SELECT CAST(STAFF_SQ AS CHAR) FROM TB_EEP_DEPLOY_R WHERE DEPLOY_SQ = #{DEPLOY_SQ}
+	</select>
+
 	<select id="selectLedgerCodes" resultType="hashMap">
 		SELECT SRC_CD, LEDGER_CD, STAFF_SQ FROM TB_EEP_PAYROLL_CODE_R
 	</select>

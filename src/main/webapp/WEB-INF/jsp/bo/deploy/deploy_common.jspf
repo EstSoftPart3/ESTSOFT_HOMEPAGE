@@ -28,6 +28,9 @@
 	.dp-net b { font-size: 17px; font-variant-numeric: tabular-nums; }
 	.dp-net.minus { background: #fdeaea; color: #a32020; }
 	.dp-card.sm { width: 340px; }
+	/* 시크릿: 시크릿 계정에게만 보이는 행과 칩 */
+	tr.dp-secret > td { background-color: #f4effc; }
+	.dp-secret-chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid #6b3fa0; background: #f4effc; color: #6b3fa0; font-weight: 700; font-size: 12.5px; cursor: pointer; margin: 0; }
 	.dp-pill[tabindex] { cursor: help; }
 	.dp-info { border: 0; background: none; color: #0b6e8a; font-size: 13px; line-height: 1; padding: 0 3px; cursor: pointer; vertical-align: middle; }
 	.dp-info:hover, .dp-info:focus { color: #06222b; outline: 2px solid #16d5ff; border-radius: 3px; }

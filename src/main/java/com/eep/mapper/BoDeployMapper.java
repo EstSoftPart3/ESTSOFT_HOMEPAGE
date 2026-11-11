@@ -72,6 +72,9 @@ public interface BoDeployMapper {
 	public int deleteBonus(Map<String, Object> param);							//켠 사람이 없을 때만 지운다
 	public int saveBonusApply(Map<String, Object> param);						//BONUS_SQ, STAFF_SQ, AMT, REFERRER_SQ, EMPLY_ID
 	public int deleteBonusApply(Map<String, Object> param);
+	public List<String> selectSecretStaff();									//시크릿 계정에 연결된 직원
+	public int countSecretViewer(Map<String, Object> param);					//EMPLY_ID 가 사용 중인 시크릿 계정인지
+	public String selectDeployStaff(Map<String, Object> param);					//DEPLOY_SQ 의 STAFF_SQ
 	public List<Map<String, Object>> selectLedgerCodes();						//SRC_CD, LEDGER_CD, STAFF_SQ
 	public int saveLedgerCode(Map<String, Object> param);
 }

@@ -24,6 +24,7 @@ import org.springframework.web.servlet.ModelAndView;
 import com.eep.bo.deploy.service.BoBonusService;
 import com.eep.bo.deploy.service.BoDeployService;
 import com.eep.bo.deploy.service.BoPayrollService;
+import com.eep.bo.deploy.service.SecretFilter;
 import com.eep.bo.system.service.BoSystemService;
 
 /**
@@ -47,6 +48,9 @@ public class BoDeployController {
 	@Autowired
 	private BoBonusService bonusService;
 
+	@Autowired
+	private SecretFilter secret;
+
 	// ── 투입현황 ──
 
 	@RequestMapping("/admin/deploy/openDeployList.do")
@@ -57,8 +61,10 @@ public class BoDeployController {
 	@RequestMapping(value = "/admin/deploy/deployListData.do", method = RequestMethod.POST)
 	public ModelAndView deployListData(HttpSession session) {
 		String id = loginId(session);
-		Map<String, Object> out = deployService.deployList(canPay(id));
-		out.putAll(deployService.options(id));
+		SecretFilter.View v = secret.view(id);
+		Map<String, Object> out = v.filterMap(deployService.deployList(canPay(id)), "all", "current");
+		out.putAll(v.filterMap(deployService.options(id), "staff"));
+		out.put("secretViewer", v.secret);
 		return json("data", out);
 	}
 
@@ -66,14 +72,20 @@ public class BoDeployController {
 	public ModelAndView saveDeployData(@RequestParam Map<String, Object> param, HttpSession session) {
 		return run(() -> {
 			param.put("UPDT_EMPLY_ID", loginId(session));
+			SecretFilter.View v = secret.view(loginId(session));
+			v.guard(param.get("STAFF_SQ"));
+			if (param.get("DEPLOY_SQ") != null && !String.valueOf(param.get("DEPLOY_SQ")).isEmpty()) {
+				v.guard(secret.staffOfDeploy(param.get("DEPLOY_SQ")));
+			}
 			deployService.saveDeploy(param, canPay(loginId(session)));
 			return "OK";
 		});
 	}
 
 	@RequestMapping(value = "/admin/deploy/deleteDeployData.do", method = RequestMethod.POST)
-	public ModelAndView deleteDeployData(@RequestParam Map<String, Object> param) {
+	public ModelAndView deleteDeployData(@RequestParam Map<String, Object> param, HttpSession session) {
 		return run(() -> {
+			secret.view(loginId(session)).guard(secret.staffOfDeploy(param.get("DEPLOY_SQ")));
 			deployService.deleteDeploy(param);
 			return "OK";
 		});
@@ -83,6 +95,7 @@ public class BoDeployController {
 	public ModelAndView extendDeployData(@RequestParam Map<String, Object> param, HttpSession session) {
 		return run(() -> {
 			param.put("UPDT_EMPLY_ID", loginId(session));
+			secret.view(loginId(session)).guard(secret.staffOfDeploy(param.get("DEPLOY_SQ")));
 			deployService.extendDeploy(param, canPay(loginId(session)));
 			return "OK";
 		});
@@ -90,7 +103,10 @@ public class BoDeployController {
 
 	@RequestMapping(value = "/admin/deploy/projectHistoryData.do", method = RequestMethod.POST)
 	public ModelAndView projectHistoryData(@RequestParam("STAFF_SQ") int staffSq, HttpSession session) {
-		return run(() -> deployService.projectHistory(staffSq, canPay(loginId(session))));
+		return run(() -> {
+			secret.view(loginId(session)).guard(staffSq);
+			return deployService.projectHistory(staffSq, canPay(loginId(session)));
+		});
 	}
 
 	@RequestMapping(value = "/admin/deploy/saveColumnsData.do", method = RequestMethod.POST)
@@ -173,28 +189,45 @@ public class BoDeployController {
 	}
 
 	@RequestMapping(value = "/admin/pay/monthData.do", method = RequestMethod.POST)
-	public ModelAndView monthData(@RequestParam(value = "YM", required = false) String ym) {
-		return run(() -> payrollService.month(ym == null || ym.isEmpty() ? YearMonth.now().toString() : ym));
+	public ModelAndView monthData(@RequestParam(value = "YM", required = false) String ym, HttpSession session) {
+		return run(() -> {
+			SecretFilter.View v = secret.view(loginId(session));
+			Map<String, Object> out = v.filterMap(payrollService.month(ym == null || ym.isEmpty() ? YearMonth.now().toString() : ym), "rows");
+			out.put("secretViewer", v.secret);
+			return out;
+		});
 	}
 
 	@RequestMapping(value = "/admin/pay/staffYearData.do", method = RequestMethod.POST)
-	public ModelAndView staffYearData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("YEAR") String year) {
-		return run(() -> payrollService.staffYear(staffSq, year));
+	public ModelAndView staffYearData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("YEAR") String year, HttpSession session) {
+		return run(() -> {
+			secret.view(loginId(session)).guard(staffSq);
+			return payrollService.staffYear(staffSq, year);
+		});
 	}
 
 	@RequestMapping(value = "/admin/pay/deployHistoryData.do", method = RequestMethod.POST)
-	public ModelAndView deployHistoryData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("DEPLOY_SQ") int deploySq) {
-		return run(() -> payrollService.deployHistory(staffSq, deploySq));
+	public ModelAndView deployHistoryData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("DEPLOY_SQ") int deploySq, HttpSession session) {
+		return run(() -> {
+			SecretFilter.View v = secret.view(loginId(session));
+			v.guard(staffSq);
+			v.guard(secret.staffOfDeploy(deploySq));
+			return payrollService.deployHistory(staffSq, deploySq);
+		});
 	}
 
 	@RequestMapping(value = "/admin/pay/detailData.do", method = RequestMethod.POST)
-	public ModelAndView detailData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("YM") String ym) {
-		return run(() -> payrollService.detail(staffSq, ym));
+	public ModelAndView detailData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("YM") String ym, HttpSession session) {
+		return run(() -> {
+			secret.view(loginId(session)).guard(staffSq);
+			return payrollService.detail(staffSq, ym);
+		});
 	}
 
 	@RequestMapping(value = "/admin/pay/ackData.do", method = RequestMethod.POST)
 	public ModelAndView ackData(@RequestParam("YM") String ym, @RequestParam("STAFF_SQ") int staffSq, @RequestParam("FLAG_K") String keyword, HttpSession session) {
 		return run(() -> {
+			secret.view(loginId(session)).guard(staffSq);
 			payrollService.ack(ym, staffSq, keyword, loginId(session));
 			return "OK";
 		});
@@ -211,6 +244,7 @@ public class BoDeployController {
 	@RequestMapping(value = "/admin/pay/memoListData.do", method = RequestMethod.POST)
 	public ModelAndView memoListData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam(value = "YM", required = false) String ym, HttpSession session) {
 		return run(() -> {
+			secret.view(loginId(session)).guard(staffSq);
 			Map<String, Object> out = new java.util.HashMap<>();
 			out.put("list", payrollService.memos(staffSq, ym));
 			out.put("me", loginId(session));
@@ -221,6 +255,7 @@ public class BoDeployController {
 	@RequestMapping(value = "/admin/pay/saveMemoData.do", method = RequestMethod.POST)
 	public ModelAndView saveMemoData(@RequestParam("YM") String ym, @RequestParam("STAFF_SQ") int staffSq, @RequestParam("CONTENT") String content, HttpSession session) {
 		return run(() -> {
+			secret.view(loginId(session)).guard(staffSq);
 			payrollService.addMemo(ym, staffSq, content, loginId(session));
 			return "OK";
 		});
@@ -235,13 +270,17 @@ public class BoDeployController {
 	}
 
 	@RequestMapping(value = "/admin/pay/changeListData.do", method = RequestMethod.POST)
-	public ModelAndView changeListData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam(value = "YM", required = false) String ym) {
-		return run(() -> payrollService.changes(staffSq, ym));
+	public ModelAndView changeListData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam(value = "YM", required = false) String ym, HttpSession session) {
+		return run(() -> {
+			secret.view(loginId(session)).guard(staffSq);
+			return payrollService.changes(staffSq, ym);
+		});
 	}
 
 	@RequestMapping(value = "/admin/pay/revertData.do", method = RequestMethod.POST)
 	public ModelAndView revertData(@RequestParam("CHG_SQ") long chgSq, HttpSession session) {
 		return run(() -> {
+			secret.view(loginId(session)).guard(secret.staffOfChange(chgSq));
 			payrollService.revert(chgSq, loginId(session));
 			return "OK";
 		});
@@ -250,6 +289,7 @@ public class BoDeployController {
 	@RequestMapping(value = "/admin/pay/saveFieldData.do", method = RequestMethod.POST)
 	public ModelAndView saveFieldData(@RequestParam Map<String, Object> param, HttpSession session) {
 		return run(() -> {
+			secret.view(loginId(session)).guard(param.get("STAFF_SQ"));
 			payrollService.saveField(param, loginId(session));
 			return "OK";
 		});
@@ -272,7 +312,7 @@ public class BoDeployController {
 					data.add(f.getBytes());
 				}
 			}
-			return payrollService.importPreview(ym, data, new SessionMap(session));
+			return secret.view(loginId(session)).filterMap(payrollService.importPreview(ym, data, new SessionMap(session)), "rows");
 		});
 	}
 
@@ -289,8 +329,20 @@ public class BoDeployController {
 	}
 
 	@RequestMapping(value = "/admin/bonus/bonusListData.do", method = RequestMethod.POST)
-	public ModelAndView bonusListData() {
-		return run(() -> bonusService.list());
+	public ModelAndView bonusListData(HttpSession session) {
+		return run(() -> {
+			SecretFilter.View v = secret.view(loginId(session));
+			Map<String, Object> out = v.filterMap(bonusService.list(), "applies");
+			if (!v.secret) {
+				// 적용 인원도 보이는 사람만 센다
+				@SuppressWarnings("unchecked")
+				List<Map<String, Object>> applies = (List<Map<String, Object>>) out.get("applies");
+				@SuppressWarnings("unchecked")
+				List<Map<String, Object>> items = (List<Map<String, Object>>) out.get("items");
+				items.forEach(b -> b.put("APPLY_CNT", applies.stream().filter(a -> String.valueOf(a.get("BONUS_SQ")).equals(String.valueOf(b.get("BONUS_SQ")))).count()));
+			}
+			return out;
+		});
 	}
 
 	@RequestMapping(value = "/admin/bonus/saveBonusData.do", method = RequestMethod.POST)
@@ -319,13 +371,24 @@ public class BoDeployController {
 
 	/** 직원관리 화면이 부른다. 상여관리 권한이 없으면 인터셉터가 막아 칩 열이 안 생긴다 */
 	@RequestMapping(value = "/admin/bonus/staffBonusData.do", method = RequestMethod.POST)
-	public ModelAndView staffBonusData() {
-		return run(() -> bonusService.staffData());
+	public ModelAndView staffBonusData(HttpSession session) {
+		return run(() -> {
+			SecretFilter.View v = secret.view(loginId(session));
+			Map<String, Object> out = v.filterMap(bonusService.staffData(), "applies", "staff");
+			@SuppressWarnings("unchecked")
+			List<Map<String, Object>> plans = (List<Map<String, Object>>) out.get("plans");
+			v.filter(plans, "PERSON_SQ");
+			v.filter(plans, "RECIPIENT_SQ");
+			return out;
+		});
 	}
 
 	@RequestMapping(value = "/admin/bonus/applyBonusData.do", method = RequestMethod.POST)
 	public ModelAndView applyBonusData(@RequestParam Map<String, Object> param, HttpSession session) {
 		return run(() -> {
+			SecretFilter.View v = secret.view(loginId(session));
+			v.guard(param.get("STAFF_SQ"));
+			v.guard(param.get("REFERRER_SQ"));
 			bonusService.apply(param, loginId(session));
 			return "OK";
 		});

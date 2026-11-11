@@ -114,6 +114,7 @@ public class PayCalcCheck {
 		same(cur.get(1).get("STATE"), "WAIT", "대기");
 		same(cur.get(2).get("STATE"), "FUTURE", "투입 예정");
 
+		secret();
 		ledger();
 		license();
 		System.out.println("PayCalcCheck OK");
@@ -208,6 +209,23 @@ public class PayCalcCheck {
 		same(BizLicenseParser.kindByText("안녕하세요"), "null", "글자-모름");
 		Map<String, String> b = BizLicenseParser.bank(bank);
 		same(b.get("BANK_NM") + "/" + b.get("ACCOUNT_NO") + "/" + b.get("ACCOUNT_HOLDER"), "신한/140-012-345678/(주)가나시스템", "통장 칸");
+	}
+
+	/** 시크릿: 시크릿 아닌 사람에게는 행을 빼고 요청을 거부, 시크릿 계정에게는 SECRET 표시 */
+	private static void secret() {
+		java.util.Set<String> staff = new java.util.HashSet<>(java.util.Arrays.asList("7"));
+		List<Map<String, Object>> rows = new ArrayList<>(java.util.Arrays.asList(deploy(7, "2026-01-01", null, "WORK"), deploy(8, "2026-01-01", null, "WORK")));
+		same(new SecretFilter.View(false, staff).filter(rows).size(), 1, "시크릿 아닌 사람에게 시크릿 행 빠짐");
+		rows.add(0, deploy(7, "2026-01-01", null, "WORK"));
+		new SecretFilter.View(true, staff).filter(rows);
+		same(rows.size() + "/" + rows.get(0).get("SECRET") + "/" + rows.get(1).get("SECRET"), "2/true/null", "시크릿 계정은 다 보고 표시");
+		try {
+			new SecretFilter.View(false, staff).guard(7);
+			throw new AssertionError("숨긴 직원 요청을 받았다");
+		} catch (IllegalArgumentException expected) {
+			// 없는 것처럼 거부
+		}
+		new SecretFilter.View(true, staff).guard(7);
 	}
 
 	/** 상여: 기준일 + n개월 달성 → 익월, 만근·근속 조건, 사람별 금액, 추천인 */
