@@ -1,0 +1,41 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%-- 게시판 관리 화면(목록·상세·작성) 공통: 게시판 목록과 기존 주소 규칙 --%>
+<script>
+var BOARDS = [
+	{ key: 'notice', name: '공지사항' },
+	{ key: 'freedom', name: '자유', reply: true },
+	{ key: 'technology', name: '기술문의', reply: true },
+	{ key: 'education', name: '교육일정', extra: [['brdTchr', '강사'], ['brdEduDt', '교육일']] }
+];
+
+function boardOf(key) { return BOARDS.filter(function(b) { return b.key === key; })[0] || BOARDS[0]; }
+
+// 화면 주소: /admin/board/{key}/open{Key}Board{List|Insert|Detail|Update|ReplyInsert}.do
+function boardUrl(key, act) {
+	var k = key.charAt(0).toUpperCase() + key.slice(1);
+	if (key === 'freedom' && act === 'ReplyInsert') k = 'Feedom'; // 기존 주소의 오타를 그대로 쓴다
+	return '/admin/board/' + key + '/open' + k + 'Board' + act + '.do';
+}
+
+// 데이터 주소: /admin/board/{key}/{key}Board{ListData|DetailData|InsertData|...}.do
+function boardData(key, act) { return '/admin/board/' + key + '/' + key + 'Board' + act + '.do'; }
+
+// 내용은 HTML 이라 글자만 볼 때 쓴다. DOMParser 는 스크립트를 실행하지 않는다
+function boardPlain(html) { return html ? new DOMParser().parseFromString(html, 'text/html').body.textContent : ''; }
+
+// 저장된 내용은 꺾쇠가 이스케이프돼 있어 기존 화면과 같은 방식으로 되돌린다
+function boardHtml(s) {
+	return (s || '').replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;lt;', '<').replaceAll('&amp;gt;', '>')
+		.replaceAll('&amp;nbsp;', ' ').replaceAll('&amp;amp;', '&').replaceAll('\\', '');
+}
+
+// 본문을 sandbox iframe 에 스크립트 없이 그리고 높이를 내용에 맞춘다
+function boardFrame(frame, html) {
+	frame.onload = function() { boardFit(frame); };
+	frame.srcdoc = '<!doctype html><meta charset="utf-8"><base target="_blank"><style>body{margin:0;padding:20px;font:14px/1.7 "Malgun Gothic",sans-serif;color:#212529;word-break:break-word}img{max-width:100%;height:auto}p{margin:0 0 10px}table{border-collapse:collapse}</style>'
+		+ (html || '<p style="color:#adb5bd">내용이 없습니다.</p>');
+}
+function boardFit(frame) { var doc = frame.contentDocument; if (doc && doc.body) frame.style.height = Math.max(120, doc.documentElement.scrollHeight) + 'px'; }
+
+function boardParam(name) { return new URLSearchParams(location.search).get(name) || ''; }
+</script>

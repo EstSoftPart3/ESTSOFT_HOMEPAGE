@@ -67,29 +67,19 @@
 	</div>
 
 <%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
+<%@ include file="/WEB-INF/jsp/bo/board/board_common.jspf"%>
 <script>
-	// 각 게시판의 기존 주소 규칙: /admin/board/{key}/{key}BoardListData.do, open{Key}BoardList|Insert|Detail.do
-	var BOARDS = [
-		{ key: 'notice', name: '공지사항' },
-		{ key: 'freedom', name: '자유' },
-		{ key: 'technology', name: '기술문의' },
-		{ key: 'education', name: '교육일정', extra: [['brdTchr', '강사'], ['brdEduDt', '교육일']] }
-	];
 	var PAGE_SIZE = 20;
 	var tab = '<c:out value="${tab}"/>' || 'notice';
 	var rows = {}, filter = { use: '', del: 'N' }, search = { opt: 'TWC', kw: '' }, page = 1;
 
-	function board(key) { return BOARDS.filter(function(b) { return b.key === key; })[0]; }
-	function url(key, act) { var k = key.charAt(0).toUpperCase() + key.slice(1); return '/admin/board/' + key + '/open' + k + 'Board' + act + '.do'; }
-
-	// 내용은 HTML 이라 검색할 때 글자만 쓴다. DOMParser 는 스크립트를 실행하지 않는다
-	function plain(html) { return html ? new DOMParser().parseFromString(html, 'text/html').body.textContent : ''; }
+	var board = boardOf, url = boardUrl;
 
 	function load() {
 		$('#boardBody').html('<tr><td class="cal-empty" colspan="6">불러오는 중…</td></tr>');
 		$.when.apply($, BOARDS.map(function(b) {
-			return $.post('/admin/board/' + b.key + '/' + b.key + 'BoardListData.do', {}, null, 'json').then(function(res) {
-				rows[b.key] = ((res[b.key + 'BoardData'] || {})[b.key + 'BoardInfo'] || []).map(function(r) { r._text = plain(r.brdCntnt); return r; });
+			return $.post(boardData(b.key, 'ListData'), {}, null, 'json').then(function(res) {
+				rows[b.key] = ((res[b.key + 'BoardData'] || {})[b.key + 'BoardInfo'] || []).map(function(r) { r._text = boardPlain(r.brdCntnt); return r; });
 			});
 		})).done(render).fail(function() {
 			$('#boardBody').html('<tr><td class="cal-empty" colspan="6">목록을 불러오지 못했습니다. 새로고침해 주세요.</td></tr>');
@@ -125,7 +115,7 @@
 		list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).forEach(function(r) {
 			$body.append($('<tr>').attr('data-sq', r.brdSq).toggleClass('is-deleted', r.delYn === 'Y').append(cols.map(function(c) {
 				var $td = $('<td>').text(r[c[0]] == null ? '' : r[c[0]]);
-				if (c[0] === 'brdTtl') { $td.addClass('cal-title'); if (r.delYn === 'Y') $td.append(' <span class="cate-badge">삭제됨</span>'); if (r.useYn === 'N') $td.append(' <span class="cate-badge">미사용</span>'); }
+				if (c[0] === 'brdTtl') { $td.addClass('cal-title'); if (r.brdReLev > 0) $td.prepend($('<span class="text-muted">').text('  '.repeat(r.brdReLev - 1) + '└ ')); if (r.delYn === 'Y') $td.append(' <span class="cate-badge">삭제됨</span>'); if (r.useYn === 'N') $td.append(' <span class="cate-badge">미사용</span>'); }
 				else $td.addClass('text-center');
 				return $td;
 			})));

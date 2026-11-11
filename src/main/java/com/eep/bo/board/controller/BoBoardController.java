@@ -93,6 +93,13 @@ public class BoBoardController {
 		model.addAttribute("tab", tab);
 		return "bo/board/board_list_tabs";
 	}
+
+	// 게시판 4개의 상세(view)와 작성·수정·답글(write·edit·reply)은 화면 하나씩을 같이 쓴다
+	private String boardPage(Model model, String board, String mode) {
+		model.addAttribute("board", board);
+		model.addAttribute("mode", mode);
+		return "view".equals(mode) ? "bo/board/board_view" : "bo/board/board_form";
+	}
 	
 	//공지사항 게시판 목록 데이터
 	@RequestMapping("/admin/board/notice/noticeBoardListData.do")
@@ -113,9 +120,9 @@ public class BoBoardController {
 	
 	//공지사항 게시판 등록 페이지 이동
 	@RequestMapping("/admin/board/notice/openNoticeBoardInsert.do")
-	public String openNoticeBoardInsert() {
+	public String openNoticeBoardInsert(Model model) {
 		
-		return "bo/board/notice/notice_board_insert";
+		return boardPage(model, "notice", "write");
 	}
 	
 	//공지사항 게시판 등록 데이터
@@ -143,9 +150,9 @@ public class BoBoardController {
 	
 	//공지사항 게시판 상세 페이지 이동
 	@RequestMapping("/admin/board/notice/openNoticeBoardDetail.do")
-	public String openNoticeBoardDetail() {
+	public String openNoticeBoardDetail(Model model) {
 		
-		return "bo/board/notice/notice_board_detail";
+		return boardPage(model, "notice", "view");
 	}
 	
 	//공지사항 게시판 상세 데이터
@@ -181,9 +188,9 @@ public class BoBoardController {
 	
 	//공지사항 게시판 수정 페이지 이동
 	@RequestMapping("/admin/board/notice/openNoticeBoardUpdate.do")
-	public String openNoticeBoardUpdate() {
+	public String openNoticeBoardUpdate(Model model) {
 		
-		return "bo/board/notice/notice_board_update";
+		return boardPage(model, "notice", "edit");
 	}
 	
 	//공지사항 게시판 수정
@@ -243,9 +250,9 @@ public class BoBoardController {
 	
 	//교육 게시판 등록 페이지 이동
 	@RequestMapping("/admin/board/education/openEducationBoardInsert.do")
-	public String openEducationBoardInsert() {
+	public String openEducationBoardInsert(Model model) {
 		
-		return "bo/board/education/education_board_insert";
+		return boardPage(model, "education", "write");
 	}
 	
 	//교육 게시판 등록 데이터
@@ -277,9 +284,9 @@ public class BoBoardController {
 	
 	//교육  게시판 상세 페이지 이동
 	@RequestMapping("/admin/board/education/openEducationBoardDetail.do")
-	public String openEducationBoardDetail() {
+	public String openEducationBoardDetail(Model model) {
 		
-		return "bo/board/education/education_board_detail";
+		return boardPage(model, "education", "view");
 	}
 	
 	//교육 게시판 상세 데이터
@@ -315,9 +322,9 @@ public class BoBoardController {
 	
 	//교육 게시판 수정 페이지 이동
 	@RequestMapping("/admin/board/education/openEducationBoardUpdate.do")
-	public String openEducationBoardUpdate() {
+	public String openEducationBoardUpdate(Model model) {
 		
-		return "bo/board/education/education_board_update";
+		return boardPage(model, "education", "edit");
 	}
 	
 	//교육 게시판 수정
@@ -381,9 +388,9 @@ public class BoBoardController {
 	
 	//자유 게시판 등록 페이지 이동
 	@RequestMapping("/admin/board/freedom/openFreedomBoardInsert.do")
-	public String openFreedomBoardInsert() {
+	public String openFreedomBoardInsert(Model model) {
 		
-		return "bo/board/freedom/freedom_board_insert";
+		return boardPage(model, "freedom", "write");
 	}
 	
 	//자유 게시판 등록 데이터
@@ -411,9 +418,9 @@ public class BoBoardController {
 	
 	//자유  게시판 상세 페이지 이동
 	@RequestMapping("/admin/board/freedom/openFreedomBoardDetail.do")
-	public String openFreedomBoardDetail() {
+	public String openFreedomBoardDetail(Model model) {
 		
-		return "bo/board/freedom/freedom_board_detail";
+		return boardPage(model, "freedom", "view");
 	}
 	
 	//자유 게시판 상세 데이터
@@ -436,9 +443,9 @@ public class BoBoardController {
 	
 	//자유  게시판 답글 등록 페이지 이동
 	@RequestMapping("/admin/board/freedom/openFeedomBoardReplyInsert.do")
-	public String openㄹreedomBoardReplyInsert() {
+	public String openㄹreedomBoardReplyInsert(Model model) {
 		
-		return "bo/board/freedom/freedom_board_reply_insert";
+		return boardPage(model, "freedom", "reply");
 	}
 	
 	//자유 게시판 답글 등록 데이터
@@ -486,9 +493,9 @@ public class BoBoardController {
 	
 	//자유 게시판 수정 페이지 이동
 	@RequestMapping("/admin/board/freedom/openFreedomBoardUpdate.do")
-	public String openFreedomBoardUpdate() {
+	public String openFreedomBoardUpdate(Model model) {
 		
-		return "bo/board/freedom/freedom_board_update";
+		return boardPage(model, "freedom", "edit");
 	}
 	
 	//자유 게시판 수정
@@ -548,9 +555,9 @@ public class BoBoardController {
 	
 	//기술문의 게시판 등록 페이지 이동
 	@RequestMapping("/admin/board/technology/openTechnologyBoardInsert.do")
-	public String openTechnologyBoardInsert() {
+	public String openTechnologyBoardInsert(Model model) {
 		
-		return "bo/board/technology/technology_board_insert";
+		return boardPage(model, "technology", "write");
 	}
 	
 	//기술문의 게시판 등록 데이터
@@ -578,9 +585,9 @@ public class BoBoardController {
 	
 	//기술문의  게시판 상세 페이지 이동
 	@RequestMapping("/admin/board/technology/openTechnologyBoardDetail.do")
-	public String openTechnologyBoardDetail() {
+	public String openTechnologyBoardDetail(Model model) {
 		
-		return "bo/board/technology/technology_board_detail";
+		return boardPage(model, "technology", "view");
 	}
 	
 	//기술문의 게시판 상세 데이터
@@ -603,9 +610,9 @@ public class BoBoardController {
 	
 	//기술문의  게시판 답글 등록 페이지 이동
 	@RequestMapping("/admin/board/technology/openTechnologyBoardReplyInsert.do")
-	public String openTechnologyBoardReplyInsert() {
+	public String openTechnologyBoardReplyInsert(Model model) {
 		
-		return "bo/board/technology/technology_board_reply_insert";
+		return boardPage(model, "technology", "reply");
 	}
 	
 	//기술문의 게시판 답글 등록 데이터
@@ -653,9 +660,9 @@ public class BoBoardController {
 	
 	//기술문의 게시판 수정 페이지 이동
 	@RequestMapping("/admin/board/technology/openTechnologyBoardUpdate.do")
-	public String openTechnologyBoardUpdate() {
+	public String openTechnologyBoardUpdate(Model model) {
 		
-		return "bo/board/technology/technology_board_update";
+		return boardPage(model, "technology", "edit");
 	}
 	
 	//기술문의 게시판 수정
