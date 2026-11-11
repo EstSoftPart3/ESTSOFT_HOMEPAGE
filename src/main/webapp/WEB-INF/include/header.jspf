@@ -33,17 +33,7 @@
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.8.2/css/all.min.css">
     
-    <!-- 네이버 에디터 -->
-	<link href="/resources/navereditor/css/smart_editor2.css" rel="stylesheet" type="text/css">
-	<script type="text/javascript" src="/resources/navereditor/js/jindo.min.js" charset="utf-8"></script>
-	<script type="text/javascript" src="/resources/navereditor/js/jindo_component.js" charset="utf-8"></script>
-	<script type="text/javascript" src="/resources/navereditor/js/SE2B_Configuration_Service.js" charset="utf-8"></script>	<!-- 설정 파일 -->
-	<script type="text/javascript" src="/resources/navereditor/js/SE2B_Configuration_General.js" charset="utf-8"></script>	<!-- 설정 파일 -->
-	<script type="text/javascript" src="/resources/navereditor/js/SE2BasicCreator.js" charset="utf-8"></script>
-	
-	<script src='/resources/navereditor/js/smarteditor2.min.js' charset='utf-8'></script>
-	<script src='/resources/navereditor/photo_uploader/plugin/hp_SE2M_AttachQuickPhoto.js' charset='utf-8'></script>
-	
+    <!-- 네이버 에디터 본체는 SmartEditor2Skin.html(iframe)이 직접 불러온다. 페이지에는 footer 의 HuskyEZCreator.js 만 있으면 된다 -->
 	<script type="text/javascript">
 
 	function logout() {

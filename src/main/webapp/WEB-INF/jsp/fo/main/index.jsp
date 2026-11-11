@@ -351,28 +351,28 @@ th, td {
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
                     <div class="bg-white text-center p-3">
                     	<div class="imgC">
-                        	<img src="/resources/fo/team/t7.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/team/t7.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
                     <div class="bg-white text-center p-3">
                     	<div class="imgC">
-                        	<img src="/resources/fo/team/t8.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/team/t8.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.3s">
                     <div class="bg-white text-center p-3">
                     	<div class="imgC">
-                        	<img src="/resources/fo/team/t9.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/team/t9.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
                    		<div class="imgC">
-                        	<img src="/resources/fo/team/t10.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/team/t10.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
@@ -380,28 +380,28 @@ th, td {
                  <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
                     <div class="bg-white text-center p-3">
                     	<div class="imgC">
-                        	<img src="/resources/fo/team/t10.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/team/t10.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
                     <div class="bg-white text-center p-3">
                     	<div class="imgC">
-                        	<img src="/resources/fo/team/t11.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/team/t11.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.3s">
                     <div class="bg-white text-center p-3">
                     	<div class="imgC">
-                        	<img src="/resources/fo/team/t12.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/team/t12.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
                    		<div class="imgC">
-                        	<img src="/resources/fo/team/t13.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/team/t13.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
@@ -409,7 +409,7 @@ th, td {
                  <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
                    		<div class="imgC">
-                        	<img src="/resources/fo/team/t14.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/team/t14.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
@@ -417,7 +417,7 @@ th, td {
                  <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
                    		<div class="imgC">
-                        	<img src="/resources/fo/team/t15.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/team/t15.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
@@ -425,7 +425,7 @@ th, td {
                <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
                    		<div class="imgC">
-                        	<img src="/resources/fo/team/t17.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/team/t17.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
@@ -433,7 +433,7 @@ th, td {
                  <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
                    		<div class="imgC">
-                        	<img src="/resources/fo/team/t18.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/team/t18.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
@@ -463,28 +463,28 @@ th, td {
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
                     <div class="bg-white text-center p-3">
                     	<div class="imgC">
-                        	<img src="/resources/fo/img/O001.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/img/O001.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
                     <div class="bg-white text-center p-3">
                     	<div class="imgC">
-                        	<img src="/resources/fo/img/O002.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/img/O002.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.3s">
                     <div class="bg-white text-center p-3">
                    		<div class="imgC">
-                        	<img src="/resources/fo/img/O003.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/img/O003.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
                    		<div class="imgC">
-                        	<img src="/resources/fo/img/O004.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/img/O004.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
@@ -492,7 +492,7 @@ th, td {
                  <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
                    		<div class="imgC">
-                        	<img src="/resources/fo/img/O005.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/img/O005.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
@@ -500,7 +500,7 @@ th, td {
                  <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
                    		<div class="imgC">
-                        	<img src="/resources/fo/img/O006.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/img/O006.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
@@ -509,28 +509,28 @@ th, td {
                  <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
                     <div class="bg-white text-center p-3">
                     	<div class="imgC">
-                        	<img src="/resources/fo/img/O007.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/img/O007.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.1s">
                     <div class="bg-white text-center p-3">
                     	<div class="imgC">
-                        	<img src="/resources/fo/img/O008.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/img/O008.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.3s">
                     <div class="bg-white text-center p-3">
                     	<div class="imgC">
-                        	<img src="/resources/fo/img/O009.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/img/O009.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
                    		<div class="imgC">
-                        	<img src="/resources/fo/img/O010.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/img/O010.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
@@ -538,7 +538,7 @@ th, td {
                  <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
                    		<div class="imgC">
-                        	<img src="/resources/fo/img/O011.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/img/O011.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
@@ -546,7 +546,7 @@ th, td {
                  <div class="col-6 col-md-2 wow fadeIn" data-wow-delay="0.5s">
                    <div class="bg-white text-center p-3">
                    		<div class="imgC">
-                        	<img src="/resources/fo/img/O012.jpg" style="width:200px;height:150px;">
+                        	<img src="/resources/fo/img/O012.jpg" style="width:200px;height:150px;" loading="lazy">
                         </div>
                     </div>
                 </div>
