@@ -86,6 +86,20 @@ public class PayCalcCheck {
 		same(row.get("COMPANY"), 852450L, "회사부담");
 		same(row.get("PROFIT"), 1447550L, "영업이익");
 		same(BoPayrollService.flags(row).toString(), "[상여]", "확인 사항");
+		// 정규 행 + 소액 계약 행: 퇴직금 적립은 정규 행 기본에만 (엑셀 BP 열은 행마다 계산)
+		d.put("DEPLOY_TYPE", "REGULAR");
+		Map<String, Object> split = new HashMap<>();
+		split.put("PAY_YM", "2026-11");
+		split.put("STAFF_SQ", 1);
+		split.put("BASE_AMT", 600000L);
+		split.put("DEPLOY_TYPE", "ETC");
+		ds.add(split);
+		row.put("BASE_AMT", 4600000L);
+		BoPayrollService.derive(rows, ds);
+		same(row.get("COMPANY"), 852450L, "계약 행 기본에는 퇴직금 적립 없음");
+		ds.remove(split);
+		d.remove("DEPLOY_TYPE");
+		row.put("BASE_AMT", 4000000L);
 		row.put("EMP_TYPE_CD", "SPECIAL");
 		BoPayrollService.derive(rows, ds);
 		same(row.get("COMPANY"), 0L, "특고는 회사부담 0 (엑셀과 같음)");

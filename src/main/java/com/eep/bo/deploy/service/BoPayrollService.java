@@ -235,15 +235,24 @@ public class BoPayrollService {
 			for (String f : DED_FIELDS) {
 				ded += n(r.get(f));
 			}
+			String type = str(r.get("EMP_TYPE_CD"));
+			boolean salaried = PayCalc.isSalaried(type);
+			long otherBase = 0; // 정규 행과 함께 있는 소액 계약 행의 기본. 엑셀은 이 금액에 퇴직금을 적립하지 않는다
 			for (Map<String, Object> d : ds) {
 				sale += n(d.get("REAL_SALE"));
 				days += n(d.get("WORK_DAYS"));
 				totalDays = n(d.get("TOTAL_DAYS"));
+				if (d.get("DEPLOY_TYPE") != null) {
+					if (PayCalc.isSalaried(str(d.get("DEPLOY_TYPE")))) {
+						salaried = true;
+					} else {
+						otherBase += n(d.get("BASE_AMT"));
+					}
+				}
 			}
-			String type = str(r.get("EMP_TYPE_CD"));
-			long company = PayCalc.isSalaried(type)
+			long company = salaried
 					? n(r.get("NP_AMT")) + n(r.get("HI_AMT")) + n(r.get("EI_AMT")) + n(r.get("LTC_AMT")) + n(r.get("ACC_AMT"))
-							+ PayCalc.retire(n(r.get("BASE_AMT")), n(r.get("MEAL_AMT")), n(r.get("RESEARCH_AMT")), n(r.get("FUEL_AMT")), n(r.get("BONUS_AMT")))
+							+ PayCalc.retire(Math.max(0, n(r.get("BASE_AMT")) - otherBase), n(r.get("MEAL_AMT")), n(r.get("RESEARCH_AMT")), n(r.get("FUEL_AMT")), n(r.get("BONUS_AMT")))
 					: 0;
 			Map<String, Object> latest = ds.isEmpty() ? null : ds.get(ds.size() - 1);
 			r.put("DETAILS", ds);
