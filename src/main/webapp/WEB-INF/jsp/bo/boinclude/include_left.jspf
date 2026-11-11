@@ -101,7 +101,7 @@
           <li class="nav-header"></li>
           	<%-- 硫붾돱? 沅뚰븳? boLoggerInterceptor 媛 ?ｋ뒗 boMenus 濡?洹몃┛?? 愿由??붾㈃: 怨꾩젙 諛?沅뚰븳 > 硫붾돱 愿由?--%>
           	<c:forEach var="group" items="${boMenus}">
-          	<li class="nav-item has-treeview menu-open" data-code="<c:out value="${group.MENU_CODE}"/>">
+          	<li class="nav-item has-treeview">
 	            <a href="#" class="nav-link">
 	              <i class="nav-icon fas <c:out value="${group.ICON_NM}"/>"></i>
 	              <p class="sTitle"><c:out value="${group.MENU_NM}"/><i class="right fas fa-angle-left"></i></p>
@@ -110,7 +110,7 @@
 	              <c:forEach var="item" items="${group.children}">
 	              <c:choose>
 	              <c:when test="${not empty item.children}">
-	              <li class="nav-item has-treeview menu-open" data-code="<c:out value="${item.MENU_CODE}"/>">
+	              <li class="nav-item has-treeview">
 	                <a href="#" class="nav-link">
 	                  <i class="${empty item.ICON_NM ? 'far fa-folder-open' : 'fas'} <c:out value="${item.ICON_NM}"/> nav-icon sTitle"></i>
 	                  <p class="sTitle"><c:out value="${item.MENU_NM}"/><i class="right fas fa-angle-left"></i></p>
@@ -134,25 +134,14 @@
 	<!-- /.sidebar -->
 </aside>
 
-<%-- 그룹·묶음은 사용자가 접은 것만 접어 두고, 현재 화면의 메뉴를 강조한다. 게시글 상세처럼 메뉴에 없는 화면은 같은 폴더의 메뉴를 쓴다 --%>
+<%-- 현재 화면이 든 그룹·묶음만 펼치고 나머지는 접은 뒤 현재 화면의 메뉴를 강조한다. 게시글 상세처럼 메뉴에 없는 화면은 같은 폴더의 메뉴를 쓴다 --%>
 <script>
 (function() {
 	// 스크롤해도 상단·왼쪽 메뉴를 고정한다. 모든 BO 화면이 이 파일을 쓰므로 body 클래스를 여기서 붙인다
 	document.body.classList.add('layout-fixed', 'layout-navbar-fixed');
 	// AdminLTE 는 window load 뒤에 접은 상태를 복원해 화면 전환마다 펼쳐졌다 접히므로 그리기 전에 먼저 적용한다
 	if (localStorage.getItem('remember.lte.pushmenu') === 'sidebar-collapse') document.body.classList.add('sidebar-collapse');
-	var closed = [];
-	try { closed = JSON.parse(localStorage.getItem('bo.menu.closed')) || []; } catch (e) {}
-	[].forEach.call(document.querySelectorAll('aside .has-treeview[data-code]'), function(li) { li.classList.toggle('menu-open', closed.indexOf(li.getAttribute('data-code')) < 0); });
-	// AdminLTE 가 열림 표시를 바꾸기 전에 읽도록 캡처 단계에서 받는다
-	document.addEventListener('click', function(e) {
-		var a = e.target.closest && e.target.closest('aside .has-treeview > a.nav-link');
-		if (!a) return;
-		var code = a.parentElement.getAttribute('data-code');
-		closed = closed.filter(function(c) { return c !== code; });
-		if (a.parentElement.classList.contains('menu-open')) closed.push(code);
-		try { localStorage.setItem('bo.menu.closed', JSON.stringify(closed)); } catch (e2) {}
-	}, true);
+	[].forEach.call(document.querySelectorAll('aside .has-treeview'), function(li) { li.classList.remove('menu-open'); });
 	var links = [].slice.call(document.querySelectorAll('aside .nav-treeview a.nav-link:not([href="#"])'));
 	var path = location.pathname, dir = path.substring(0, path.lastIndexOf('/') + 1);
 	var current = links.filter(function(a) { return a.pathname + a.search === path + location.search; })[0]
