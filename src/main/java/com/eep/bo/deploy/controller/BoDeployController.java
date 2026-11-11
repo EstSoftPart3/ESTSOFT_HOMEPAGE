@@ -183,6 +183,66 @@ public class BoDeployController {
 		return run(() -> payrollService.deployHistory(staffSq, deploySq));
 	}
 
+	@RequestMapping(value = "/admin/pay/detailData.do", method = RequestMethod.POST)
+	public ModelAndView detailData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("YM") String ym) {
+		return run(() -> payrollService.detail(staffSq, ym));
+	}
+
+	@RequestMapping(value = "/admin/pay/ackData.do", method = RequestMethod.POST)
+	public ModelAndView ackData(@RequestParam("YM") String ym, @RequestParam("STAFF_SQ") int staffSq, @RequestParam("FLAG_K") String keyword, HttpSession session) {
+		return run(() -> {
+			payrollService.ack(ym, staffSq, keyword, loginId(session));
+			return "OK";
+		});
+	}
+
+	@RequestMapping(value = "/admin/pay/payDateData.do", method = RequestMethod.POST)
+	public ModelAndView payDateData(@RequestParam("YM") String ym, @RequestParam("PAY_DT") String date, HttpSession session) {
+		return run(() -> {
+			payrollService.payDate(ym, date, loginId(session));
+			return "OK";
+		});
+	}
+
+	@RequestMapping(value = "/admin/pay/memoListData.do", method = RequestMethod.POST)
+	public ModelAndView memoListData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam(value = "YM", required = false) String ym, HttpSession session) {
+		return run(() -> {
+			Map<String, Object> out = new java.util.HashMap<>();
+			out.put("list", payrollService.memos(staffSq, ym));
+			out.put("me", loginId(session));
+			return out;
+		});
+	}
+
+	@RequestMapping(value = "/admin/pay/saveMemoData.do", method = RequestMethod.POST)
+	public ModelAndView saveMemoData(@RequestParam("YM") String ym, @RequestParam("STAFF_SQ") int staffSq, @RequestParam("CONTENT") String content, HttpSession session) {
+		return run(() -> {
+			payrollService.addMemo(ym, staffSq, content, loginId(session));
+			return "OK";
+		});
+	}
+
+	@RequestMapping(value = "/admin/pay/deleteMemoData.do", method = RequestMethod.POST)
+	public ModelAndView deleteMemoData(@RequestParam("MEMO_SQ") long memoSq, HttpSession session) {
+		return run(() -> {
+			payrollService.deleteMemo(memoSq, loginId(session));
+			return "OK";
+		});
+	}
+
+	@RequestMapping(value = "/admin/pay/changeListData.do", method = RequestMethod.POST)
+	public ModelAndView changeListData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam(value = "YM", required = false) String ym) {
+		return run(() -> payrollService.changes(staffSq, ym));
+	}
+
+	@RequestMapping(value = "/admin/pay/revertData.do", method = RequestMethod.POST)
+	public ModelAndView revertData(@RequestParam("CHG_SQ") long chgSq, HttpSession session) {
+		return run(() -> {
+			payrollService.revert(chgSq, loginId(session));
+			return "OK";
+		});
+	}
+
 	@RequestMapping(value = "/admin/pay/saveFieldData.do", method = RequestMethod.POST)
 	public ModelAndView saveFieldData(@RequestParam Map<String, Object> param, HttpSession session) {
 		return run(() -> {

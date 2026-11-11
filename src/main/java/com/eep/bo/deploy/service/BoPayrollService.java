@@ -64,7 +64,168 @@ public class BoPayrollService {
 		Map<String, Object> out = new HashMap<>();
 		out.put("rows", rows);
 		out.put("closed", closed);
+		// 확인 완료(✕)한 칩은 빼고, 메모·수정이력 건수를 붙인다
+		Map<String, Object> q = one("YM", ym);
+		Map<String, Set<String>> acks = new HashMap<>();
+		mapper.selectAcks(q).forEach(a -> acks.computeIfAbsent(String.valueOf(a.get("STAFF_SQ")), k -> new HashSet<>()).add(str(a.get("FLAG_K"))));
+		Map<String, Long> memo = counts(mapper.selectMemoCounts(q)), chg = counts(mapper.selectChangeCounts(q));
+		for (Map<String, Object> r : rows) {
+			String sq = String.valueOf(r.get("STAFF_SQ"));
+			Set<String> a = acks.getOrDefault(sq, new HashSet<>());
+			@SuppressWarnings("unchecked")
+			List<Map<String, Object>> f = (List<Map<String, Object>>) r.get("FLAGS");
+			f.removeIf(x -> a.contains(x.get("K")));
+			r.put("MEMO_CNT", memo.getOrDefault(sq, 0L));
+			r.put("CHG_CNT", chg.getOrDefault(sq, 0L));
+		}
+		String payDt = mapper.selectPayDate(q);
+		out.put("PAY_DT", payDt != null && !payDt.isEmpty() ? payDt : YearMonth.parse(ym).plusMonths(1).atDay(10).toString());
 		return out;
+	}
+
+	private static Map<String, Long> counts(List<Map<String, Object>> rows) {
+		Map<String, Long> m = new HashMap<>();
+		rows.forEach(r -> m.put(String.valueOf(r.get("STAFF_SQ")), n(r.get("CNT"))));
+		return m;
+	}
+
+	// ── 2차: 확인 완료·지급일자·메모·수정이력·상세 ──
+
+	public void ack(String ym, Object staffSq, String keyword, String loginId) {
+		checkYm(ym);
+		require(keyword != null && keyword.matches("[가-힣A-Za-z0-9]{1,20}"), "확인 사항이 올바르지 않습니다.");
+		Map<String, Object> q = one("YM", ym);
+		q.put("STAFF_SQ", staffSq);
+		q.put("FLAG_K", keyword);
+		q.put("EMPLY_ID", loginId);
+		mapper.saveAck(q);
+	}
+
+	public void payDate(String ym, String date, String loginId) {
+		checkYm(ym);
+		require(PayCalc.date(date) != null, "지급일자가 날짜가 아닙니다.");
+		Map<String, Object> q = one("YM", ym);
+		q.put("PAY_DT", PayCalc.date(date).toString());
+		q.put("EMPLY_ID", loginId);
+		mapper.savePayDate(q);
+	}
+
+	public List<Map<String, Object>> memos(Object staffSq, String ym) {
+		Map<String, Object> q = one("STAFF_SQ", staffSq);
+		q.put("YM", ym == null || ym.isEmpty() ? null : ym);
+		return mapper.selectMemos(q);
+	}
+
+	public void addMemo(String ym, Object staffSq, String content, String loginId) {
+		checkYm(ym);
+		String c = content == null ? "" : content.trim();
+		require(!c.isEmpty() && c.length() <= 1000, "메모는 1~1000자로 입력해 주세요.");
+		Map<String, Object> q = one("YM", ym);
+		q.put("STAFF_SQ", staffSq);
+		q.put("CONTENT", c);
+		q.put("EMPLY_ID", loginId);
+		mapper.insertMemo(q);
+	}
+
+	public void deleteMemo(Object memoSq, String loginId) {
+		Map<String, Object> q = one("MEMO_SQ", memoSq);
+		q.put("EMPLY_ID", loginId);
+		require(mapper.deleteMemo(q) == 1, "본인이 남긴 메모만 지울 수 있습니다.");
+	}
+
+	public List<Map<String, Object>> changes(Object staffSq, String ym) {
+		Map<String, Object> q = one("STAFF_SQ", staffSq);
+		q.put("YM", ym == null || ym.isEmpty() ? null : ym);
+		return mapper.selectChanges(q);
+	}
+
+	/** 수정이력 한 건을 되돌린다. 되돌린 것도 이력에 남는다 */
+	public void revert(Object chgSq, String loginId) {
+		Map<String, Object> h = mapper.selectChange(one("CHG_SQ", chgSq));
+		require(h != null, "이력을 찾지 못했습니다.");
+		String ym = str(h.get("PAY_YM")), field = str(h.get("FIELD_NM"));
+		require(!"Y".equals(h.get("REVERTED_YN")), "이미 되돌린 이력입니다.");
+		require(PAY_FIELDS.contains(field) || DED_FIELDS.contains(field), "금액 칸만 되돌릴 수 있습니다.");
+		require(!closed(ym), "마감된 달은 되돌릴 수 없습니다. 마감을 해제한 뒤 되돌려 주세요.");
+		Map<String, Object> q = one("YM", ym);
+		q.put("STAFF_SQ", h.get("STAFF_SQ"));
+		List<Map<String, Object>> found = mapper.selectPayrollRows(q);
+		require(!found.isEmpty(), "급여 행을 찾지 못했습니다.");
+		Map<String, Object> cur = found.get(0);
+		Set<String> manual = manual(cur);
+		if (AUTO_FIELDS.contains(field)) {
+			// 사람이 고친 것을 되돌리면 자동값으로, 자동으로 되돌린 것을 되돌리면 다시 수기값으로
+			if (h.get("REASON") == null) {
+				manual.remove(field);
+			} else if ("자동으로 되돌림".equals(h.get("REASON"))) {
+				manual.add(field);
+			}
+		}
+		long value = h.get("BEFORE_VAL") == null || str(h.get("BEFORE_VAL")).isEmpty() ? 0 : BoDeployService.money(h.get("BEFORE_VAL"));
+		q.put("FIELD", field);
+		q.put("VALUE", value);
+		q.put("MANUAL_FIELDS", String.join(",", manual));
+		q.put("UPDT_EMPLY_ID", loginId);
+		mapper.updatePayrollField(q);
+		change(ym, h.get("STAFF_SQ"), field, cur.get(field), value, "되돌리기 #" + chgSq, loginId);
+		mapper.markReverted(one("CHG_SQ", chgSq));
+	}
+
+	/** 직원 상세 팝업: 인적사항, 그 달 행, 그 해 월별, 상여 내역 */
+	@SuppressWarnings("unchecked")
+	public Map<String, Object> detail(Object staffSq, String ym) {
+		checkYm(ym);
+		Map<String, Object> card = mapper.selectStaffCard(one("STAFF_SQ", staffSq));
+		require(card != null, "직원을 찾지 못했습니다.");
+		String rrn = str(card.remove("RRN_ENC"));
+		card.put("BIRTH_DT", birth(rrn.isEmpty() ? "" : common.util.RrnCipher.isEncrypted(rrn) ? common.util.RrnCipher.decrypt(rrn) : rrn));
+		Map<String, Object> all = one("STAFF_SQ", staffSq);
+		List<Map<String, Object>> rows = derive(mapper.selectPayrollRows(all), mapper.selectPayrollDetails(all));
+		Map<String, Object> out = new HashMap<>();
+		out.put("card", card);
+		out.put("year", rows.stream().filter(r -> str(r.get("PAY_YM")).startsWith(ym.substring(0, 4))).toArray());
+		List<Map<String, Object>> bonus = new ArrayList<>();
+		List<Map<String, Object>> plan = new ArrayList<>();
+		for (Map<String, Object> r : rows) {
+			plan = (List<Map<String, Object>>) r.get("BONUS_PLAN");
+			if (n(r.get("BONUS_AMT")) == 0) {
+				continue;
+			}
+			Map<String, Object> b = new HashMap<>();
+			String m = str(r.get("PAY_YM"));
+			List<String> labels = new ArrayList<>();
+			for (Map<String, Object> p : plan) {
+				if (m.equals(p.get("YM"))) {
+					labels.add(str(p.get("LABEL")));
+				}
+			}
+			b.put("YM", m);
+			b.put("AMT", n(r.get("BONUS_AMT")));
+			b.put("LABEL", !labels.isEmpty() && !manual(r).contains("BONUS_AMT") ? String.join(", ", labels) : "엑셀 이관".equals(r.get("MEMO")) ? "상여(엑셀 이관)" : "상여(직접 입력)");
+			b.put("STATUS", closed(m) ? "지급" : "이번 달");
+			bonus.add(b);
+		}
+		for (Map<String, Object> p : plan) {
+			if (str(p.get("YM")).compareTo(ym) > 0) {
+				Map<String, Object> b = new HashMap<>(p);
+				b.put("STATUS", "예정");
+				bonus.add(b);
+			}
+		}
+		bonus.sort((a, b) -> str(b.get("YM")).compareTo(str(a.get("YM"))));
+		out.put("bonus", bonus);
+		return out;
+	}
+
+	/** 주민번호(원문)에서 생년월일만. 뒷자리 첫 숫자로 세기를 정한다 */
+	static String birth(String rrn) {
+		String d = rrn.replaceAll("[^0-9]", "");
+		if (d.length() < 7) {
+			return "";
+		}
+		char g = d.charAt(6);
+		String century = g == '1' || g == '2' || g == '5' || g == '6' ? "19" : g == '3' || g == '4' || g == '7' || g == '8' ? "20" : "18";
+		return century + d.substring(0, 2) + "-" + d.substring(2, 4) + "-" + d.substring(4, 6);
 	}
 
 	/** 한 사람의 그 해 월별 내역 */

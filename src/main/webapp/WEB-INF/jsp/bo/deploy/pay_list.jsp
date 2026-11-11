@@ -22,19 +22,38 @@
 	.btn.t-ded { border-color: #b4531a; color: #b4531a; font-weight: 700; } .show-ded .btn.t-ded { background: #b4531a; color: #fff; }
 	.btn.t-pl { border-color: #6b3fa0; color: #6b3fa0; font-weight: 700; } .show-pl .btn.t-pl { background: #6b3fa0; color: #fff; }
 	.pl-manual { background: #fff8e3 !important; }
-	.pl-split { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 12px; align-items: start; }
-	.pl-people { max-height: 75vh; overflow-y: auto; }
-	.pl-people button { display: flex; justify-content: space-between; width: 100%; border: 0; border-bottom: 1px solid rgba(17,17,17,.06); background: #fff; padding: 7px 12px; text-align: left; }
-	.pl-people button.on { background: #dff3f9; font-weight: 700; }
-	.pl-two { display: grid; grid-template-columns: 1fr 1fr; }
+	/* 체크 칩: 진짜 체크박스라 공통 Shift+클릭 범위 선택을 받는다 */
+	.pl-chks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 14px; }
+	.pl-chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(17,17,17,.15); font-weight: 700; font-size: 12.5px; color: #444; cursor: pointer; user-select: none; margin: 0; background: #fff; }
+	.pl-chip input { margin: 0; cursor: pointer; }
+	.pl-chip .cnt { background: rgba(17,17,17,.08); border-radius: 999px; padding: 0 7px; font-size: 11px; }
+	.pl-chip.on { border-color: #0b6e8a; background: #eef9fc; color: #0b6e8a; }
+	.pl-chip.alert.on { border-color: #a32020; background: #fdeaea; color: #a32020; }
+	.pl-top { overflow-x: auto; overflow-y: hidden; height: 12px; }
+	.pl-top div { height: 1px; }
+	.pl-scroll { max-height: 70vh; overflow: auto; }
+	.pl-scroll thead th { position: sticky; top: 0; z-index: 3; box-shadow: 0 1px 0 rgba(17,17,17,.1); }
+	.pl-sort { background: none; border: 0; padding: 0 0 0 3px; color: #9aa4ac; font-size: 10px; cursor: pointer; }
+	.pl-sort.on { color: #0b6e8a; }
+	#lBody tr.pl-child td { background: #fbfcfd; font-size: 12px; }
+	#lBody td.pl-type { color: #444; }
+	#lBody tr.pl-child td.pl-type::before { content: '└ '; color: #8a949c; }
+	.pl-btn { border: 1px solid #b9dbe6; background: #f3fbfd; color: #0b6e8a; border-radius: 10px; padding: 0 7px; font-size: 11.5px; font-weight: 700; }
+	.pl-btn.zero { opacity: .55; font-weight: 400; }
+	.pl-x { border: 0; background: none; padding: 0 0 0 3px; color: inherit; opacity: .6; font-size: 11px; }
+	.pl-x:hover, .pl-x:focus { opacity: 1; }
+	.pl-two { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid rgba(17,17,17,.08); border-radius: 8px; overflow: hidden; }
 	.pl-two > div + div { border-left: 1px solid rgba(17,17,17,.08); }
 	.pl-line { display: flex; justify-content: space-between; align-items: center; padding: 3px 14px; font-variant-numeric: tabular-nums; min-height: 28px; }
 	.pl-line.h { background: #fafbfc; font-weight: 700; border-bottom: 1px solid rgba(17,17,17,.06); }
 	.pl-line.t { font-weight: 700; border-top: 1px solid rgba(17,17,17,.08); background: #f6f8fa; }
 	.pl-line .hr-cell { min-width: 110px; text-align: right; }
-	.pl-netbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #111; color: #fff; font-weight: 700; }
+	.pl-netbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #111; color: #fff; font-weight: 700; border-radius: 8px; margin-top: 10px; }
 	.pl-netbar b { font-size: 19px; font-variant-numeric: tabular-nums; }
-	@media (max-width: 900px) { .pl-split, .pl-two { grid-template-columns: 1fr; } }
+	.pl-card th { width: 15%; background: #f6f8fa; color: #5f6b75; font-weight: 600; }
+	.pl-feed .it { border: 1px solid rgba(17,17,17,.1); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; white-space: pre-wrap; }
+	.pl-feed .who { font-size: 11.5px; color: #5f6b75; display: flex; gap: 8px; align-items: center; white-space: normal; }
+	@media (max-width: 900px) { .pl-two { grid-template-columns: 1fr; } }
 </style>
 
 <body class="hold-transition sidebar-mini">
@@ -44,14 +63,12 @@
 			<section class="content cal-page">
 				<div class="card-header d-flex flex-wrap align-items-center" style="gap:8px">
 					<h3 class="card-title bTitle"><b>급여관리</b></h3>
-					<div class="btn-group btn-group-sm" role="group" aria-label="보기">
-						<button type="button" class="btn btn-outline-secondary active" data-view="ledger">월 급여대장</button>
-						<button type="button" class="btn btn-outline-secondary" data-view="staff">직원별</button>
-					</div>
-					<div class="ml-auto d-flex align-items-center" style="gap:6px">
+					<div class="ml-auto d-flex align-items-center flex-wrap" style="gap:6px">
 						<button type="button" class="btn btn-sm btn-outline-secondary" id="prevYm" aria-label="이전 달">◀</button>
 						<input type="month" id="ym" class="form-control form-control-sm" style="width:150px" aria-label="급여 월">
 						<button type="button" class="btn btn-sm btn-outline-secondary" id="nextYm" aria-label="다음 달">▶</button>
+						<label class="mb-0 small text-muted" for="payDt">지급일자</label>
+						<input type="date" id="payDt" class="form-control form-control-sm" style="width:150px">
 						<span class="dp-pill" id="status"></span>
 						<button type="button" class="btn btn-sm btn-outline-secondary" id="btnImport">공제 불러오기</button>
 						<button type="button" class="btn btn-sm btn-primary" id="btnClose"></button>
@@ -59,36 +76,39 @@
 				</div>
 				<div class="card-body">
 					<div class="dp-kpis" id="kpis"></div>
-					<div id="ledgerView">
-						<div class="cal-panel pl-ledger" id="ledger">
-							<div class="d-flex flex-wrap align-items-center pr-3">
-								<div class="cate-tabs" id="tabs" role="tablist" aria-label="구분"></div>
-								<div class="ml-auto d-flex" style="gap:6px">
-									<button type="button" class="btn btn-sm t-allow" data-t="show-allow" aria-pressed="false">수당 펼치기</button>
-									<button type="button" class="btn btn-sm t-ded" data-t="show-ded" aria-pressed="false">공제 펼치기</button>
-									<button type="button" class="btn btn-sm t-pl" data-t="show-pl" aria-pressed="false">손익 펼치기</button>
-								</div>
+					<div class="cal-panel pl-ledger" id="ledger">
+						<div class="d-flex flex-wrap align-items-center pr-3">
+							<div class="pl-chks" id="chks" role="group" aria-label="보기 구분"></div>
+							<div class="ml-auto d-flex" style="gap:6px">
+								<button type="button" class="btn btn-sm t-allow" data-t="show-allow" aria-pressed="false">수당 펼치기</button>
+								<button type="button" class="btn btn-sm t-ded" data-t="show-ded" aria-pressed="false">공제 펼치기</button>
+								<button type="button" class="btn btn-sm t-pl" data-t="show-pl" aria-pressed="false">손익 펼치기</button>
 							</div>
-							<div class="table-responsive">
-								<table class="table table-sm cal-table mb-0">
-									<thead id="lHead"></thead>
-									<tbody id="lBody"></tbody>
-								</table>
-							</div>
-							<div class="small text-muted px-3 py-2">색 띠나 같은 색 버튼을 누르면 그 색 칸이 펼쳐집니다. 칸을 누르면 바로 고칩니다. 노란 칸은 자동계산을 사람이 고친 값이고, 빈칸으로 저장하면 자동값으로 돌아갑니다.</div>
 						</div>
-					</div>
-					<div id="staffView" style="display:none">
-						<div class="pl-split">
-							<div class="cal-panel">
-								<div class="p-2"><input type="search" class="form-control form-control-sm" id="peopleKw" placeholder="성명" aria-label="직원 검색"></div>
-								<div class="pl-people" id="people"></div>
-							</div>
-							<div id="staffDetail"></div>
+						<div class="pl-top" id="topScroll" aria-hidden="true"><div></div></div>
+						<div class="pl-scroll" id="mainScroll">
+							<table class="table table-sm cal-table mb-0">
+								<thead id="lHead"></thead>
+								<tbody id="lBody"></tbody>
+							</table>
 						</div>
+						<div class="small text-muted px-3 py-2">칸을 누르면 바로 고치고 수정이력에 남습니다(되돌리기는 ✎ 이력에서). 노란 칸은 자동계산을 사람이 고친 값입니다. 색 띠나 같은 색 버튼으로 칸을 펼칩니다. 확인 사항 ✕ 는 확인 완료로 숨깁니다.</div>
 					</div>
 				</div>
 			</section>
+		</div>
+	</div>
+
+	<div class="modal fade" id="detailModal" tabindex="-1" role="dialog" aria-labelledby="detailTitle" aria-hidden="true">
+		<div class="modal-dialog modal-xl" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="detailTitle">직원 상세</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
+				</div>
+				<div class="cate-tabs" id="detailTabs" role="tablist" aria-label="상세 구분"></div>
+				<div class="modal-body pt-0" id="detailBody"></div>
+			</div>
 		</div>
 	</div>
 
@@ -126,18 +146,21 @@
 
 	<script>
 	var TYPE_NM = { REGULAR: '정규', PROBATION: '수습', SPECIAL: '특고프리', BIZ: '사업자프리', EMP_INS: '고용보험알바', ETC: '기타계약', EXTERNAL: '외부업체' };
-	var GROUPS = [['', '전체'], ['_FLAG', '확인 필요'], ['REGULAR,PROBATION', '정규·수습'], ['SPECIAL', '특고프리'], ['BIZ,EMP_INS,ETC', '사업자·기타'], ['EXTERNAL', '외부업체']];
+	// 체크 칩: [키, 이름, 고용형태들]
+	var CHIPS = [['_FLAG', '확인 필요'], ['REGULAR', '정규', ['REGULAR']], ['PROBATION', '수습', ['PROBATION']], ['SPECIAL', '특고프리', ['SPECIAL']], ['BIZ', '사업자·기타', ['BIZ', 'EMP_INS', 'ETC']], ['EXTERNAL', '외부업체', ['EXTERNAL']]];
 	var ALLOW = [['MEAL_AMT', '식대'], ['RESEARCH_AMT', '연구비'], ['DRIVE_AMT', '운전보조'], ['CHILD_AMT', '자녀보육'], ['BONUS_AMT', '상여'], ['FUEL_AMT', '유류비']];
 	var DED = [['NP_AMT', '국민연금'], ['HI_AMT', '건강보험'], ['LTC_AMT', '장기요양'], ['EI_AMT', '고용보험'], ['ACC_AMT', '산재'], ['IT_AMT', '소득세'], ['LIT_AMT', '지방소득세'], ['_SETTLE', '정산'], ['MUTUAL_AMT', '상조회비'], ['ETC_DED', '기타공제']];
 	var SETTLES = ['NP_SETTLE', 'HI_SETTLE', 'EI_SETTLE', 'LTC_SETTLE', 'IT_SETTLE', 'LIT_SETTLE'];
-	var ym = moment().format('YYYY-MM'), rows = [], closed = false, group = '', view = 'ledger', shown = {}, picked = null;
+	var LABEL = { CLOSE: '마감', REOPEN: '마감 해제', MEMO: '메모' };
+	DP_PAY.concat(DP_DED).forEach(function(d) { LABEL[d[0]] = d[1]; });
+	var ym = moment().format('YYYY-MM'), rows = [], closed = false, shown = {}, checked = {}, sortKey = 'STAFF_NM', sortDir = 1, detailTab = 0, detailRow = null;
+	CHIPS.forEach(function(c) { checked[c[0]] = true; });
 
 	$(function() {
 		$('#ym').val(ym).on('change', function() { if (this.value) { ym = this.value; load(); } });
 		$('#prevYm').on('click', function() { step(-1); });
 		$('#nextYm').on('click', function() { step(1); });
-		$('[data-view]').on('click', function() { view = $(this).data('view'); $('[data-view]').removeClass('active'); $(this).addClass('active'); render(); });
-		$('#peopleKw').on('input', renderPeople);
+		$('#payDt').on('change', function() { if (this.value) hrPost('/admin/pay/payDateData.do', { YM: ym, PAY_DT: this.value }, function() {}); });
 		$('#btnClose').on('click', function() {
 			if (closed) { $('#reopenReason').val(''); $('#reopenModal').modal('show'); return; }
 			bootbox.confirm(dpYmLabel(ym) + ' 급여를 마감할까요? 마감하면 금액을 고칠 수 없습니다.', function(ok) {
@@ -147,83 +170,169 @@
 		$('#btnImport').on('click', function() { $('#importFiles').val(''); $('#importResult').empty(); $('#btnApply').prop('disabled', true); $('#importModal').modal('show'); });
 		$('#importFiles').on('change', preview);
 		$('#btnApply').on('click', apply);
+		$('#chks').on('change', 'input.pl-chk', function() { checked[this.value] = this.checked; render(); });
+		$('#chks').on('click', '#chkAll', function() {
+			var all = CHIPS.every(function(c) { return checked[c[0]]; });
+			CHIPS.forEach(function(c) { checked[c[0]] = !all; });
+			render();
+		});
+		// 위 스크롤 막대와 표 스크롤을 서로 맞춘다
+		$('#topScroll').on('scroll', function() { $('#mainScroll').scrollLeft(this.scrollLeft); });
+		$('#mainScroll').on('scroll', function() { $('#topScroll').scrollLeft(this.scrollLeft); });
+		$('#detailTabs').on('click', '.cate-tab', function() { detailTab = +$(this).attr('data-tab'); renderDetail(); });
 		load();
 	});
 
 	function step(d) { ym = moment(ym + '-01').add(d, 'months').format('YYYY-MM'); $('#ym').val(ym); load(); }
 
-	function load() {
+	function load(after) {
 		hrPost('/admin/pay/monthData.do', { YM: ym }, function(res) {
 			rows = res.result.rows;
 			closed = res.result.closed;
+			$('#payDt').val(res.result.PAY_DT || '');
 			render();
+			if (after) after();
 		});
 	}
 
 	function sum(list, k) { return list.reduce(function(s, r) { return s + Number(r[k] || 0); }, 0); }
-	function inGroup(r) { return !group || (group === '_FLAG' ? r.FLAGS.length > 0 : group.split(',').indexOf(r.EMP_TYPE_CD) >= 0); }
-	function clients(r) { return r.DETAILS.map(function(d) { return d.CLIENT_NM || ''; }).filter(function(v, i, a) { return v && a.indexOf(v) === i; }).join('·'); }
-	function projects(r) { return r.DETAILS.map(function(d) { return d.PRJ_NM || ''; }).filter(function(v, i, a) { return v && a.indexOf(v) === i; }).join('·'); }
 	function isManual(r, f) { return (',' + (r.MANUAL_FIELDS || '') + ',').indexOf(',' + f + ',') >= 0; }
+	function typeOf(d) { return d.DEPLOY_TYPE || ''; }
+	function chipOf(type) { var c = CHIPS.filter(function(c) { return c[2] && c[2].indexOf(type) >= 0; })[0]; return c ? c[0] : ''; }
+	function typesOf(r) { return [r.EMP_TYPE_CD].concat(r.DETAILS.map(typeOf)).filter(Boolean); }
+	function visible(r) {
+		if (checked._FLAG && r.FLAGS.length) return true;
+		return typesOf(r).some(function(t) { return checked[chipOf(t)]; });
+	}
+	// 체크한 형태의 계약이 윗줄. 둘 다면 정규·수습 먼저
+	function contracts(r) {
+		var ds = r.DETAILS.slice();
+		function score(d) { var t = typeOf(d) || r.EMP_TYPE_CD; return (checked[chipOf(t)] ? 0 : 2) + (t === 'REGULAR' || t === 'PROBATION' ? 0 : 1); }
+		return ds.sort(function(a, b) { return score(a) - score(b); });
+	}
+	function period(d) {
+		if (!Number(d.WORK_DAYS)) return '대기';
+		var first = moment(ym + '-01'), last = first.clone().endOf('month');
+		var s = moment(d.START_DT).isAfter(first) ? moment(d.START_DT) : first, e = d.END_DT && moment(d.END_DT).isBefore(last) ? moment(d.END_DT) : last;
+		return s.format('MM/DD') + '~' + e.format('MM/DD') + ' (' + d.WORK_DAYS + '일)';
+	}
+
+	var SORT = {
+		STAFF_NM: function(r) { return r.STAFF_NM; }, DUP: function(r) { return r.DETAILS.length; }, TYPE: function(r) { return TYPE_NM[r.EMP_TYPE_CD] || ''; },
+		CLIENT: function(r) { return (contracts(r)[0] || {}).CLIENT_NM || ''; }, PRJ: function(r) { return (contracts(r)[0] || {}).PRJ_NM || ''; },
+		PERIOD: function(r) { return (contracts(r)[0] || {}).START_DT || ''; }, FLAGS: function(r) { return r.FLAGS.length; }
+	};
+	function sortVal(r) { var f = SORT[sortKey]; var v = f ? f(r) : r[sortKey]; return v === undefined || v === null ? '' : v; }
 
 	function render() {
 		$('#status').text(closed ? '마감' : '작성중').attr('class', 'dp-pill ' + (closed ? 'ok' : 'warn'));
 		$('#btnClose').text(closed ? '마감 해제' : '마감');
 		$('#btnImport').prop('disabled', closed);
-		var kp = [['지급 합계', sum(rows, 'PAY_TOTAL')], ['공제 합계', sum(rows, 'DED_TOTAL')], ['실지급 합계', sum(rows, 'NET')], ['영업이익', sum(rows, 'PROFIT')], ['확인 필요', rows.filter(function(r) { return r.FLAGS.length; }).length, 'bad']];
+		var list = rows.filter(visible);
+		var kp = [['지급 합계', sum(list, 'PAY_TOTAL')], ['공제 합계', sum(list, 'DED_TOTAL')], ['실지급 합계', sum(list, 'NET')], ['영업이익', sum(list, 'PROFIT')], ['확인 필요', list.filter(function(r) { return r.FLAGS.length; }).length, 'bad']];
 		$('#kpis').empty().append(kp.map(function(k) { return $('<div class="dp-kpi">').addClass(k[2] || '').append($('<span>').text(k[0])).append($('<b>').text(dpWon(k[1]))); }));
-		$('#ledgerView').toggle(view === 'ledger');
-		$('#staffView').toggle(view === 'staff');
-		if (view === 'ledger') renderLedger(); else renderPeople();
+		renderChips();
+		renderLedger(list);
 	}
 
-	// ── 월 급여대장 ──
+	function renderChips() {
+		var all = CHIPS.every(function(c) { return checked[c[0]]; });
+		var $c = $('#chks').empty().append($('<button type="button" class="btn btn-sm btn-outline-secondary" id="chkAll">').text(all ? '☑ 전체 해제' : '☐ 전체 선택'));
+		CHIPS.forEach(function(c) {
+			var n = c[0] === '_FLAG' ? rows.filter(function(r) { return r.FLAGS.length; }).length : rows.filter(function(r) { return typesOf(r).some(function(t) { return chipOf(t) === c[0]; }); }).length;
+			$c.append($('<label class="pl-chip">').toggleClass('on', !!checked[c[0]]).toggleClass('alert', c[0] === '_FLAG')
+				.append($('<input type="checkbox" class="pl-chk">').val(c[0]).prop('checked', !!checked[c[0]])).append($('<span>').text(c[1])).append($('<span class="cnt">').text(n)));
+		});
+	}
 
-	function renderLedger() {
-		$('#tabs').empty().append(GROUPS.map(function(g) { return hrTab(g[0], g[1], rows.filter(function(r) { var keep = group; group = g[0]; var ok = inGroup(r); group = keep; return ok; }).length, group === g[0]); }));
-		$('#tabs .cate-tab').on('click', function() { group = $(this).attr('data-tab'); renderLedger(); });
-		var bands = $('<tr class="pl-bands">').append('<th colspan="7"></th>')
+	function sortTh(text, key, cls) {
+		var on = sortKey === key;
+		return $('<th>').addClass(cls || '').text(text).append($('<button type="button" class="pl-sort">').toggleClass('on', on).attr('aria-label', text + ' 정렬').text(on ? (sortDir > 0 ? '▲' : '▼') : '↕')
+			.on('click', function() { if (sortKey === key) sortDir = -sortDir; else { sortKey = key; sortDir = 1; } render(); }));
+	}
+
+	function renderLedger(list) {
+		var bands = $('<tr class="pl-bands">').append('<th colspan="8"></th>')
 			.append(band('show-allow', 'allow', '수당', ALLOW.length)).append(band('show-ded', 'ded', '공제', DED.length)).append('<th colspan="2"></th>')
-			.append(band('show-pl', 'pl', '손익', 3)).append('<th></th>');
-		var $h = $('<tr>').append(['성명', '형태', '고객사', '프로젝트', '근무일', '매출단가', '기본'].map(function(t, i) { return $('<th>').toggleClass('dp-num', i >= 4).text(t); }));
-		ALLOW.forEach(function(a) { $h.append($('<th class="dp-num x-allow">').text(a[1])); });
-		$h.append('<th class="dp-num c-allow">지급계</th>');
-		DED.forEach(function(a) { $h.append($('<th class="dp-num x-ded">').text(a[1])); });
-		$h.append('<th class="dp-num c-ded">공제계</th><th class="dp-num">실지급</th><th class="dp-num">전월대비</th><th class="pl-stub"></th>');
-		['실매출', '회사부담', '영업이익'].forEach(function(t) { $h.append($('<th class="dp-num x-pl">').text(t)); });
-		$h.append('<th>확인 사항</th>');
+			.append(band('show-pl', 'pl', '손익', 3)).append('<th colspan="3"></th>');
+		var $h = $('<tr>').append(sortTh('성명', 'STAFF_NM')).append(sortTh('중복계약', 'DUP')).append(sortTh('형태', 'TYPE')).append(sortTh('고객사', 'CLIENT')).append(sortTh('프로젝트', 'PRJ'))
+			.append(sortTh('근무기간', 'PERIOD')).append(sortTh('매출단가', 'SALE_PRICE', 'dp-num')).append(sortTh('기본', 'BASE_AMT', 'dp-num'));
+		ALLOW.forEach(function(a) { $h.append(sortTh(a[1], a[0], 'dp-num x-allow')); });
+		$h.append(sortTh('지급계', 'PAY_TOTAL', 'dp-num c-allow'));
+		DED.forEach(function(a) { $h.append(a[0] === '_SETTLE' ? $('<th class="dp-num x-ded">').text(a[1]) : sortTh(a[1], a[0], 'dp-num x-ded')); });
+		$h.append(sortTh('공제계', 'DED_TOTAL', 'dp-num c-ded')).append(sortTh('실지급', 'NET', 'dp-num')).append(sortTh('전월대비', 'DELTA_PCT', 'dp-num')).append('<th class="pl-stub"></th>');
+		[['실매출', 'REAL_SALE'], ['회사부담', 'COMPANY'], ['영업이익', 'PROFIT']].forEach(function(t) { $h.append(sortTh(t[0], t[1], 'dp-num x-pl')); });
+		$h.append(sortTh('확인 사항', 'FLAGS')).append('<th>메모</th><th>이력</th>');
 		$('#lHead').empty().append(bands).append($h);
-		var $b = $('#lBody').empty(), list = rows.filter(inGroup);
-		if (!list.length) $b.append('<tr><td colspan="40" class="text-center text-muted py-4">해당하는 급여가 없습니다. 투입현황에 투입을 등록하면 자동으로 생깁니다.</td></tr>');
+		var $b = $('#lBody').empty();
+		list.sort(function(a, b) {
+			var x = sortVal(a), y = sortVal(b);
+			return sortDir * (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'ko', { numeric: true }));
+		});
+		if (!list.length) $b.append('<tr><td colspan="40" class="text-center text-muted py-4">해당하는 급여가 없습니다. 체크를 바꾸거나, 투입현황에 투입을 등록하면 자동으로 생깁니다.</td></tr>');
 		list.forEach(function(r) {
-			var $tr = $('<tr>')
-				.append($('<td>').append($('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { picked = r.STAFF_SQ; $('[data-view=staff]').click(); })))
-				.append($('<td>').text(TYPE_NM[r.EMP_TYPE_CD] || r.EMP_TYPE_CD)).append($('<td>').text(clients(r)).append(r.DETAILS.length > 1 ? $('<span class="dp-pill ml-1">').text(r.DETAILS.length + '건') : ''))
-				.append($('<td>').text(projects(r)).append(r.DETAILS.length ? dpInfoBtn(r.STAFF_NM + ' 투입 정보', function() { deployInfo(r); }) : '')).append($('<td class="dp-num">').text(r.WORK_DAYS + '/' + r.TOTAL_DAYS)).append($('<td class="dp-num">').text(dpWon(r.SALE_PRICE)))
-				.append(cell(r, 'BASE_AMT', ''));
-			ALLOW.forEach(function(a) { $tr.append(cell(r, a[0], 'x-allow')); });
-			$tr.append($('<td class="dp-num c-allow font-weight-bold">').text(dpWon(r.PAY_TOTAL)));
-			DED.forEach(function(a) { $tr.append(a[0] === '_SETTLE' ? $('<td class="dp-num x-ded">').text(dpWon(SETTLES.reduce(function(s, k) { return s + Number(r[k] || 0); }, 0))).attr('title', '정산 칸은 직원별 화면에서 고칩니다') : cell(r, a[0], 'x-ded')); });
-			$tr.append($('<td class="dp-num c-ded font-weight-bold">').text(dpWon(r.DED_TOTAL))).append($('<td class="dp-num font-weight-bold">').text(dpWon(r.NET)))
-				.append($('<td class="dp-num">').text(r.DELTA_PCT === undefined ? '' : (r.DELTA_PCT > 0 ? '+' : '') + r.DELTA_PCT + '%').toggleClass('text-danger', Math.abs(r.DELTA_PCT || 0) >= 10))
-				.append('<td class="pl-stub"></td>')
-				.append($('<td class="dp-num x-pl">').text(dpWon(r.REAL_SALE))).append($('<td class="dp-num x-pl">').text(dpWon(r.COMPANY))).append($('<td class="dp-num x-pl font-weight-bold">').text(dpWon(r.PROFIT)))
-				.append($('<td>').append(r.FLAGS.map(dpFlag)));
+			var cs = contracts(r), span = Math.max(1, cs.length);
+			function rs($td) { return $td.attr('rowspan', span); }
+			var $tr = $('<tr>').append(rs($('<td>')).append($('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { openDetail(r); })))
+				.append(rs($('<td>')).append(dupCell(r, cs)));
+			contractCells(r, cs[0] || {}, true).forEach(function($td) { $tr.append($td); });
+			$tr.append(rs(cell(r, 'BASE_AMT', '')));
+			ALLOW.forEach(function(a) { $tr.append(rs(cell(r, a[0], 'x-allow'))); });
+			$tr.append(rs($('<td class="dp-num c-allow font-weight-bold">').text(dpWon(r.PAY_TOTAL))));
+			DED.forEach(function(a) { $tr.append(rs(a[0] === '_SETTLE' ? $('<td class="dp-num x-ded">').text(dpWon(SETTLES.reduce(function(s, k) { return s + Number(r[k] || 0); }, 0))).attr('title', '정산 칸은 상세에서 고칩니다') : cell(r, a[0], 'x-ded'))); });
+			$tr.append(rs($('<td class="dp-num c-ded font-weight-bold">').text(dpWon(r.DED_TOTAL)))).append(rs($('<td class="dp-num font-weight-bold">').text(dpWon(r.NET))))
+				.append(rs($('<td class="dp-num">').text(r.DELTA_PCT === undefined ? '' : (r.DELTA_PCT > 0 ? '+' : '') + r.DELTA_PCT + '%').toggleClass('text-danger', Math.abs(r.DELTA_PCT || 0) >= 10)))
+				.append(rs($('<td class="pl-stub">')))
+				.append(rs($('<td class="dp-num x-pl">').text(dpWon(r.REAL_SALE)))).append(rs($('<td class="dp-num x-pl">').text(dpWon(r.COMPANY)))).append(rs($('<td class="dp-num x-pl font-weight-bold">').text(dpWon(r.PROFIT))))
+				.append(rs($('<td>')).append(r.FLAGS.map(function(f) { return flagChip(r, f); })))
+				.append(rs($('<td>')).append(countBtn('💬', r.MEMO_CNT, r.STAFF_NM + ' 메모', function() { memoPopup(r); })))
+				.append(rs($('<td>')).append(countBtn('✎', r.CHG_CNT, r.STAFF_NM + ' 수정이력', function() { historyPopup(r); })));
 			$b.append($tr);
+			cs.slice(1).forEach(function(d) { $b.append($('<tr class="pl-child">').append(contractCells(r, d, false))); });
 		});
 		applyBands();
+		// 두 번째 머리글 줄은 색 띠 아래에 붙고, 위 스크롤 막대 길이는 표 너비에 맞춘다
+		$('#lHead tr').eq(1).children().css('top', $('#lHead tr').eq(0).outerHeight());
+		$('#topScroll div').width($('#mainScroll table').outerWidth());
+		$('#topScroll').toggle($('#mainScroll table').outerWidth() > $('#mainScroll').innerWidth());
 	}
 
-	// 급여대장에 없는 투입 정보만 보인다 (고객사·프로젝트·근무일·매출단가는 표에 있다)
-	function deployInfo(r) {
-		var $box = $('<div>');
-		r.DETAILS.forEach(function(d, i) {
-			$box.append($('<div class="font-weight-bold mb-1">').toggleClass('mt-3', i > 0).text([d.CLIENT_NM, d.PRJ_NM].filter(Boolean).join(' · ') || '투입 ' + (i + 1)));
-			$box.append($('<table class="table table-sm mb-0">').append([['매출처', d.SALE_PARTNER_NM], ['매입처', d.BUY_PARTNER_NM], ['근무지역', d.WORK_AREA], ['투입등급', d.GRADE_CD],
-				['투입기간', (d.START_DT || '') + ' ~ ' + (d.END_DT || '미정')], ['수습해제일', d.PROB_END_DT], ['월 계약단가', d.COST_PRICE ? dpWon(d.COST_PRICE) : ''], ['메모', d.MEMO]]
-				.map(function(x) { return $('<tr>').append($('<th class="text-muted font-weight-normal" style="width:140px">').text(x[0])).append($('<td>').text(x[1] || '—')); })));
+	function contractCells(r, d, top) {
+		var t = typeOf(d) || r.EMP_TYPE_CD;
+		return [$('<td class="pl-type">').text(TYPE_NM[t] || t || ''), $('<td>').text(d.CLIENT_NM || ''),
+			$('<td>').text(d.PRJ_NM || '').append(d.DEPLOY_SQ ? dpInfoBtn(r.STAFF_NM + ' 투입 정보', function() { deployInfo(r, d); }) : ''),
+			$('<td>').text(d.DEPLOY_SQ ? period(d) : ''), $('<td class="dp-num">').text(d.SALE_PRICE ? dpWon(d.SALE_PRICE) : '')];
+	}
+
+	function dupCell(r, cs) {
+		if (cs.length < 2) return $('<span class="dp-mute">').text('—');
+		var $p = $('<span class="dp-pill rent" tabindex="0">').text(cs.length + '건');
+		dpHover($p, $p, function() {
+			return '<div class="dp-card sm"><div class="dp-card-top">중복계약 ' + cs.length + '건</div><div class="dp-sec">' + cs.map(function(d) {
+				return dpLine((TYPE_NM[typeOf(d)] || '') + ' · ' + [d.CLIENT_NM, d.PRJ_NM].filter(Boolean).join(' '), dpWon(d.BASE_AMT)) + '<div><span class="dp-mute">' + dpEsc(period(d)) + '</span><span></span></div>';
+			}).join('') + '</div></div>';
 		});
-		dpInfo(r.STAFF_NM + ' 투입 정보', $box);
+		return $p;
+	}
+
+	function countBtn(icon, n, label, open) {
+		n = Number(n || 0);
+		return $('<button type="button" class="pl-btn">').toggleClass('zero', !n).attr('aria-label', label + ' ' + n + '건').text(icon + (n ? ' ' + n : '')).on('click', open);
+	}
+
+	function flagChip(r, f) {
+		var $p = dpFlag(f);
+		if (!closed) $p.append($('<button type="button" class="pl-x" title="확인 완료(숨김)">').attr('aria-label', f.K + ' 확인 완료').text('✕').on('click', function(e) {
+			e.stopPropagation(); dpHide();
+			hrPost('/admin/pay/ackData.do', { YM: ym, STAFF_SQ: r.STAFF_SQ, FLAG_K: f.K }, function() { load(); });
+		}));
+		return $p;
+	}
+
+	// 급여대장에 없는 투입 정보만 보인다
+	function deployInfo(r, d) {
+		dpInfo(r.STAFF_NM + ' 투입 정보', [['고객사 · 프로젝트', [d.CLIENT_NM, d.PRJ_NM].filter(Boolean).join(' · ')], ['매출처', d.SALE_PARTNER_NM], ['매입처', d.BUY_PARTNER_NM], ['근무지역', d.WORK_AREA], ['투입등급', d.GRADE_CD],
+			['투입기간', (d.START_DT || '') + ' ~ ' + (d.END_DT || '미정')], ['수습해제일', d.PROB_END_DT], ['월 계약단가', d.COST_PRICE ? dpWon(d.COST_PRICE) : ''], ['메모', d.MEMO]]);
 	}
 
 	function band(t, cls, label, span) {
@@ -237,6 +346,8 @@
 			else $(this).attr('aria-pressed', on).text($(this).text().replace(on ? '펼치기' : '접기', on ? '접기' : '펼치기'));
 			$('#ledger').toggleClass(t, on);
 		});
+		$('#topScroll div').width($('#mainScroll table').outerWidth());
+		$('#topScroll').toggle($('#mainScroll table').outerWidth() > $('#mainScroll').innerWidth());
 	}
 
 	$(document).on('click keydown', '#ledger [data-t]', function(e) {
@@ -250,53 +361,130 @@
 	function cell(r, f, cls) {
 		var $td = $('<td class="dp-num">').addClass(cls).toggleClass('pl-manual', isManual(r, f));
 		if (closed) return $td.text(dpWon(r[f]));
-		return hrEditable($td, { url: '/admin/pay/saveFieldData.do', key: { YM: ym, STAFF_SQ: r.STAFF_SQ }, field: f, label: r.STAFF_NM + ' ' + f,
-			show: function() { return dpWon(r[f]); }, value: function() { return r[f]; }, saved: function() { load(); } });
+		return hrEditable($td, { url: '/admin/pay/saveFieldData.do', key: { YM: ym, STAFF_SQ: r.STAFF_SQ }, field: f, label: r.STAFF_NM + ' ' + (LABEL[f] || f),
+			show: function() { return dpWon(r[f]); }, value: function() { return r[f]; }, saved: function() { load(function() { if (detailRow) refreshDetail(); }); } });
 	}
 
-	// ── 직원별 ──
+	// ── 메모 (쌓기만, 본인 것만 삭제) ──
 
-	function renderPeople() {
-		var kw = $.trim($('#peopleKw').val());
-		if (!picked && rows.length) picked = rows[0].STAFF_SQ;
-		$('#people').empty().append(rows.filter(function(r) { return !kw || r.STAFF_NM.indexOf(kw) >= 0; }).map(function(r) {
-			return $('<button type="button">').toggleClass('on', r.STAFF_SQ === picked).append($('<span>').text(r.STAFF_NM)).append($('<span class="dp-pill">').text(TYPE_NM[r.EMP_TYPE_CD] || ''))
-				.on('click', function() { picked = r.STAFF_SQ; renderPeople(); });
-		}));
-		var r = rows.filter(function(x) { return x.STAFF_SQ === picked; })[0];
-		if (!r) { $('#staffDetail').html('<div class="text-muted p-4">이 달에 급여 행이 있는 직원이 없습니다.</div>'); return; }
+	function memoView($box, r, done) {
+		hrPost('/admin/pay/memoListData.do', { STAFF_SQ: r.STAFF_SQ, YM: ym }, function(res) {
+			var $f = $('<div class="pl-feed">');
+			res.result.list.forEach(function(m) {
+				var $who = $('<div class="who">').append($('<b>').text(m.EMPLY_NM || m.EMPLY_ID)).append($('<span>').text(m.REG_DT));
+				if (m.EMPLY_ID === res.result.me) $who.append($('<button type="button" class="btn btn-sm btn-link p-0 ml-auto text-danger">삭제</button>').on('click', function() {
+					hrPost('/admin/pay/deleteMemoData.do', { MEMO_SQ: m.MEMO_SQ }, function() { memoView($box, r, done); load(); });
+				}));
+				$f.append($('<div class="it">').append($who).append($('<div>').text(m.CONTENT)));
+			});
+			if (!res.result.list.length) $f.append('<div class="text-muted small mb-2">이 달 메모가 없습니다.</div>');
+			var $ta = $('<textarea class="form-control form-control-sm" rows="2" maxlength="1000" aria-label="메모 입력" placeholder="메모 입력 (작성자·일시는 자동)">');
+			var $add = $('<button type="button" class="btn btn-sm btn-primary mt-1">남기기</button>').on('click', function() {
+				if (!$.trim($ta.val())) { $ta.focus(); return; }
+				hrPost('/admin/pay/saveMemoData.do', { YM: ym, STAFF_SQ: r.STAFF_SQ, CONTENT: $ta.val() }, function() { memoView($box, r, done); load(); });
+			});
+			$box.empty().append($f).append($ta).append($('<div class="text-right">').append($add));
+			if (done) done();
+		});
+	}
+	function memoPopup(r) { var $box = $('<div>'); memoView($box, r, function() { dpInfo(r.STAFF_NM + ' · ' + dpYmLabel(ym) + ' 메모', $box); }); }
+
+	// ── 수정이력 (되돌리기는 여기서만) ──
+
+	function historyView($box, r, done) {
+		hrPost('/admin/pay/changeListData.do', { STAFF_SQ: r.STAFF_SQ, YM: ym }, function(res) {
+			var $t = $('<table class="table table-sm cal-table mb-0">').append('<thead><tr><th>일시</th><th>누가</th><th>칸</th><th class="dp-num">전 → 후</th><th>사유</th><th></th></tr></thead>');
+			var $b = $('<tbody>').appendTo($t);
+			res.result.forEach(function(h) {
+				var amount = !!(DP_PAY.concat(DP_DED).some(function(d) { return d[0] === h.FIELD_NM; }));
+				var $act = $('<td>');
+				if (h.REVERTED_YN === 'Y') $act.append('<span class="dp-pill">되돌림됨</span>');
+				else if (amount && !closed) $act.append($('<button type="button" class="btn btn-sm btn-outline-secondary">↶ 되돌리기</button>').on('click', function() {
+					bootbox.confirm((LABEL[h.FIELD_NM] || h.FIELD_NM) + ' 을(를) ' + dpWon(h.BEFORE_VAL) + ' 으로 되돌릴까요?', function(ok) {
+						if (ok) hrPost('/admin/pay/revertData.do', { CHG_SQ: h.CHG_SQ }, function() { load(); historyView($box, r); });
+					});
+				}));
+				$b.append($('<tr>').toggleClass('text-muted', h.REVERTED_YN === 'Y').append($('<td>').text(h.REG_DT)).append($('<td>').text(h.EMPLY_NM || h.EMPLY_ID || ''))
+					.append($('<td>').text(LABEL[h.FIELD_NM] || h.FIELD_NM)).append($('<td class="dp-num">').text(h.BEFORE_VAL === null && h.AFTER_VAL === null ? '' : dpWon(h.BEFORE_VAL) + ' → ' + dpWon(h.AFTER_VAL)))
+					.append($('<td>').text(h.REASON || '')).append($act));
+			});
+			if (!res.result.length) $b.append('<tr><td colspan="6" class="text-center text-muted py-3">이 달 수정이력이 없습니다.</td></tr>');
+			$box.empty().append($('<div class="table-responsive">').append($t));
+			if (closed) $box.append('<div class="small text-muted mt-2">마감된 달은 되돌릴 수 없습니다.</div>');
+			if (done) done();
+		});
+	}
+	function historyPopup(r) { var $box = $('<div>'); historyView($box, r, function() { dpInfo(r.STAFF_NM + ' · ' + dpYmLabel(ym) + ' 수정이력', $box); }); }
+
+	// ── 직원 상세 팝업 ──
+
+	var DETAIL_TABS = ['이번 달 명세', '월별 내역', '상여', '메모', '수정이력'];
+	function openDetail(r) { detailRow = r; detailTab = 0; renderDetail(); $('#detailModal').modal('show'); }
+	function refreshDetail() { detailRow = rows.filter(function(x) { return x.STAFF_SQ === detailRow.STAFF_SQ; })[0] || detailRow; renderDetail(); }
+	$(document).on('hidden.bs.modal', '#detailModal', function() { detailRow = null; });
+
+	function renderDetail() {
+		var r = detailRow;
+		$('#detailTitle').text(r.STAFF_NM + ' · ' + dpYmLabel(ym) + (closed ? ' 마감' : ' 작성중'));
+		$('#detailTabs').empty().append(DETAIL_TABS.map(function(t, i) { return hrTab(i, t, i === 3 ? Number(r.MEMO_CNT || 0) : i === 4 ? Number(r.CHG_CNT || 0) : '', detailTab === i); }));
+		var $body = $('#detailBody').empty();
+		if (detailTab === 3) return memoView($body, r);
+		if (detailTab === 4) return historyView($body, r);
+		hrPost('/admin/pay/detailData.do', { STAFF_SQ: r.STAFF_SQ, YM: ym }, function(res) {
+			var d = res.result;
+			if (detailTab === 0) renderSlip($body, r, d.card);
+			else if (detailTab === 1) renderYear($body, d.year);
+			else renderBonus($body, d.bonus);
+		});
+	}
+
+	function renderSlip($body, r, c) {
+		$body.append('<div class="font-weight-bold mb-1">인적사항</div>').append($('<table class="table table-sm table-bordered pl-card mb-3">')
+			.append($('<tr>').append('<th>성명</th>').append($('<td>').text(c.STAFF_NM || '')).append('<th>생년월일</th>').append($('<td>').text(c.BIRTH_DT || '')))
+			.append($('<tr>').append('<th>직급</th>').append($('<td>').text(c.POSITION_NM || '')).append('<th>입사일</th>').append($('<td>').text(c.JOIN_DT || '')))
+			.append($('<tr>').append('<th>지급일자</th>').append($('<td>').text($('#payDt').val() || '')).append('<th>부서</th>').append($('<td>').text(c.DEPT_NM || c.ORG_NM || ''))));
 		function line(f, label) {
 			var $v = $('<span>').toggleClass('pl-manual', isManual(r, f));
 			if (closed) $v.text(dpWon(r[f])); else hrEditable($v, { url: '/admin/pay/saveFieldData.do', key: { YM: ym, STAFF_SQ: r.STAFF_SQ }, field: f, label: label,
-				show: function() { return dpWon(r[f]); }, value: function() { return r[f]; }, saved: function() { load(); } });
+				show: function() { return dpWon(r[f]); }, value: function() { return r[f]; }, saved: function() { load(refreshDetail); } });
 			return $('<div class="pl-line">').append($('<span>').text(label)).append($v);
 		}
 		var $pay = $('<div>').append('<div class="pl-line h"><span>지급</span></div>');
-		DP_PAY.forEach(function(d) { $pay.append(line(d[0], d[1])); });
+		DP_PAY.forEach(function(x) { $pay.append(line(x[0], x[1])); });
 		$pay.append($('<div class="pl-line t">').append('<span>지급 합계</span>').append($('<span>').text(dpWon(r.PAY_TOTAL))));
 		var $ded = $('<div>').append('<div class="pl-line h"><span>공제</span></div>');
-		DP_DED.forEach(function(d) { $ded.append(line(d[0], d[1])); });
+		DP_DED.forEach(function(x) { $ded.append(line(x[0], x[1])); });
 		$ded.append($('<div class="pl-line t">').append('<span>공제 합계</span>').append($('<span>').text(dpWon(r.DED_TOTAL))));
-		var $stub = $('<div class="cal-panel">')
-			.append($('<div class="cal-panel-head">').append($('<span>').append($('<b>').text(r.STAFF_NM)).append(' ').append($('<span class="dp-pill">').text(TYPE_NM[r.EMP_TYPE_CD] || ''))
-				.append($('<span class="dp-mute small ml-2">').text([clients(r), projects(r), r.JOIN_DT ? '입사 ' + r.JOIN_DT : ''].filter(Boolean).join(' · '))))
-				.append($('<span class="dp-pill">').addClass(closed ? 'ok' : 'warn').text(dpYmLabel(ym) + ' ' + (closed ? '마감' : '작성중'))))
-			.append($('<div class="pl-two">').append($pay).append($ded))
+		$body.append($('<div class="pl-two">').append($pay).append($ded))
 			.append($('<div class="pl-netbar">').append('<span>실지급액</span>').append($('<b>').text(dpWon(r.NET))));
-		var $hist = $('<div class="cal-panel">').append($('<div class="cal-panel-head">').text(ym.substring(0, 4) + '년 월별 내역'))
-			.append('<div class="table-responsive"><table class="table table-sm cal-table mb-0"><thead><tr><th>월</th><th class="dp-num">근무일</th><th class="dp-num">계약단가</th><th class="dp-num">지급계</th><th class="dp-num">공제계</th><th class="dp-num">실지급</th><th class="dp-num">영업이익</th><th>확인 사항</th></tr></thead><tbody id="yearBody"></tbody></table></div>');
-		var plan = (r.BONUS_PLAN || []).map(function(b) { return $('<span class="dp-pill">').addClass(b.YM < ym ? 'ok' : b.YM === ym ? 'warn' : '').text(b.LABEL + ' ' + b.YM + (b.YM === ym ? ' · 이번 달' : b.YM < ym ? ' 지급' : ' 예정')); });
-		var $bonus = $('<div class="cal-panel">').append($('<div class="cal-panel-head">').text('상여 일정 (입사일 기준, 정규·수습)'))
-			.append($('<div class="p-3">').append(plan.length ? plan : $('<span class="dp-mute">').text('자동 상여 대상이 아닙니다. 연차수당·인재추천은 상여 칸에 직접 넣습니다.')));
-		$('#staffDetail').empty().append($stub).append($hist).append($bonus);
-		hrPost('/admin/pay/staffYearData.do', { STAFF_SQ: r.STAFF_SQ, YEAR: ym.substring(0, 4) }, function(res) {
-			$('#yearBody').empty().append(res.result.map(function(m) {
-				return $('<tr>').toggleClass('font-weight-bold', m.PAY_YM === ym).append($('<td>').text(Number(m.PAY_YM.substring(5)) + '월'))
-					.append($('<td class="dp-num">').text(m.WORK_DAYS + '/' + m.TOTAL_DAYS)).append($('<td class="dp-num">').text(dpWon(m.COST_PRICE)))
-					.append($('<td class="dp-num">').text(dpWon(m.PAY_TOTAL))).append($('<td class="dp-num">').text(dpWon(m.DED_TOTAL))).append($('<td class="dp-num">').text(dpWon(m.NET)))
-					.append($('<td class="dp-num">').text(dpWon(m.PROFIT))).append($('<td>').text(m.MEMO || ''));
-			}));
+	}
+
+	function renderYear($body, year) {
+		var $t = $('<table class="table table-sm cal-table mb-0">').append('<thead><tr><th>월</th><th class="dp-num">근무일</th><th class="dp-num">계약단가</th><th class="dp-num">지급계</th><th class="dp-num">공제계</th><th class="dp-num">실지급</th><th class="dp-num">영업이익</th></tr></thead>');
+		var $b = $('<tbody>').appendTo($t);
+		(year || []).slice().sort(function(a, b) { return b.PAY_YM.localeCompare(a.PAY_YM); }).forEach(function(m) {
+			$b.append($('<tr>').toggleClass('font-weight-bold', m.PAY_YM === ym).append($('<td>').text(Number(m.PAY_YM.substring(5)) + '월'))
+				.append($('<td class="dp-num">').text(m.WORK_DAYS + '/' + m.TOTAL_DAYS)).append($('<td class="dp-num">').text(dpWon(m.COST_PRICE)))
+				.append($('<td class="dp-num">').text(dpWon(m.PAY_TOTAL))).append($('<td class="dp-num">').text(dpWon(m.DED_TOTAL))).append($('<td class="dp-num">').text(dpWon(m.NET)))
+				.append($('<td class="dp-num">').text(dpWon(m.PROFIT))));
 		});
+		if (!(year || []).length) $b.append('<tr><td colspan="7" class="text-center text-muted py-3">올해 급여 기록이 없습니다.</td></tr>');
+		$body.append($('<div class="table-responsive">').append($t));
+	}
+
+	function renderBonus($body, bonus) {
+		var paid = bonus.filter(function(b) { return b.STATUS === '지급'; }), plan = bonus.filter(function(b) { return b.STATUS === '예정'; }), now = bonus.filter(function(b) { return b.STATUS === '이번 달'; });
+		$body.append($('<div class="mb-2">').append($('<span class="dp-pill ok">').text('지급 누계 ' + dpWon(paid.reduce(function(s, b) { return s + Number(b.AMT || 0); }, 0))))
+			.append($('<span class="dp-pill warn">').text('이번 달 ' + dpWon(now.reduce(function(s, b) { return s + Number(b.AMT || 0); }, 0))))
+			.append($('<span class="dp-pill">').text('예정 ' + plan.length + '건')));
+		var $t = $('<table class="table table-sm cal-table mb-0">').append('<thead><tr><th>지급월</th><th>상여</th><th class="dp-num">금액</th><th>상태</th></tr></thead>');
+		var $b = $('<tbody>').appendTo($t);
+		bonus.forEach(function(b) {
+			$b.append($('<tr>').toggleClass('pl-manual', b.STATUS === '이번 달').append($('<td>').text(b.YM)).append($('<td>').text(b.LABEL || ''))
+				.append($('<td class="dp-num">').text(dpWon(b.AMT))).append($('<td>').append($('<span class="dp-pill">').addClass(b.STATUS === '지급' ? 'ok' : b.STATUS === '이번 달' ? 'warn' : '').text(b.STATUS))));
+		});
+		if (!bonus.length) $b.append('<tr><td colspan="4" class="text-center text-muted py-3">상여 내역이 없습니다.</td></tr>');
+		$body.append($('<div class="table-responsive">').append($t));
 	}
 
 	// ── 공제 불러오기 ──

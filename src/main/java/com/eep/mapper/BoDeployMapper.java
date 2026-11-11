@@ -35,6 +35,19 @@ public interface BoDeployMapper {
 	public int updateDeploy(Map<String, Object> param);
 	public int deleteDeploy(Map<String, Object> param);
 	public int countDeployClosed(Map<String, Object> param);					//DEPLOY_SQ 가 들어간 마감 월 수
+	public String selectPayDate(Map<String, Object> param);						//YM 의 지급일자
+	public int savePayDate(Map<String, Object> param);							//YM, PAY_DT, EMPLY_ID
+	public List<Map<String, Object>> selectMemoCounts(Map<String, Object> param);	//YM → STAFF_SQ, CNT
+	public List<Map<String, Object>> selectChangeCounts(Map<String, Object> param);	//YM → STAFF_SQ, CNT
+	public List<Map<String, Object>> selectAcks(Map<String, Object> param);			//YM → STAFF_SQ, FLAG_K
+	public int saveAck(Map<String, Object> param);								//YM, STAFF_SQ, FLAG_K, EMPLY_ID
+	public List<Map<String, Object>> selectMemos(Map<String, Object> param);		//STAFF_SQ (+YM)
+	public int insertMemo(Map<String, Object> param);
+	public int deleteMemo(Map<String, Object> param);							//MEMO_SQ, EMPLY_ID(본인 것만)
+	public List<Map<String, Object>> selectChanges(Map<String, Object> param);		//STAFF_SQ (+YM)
+	public Map<String, Object> selectChange(Map<String, Object> param);			//CHG_SQ
+	public int markReverted(Map<String, Object> param);							//CHG_SQ
+	public Map<String, Object> selectStaffCard(Map<String, Object> param);		//STAFF_SQ 인적사항 (주민번호는 서버 안에서만)
 	public int updateDeployEnd(Map<String, Object> param);						//연장: DEPLOY_SQ, END_DT, (CAN_PAY 면) SALE_PRICE·COST_PRICE, MEMO 덧붙임
 	public List<Map<String, Object>> selectStaffPrjs(Map<String, Object> param);	//STAFF_SQ 의 인사카드 수행이력
 

@@ -239,6 +239,68 @@
 		VALUES (#{YM}, #{STAFF_SQ}, #{FIELD}, #{BEFORE_VAL}, #{AFTER_VAL}, #{REASON}, #{UPDT_EMPLY_ID})
 	</insert>
 
+	<!-- 급여 2차: 지급일자·메모·수정이력·확인 완료 (sql/payroll_v2.sql) -->
+	<select id="selectPayDate" parameterType="hashMap" resultType="string">
+		SELECT PAY_DT FROM TB_EEP_PAYROLL_CLOSE_M WHERE PAY_YM = #{YM}
+	</select>
+
+	<insert id="savePayDate" parameterType="hashMap">
+		INSERT INTO TB_EEP_PAYROLL_CLOSE_M (PAY_YM, CLOSED_YN, PAY_DT, EMPLY_ID, UPDT_DT) VALUES (#{YM}, 'N', #{PAY_DT}, #{EMPLY_ID}, NOW())
+		ON DUPLICATE KEY UPDATE PAY_DT = VALUES(PAY_DT)
+	</insert>
+
+	<select id="selectMemoCounts" parameterType="hashMap" resultType="hashMap">
+		SELECT STAFF_SQ, COUNT(*) AS CNT FROM TB_EEP_PAYROLL_MEMO_R WHERE PAY_YM = #{YM} GROUP BY STAFF_SQ
+	</select>
+
+	<select id="selectChangeCounts" parameterType="hashMap" resultType="hashMap">
+		SELECT STAFF_SQ, COUNT(*) AS CNT FROM TB_EEP_PAYROLL_CHG_H WHERE PAY_YM = #{YM} AND STAFF_SQ > 0 GROUP BY STAFF_SQ
+	</select>
+
+	<select id="selectAcks" parameterType="hashMap" resultType="hashMap">
+		SELECT STAFF_SQ, FLAG_K FROM TB_EEP_PAYROLL_ACK_R WHERE PAY_YM = #{YM}
+	</select>
+
+	<insert id="saveAck" parameterType="hashMap">
+		INSERT IGNORE INTO TB_EEP_PAYROLL_ACK_R (PAY_YM, STAFF_SQ, FLAG_K, EMPLY_ID) VALUES (#{YM}, #{STAFF_SQ}, #{FLAG_K}, #{EMPLY_ID})
+	</insert>
+
+	<select id="selectMemos" parameterType="hashMap" resultType="hashMap">
+		SELECT M.MEMO_SQ, M.PAY_YM, M.CONTENT, M.EMPLY_ID, DATE_FORMAT(M.REG_DT, '%Y-%m-%d %H:%i') AS REG_DT
+			, (SELECT E.EMPLY_NM FROM TB_EEP_EMPLY_M E WHERE E.EMPLY_ID = M.EMPLY_ID LIMIT 1) AS EMPLY_NM
+		FROM TB_EEP_PAYROLL_MEMO_R M
+		WHERE M.STAFF_SQ = #{STAFF_SQ} <if test="YM != null">AND M.PAY_YM = #{YM}</if>
+		ORDER BY M.MEMO_SQ DESC
+	</select>
+
+	<insert id="insertMemo" parameterType="hashMap">
+		INSERT INTO TB_EEP_PAYROLL_MEMO_R (PAY_YM, STAFF_SQ, CONTENT, EMPLY_ID) VALUES (#{YM}, #{STAFF_SQ}, #{CONTENT}, #{EMPLY_ID})
+	</insert>
+
+	<delete id="deleteMemo" parameterType="hashMap">
+		DELETE FROM TB_EEP_PAYROLL_MEMO_R WHERE MEMO_SQ = #{MEMO_SQ} AND EMPLY_ID = #{EMPLY_ID}
+	</delete>
+
+	<select id="selectChanges" parameterType="hashMap" resultType="hashMap">
+		SELECT H.CHG_SQ, H.PAY_YM, H.FIELD_NM, H.BEFORE_VAL, H.AFTER_VAL, H.REASON, H.REVERTED_YN, H.EMPLY_ID, DATE_FORMAT(H.REG_DT, '%Y-%m-%d %H:%i') AS REG_DT
+			, (SELECT E.EMPLY_NM FROM TB_EEP_EMPLY_M E WHERE E.EMPLY_ID = H.EMPLY_ID LIMIT 1) AS EMPLY_NM
+		FROM TB_EEP_PAYROLL_CHG_H H
+		WHERE H.STAFF_SQ = #{STAFF_SQ} <if test="YM != null">AND H.PAY_YM = #{YM}</if>
+		ORDER BY H.CHG_SQ DESC
+	</select>
+
+	<select id="selectChange" parameterType="hashMap" resultType="hashMap">
+		SELECT CHG_SQ, PAY_YM, STAFF_SQ, FIELD_NM, BEFORE_VAL, AFTER_VAL, REASON, REVERTED_YN FROM TB_EEP_PAYROLL_CHG_H WHERE CHG_SQ = #{CHG_SQ}
+	</select>
+
+	<update id="markReverted" parameterType="hashMap">
+		UPDATE TB_EEP_PAYROLL_CHG_H SET REVERTED_YN = 'Y' WHERE CHG_SQ = #{CHG_SQ}
+	</update>
+
+	<select id="selectStaffCard" parameterType="hashMap" resultType="hashMap">
+		SELECT STAFF_NM, RRN_ENC, POSITION_NM, DEPT_NM, ORG_NM, JOIN_DT FROM TB_EEP_HR_STAFF_M WHERE STAFF_SQ = #{STAFF_SQ}
+	</select>
+
 	<select id="selectLedgerCodes" resultType="hashMap">
 		SELECT SRC_CD, LEDGER_CD, STAFF_SQ FROM TB_EEP_PAYROLL_CODE_R
 	</select>
