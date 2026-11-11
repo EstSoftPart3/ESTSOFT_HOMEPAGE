@@ -82,7 +82,9 @@
 		});
 		// cancel: 기본값이 button 드래그를 막는다
 		var drag = { axis: 'y', cancel: '', distance: 5, tolerance: 'pointer', placeholder: 'sys-drop', forcePlaceholderSize: true, stop: saveOrder };
-		$t.sortable($.extend({ items: '.sys-group', handle: '.sys-node-group' }, drag));
+		// 그룹을 다른 그룹 안에 놓으면 하위 메뉴째 2단계 묶음이 된다. 4단계가 되면 서버가 거부하고 되돌린다.
+		// 그룹끼리 순서는 이름 줄 위에서만 바꿔야 그룹 안쪽에 놓을 수 있다
+		$t.sortable($.extend({ items: '> .sys-group', handle: '> .sys-node-group', toleranceElement: '> .sys-node-group', connectWith: '.sys-items.lv2' }, drag));
 		$t.find('.sys-items').sortable($.extend({ items: '> .sys-node-item, > .sys-sub', connectWith: '.sys-items' }, drag));
 		savedOrder = treeOrder();
 	}
