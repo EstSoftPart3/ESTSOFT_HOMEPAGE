@@ -16,10 +16,17 @@
 	</select>
 
 	<select id="selectStaffOptions" resultType="hashMap">
-		SELECT STAFF_SQ, STAFF_NM, JOIN_DT
-		FROM TB_EEP_HR_STAFF_M
-		WHERE STATUS_CD IN ('WORK', 'WAIT')
-		ORDER BY STAFF_NM, JOIN_DT
+		SELECT S.STAFF_SQ, S.STAFF_NM, S.JOIN_DT, S.STATUS_CD, S.ADDR, S.WISH_LOC, S.POSITION_NM, S.DEPT_NM, S.ORG_NM
+			, (SELECT COUNT(*) FROM TB_EEP_HR_STAFF_PRJ_R P WHERE P.STAFF_SQ = S.STAFF_SQ) AS PRJ_CNT
+		FROM TB_EEP_HR_STAFF_M S
+		WHERE S.STATUS_CD IN ('WORK', 'WAIT')
+		ORDER BY S.STAFF_NM, S.JOIN_DT
+	</select>
+
+	<!-- 인사카드의 수행이력 (스킬 인벤토리) -->
+	<select id="selectStaffPrjs" parameterType="hashMap" resultType="hashMap">
+		SELECT PRJ_NM, CLIENT_NM, WORK_NM, ROLE_NM, START_YM, END_YM, IND_NM, APP_NM, MACHINE_NM, OS_NM, LANG_NM, DBMS_NM, TOOL_NM, FRAMEWORK_NM, ETC_NM
+		FROM TB_EEP_HR_STAFF_PRJ_R WHERE STAFF_SQ = #{STAFF_SQ}
 	</select>
 
 	<select id="selectPref" parameterType="hashMap" resultType="string">
@@ -103,7 +110,7 @@
 	<select id="selectDeployList" resultType="hashMap">
 		SELECT D.DEPLOY_SQ, D.STAFF_SQ, D.EMP_TYPE_CD, D.SALE_PARTNER_SQ, D.BUY_PARTNER_SQ, D.CLIENT_NM, D.PRJ_NM, D.WORK_AREA, D.GRADE_CD
 			, D.START_DT, D.END_DT, D.PROB_END_DT, D.SALE_PRICE, D.COST_PRICE, D.MEMO
-			, S.STAFF_NM, S.STATUS_CD, S.JOIN_DT, S.LEAVE_DT
+			, S.STAFF_NM, S.STATUS_CD, S.JOIN_DT, S.LEAVE_DT, S.ADDR AS HOME_ADDR, S.WISH_LOC
 			, P1.PARTNER_NM AS SALE_PARTNER_NM, P2.PARTNER_NM AS BUY_PARTNER_NM
 		FROM TB_EEP_DEPLOY_R D
 		JOIN TB_EEP_HR_STAFF_M S ON S.STAFF_SQ = D.STAFF_SQ
@@ -129,6 +136,15 @@
 	<delete id="deleteDeploy" parameterType="hashMap">
 		DELETE FROM TB_EEP_DEPLOY_R WHERE DEPLOY_SQ = #{DEPLOY_SQ}
 	</delete>
+
+	<update id="updateDeployEnd" parameterType="hashMap">
+		UPDATE TB_EEP_DEPLOY_R SET END_DT = #{END_DT}
+			<if test="CAN_PAY and SALE_PRICE != null">, SALE_PRICE = #{SALE_PRICE}</if>
+			<if test="CAN_PAY and COST_PRICE != null">, COST_PRICE = #{COST_PRICE}</if>
+			<if test="MEMO != ''">, MEMO = CONCAT(IFNULL(CONCAT(MEMO, '\n'), ''), #{MEMO})</if>
+			, UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE DEPLOY_SQ = #{DEPLOY_SQ} AND START_DT &lt;= #{END_DT}
+	</update>
 
 	<select id="countDeployClosed" parameterType="hashMap" resultType="int">
 		SELECT COUNT(*) FROM TB_EEP_PAYROLL_D D JOIN TB_EEP_PAYROLL_CLOSE_M C ON C.PAY_YM = D.PAY_YM AND C.CLOSED_YN = 'Y' WHERE D.DEPLOY_SQ = #{DEPLOY_SQ}

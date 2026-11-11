@@ -28,6 +28,40 @@
 	.dp-b.soon { background: #f6d27c; color: #4f3800; } .dp-b.urgent { background: #eda3a3; color: #5a1010; } .dp-b.past { background: #d7dde2; color: #444; }
 	.dp-b.open { background: linear-gradient(90deg, #9fd8e8 80%, rgba(159,216,232,.15)); }
 	.dp-today { position: absolute; top: 0; bottom: 0; width: 2px; background: #0b6e8a; z-index: 2; }
+	.dp-views { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+	.dp-views button { border: 1px solid rgba(17,17,17,.15); background: #fff; border-radius: 999px; padding: 6px 14px; font-weight: 700; font-size: 13px; color: #444; }
+	.dp-views button b { margin-left: 5px; }
+	.dp-views button.warn b { color: #7a5600; } .dp-views button.bad b { color: #a32020; }
+	.dp-views button[aria-selected=true] { background: #111; border-color: #111; color: #fff; } .dp-views button[aria-selected=true] b { color: #fff; }
+	.dp-prj { border: 1px solid #b9dbe6; background: #f3fbfd; color: #0b6e8a; border-radius: 10px; padding: 0 8px; font-size: 11.5px; font-weight: 700; }
+	.dp-prj.zero { opacity: .45; }
+	.dp-far { color: #7a5600; font-size: 11px; font-weight: 700; margin-left: 4px; }
+	.dp-want { color: #0b6e8a; }
+	#altView td { white-space: nowrap; vertical-align: middle; }
+	#altView tr.dp-child td { background: #f4fafc; font-size: 12px; }
+	#altView tr.dp-child td:first-child { padding-left: 24px; color: #0b6e8a; font-weight: 700; }
+	#altView tr.dp-form td { background: #fff8e3; }
+	#altView tr.dp-form .form-control { height: 26px; padding: 0 4px; font-size: 12px; display: inline-block; width: auto; min-width: 90px; margin: 2px 2px; }
+	.prj-item { border: 1px solid rgba(17,17,17,.1); border-left: 4px solid #b9dbe6; border-radius: 8px; overflow: hidden; margin-bottom: 12px; }
+	.prj-item.now { border-left-color: #0b6e8a; } .prj-item.plan { border-left-color: #e0a800; }
+	.prj-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; background: #fafcfd; border-bottom: 1px solid rgba(17,17,17,.08); }
+	.prj-head .t { font-weight: 700; font-size: 14px; }
+	.prj-head .when { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+	.prj-head .when span { color: #8a949c; font-weight: 400; margin-left: 4px; }
+	.prj-src { font-size: 10.5px; border: 1px solid #d5dbe0; color: #5f6b75; border-radius: 8px; padding: 0 6px; }
+	.prj-meta { display: grid; grid-template-columns: 90px 1fr 90px 1fr; font-size: 12.5px; }
+	.prj-meta div { padding: 5px 12px; border-bottom: 1px solid rgba(17,17,17,.08); }
+	.prj-meta .k { background: #f6f8fa; color: #5f6b75; font-weight: 700; font-size: 11.5px; }
+	.prj-env { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
+	.prj-env th { background: #eef4f7; color: #33505c; font-size: 11px; padding: 4px; text-align: center; border-right: 1px solid #dbe6ec; border-bottom: 1px solid #dbe6ec; }
+	.prj-env th.grp { background: #dfeef4; color: #0b6e8a; }
+	.prj-env td { text-align: center; padding: 5px; border-right: 1px solid rgba(17,17,17,.08); white-space: normal; vertical-align: top; }
+	.prj-env th:last-child, .prj-env td:last-child { border-right: 0; }
+	.prj-tag { display: inline-block; background: #f1f4f6; border-radius: 4px; padding: 0 5px; margin: 1px; font-size: 11.5px; }
+	.prj-sk { display: inline-flex; gap: 4px; align-items: center; border: 1px solid #d5dbe0; background: #fff; border-radius: 6px; padding: 1px 7px; font-size: 11.5px; margin: 1px; }
+	.prj-sk em { font-style: normal; color: #8a949c; font-size: 10.5px; }
+	.prj-pv { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; padding: 4px 12px; }
+	.prj-pv .k { width: 78px; color: #8a949c; font-size: 11px; font-weight: 700; }
 </style>
 <%@ include file="/WEB-INF/jsp/bo/deploy/deploy_common.jspf"%>
 
@@ -41,8 +75,9 @@
 					<button type="button" class="btn btn-sm btn-primary ml-auto" id="btnAdd"><i class="fas fa-plus"></i> 추가</button>
 				</div>
 				<div class="card-body">
-					<div class="dp-kpis" id="kpis"></div>
-					<div class="cal-panel">
+					<div class="dp-views" id="views" role="tablist" aria-label="보기"></div>
+					<div class="cal-panel" id="altPanel" style="display:none"><div class="table-responsive" id="altView"></div></div>
+					<div class="cal-panel" id="mainPanel">
 						<div class="d-flex flex-wrap align-items-center pr-3">
 							<div class="cate-tabs" id="tabs" role="tablist" aria-label="고용형태"></div>
 							<div class="btn-group btn-group-sm ml-auto" role="group" aria-label="보기">
@@ -108,13 +143,16 @@
 	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
 
 	<script>
-	var COLS = [['STAFF_NM', '성명'], ['EMP_TYPE_CD', '형태'], ['SALE_PARTNER_NM', '매출처'], ['BUY_PARTNER_NM', '매입처'], ['SALE_PRICE', '매출단가', true], ['COST_PRICE', '계약단가', true],
-		['CLIENT_NM', '고객사'], ['PRJ_NM', '프로젝트'], ['WORK_AREA', '지역'], ['GRADE_CD', '등급'], ['START_DT', '투입일'], ['END_DT', '철수일'], ['REMAIN', '남은 기간'], ['TENURE', '근속']];
-	var data = null, order = [], tab = '', kpi = '', view = 'table', drag = null;
+	var COLS = [['STAFF_NM', '성명'], ['EMP_TYPE_CD', '형태'], ['HOME_AREA', '거주지역'], ['WORK_AREA', '근무지역'], ['SALE_PARTNER_NM', '매출처'], ['BUY_PARTNER_NM', '매입처'], ['SALE_PRICE', '매출단가', true], ['COST_PRICE', '계약단가', true],
+		['CLIENT_NM', '고객사'], ['PRJ_NM', '프로젝트'], ['GRADE_CD', '등급'], ['START_DT', '투입일'], ['END_DT', '철수일'], ['REMAIN', '남은 기간'], ['TENURE', '근속'], ['PRJ', '프로젝트 이력']];
+	var data = null, order = [], tab = '', view = 'table', drag = null, page = 'ACTIVE', prjCache = {};
 	var today = moment().startOf('day'), YM = moment().format('YYYY-MM');
+	var SIDO = { '서울특별시': '서울', '서울시': '서울', '부산광역시': '부산', '대구광역시': '대구', '인천광역시': '인천', '광주광역시': '광주', '대전광역시': '대전', '울산광역시': '울산', '세종특별자치시': '세종',
+		'경기도': '경기', '강원도': '강원', '강원특별자치도': '강원', '충청북도': '충북', '충청남도': '충남', '전라북도': '전북', '전북특별자치도': '전북', '전라남도': '전남', '경상북도': '경북', '경상남도': '경남', '제주특별자치도': '제주' };
 
 	$(function() {
 		load();
+		$('#views').on('click', 'button', function() { page = $(this).attr('data-page'); render(); });
 		$('#keyword').on('input', render);
 		$(document).on('change', '.dp-filter', render);
 		$('[data-view]').on('click', function() { view = $(this).data('view'); $('[data-view]').removeClass('active'); $(this).addClass('active'); render(); });
@@ -170,31 +208,75 @@
 		});
 	}
 
-	function kpiTest(key, r) {
-		var rm = remain(r);
-		return { ACTIVE: r.STATE === 'ACTIVE', D14: r.STATE === 'ACTIVE' && rm.days >= 0 && rm.days <= 14, D30: r.STATE === 'ACTIVE' && rm.days >= 0 && rm.days <= 30,
-			NEW: moment(r.START_DT).format('YYYY-MM') === YM, WAIT: r.STATE === 'WAIT' }[key];
-	}
-
 	function filtered() {
 		var kw = $.trim($('#keyword').val()).toLowerCase();
 		return data.current.filter(function(r) {
+			if (r.STATE !== 'ACTIVE') return false;
 			if (tab && r.EMP_TYPE_CD !== tab) return false;
-			if (kpi && !kpiTest(kpi, r)) return false;
 			var ok = true;
 			$('.dp-filter').each(function() { if ($(this).val() && r[$(this).data('field')] !== $(this).val()) ok = false; });
 			return ok && (!kw || [r.STAFF_NM, r.PRJ_NM, r.CLIENT_NM].some(function(v) { return v && String(v).toLowerCase().indexOf(kw) >= 0; }));
 		}).sort(function(a, b) { return remain(a).days - remain(b).days || String(a.STAFF_NM).localeCompare(String(b.STAFF_NM), 'ko'); });
 	}
 
-	function render() {
-		var cur = data.current;
-		var kpis = [['ACTIVE', '투입 중', ''], ['D14', '14일 내 철수', 'bad'], ['D30', '30일 내 철수', 'warn'], ['NEW', '이번 달 신규 투입', ''], ['WAIT', '대기', 'warn']];
-		$('#kpis').empty().append(kpis.map(function(k) {
-			return $('<button type="button" class="dp-kpi">').addClass(k[2]).toggleClass('active', kpi === k[0]).attr('aria-pressed', kpi === k[0])
-				.append($('<span>').text(k[1])).append($('<b>').text(cur.filter(function(r) { return kpiTest(k[0], r); }).length))
-				.on('click', function() { kpi = kpi === k[0] ? '' : k[0]; render(); });
+	// ── 탭: 투입 현황 · 대기 현황 · 철수 임박 ──
+
+	function staffOf(sq) { return data.staff.filter(function(s) { return s.STAFF_SQ === sq; })[0] || {}; }
+	function depsOf(sq) { return data.all.filter(function(x) { return x.STAFF_SQ === sq; }); }
+	function isActive(x) { return !moment(x.START_DT).isAfter(today) && (!x.END_DT || !moment(x.END_DT).isBefore(today)); }
+
+	// 재직인데 오늘 진행 중인 투입이 없는 사람. 외부업체 인력은 뺀다
+	function idleList() {
+		return data.staff.map(function(s) {
+			var deps = depsOf(s.STAFF_SQ);
+			if (deps.some(isActive)) return null;
+			var last = deps[deps.length - 1];
+			if (last && last.EMP_TYPE_CD === 'EXTERNAL') return null;
+			var future = deps.filter(function(x) { return moment(x.START_DT).isAfter(today); })[0];
+			var past = deps.filter(function(x) { return x.END_DT && moment(x.END_DT).isBefore(today); }).pop();
+			var kind = future ? 'FUTURE' : past ? 'WAIT' : 'NONE';
+			var since = kind === 'WAIT' ? moment(past.END_DT).add(1, 'days') : moment(s.JOIN_DT, 'YYYY-MM-DD', true);
+			return { s: s, kind: kind, future: future, last: past || last, days: since.isValid() ? today.diff(since, 'days') : 0 };
+		}).filter(Boolean).sort(function(a, b) { return (a.kind === 'FUTURE') - (b.kind === 'FUTURE') || b.days - a.days; });
+	}
+
+	// 철수일이 이번 달 또는 다음 달인 진행 중 투입
+	function endingList() {
+		var limit = moment().add(1, 'month').endOf('month');
+		return data.all.filter(function(x) { return isActive(x) && x.END_DT && !moment(x.END_DT).isAfter(limit); }).map(function(x) {
+			var next = depsOf(x.STAFF_SQ).filter(function(y) { return y.DEPLOY_SQ !== x.DEPLOY_SQ && y.START_DT > x.END_DT; })[0];
+			return { x: x, next: next };
+		}).sort(function(a, b) { return a.x.END_DT.localeCompare(b.x.END_DT); });
+	}
+
+	function area(addr) {
+		var t = $.trim(addr || '').split(/\s+/);
+		if (!t[0]) return '';
+		return (SIDO[t[0]] || t[0].replace(/(특별시|광역시|특별자치시|특별자치도|도)$/, '')) + (t[1] ? ' ' + t[1].replace(/[,()]/g, '') : '');
+	}
+	function farFrom(home, work) {
+		var h = area(home).split(' ')[0], w = $.trim(work || '').split(/\s+/)[0];
+		w = SIDO[w] || w;
+		var known = $.map(SIDO, function(v) { return v; });
+		return h && known.indexOf(w) >= 0 && h !== w;
+	}
+
+	function renderViews(idle, ending) {
+		var active = data.current.filter(function(r) { return r.STATE === 'ACTIVE'; }).length;
+		$('#views').empty().append([['ACTIVE', '투입 현황', active, ''], ['IDLE', '대기 현황', idle.length, 'warn'], ['ENDING', '철수 임박', ending.length, 'bad']].map(function(v) {
+			return $('<button type="button" role="tab">').addClass(v[3]).attr({ 'data-page': v[0], 'aria-selected': page === v[0] }).text(v[1]).append($('<b>').text(v[2]));
 		}));
+	}
+
+	function render() {
+		var idle = idleList(), ending = endingList();
+		renderViews(idle, ending);
+		$('#mainPanel').toggle(page === 'ACTIVE');
+		$('#altPanel').toggle(page !== 'ACTIVE');
+		$('#btnAdd').toggle(page === 'ACTIVE');
+		if (page === 'IDLE') return renderIdle(idle);
+		if (page === 'ENDING') return renderEnding(ending);
+		var cur = data.current.filter(function(r) { return r.STATE === 'ACTIVE'; });
 		$('#tabs').empty().append(hrTab('', '전체', cur.length, tab === ''));
 		(HR_CODES.HR_EMP_TYPE || []).forEach(function(c) {
 			var n = cur.filter(function(r) { return r.EMP_TYPE_CD === c.CD; }).length;
@@ -229,6 +311,9 @@
 			else if (c[2]) $td.addClass('dp-num').text(v ? dpWon(v) : '').append(c[0] === 'SALE_PRICE' ? dpInfoBtn(r.STAFF_NM + ' 단가·급여 이력', function() { payHistory(r); }) : '');
 			else if (c[0] === 'REMAIN') $td.append($('<span class="dp-pill">').addClass(rm.tone).text(rm.text));
 			else if (c[0] === 'TENURE') $td.text(tenure(r.JOIN_DT));
+			else if (c[0] === 'HOME_AREA') $td.text(area(r.HOME_ADDR));
+			else if (c[0] === 'WORK_AREA') $td.text(v || '').append(farFrom(r.HOME_ADDR, v) ? $('<span class="dp-far">원거리</span>') : '');
+			else if (c[0] === 'PRJ') $td.append(prjBtn(r.STAFF_SQ, r.STAFF_NM));
 			else if (c[0] === 'CLIENT_NM' && r.STATE === 'WAIT') $td.addClass('dp-mute').text('—');
 			else $td.text(v || '');
 			$tr.append($td);
@@ -291,7 +376,7 @@
 			else if (k === 'BUY_PARTNER_NM') $td.append(put(k, hrControl(partnerOptions('BUY_YN'), '')));
 			else if (c[2]) $td.append(put(k, $('<input class="form-control dp-num" inputmode="numeric" placeholder="0">')));
 			else if (k === 'START_DT' || k === 'END_DT') $td.append(put(k, $('<input class="form-control" type="date">')));
-			else if (k === 'REMAIN' || k === 'TENURE') $td.append('<span class="dp-mute">자동</span>');
+			else if (k === 'REMAIN' || k === 'TENURE' || k === 'HOME_AREA' || k === 'PRJ') $td.append('<span class="dp-mute">자동</span>');
 			else $td.append(put(k, $('<input class="form-control">')));
 			$tr.append($td);
 		});
@@ -414,6 +499,213 @@
 		$('#detailModal').modal('hide');
 		if (view !== 'table') $('[data-view=table]').click();
 		addRow(true, { STAFF_LABEL: s ? staffLabel(s) : '', EMP_TYPE_CD: $('#detailForm [name=EMP_TYPE_CD]').val(), GRADE_CD: $('#detailForm [name=GRADE_CD]').val() });
+	}
+
+	// ── 대기 현황 ──
+
+	function regionCell(addr) { return $('<td>').text(area(addr)); }
+	function wantCell(s) { return $('<td class="dp-want">').text(s.WISH_LOC || ''); }
+
+	function renderIdle(list) {
+		var KIND = { WAIT: ['대기', 'warn'], NONE: ['이력 없음', ''], FUTURE: ['투입 예정', 'rent'] };
+		var $t = $('<table class="table table-sm cal-table mb-0">').append('<thead><tr><th>성명</th><th>구분</th><th>직급·소속</th><th>거주지역</th><th>희망지역</th><th>입사일</th><th>대기 기간</th><th>프로젝트 이력</th><th><span class="sr-only">작업</span></th></tr></thead>');
+		var $b = $('<tbody>').appendTo($t);
+		if (!list.length) $b.append('<tr><td colspan="9" class="text-center text-muted py-4">대기 중인 직원이 없습니다.</td></tr>');
+		list.forEach(function(it) {
+			var s = it.s, k = KIND[it.kind];
+			var wait = it.kind === 'FUTURE' ? moment(it.future.START_DT).diff(today, 'days') + '일 뒤 투입' : it.days + '일' + (it.kind === 'NONE' ? ' (입사 후)' : '');
+			var $tr = $('<tr>').append($('<td>').append($('<button type="button" class="dp-name">').text(s.STAFF_NM).on('click', function() { if (it.last || it.future) openDetail(it.future || it.last); })))
+				.append($('<td>').append($('<span class="dp-pill">').addClass(k[1]).text(k[0])))
+				.append($('<td>').text([s.POSITION_NM, s.DEPT_NM || s.ORG_NM].filter(Boolean).join(' · ')))
+				.append(regionCell(s.ADDR)).append(wantCell(s)).append($('<td>').text(s.JOIN_DT || ''))
+				.append($('<td>').append($('<span>').toggleClass('text-danger font-weight-bold', it.kind !== 'FUTURE' && it.days > 14).text(wait)))
+				.append($('<td>').append(prjBtn(s.STAFF_SQ, s.STAFF_NM)))
+				.append($('<td class="text-nowrap">').append(it.kind === 'FUTURE'
+					? $('<button type="button" class="btn btn-sm btn-outline-secondary">투입 수정</button>').on('click', function() { openDetail(it.future); })
+					: $('<button type="button" class="btn btn-sm btn-primary">+ 투입 등록</button>').on('click', function() { regForm($tr, s, it.last, 9); })));
+			$b.append($tr);
+			if (it.kind === 'FUTURE') $b.append(childRow('└ 투입 예정', it.future, 9, 'D-' + moment(it.future.START_DT).diff(today, 'days')));
+		});
+		$('#altView').empty().append($t);
+	}
+
+	// 예정·다음 투입을 한 줄로
+	function childRow(label, x, span, badge) {
+		var bits = [['형태', typeName(x.EMP_TYPE_CD)], ['매출처', x.SALE_PARTNER_NM], ['근무지역', x.WORK_AREA], ['기간', x.START_DT + ' ~ ' + (x.END_DT || '미정')], ['등급', x.GRADE_CD]];
+		var $td = $('<td>').attr('colspan', span - 1).append($('<span class="dp-pill rent">').text(badge)).append(' ')
+			.append($('<b>').text([x.CLIENT_NM, x.PRJ_NM].filter(Boolean).join(' · ') || '투입'));
+		bits.forEach(function(b) { if (b[1]) $td.append($('<span class="dp-mute">').text(' · ' + b[0] + ' ')).append(document.createTextNode(b[1])); });
+		return $('<tr class="dp-child">').append($('<td>').text(label)).append($td);
+	}
+
+	// 그 줄 아래 투입 등록 입력 줄. 마지막 투입 값으로 미리 채운다
+	function regForm($after, s, last, span, startDt) {
+		$after.nextAll('tr.dp-form').first().filter(function() { return $(this).data('for') === s.STAFF_SQ; }).remove();
+		last = last || {};
+		var f = {
+			EMP_TYPE_CD: hrControl({ code: 'HR_EMP_TYPE' }, last.EMP_TYPE_CD).attr('aria-label', '형태'),
+			SALE_PARTNER_SQ: hrControl(partnerOptions('SALE_YN'), last.SALE_PARTNER_SQ ? String(last.SALE_PARTNER_SQ) : '').attr('aria-label', '매출처'),
+			BUY_PARTNER_SQ: hrControl(partnerOptions('BUY_YN'), last.BUY_PARTNER_SQ ? String(last.BUY_PARTNER_SQ) : '').attr('aria-label', '매입처'),
+			CLIENT_NM: $('<input class="form-control" placeholder="고객사" aria-label="고객사">'),
+			PRJ_NM: $('<input class="form-control" placeholder="프로젝트" aria-label="프로젝트">'),
+			WORK_AREA: $('<input class="form-control" placeholder="근무지역" aria-label="근무지역">'),
+			GRADE_CD: hrControl({ code: 'HR_DEPLOY_GRADE' }, last.GRADE_CD).attr('aria-label', '등급'),
+			START_DT: $('<input class="form-control" type="date" aria-label="투입일">').val(startDt || ''),
+			END_DT: $('<input class="form-control" type="date" aria-label="철수일">')
+		};
+		if (data.canPay) {
+			f.SALE_PRICE = $('<input class="form-control" inputmode="numeric" placeholder="매출단가" aria-label="매출단가">');
+			f.COST_PRICE = $('<input class="form-control" inputmode="numeric" placeholder="계약단가" aria-label="계약단가">');
+		}
+		var $td = $('<td>').attr('colspan', span).append($('<b class="mr-2">').text(s.STAFF_NM + ' 투입 등록'));
+		$.each(f, function(k, $c) { $td.append($c.addClass('form-control')); });
+		var $tr = $('<tr class="dp-form">').data('for', s.STAFF_SQ).append($td);
+		function save() {
+			var p = { STAFF_SQ: s.STAFF_SQ };
+			$.each(f, function(k, $c) { p[k] = $c.val(); });
+			if (!p.EMP_TYPE_CD) { f.EMP_TYPE_CD.focus(); return; }
+			if (!p.START_DT) { f.START_DT.focus(); return; }
+			hrPost('/admin/deploy/saveDeployData.do', p, function() { load(); });
+		}
+		$td.append($('<button type="button" class="btn btn-sm btn-primary ml-1">저장</button>').on('click', save))
+			.append($('<button type="button" class="btn btn-sm btn-outline-secondary ml-1">취소</button>').on('click', function() { $tr.remove(); }));
+		$tr.on('keydown', function(e) { if (e.key === 'Escape') $tr.remove(); else if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') { e.preventDefault(); save(); } });
+		$after.after($tr);
+		f.EMP_TYPE_CD.focus();
+	}
+
+	// ── 철수 임박 ──
+
+	function renderEnding(list) {
+		var thisM = moment().format('YYYY-MM');
+		var $t = $('<table class="table table-sm cal-table mb-0">').append('<thead><tr><th>성명</th><th>형태</th><th>거주지역</th><th>근무지역</th><th>희망지역</th><th>고객사 · 프로젝트</th><th>철수일</th><th>남은 기간</th><th>프로젝트 이력</th><th><span class="sr-only">작업</span></th></tr></thead>');
+		var $b = $('<tbody>').appendTo($t);
+		if (!list.length) $b.append('<tr><td colspan="10" class="text-center text-muted py-4">이번 달·다음 달 철수 예정자가 없습니다.</td></tr>');
+		list.forEach(function(it) {
+			var x = it.x, s = staffOf(x.STAFF_SQ), d = moment(x.END_DT).diff(today, 'days');
+			var $tr = $('<tr>').append($('<td>').append($('<button type="button" class="dp-name">').text(x.STAFF_NM).on('click', function() { openDetail(x); })))
+				.append($('<td>').text(typeName(x.EMP_TYPE_CD))).append(regionCell(x.HOME_ADDR))
+				.append($('<td>').text(x.WORK_AREA || '').append(farFrom(x.HOME_ADDR, x.WORK_AREA) ? $('<span class="dp-far">원거리</span>') : ''))
+				.append($('<td class="dp-want">').text(x.WISH_LOC || ''))
+				.append($('<td>').text([x.CLIENT_NM, x.PRJ_NM].filter(Boolean).join(' · ')))
+				.append($('<td>').text(x.END_DT).append(x.END_DT.substring(0, 7) === thisM ? ' <span class="dp-pill bad">이번 달</span>' : ' <span class="dp-pill warn">다음 달</span>'))
+				.append($('<td>').append($('<span class="dp-pill">').addClass(d <= 14 ? 'bad' : 'warn').text('D-' + d)))
+				.append($('<td>').append(prjBtn(x.STAFF_SQ, x.STAFF_NM)));
+			var $act = $('<td class="text-nowrap">').append($('<button type="button" class="btn btn-sm btn-outline-secondary">연장</button>').on('click', function() { extendForm($tr, x); }));
+			if (!it.next) $act.append(' ').append($('<button type="button" class="btn btn-sm btn-primary">다음 투입 등록</button>')
+				.on('click', function() { regForm($tr, s.STAFF_SQ ? s : { STAFF_SQ: x.STAFF_SQ, STAFF_NM: x.STAFF_NM }, x, 10, moment(x.END_DT).add(1, 'days').format('YYYY-MM-DD')); }));
+			$b.append($tr.append($act));
+			if (it.next) $b.append(childRow('└ 다음 투입', it.next, 10, moment(it.next.START_DT).format('M/D') + ' 시작 · 공백 ' + Math.max(0, moment(it.next.START_DT).diff(moment(x.END_DT), 'days') - 1) + '일'));
+		});
+		$('#altView').empty().append($t);
+	}
+
+	function extendForm($after, x) {
+		$after.next('tr.dp-form').remove();
+		var $end = $('<input class="form-control" type="date" aria-label="새 철수일">').attr('min', x.END_DT);
+		var $memo = $('<input class="form-control" placeholder="메모(선택)" aria-label="연장 메모" style="min-width:220px">');
+		var $td = $('<td colspan="10">').append($('<b class="mr-2">').text(x.STAFF_NM + ' 연장')).append($('<span class="dp-mute">').text('철수일 ' + x.END_DT + ' → ')).append($end);
+		var $sale, $cost;
+		if (data.canPay) {
+			$sale = $('<input class="form-control" inputmode="numeric" aria-label="연장 매출단가">').attr('placeholder', '매출단가 ' + dpWon(x.SALE_PRICE));
+			$cost = $('<input class="form-control" inputmode="numeric" aria-label="연장 계약단가">').attr('placeholder', '계약단가 ' + dpWon(x.COST_PRICE));
+			$td.append($sale).append($cost);
+		}
+		$td.append($memo);
+		var $tr = $('<tr class="dp-form">');
+		function save() {
+			if (!$end.val() || $end.val() <= x.END_DT) { $end.focus(); bootbox.alert('새 철수일은 지금 철수일(' + x.END_DT + ') 뒤여야 합니다.'); return; }
+			hrPost('/admin/deploy/extendDeployData.do', { DEPLOY_SQ: x.DEPLOY_SQ, END_DT: $end.val(), SALE_PRICE: $sale ? $sale.val() : '', COST_PRICE: $cost ? $cost.val() : '', MEMO: $memo.val() }, function() { load(); });
+		}
+		$td.append($('<button type="button" class="btn btn-sm btn-primary ml-1">연장 저장</button>').on('click', save))
+			.append($('<button type="button" class="btn btn-sm btn-outline-secondary ml-1">취소</button>').on('click', function() { $tr.remove(); }))
+			.append($('<span class="dp-mute small ml-2">').text('다음 달 이후로 연장하면 투입 현황으로 옮겨집니다'));
+		$tr.append($td).on('keydown', function(e) { if (e.key === 'Escape') $tr.remove(); else if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') { e.preventDefault(); save(); } });
+		$after.after($tr);
+		$end.focus();
+	}
+
+	// ── 프로젝트 이력: 📂 숫자, 마우스 올리면 많이 쓴 기술 미리보기, 클릭하면 팝업 ──
+
+	var SKILL_COLS = [['LANG_NM', '언어'], ['FRAMEWORK_NM', 'FRAMEWORK'], ['DBMS_NM', 'DBMS'], ['IND_NM', '산업']];
+	var ENV_COLS = [['IND_NM', '산업'], ['APP_NM', '응용'], ['MACHINE_NM', '기종'], ['OS_NM', 'O.S'], ['LANG_NM', '언어'], ['DBMS_NM', 'DBMS'], ['TOOL_NM', 'TOOL'], ['FRAMEWORK_NM', 'FRAMEWORK'], ['ETC_NM', '기타']];
+
+	function prjCount(sq) { return Number(staffOf(sq).PRJ_CNT || 0) + depsOf(sq).length; }
+	function prjLoad(sq) {
+		if (!prjCache[sq]) prjCache[sq] = $.post('/admin/deploy/projectHistoryData.do', { STAFF_SQ: sq }).then(function(res) { return res.result || []; });
+		return prjCache[sq];
+	}
+	function tokens(v) { return String(v || '').split(/[,/·\n]+/).map(function(t) { return $.trim(t); }).filter(Boolean); }
+	// 칸마다 기술별 프로젝트 수
+	function skillCount(items, col) {
+		var c = {};
+		items.forEach(function(it) { tokens(it[col]).filter(function(t, i, a) { return a.indexOf(t) === i; }).forEach(function(t) { c[t] = (c[t] || 0) + 1; }); });
+		return Object.keys(c).sort(function(a, b) { return c[b] - c[a]; }).map(function(k) { return [k, c[k]]; });
+	}
+	function ym(v) { return v ? String(v).substring(0, 7).replace('-', '.') : ''; }
+	function months(it) {
+		var s = moment(String(it.START).substring(0, 7) + '-01'), e = it.END ? moment(String(it.END).substring(0, 7) + '-01') : moment().startOf('month');
+		var m = e.diff(s, 'months') + 1;
+		return m > 0 ? (m >= 12 ? Math.floor(m / 12) + '년 ' : '') + (m % 12 ? m % 12 + '개월' : '') : '';
+	}
+	function career(items) {
+		var first = items.map(function(i) { return String(i.START || ''); }).filter(Boolean).sort()[0];
+		if (!first) return '';
+		var m = moment().diff(moment(first.substring(0, 7) + '-01'), 'months');
+		return '경력 ' + (m >= 12 ? Math.floor(m / 12) + '년 ' : '') + (m % 12) + '개월';
+	}
+
+	function prjBtn(sq, name) {
+		var n = prjCount(sq), $b = $('<button type="button" class="dp-prj">').toggleClass('zero', !n).attr('aria-label', name + ' 프로젝트 이력 ' + n + '건').text('📂 ' + n);
+		if (!n) return $b.prop('disabled', true);
+		$b.on('click', function(e) { e.stopPropagation(); dpHide(); prjPopup(sq, name); });
+		dpHover($b, $b, function() {
+			return prjLoad(sq).then(function(items) {
+				var rows = SKILL_COLS.map(function(c) {
+					var top = skillCount(items, c[0]).slice(0, 3);
+					return top.length ? '<div class="prj-pv"><span class="k">' + c[1] + '</span>' + top.map(function(t) { return '<span class="prj-sk">' + dpEsc(t[0]) + ' <em>' + t[1] + '</em></span>'; }).join('') + '</div>' : '';
+				}).join('');
+				var recent = items[0];
+				return '<div class="dp-card sm"><div class="dp-card-top">많이 쓴 기술<span>프로젝트 ' + items.length + '건 · ' + dpEsc(career(items)) + '</span></div>'
+					+ (rows || '<div class="dp-sec"><div><span class="dp-mute">수행이력에 입력된 기술이 없습니다</span></div></div>')
+					+ (recent ? '<div class="dp-sec"><div><span class="dp-mute">최근 ' + dpEsc([recent.CLIENT_NM, recent.PRJ_NM].filter(Boolean).join(' ')) + ' (' + ym(recent.START) + '~' + (ym(recent.END) || '진행중') + ') · 클릭하면 전체</span></div></div>' : '') + '</div>';
+			});
+		});
+		return $b;
+	}
+
+	function prjPopup(sq, name) {
+		prjLoad(sq).then(function(items) {
+			var $box = $('<div>');
+			var top = [];
+			['LANG_NM', 'FRAMEWORK_NM', 'DBMS_NM', 'OS_NM', 'TOOL_NM', 'ETC_NM'].forEach(function(c) { top = top.concat(skillCount(items, c)); });
+			top.sort(function(a, b) { return b[1] - a[1]; });
+			if (top.length) $box.append($('<div class="mb-3">').append('<span class="dp-mute small mr-2">많이 쓴 기술</span>').append(top.slice(0, 10).map(function(t) { return $('<span class="prj-sk">').text(t[0] + ' ').append($('<em>').text(t[1])); })));
+			items.forEach(function(it) {
+				var now = !it.END && !moment(String(it.START)).isAfter(today), plan = moment(String(it.START)).isAfter(today);
+				var $it = $('<div class="prj-item">').toggleClass('now', now).toggleClass('plan', plan);
+				var $h = $('<div class="prj-head">').append($('<span class="t">').text(it.PRJ_NM || '(프로젝트명 없음)'));
+				if (it.CLIENT_NM) $h.append($('<span class="dp-pill rent">').text(it.CLIENT_NM));
+				if (it.ROLE_NM || it.EMP_TYPE_CD) $h.append($('<span class="dp-pill">').text(it.ROLE_NM || typeName(it.EMP_TYPE_CD)));
+				$h.append($('<span class="prj-src">').text(it.SRC === 'DEPLOY' ? '사내 투입' : '수행이력'));
+				$h.append($('<span class="when">').text(ym(it.START) + ' ~ ' + (it.END ? ym(it.END) : plan ? '예정' : '진행중')).append($('<span>').text(months(it))));
+				$it.append($h);
+				$it.append($('<div class="prj-meta">').append('<div class="k">업무단</div>').append($('<div>').text(it.WORK_NM || '—'))
+					.append('<div class="k">근무지역</div>').append($('<div>').text(it.WORK_AREA || '—')));
+				if (it.SRC === 'PRJ') {
+					var $env = $('<table class="prj-env">').append('<thead><tr><th class="grp" colspan="2">개발분야</th><th class="grp" colspan="7">개발환경</th></tr></thead>');
+					$env.find('thead').append($('<tr>').append(ENV_COLS.map(function(c) { return $('<th>').text(c[1]); })));
+					$env.append($('<tbody>').append($('<tr>').append(ENV_COLS.map(function(c) {
+						var t = tokens(it[c[0]]);
+						return $('<td>').append(t.length ? t.map(function(x) { return $('<span class="prj-tag">').text(x); }) : $('<span class="dp-mute">').text('—'));
+					}))));
+					$it.append($env);
+				}
+				$box.append($it);
+			});
+			if (!items.length) $box.append('<div class="text-muted py-3">프로젝트 이력이 없습니다. 인사카드의 영업정보/수행이력 탭에서 입력할 수 있습니다.</div>');
+			dpInfo(name + ' · 프로젝트 이력 ' + items.length + '건' + (career(items) ? ' · ' + career(items) : ''), $box);
+		});
 	}
 
 	// ── 타임라인: 지난 5달 ~ 앞으로 6달 ──

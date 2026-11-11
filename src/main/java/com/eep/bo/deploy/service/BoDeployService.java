@@ -28,7 +28,7 @@ public class BoDeployService {
 	private static final String[] PARTNER_TEXT = { "BIZ_NO", "CEO_NM", "OPEN_DT", "ADDR", "BIZ_TYPE", "BIZ_ITEM", "MGR_NM", "MGR_POS", "MGR_TEL", "MGR_HP", "MGR_EMAIL", "TAX_EMAIL", "BANK_NM", "ACCOUNT_NO", "ACCOUNT_HOLDER" };
 	private static final List<String> FILE_KINDS = Arrays.asList("LICENSE", "LOGO", "SEAL", "BANK");
 	private static final String[] DEPLOY_TEXT = { "SALE_PARTNER_SQ", "BUY_PARTNER_SQ", "CLIENT_NM", "PRJ_NM", "WORK_AREA", "GRADE_CD", "END_DT", "PROB_END_DT", "MEMO" };
-	private static final List<String> COLUMNS = Arrays.asList("STAFF_NM", "EMP_TYPE_CD", "SALE_PARTNER_NM", "BUY_PARTNER_NM", "SALE_PRICE", "COST_PRICE", "CLIENT_NM", "PRJ_NM", "WORK_AREA", "GRADE_CD", "START_DT", "END_DT", "REMAIN", "TENURE");
+	private static final List<String> COLUMNS = Arrays.asList("STAFF_NM", "EMP_TYPE_CD", "SALE_PARTNER_NM", "BUY_PARTNER_NM", "SALE_PRICE", "COST_PRICE", "CLIENT_NM", "PRJ_NM", "WORK_AREA", "GRADE_CD", "START_DT", "END_DT", "REMAIN", "TENURE", "HOME_AREA", "PRJ");
 	private static final String COLUMN_PREF = "DEPLOY_COLUMNS";
 	private static final int MAX_FILE = 5 * 1024 * 1024;
 
@@ -151,6 +151,55 @@ public class BoDeployService {
 		} else {
 			mapper.updateDeploy(p);
 		}
+	}
+
+	/** 철수일만 늘린다. 단가는 급여 권한자가 넣었을 때만 바꾸고, 메모는 덧붙인다 */
+	public void extendDeploy(Map<String, Object> p, boolean canPay) {
+		LocalDate end = PayCalc.date(p.get("END_DT"));
+		require(end != null, "새 철수일을 입력해 주세요.");
+		p.put("END_DT", end.toString());
+		p.put("CAN_PAY", canPay);
+		p.put("SALE_PRICE", canPay && !text(p, "SALE_PRICE").isEmpty() ? money(p.get("SALE_PRICE")) : null);
+		p.put("COST_PRICE", canPay && !text(p, "COST_PRICE").isEmpty() ? money(p.get("COST_PRICE")) : null);
+		String memo = text(p, "MEMO");
+		p.put("MEMO", memo.isEmpty() ? "" : "[연장 " + LocalDate.now() + "] " + memo);
+		require(mapper.updateDeployEnd(p) == 1, "철수일은 투입일보다 빠를 수 없습니다.");
+	}
+
+	/** 사내 투입 건과 인사카드 수행이력을 합쳐 최신 순으로. 진행 중이 맨 위 */
+	public List<Map<String, Object>> projectHistory(Object staffSq, boolean canPay) {
+		List<Map<String, Object>> out = new ArrayList<>();
+		Map<String, Object> q = new HashMap<>();
+		q.put("STAFF_SQ", staffSq);
+		for (Map<String, Object> r : mapper.selectStaffPrjs(q)) {
+			r.put("SRC", "PRJ");
+			r.put("START", r.get("START_YM"));
+			r.put("END", r.get("END_YM"));
+			out.add(r);
+		}
+		for (Map<String, Object> d : mapper.selectDeployList()) {
+			if (!String.valueOf(staffSq).equals(String.valueOf(d.get("STAFF_SQ")))) {
+				continue;
+			}
+			Map<String, Object> r = new HashMap<>();
+			r.put("SRC", "DEPLOY");
+			r.put("PRJ_NM", d.get("PRJ_NM"));
+			r.put("CLIENT_NM", d.get("CLIENT_NM"));
+			r.put("WORK_AREA", d.get("WORK_AREA"));
+			r.put("EMP_TYPE_CD", d.get("EMP_TYPE_CD"));
+			r.put("GRADE_CD", d.get("GRADE_CD"));
+			r.put("START", d.get("START_DT"));
+			r.put("END", d.get("END_DT"));
+			if (canPay) {
+				r.put("SALE_PRICE", d.get("SALE_PRICE"));
+			}
+			out.add(r);
+		}
+		out.sort((a, b) -> {
+			int open = Boolean.compare(b.get("END") == null, a.get("END") == null);
+			return open != 0 ? open : String.valueOf(b.get("START")).compareTo(String.valueOf(a.get("START")));
+		});
+		return out;
 	}
 
 	public void deleteDeploy(Map<String, Object> p) {

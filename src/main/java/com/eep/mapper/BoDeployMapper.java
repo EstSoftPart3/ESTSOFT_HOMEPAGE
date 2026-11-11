@@ -35,6 +35,8 @@ public interface BoDeployMapper {
 	public int updateDeploy(Map<String, Object> param);
 	public int deleteDeploy(Map<String, Object> param);
 	public int countDeployClosed(Map<String, Object> param);					//DEPLOY_SQ 가 들어간 마감 월 수
+	public int updateDeployEnd(Map<String, Object> param);						//연장: DEPLOY_SQ, END_DT, (CAN_PAY 면) SALE_PRICE·COST_PRICE, MEMO 덧붙임
+	public List<Map<String, Object>> selectStaffPrjs(Map<String, Object> param);	//STAFF_SQ 의 인사카드 수행이력
 
 	public String selectClosed(Map<String, Object> param);						//PAY_YM 의 CLOSED_YN
 	public int saveClosed(Map<String, Object> param);							//PAY_YM, CLOSED_YN, EMPLY_ID

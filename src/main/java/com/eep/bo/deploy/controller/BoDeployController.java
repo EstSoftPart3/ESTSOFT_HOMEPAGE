@@ -75,6 +75,20 @@ public class BoDeployController {
 		});
 	}
 
+	@RequestMapping(value = "/admin/deploy/extendDeployData.do", method = RequestMethod.POST)
+	public ModelAndView extendDeployData(@RequestParam Map<String, Object> param, HttpSession session) {
+		return run(() -> {
+			param.put("UPDT_EMPLY_ID", loginId(session));
+			deployService.extendDeploy(param, canPay(loginId(session)));
+			return "OK";
+		});
+	}
+
+	@RequestMapping(value = "/admin/deploy/projectHistoryData.do", method = RequestMethod.POST)
+	public ModelAndView projectHistoryData(@RequestParam("STAFF_SQ") int staffSq, HttpSession session) {
+		return run(() -> deployService.projectHistory(staffSq, canPay(loginId(session))));
+	}
+
 	@RequestMapping(value = "/admin/deploy/saveColumnsData.do", method = RequestMethod.POST)
 	public ModelAndView saveColumnsData(@RequestParam(value = "ORDER", required = false) String order, HttpSession session) {
 		return run(() -> {
