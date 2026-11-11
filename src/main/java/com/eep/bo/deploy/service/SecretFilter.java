@@ -24,9 +24,13 @@ public class SecretFilter {
 	private BoDeployMapper mapper;
 
 	public View view(String loginId) {
+		return new View(isViewer(loginId), new HashSet<>(mapper.selectSecretStaff()));
+	}
+
+	public boolean isViewer(String loginId) {
 		Map<String, Object> q = new HashMap<>();
 		q.put("EMPLY_ID", loginId);
-		return new View(mapper.countSecretViewer(q) > 0, new HashSet<>(mapper.selectSecretStaff()));
+		return mapper.countSecretViewer(q) > 0;
 	}
 
 	public String staffOfDeploy(Object deploySq) {

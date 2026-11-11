@@ -71,3 +71,4 @@
 	});
 })();
 </script>
+<%@ include file="/WEB-INF/jsp/bo/boinclude/include_guide.jspf"%>

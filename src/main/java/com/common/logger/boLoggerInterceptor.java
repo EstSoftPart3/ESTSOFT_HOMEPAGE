@@ -16,6 +16,7 @@ import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 import org.springframework.web.util.UrlPathHelper;
 
+import com.eep.bo.deploy.service.SecretFilter;
 import com.eep.bo.login.service.BoLoginRememberService;
 import com.eep.bo.system.service.BoSystemService;
 
@@ -41,6 +42,9 @@ public class boLoggerInterceptor extends HandlerInterceptorAdapter {
 
 	@Autowired
 	private BoSystemService systemService;
+
+	@Autowired
+	private SecretFilter secretFilter;
 
 	@SuppressWarnings("unchecked")
 	private static String loginId(Object loginInfo) {
@@ -142,6 +146,12 @@ public class boLoggerInterceptor extends HandlerInterceptorAdapter {
 	@Override
 	public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler,
 			ModelAndView modelAndView) throws Exception {
+
+		// 화면 가이드의 시크릿 설명은 시크릿 계정에게만 출력한다. 화면을 그릴 때만 묻는다(ajax 응답은 건너뜀)
+		Object loginInfo = request.getSession().getAttribute("loginInfo");
+		if (modelAndView != null && loginInfo != null) {
+			request.setAttribute("secretViewer", secretFilter.isViewer(loginId(loginInfo)));
+		}
 
 		if (log.isDebugEnabled()) {
 			log.debug(
