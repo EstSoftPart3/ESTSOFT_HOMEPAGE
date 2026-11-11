@@ -8,6 +8,7 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -81,10 +82,16 @@ public class BoBoardController {
 	 * **/
 	
 	//공지사항 게시판 목록 페이지 이동
-	@RequestMapping("/admin/board/notice/openNoticeBoardList.do")
-	public String openNoticeBoardList() {
-		
-		return "bo/board/notice/notice_board_list";
+	@RequestMapping({"/admin/board/openBoardManage.do", "/admin/board/notice/openNoticeBoardList.do"})
+	public String openNoticeBoardList(Model model) {
+
+		return boardTabs(model, "notice");
+	}
+
+	// 게시판 목록 4개는 탭 화면 하나로 보여 주고, 들어온 주소의 게시판 탭을 연다
+	private String boardTabs(Model model, String tab) {
+		model.addAttribute("tab", tab);
+		return "bo/board/board_list_tabs";
 	}
 	
 	//공지사항 게시판 목록 데이터
@@ -212,9 +219,9 @@ public class BoBoardController {
 	
 	//교육 게시판 목록 페이지 이동
 	@RequestMapping("/admin/board/education/openEducationBoardList.do")
-	public String openEducationBoardList() {
-		
-		return "bo/board/education/education_board_list";
+	public String openEducationBoardList(Model model) {
+
+		return boardTabs(model, "education");
 	}
 	
 	//교육 게시판 목록 데이터
@@ -350,9 +357,9 @@ public class BoBoardController {
 	
 	//자유 게시판 목록 페이지 이동
 	@RequestMapping("/admin/board/freedom/openFreedomBoardList.do")
-	public String openFreedomBoardList() {
-		
-		return "bo/board/freedom/freedom_board_list";
+	public String openFreedomBoardList(Model model) {
+
+		return boardTabs(model, "freedom");
 	}
 	
 	//자유 게시판 목록 데이터
@@ -517,9 +524,9 @@ public class BoBoardController {
 	
 	//기술문의 게시판 목록 페이지 이동
 	@RequestMapping("/admin/board/technology/openTechnologyBoardList.do")
-	public String openTechnologyBoardList() {
-		
-		return "bo/board/technology/technology_board_list";
+	public String openTechnologyBoardList(Model model) {
+
+		return boardTabs(model, "technology");
 	}
 	
 	//기술문의 게시판 목록 데이터

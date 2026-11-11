@@ -144,9 +144,12 @@
 	[].forEach.call(document.querySelectorAll('aside .has-treeview'), function(li) { li.classList.remove('menu-open'); });
 	var links = [].slice.call(document.querySelectorAll('aside .nav-treeview a.nav-link:not([href="#"])'));
 	var path = location.pathname, dir = path.substring(0, path.lastIndexOf('/') + 1);
+	// 한 메뉴가 여러 하위 폴더를 묶을 때(게시판 관리 → /admin/board/notice/ 등) 한 단계 위 폴더로도 찾는다. /admin/ 자체는 제외
+	var parent = dir.replace(/[^\/]+\/$/, '');
 	var current = links.filter(function(a) { return a.pathname + a.search === path + location.search; })[0]
 		|| links.filter(function(a) { return a.pathname === path; })[0]
-		|| links.filter(function(a) { return a.pathname.indexOf(dir) === 0; })[0];
+		|| links.filter(function(a) { return a.pathname.indexOf(dir) === 0; })[0]
+		|| (parent.split('/').length > 3 ? links.filter(function(a) { return a.pathname.indexOf(parent) === 0 && a.pathname.lastIndexOf('/') === parent.length - 1; })[0] : null);
 	if (current) {
 		var icon = current.querySelector('.nav-icon');
 		icon.classList.remove('far');
