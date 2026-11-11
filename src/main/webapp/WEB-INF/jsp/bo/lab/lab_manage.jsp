@@ -14,17 +14,31 @@
 	.bar-HEAD { background: #0a4a78; }
 	.bar-MEMBER { background: #7dbbdc; }
 	.lab-legend i { display: inline-block; width: 18px; height: 12px; margin: 0 5px 0 12px; }
-	.lab-line { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
-	.lab-line > div { flex: 1 1 170px; border: 1px solid #ced4da; border-radius: 8px; padding: 16px; }
-	.lab-line small { display: block; color: #495057; margin-bottom: 6px; }
-	.lab-line strong { font-size: 18px; }
-	.lab-line .key { border: 2px solid #0b6e8a; }
-	.lab-line .auto { background: #eef1f4; }
-	.lab-line img { display: block; max-width: 140px; max-height: 56px; margin-top: 8px; }
-	.lab-line .none { display: block; margin-top: 8px; color: #b02a37; font-weight: 700; }
-	.lab-arrow { flex: 0 0 auto !important; border: 0 !important; padding: 0 !important; align-self: center; color: #495057; }
-	#signPad { display: block; width: 100%; max-width: 440px; height: 176px; margin: 0 auto; border: 1px dashed #868e96; border-radius: 6px; touch-action: none; background: #fff; }
 	.lab-pick { max-height: 220px; overflow-y: auto; }
+	/* 결재라인: 넓은 화면은 한 줄, 좁은 화면은 위아래 카드 */
+	.lab-appr { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+	.lab-appr .ar { display: grid; grid-template-columns: auto 64px minmax(110px, 160px) minmax(160px, 240px) 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #ced4da; border-radius: 8px; background: #fff; }
+	.lab-appr .ar.fixed { display: flex; background: #eef1f4; }
+	.lab-appr .ar.dragging { opacity: .45; }
+	.lab-appr .ar.over { border: 2px dashed #0b6e8a; background: #e3f6fb; }
+	.lab-appr .no { color: #0a4a78; font-weight: 700; }
+	.lab-move { display: flex; align-items: center; gap: 2px; }
+	.lab-move button { background: none; border: 0; color: #495057; padding: 4px 6px; min-width: 32px; min-height: 32px; }
+	.lab-move .hdl { cursor: grab; letter-spacing: -3px; font-size: 18px; }
+	.lab-sign { border: 1px dashed #868e96; border-radius: 6px; padding: 6px 10px; min-height: 58px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+	.lab-sign img { max-width: 140px; max-height: 50px; }
+	.lab-sign small { color: #495057; }
+	.lab-sign.drop { border: 2px solid #0b6e8a; background: #e3f6fb; }
+	.lab-sign.none { border-style: solid; background: #fff8f8; }
+	.lab-sign .warn { color: #b02a37; font-weight: 700; }
+	.lab-sign canvas { width: 100%; max-width: 300px; height: 110px; border: 1px solid #adb5bd; border-radius: 6px; background: #fff; touch-action: none; }
+	.lab-add { width: 100%; min-height: 44px; border: 1px dashed #0b6e8a; border-radius: 8px; background: #fff; color: #0b6e8a; font-weight: 700; }
+	#labToast { position: fixed; right: 18px; bottom: 18px; z-index: 2000; background: #222; color: #fff; font-size: 13px; padding: 8px 14px; border-radius: 6px; display: none; }
+	@media (max-width: 767px) {
+		.lab-appr .ar { display: flex; flex-wrap: wrap; }
+		.lab-appr .ar > label, .lab-appr .ar > .lab-sign { flex: 1 1 100%; }
+		.lab-appr .ar .lab-del { margin-left: auto; }
+	}
 </style>
 
 <body class="hold-transition sidebar-mini">
@@ -47,7 +61,7 @@
 						</div>
 						<div class="cal-panel"><div class="table-responsive px-3">
 							<table class="table table-sm table-hover cal-table mb-0">
-								<thead><tr><th>연구팀</th><th>연구 분야</th><th>연구원</th><th>부서장</th><th>대표</th><th>과제</th><th>사용</th></tr></thead>
+								<thead><tr><th>연구팀</th><th>연구 분야</th><th>연구원</th><th>결재라인</th><th>과제</th><th>사용</th></tr></thead>
 								<tbody id="listBody"></tbody>
 							</table>
 						</div></div>
@@ -111,65 +125,25 @@
 		</div>
 	</div>
 
-	<div class="modal fade" id="approvalModal" tabindex="-1" role="dialog" aria-labelledby="approvalTitle" aria-hidden="true">
-		<div class="modal-dialog" role="document">
-			<form class="modal-content" onsubmit="saveApproval(); return false;">
-				<div class="modal-header">
-					<h5 class="modal-title" id="approvalTitle">결재라인 수정</h5>
-					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
-				</div>
-				<div class="modal-body">
-					<div class="form-group"><label for="MANAGER_EMPLY_ID">1단계 · 부서장 (관리자 계정)</label><select id="MANAGER_EMPLY_ID" class="form-control form-control-sm approver" required></select></div>
-					<div class="form-group mb-0"><label for="CEO_EMPLY_ID">2단계 · 대표 (관리자 계정)</label><select id="CEO_EMPLY_ID" class="form-control form-control-sm approver" required></select></div>
-				</div>
-				<div class="modal-footer">
-					<button type="button" class="btn btn-sm btn-outline-secondary" data-dismiss="modal">취소</button>
-					<button type="submit" class="btn btn-sm btn-primary">저장</button>
-				</div>
-			</form>
-		</div>
-	</div>
-
-	<div class="modal fade" id="signModal" tabindex="-1" role="dialog" aria-labelledby="signTitle" aria-hidden="true">
-		<div class="modal-dialog" role="document">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h5 class="modal-title" id="signTitle">내 서명 등록</h5>
-					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
-				</div>
-				<div class="modal-body">
-					<div class="lab-tabs" role="tablist">
-						<button type="button" role="tab" id="signTabFile" aria-selected="true" onclick="signMode('file');">이미지 올리기</button>
-						<button type="button" role="tab" id="signTabDraw" aria-selected="false" onclick="signMode('draw');">직접 그리기</button>
-					</div>
-					<div class="form-group"><label>계정</label><div class="form-control-plaintext form-control-sm">${loginInfo.loginInfo[0].emplyNm} (${loginInfo.loginInfo[0].emplyId})</div></div>
-					<div class="form-group" id="signFileBox"><label for="signFile">서명·도장 이미지 (PNG, JPG)</label><input type="file" id="signFile" accept="image/png,image/jpeg" class="form-control-file"></div>
-					<canvas id="signPad" width="440" height="176" role="img" aria-label="서명 영역"></canvas>
-					<div class="text-right mt-2"><button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearPad();">지우기</button></div>
-				</div>
-				<div class="modal-footer">
-					<button type="button" class="btn btn-sm btn-outline-secondary" data-dismiss="modal">취소</button>
-					<button type="button" class="btn btn-sm btn-primary" id="signSave" onclick="saveSign();">저장</button>
-				</div>
-			</div>
-		</div>
-	</div>
+	<div id="labToast" role="status" aria-live="polite"></div>
 
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
 	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
 	<script>
 	var TABS = ['기본 정보', '연구원', '소속 현황', '결재라인'];
-	var teams = [], staff = [], detail = null, tab = 0, year = new Date().getFullYear(), picked = null;
+	var teams = [], staff = [], accounts = [], detail = null, tab = 0, year = new Date().getFullYear(), picked = null, line = [], dragFrom = null;
+
+	function toast(msg) { $('#labToast').text(msg).stop(true).fadeIn(100).delay(1500).fadeOut(300); }
 
 	// ── 목록 ──
 	function drawList() {
 		var name = $('#fName').val().trim().toLowerCase(), use = $('#fUse').val();
 		var list = teams.filter(function(t) { return (!name || t.TEAM_NM.toLowerCase().indexOf(name) >= 0) && (!use || t.USE_YN === use); });
 		var $b = $('#listBody').empty();
-		if (!list.length) $b.append('<tr><td colspan="7" class="text-center text-muted">연구팀이 없습니다.</td></tr>');
+		if (!list.length) $b.append('<tr><td colspan="6" class="text-center text-muted">연구팀이 없습니다.</td></tr>');
 		list.forEach(function(t) {
 			$('<tr>').append($('<td>').append($('<a class="lab-open">').attr('href', '#t=' + t.TEAM_SQ).text(t.TEAM_NM)), $('<td>').text(t.FIELD_NM || ''), $('<td>').text(t.RSCH_CNT + '명'),
-				$('<td>').text(t.MANAGER_NM || t.MANAGER_EMPLY_ID || '미지정'), $('<td>').text(t.CEO_NM || t.CEO_EMPLY_ID || '미지정'), $('<td>').text(t.PRJ_CNT + '건'), $('<td>').text(t.USE_YN === 'Y' ? '사용' : '미사용')).appendTo($b);
+				$('<td>').text(t.APPR_LINE || '미지정'), $('<td>').text(t.PRJ_CNT + '건'), $('<td>').text(t.USE_YN === 'Y' ? '사용' : '미사용')).appendTo($b);
 		});
 	}
 
@@ -246,22 +220,129 @@
 		$b.append($('<div class="table-responsive">').append($('<table class="table table-sm cal-table mb-0 lab-tl">').append($('<thead>').append($h), $t)));
 	}
 
-	function approver(step, name, sign) {
-		var $d = $('<div class="key">').append($('<small>').text(step), $('<strong>').text(name || '미지정'));
-		return $d.append(sign ? $('<img>').attr({ src: sign, alt: (name || '') + ' 서명' }) : $('<span class="none">서명 미등록</span>'));
+	// ── 결재라인: 목록에서 바로 순서 변경·추가·삭제, 바꾸면 바로 저장 ──
+	function drawApproval($b) {
+		var $ol = $('<ol class="lab-appr">').appendTo($b);
+		$ol.append('<li class="ar fixed"><b class="no">작성</b><span>연구팀 작성자가 작성·제출</span></li>');
+		line.forEach(function(s, i) { $ol.append(stepRow(s, i)); });
+		$ol.append($('<li>').append($('<button type="button" class="lab-add">+ 결재자 추가</button>').click(function() {
+			line.push({ STEP_NM: '', EMPLY_ID: '' });
+			drawTeam();
+			$('.lab-appr .ar').eq(line.length).find('input').focus();
+		})));
+		$ol.append('<li class="ar fixed"><b class="no">마감</b><span><b>연구소장 마감</b> 결재가 모두 끝나면 연구소장이 마감 → 잠금 · PDF 업로드 · 연구원 메일</span></li>');
 	}
 
-	function drawApproval($b) {
-		var t = detail.team;
-		$b.append(actions(['내 서명 등록', openSign, 'btn-outline-secondary'], ['수정', openApproval]));
-		$b.append($('<div class="lab-line">').append('<div><small>작성·제출</small><strong>연구팀 작성자</strong></div>', '<div class="lab-arrow" aria-hidden="true">&rarr;</div>',
-			approver('1단계 · 부서장 확인', t.MANAGER_NM || t.MANAGER_EMPLY_ID, detail.managerSign), '<div class="lab-arrow" aria-hidden="true">&rarr;</div>',
-			approver('2단계 · 대표 확인', t.CEO_NM || t.CEO_EMPLY_ID, detail.ceoSign), '<div class="lab-arrow" aria-hidden="true">&rarr;</div>',
-			'<div class="auto"><small>자동</small><strong>잠금 · PDF 업로드</strong></div>'));
+	function stepRow(s, i) {
+		var $li = $('<li class="ar">').attr('data-i', i);
+		var $hdl = $('<button type="button" class="hdl" title="끌어서 순서 변경">&#8942;&#8942;</button>').attr('aria-label', (i + 1) + '단계 끌어서 이동');
+		$hdl.on('mousedown touchstart', function() { $li.attr('draggable', 'true'); });
+		$li.append($('<span class="lab-move">').append($hdl,
+			$('<button type="button" aria-label="위로">&#9650;</button>').attr('aria-label', (i + 1) + '단계 위로').prop('disabled', i === 0).click(function() { moveStep(i, i - 1); }),
+			$('<button type="button">&#9660;</button>').attr('aria-label', (i + 1) + '단계 아래로').prop('disabled', i === line.length - 1).click(function() { moveStep(i, i + 1); })));
+		$li.append($('<b class="no">').text((i + 1) + '단계'));
+		var nameId = 'stepNm' + i, accId = 'stepAcc' + i;
+		$li.append($('<label class="mb-0">').attr('for', nameId).append('<small class="d-block">단계명</small>',
+			$('<input class="form-control form-control-sm" maxlength="50" placeholder="부서장">').attr('id', nameId).val(s.STEP_NM).on('change', function() { s.STEP_NM = this.value.trim(); saveLine(); })));
+		var $sel = $('<select class="form-control form-control-sm"><option value="">결재자 선택</option></select>').attr('id', accId);
+		accounts.forEach(function(a) { $sel.append($('<option>').val(a.EMPLY_ID).text(a.EMPLY_NM + ' (' + a.EMPLY_ID + ')')); });
+		$li.append($('<label class="mb-0">').attr('for', accId).append('<small class="d-block">결재자 (관리자 계정)</small>',
+			$sel.val(s.EMPLY_ID).on('change', function() { s.EMPLY_ID = this.value; s.SIGN_IMG = null; saveLine(); })));
+		$li.append(signCell(s));
+		$li.append($('<button type="button" class="btn btn-sm btn-outline-danger lab-del">삭제</button>').attr('aria-label', (i + 1) + '단계 삭제').click(function() {
+			bootbox.confirm((i + 1) + '단계(' + (s.STEP_NM || '이름 없음') + ')를 결재라인에서 뺄까요?', function(ok) { if (ok) { line.splice(i, 1); saveLine(true); } });
+		}));
+		// 줄 끌기. 파일을 끌어오는 것은 서명 칸이 받는다
+		$li.on('dragstart', function(e) { dragFrom = i; e.originalEvent.dataTransfer.setData('text/plain', 'step'); $li.addClass('dragging'); });
+		$li.on('dragend', function() { $li.removeClass('dragging').removeAttr('draggable'); $('.lab-appr .over').removeClass('over'); });
+		$li.on('dragover', function(e) { if (dragFrom === null) return; e.preventDefault(); $('.lab-appr .over').removeClass('over'); $li.addClass('over'); });
+		$li.on('drop', function(e) { if (dragFrom === null) return; e.preventDefault(); var from = dragFrom; dragFrom = null; moveStep(from, i); });
+		return $li;
+	}
+
+	function moveStep(from, to) {
+		if (to < 0 || to >= line.length || from === to) { drawTeam(); return; }
+		line.splice(to, 0, line.splice(from, 1)[0]);
+		saveLine(true);
+	}
+
+	/** 모든 줄에 단계명과 결재자가 있을 때만 저장한다 */
+	function saveLine(redraw) {
+		dragFrom = null;
+		if (redraw) drawTeam();
+		if (line.some(function(s) { return !s.STEP_NM || !s.EMPLY_ID; })) { toast('단계명과 결재자를 모두 고르면 저장됩니다'); return; }
+		var data = { TEAM_SQ: detail.team.TEAM_SQ, STEP_NM: line.map(function(s) { return s.STEP_NM; }), EMPLY_ID: line.map(function(s) { return s.EMPLY_ID; }) };
+		hrPost('/admin/lab/saveApprovalData.do', $.param(data, true), function() { toast('결재라인을 저장했습니다'); reload(); }, reload);
+	}
+
+	// ── 서명: 본인 줄에서만. 이미지를 끌어다 놓거나, 파일을 고르거나, 직접 그린다 ──
+	function signCell(s) {
+		var mine = s.EMPLY_ID && s.EMPLY_ID === detail.me, $c = $('<div class="lab-sign">');
+		if (!s.EMPLY_ID) return $c.append('<small>결재자를 고르세요</small>');
+		if (s.SIGN_IMG) $c.append($('<img>').attr({ src: s.SIGN_IMG, alt: (s.EMPLY_NM || s.EMPLY_ID) + ' 서명' }));
+		if (!mine) {
+			if (!s.SIGN_IMG) $c.addClass('none').append('<span class="warn">서명 미등록</span><small>본인이 로그인해 자기 줄에서 등록</small>');
+			return $c;
+		}
+		var $file = $('<input type="file" accept="image/png,image/jpeg" class="d-none">').on('change', function() { if (this.files[0]) fileToSign(this.files[0]); this.value = ''; });
+		$c.append($('<small>').append(s.SIGN_IMG ? '내 서명 · 바꾸려면 ' : '내 서명을 등록하세요 · ', '이미지를 끌어다 놓거나 ',
+			$('<a href="#">파일 선택</a>').click(function(e) { e.preventDefault(); $file.click(); }), ' · ',
+			$('<a href="#">직접 그리기</a>').click(function(e) { e.preventDefault(); drawPad($c); })), $file);
+		$c.on('dragover', function(e) {
+			if ([].indexOf.call(e.originalEvent.dataTransfer.types || [], 'Files') < 0) return;
+			e.preventDefault(); e.stopPropagation(); $c.addClass('drop');
+		});
+		$c.on('dragleave', function() { $c.removeClass('drop'); });
+		$c.on('drop', function(e) {
+			var f = e.originalEvent.dataTransfer.files[0];
+			if (!f) return;
+			e.preventDefault(); e.stopPropagation(); $c.removeClass('drop');
+			fileToSign(f);
+		});
+		return $c;
+	}
+
+	// 큰 사진도 서명 칸 크기의 PNG 로 줄여서 저장한다
+	function fileToSign(file) {
+		if (!/^image\/(png|jpeg)$/.test(file.type)) { bootbox.alert('PNG 나 JPG 이미지만 올릴 수 있습니다.'); return; }
+		if (file.size > 5 * 1024 * 1024) { bootbox.alert('5MB 이하 이미지만 올릴 수 있습니다.'); return; }
+		var url = URL.createObjectURL(file), img = new Image();
+		img.onload = function() {
+			var c = document.createElement('canvas'), s;
+			c.width = 440; c.height = 176;
+			s = Math.min(c.width / img.width, c.height / img.height, 1);
+			c.getContext('2d').drawImage(img, (c.width - img.width * s) / 2, (c.height - img.height * s) / 2, img.width * s, img.height * s);
+			URL.revokeObjectURL(url);
+			saveSign(c.toDataURL('image/png'));
+		};
+		img.onerror = function() { URL.revokeObjectURL(url); bootbox.alert('이미지를 읽지 못했습니다.'); };
+		img.src = url;
+	}
+
+	function drawPad($c) {
+		var canvas = $('<canvas width="440" height="160" aria-label="마우스나 터치로 서명하는 영역" role="img">')[0], ctx = canvas.getContext('2d'), down = false, drawn = false;
+		function at(e) { var b = canvas.getBoundingClientRect(); return [(e.clientX - b.left) * canvas.width / b.width, (e.clientY - b.top) * canvas.height / b.height]; }
+		canvas.addEventListener('pointerdown', function(e) { down = true; canvas.setPointerCapture(e.pointerId); var p = at(e); ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.strokeStyle = '#111'; ctx.beginPath(); ctx.moveTo(p[0], p[1]); });
+		canvas.addEventListener('pointermove', function(e) { if (!down) return; var p = at(e); ctx.lineTo(p[0], p[1]); ctx.stroke(); drawn = true; });
+		canvas.addEventListener('pointerup', function() { down = false; });
+		canvas.addEventListener('pointercancel', function() { down = false; });
+		$c.empty().append(canvas, $('<span class="d-flex flex-wrap" style="gap:6px;">').append(
+			$('<button type="button" class="btn btn-sm btn-outline-secondary">지우기</button>').click(function() { ctx.clearRect(0, 0, canvas.width, canvas.height); drawn = false; }),
+			$('<button type="button" class="btn btn-sm btn-outline-secondary">취소</button>').click(drawTeam),
+			$('<button type="button" class="btn btn-sm btn-primary">저장</button>').click(function() { if (!drawn) { bootbox.alert('서명을 그려 주세요.'); return; } saveSign(canvas.toDataURL('image/png')); })));
+	}
+
+	function saveSign(img) {
+		hrPost('/admin/lab/saveSignData.do', { IMG: img }, function() { toast('서명을 등록했습니다'); reload(); });
 	}
 
 	function reload(then) {
-		hrPost('/admin/lab/teamDetailData.do', { TEAM_SQ: detail.team.TEAM_SQ }, function(res) { detail = res.result; drawTeam(); if (then) then(); });
+		hrPost('/admin/lab/teamDetailData.do', { TEAM_SQ: detail.team.TEAM_SQ }, function(res) { setDetail(res.result); drawTeam(); if (then) then(); });
+	}
+
+	function setDetail(d) {
+		detail = d;
+		line = d.line.map(function(s) { return $.extend({}, s); });
 	}
 
 	// ── 팝업 ──
@@ -310,105 +391,14 @@
 		});
 	}
 
-	function openApproval() {
-		$('#MANAGER_EMPLY_ID').val(detail.team.MANAGER_EMPLY_ID || '');
-		$('#CEO_EMPLY_ID').val(detail.team.CEO_EMPLY_ID || '');
-		$('#approvalModal').modal('show');
-	}
-
-	function saveApproval() {
-		hrPost('/admin/lab/saveApprovalData.do', { TEAM_SQ: detail.team.TEAM_SQ, MANAGER_EMPLY_ID: $('#MANAGER_EMPLY_ID').val(), CEO_EMPLY_ID: $('#CEO_EMPLY_ID').val() }, function() {
-			$('#approvalModal').modal('hide');
-			reload();
-		});
-	}
-
-	// ── 서명 ──
-	var pad = document.getElementById('signPad'), ctx = pad.getContext('2d'), mode = 'file', drawn = false, down = false;
-
-	function clearPad() {
-		ctx.clearRect(0, 0, pad.width, pad.height);
-		drawn = false;
-		$('#signFile').val('');
-	}
-
-	function signMode(m) {
-		mode = m;
-		clearPad();
-		$('#signFileBox').toggle(m === 'file');
-		$('#signTabFile').attr('aria-selected', m === 'file' ? 'true' : 'false');
-		$('#signTabDraw').attr('aria-selected', m === 'draw' ? 'true' : 'false');
-		$('#signPad').attr('aria-label', m === 'draw' ? '마우스나 터치로 서명하는 영역' : '서명 이미지 미리보기');
-	}
-
-	function openSign() {
-		signMode('file');
-		$('#signModal').modal('show');
-	}
-
-	function padPoint(e) {
-		var b = pad.getBoundingClientRect();
-		return [(e.clientX - b.left) * pad.width / b.width, (e.clientY - b.top) * pad.height / b.height];
-	}
-
-	pad.addEventListener('pointerdown', function(e) {
-		if (mode !== 'draw') return;
-		down = true;
-		pad.setPointerCapture(e.pointerId);
-		var p = padPoint(e);
-		ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.strokeStyle = '#111';
-		ctx.beginPath();
-		ctx.moveTo(p[0], p[1]);
-	});
-	pad.addEventListener('pointermove', function(e) {
-		if (!down) return;
-		var p = padPoint(e);
-		ctx.lineTo(p[0], p[1]);
-		ctx.stroke();
-		drawn = true;
-	});
-	pad.addEventListener('pointerup', function() { down = false; });
-	pad.addEventListener('pointercancel', function() { down = false; });
-
-	// 큰 사진도 서명 칸 크기의 PNG 로 줄여서 저장한다
-	$('#signFile').on('change', function() {
-		var file = this.files[0];
-		if (!file) return;
-		if (file.size > 5 * 1024 * 1024) { bootbox.alert('5MB 이하 이미지만 올릴 수 있습니다.'); this.value = ''; return; }
-		var url = URL.createObjectURL(file), img = new Image();
-		img.onload = function() {
-			var s = Math.min(pad.width / img.width, pad.height / img.height, 1), w = img.width * s, h = img.height * s;
-			ctx.clearRect(0, 0, pad.width, pad.height);
-			ctx.drawImage(img, (pad.width - w) / 2, (pad.height - h) / 2, w, h);
-			drawn = true;
-			URL.revokeObjectURL(url);
-		};
-		img.onerror = function() { bootbox.alert('이미지를 읽지 못했습니다.'); URL.revokeObjectURL(url); };
-		img.src = url;
-	});
-
-	function saveSign() {
-		if (!drawn) { bootbox.alert('서명을 입력하거나 이미지를 골라 주세요.'); return; }
-		var $b = $('#signSave').prop('disabled', true);
-		hrPost('/admin/lab/saveSignData.do', { IMG: pad.toDataURL('image/png') }, function() {
-			$b.prop('disabled', false);
-			$('#signModal').modal('hide');
-			reload();
-		}, function() { $b.prop('disabled', false); });
-	}
-
 	// ── 화면 전환 ──
 	function showCurrent() {
-		var m = /^#t=(\d+)(?:&tab=(\d))?(&sign=1)?$/.exec(location.hash);
+		var m = /^#t=(\d+)(?:&tab=(\d))?/.exec(location.hash);
 		$('.lab-view').hide();
 		if (!m) { $('#viewList').show(); loadList(); return; }
 		tab = m[2] ? Number(m[2]) : 0;
 		$('#viewTeam').show();
-		hrPost('/admin/lab/teamDetailData.do', { TEAM_SQ: m[1] }, function(res) {
-			detail = res.result;
-			drawTeam();
-			if (m[3]) openSign();
-		});
+		hrPost('/admin/lab/teamDetailData.do', { TEAM_SQ: m[1] }, function(res) { setDetail(res.result); drawTeam(); });
 	}
 
 	$(window).on('hashchange', showCurrent);
@@ -417,8 +407,7 @@
 	$('#pickSearch').on('input', drawPick);
 	hrPost('/admin/lab/optionsData.do', {}, function(res) {
 		staff = res.result.staff;
-		$('.approver').append('<option value=""></option>');
-		res.result.accounts.forEach(function(a) { $('.approver').append($('<option>').val(a.EMPLY_ID).text(a.EMPLY_NM + ' (' + a.EMPLY_ID + ')')); });
+		accounts = res.result.accounts;
 		showCurrent();
 	});
 	</script>

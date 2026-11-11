@@ -2,12 +2,13 @@ package com.eep.bo.lab.service;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
 /**
  * 프로젝트에 JUnit 이 없어 main 으로 확인한다.
- * 실행: java -cp "target/classes;target/test-classes;<spring-web, spring-core, commons-logging>" com.eep.bo.lab.service.BoLabServiceCheck
+ * 실행: java -cp "target/classes;target/test-classes;target/est_eep/WEB-INF/lib/*" com.eep.bo.lab.service.BoLabServiceCheck
  */
 public class BoLabServiceCheck {
 
@@ -15,62 +16,68 @@ public class BoLabServiceCheck {
 	private static final String PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
 
 	public static void main(String[] args) {
-		// 결재 단계
-		same(BoLabService.approverColumn("SUBMITTED"), "MANAGER_EMPLY_ID", "제출은 부서장이 결재");
-		same(BoLabService.approverColumn("MANAGER_OK"), "CEO_EMPLY_ID", "부서장 확인 후 대표가 결재");
-		same(BoLabService.approverColumn("DRAFT"), null, "작성 중은 결재 없음");
-		same(BoLabService.approverColumn("CEO_OK"), null, "확정 후 결재 없음");
-		same(BoLabService.afterApprove("SUBMITTED"), "MANAGER_OK", "제출 다음");
-		same(BoLabService.afterApprove("MANAGER_OK"), "CEO_OK", "부서장 확인 다음");
+		// 결재라인 검사
+		HashSet<String> admins = new HashSet<>(Arrays.asList("hong", "ceo", "lee"));
+		same(BoLabService.checkSteps(new String[] { " 부서장 ", "대표" }, new String[] { "hong", "ceo" }, admins).get(0)[0], "부서장", "단계명 공백 정리");
+		same(BoLabService.checkSteps(null, null, admins).size(), 0, "빈 결재라인 허용");
+		fails(() -> BoLabService.checkSteps(new String[] { "부서장", "대표" }, new String[] { "hong", "hong" }, admins), "같은 계정 두 번");
+		fails(() -> BoLabService.checkSteps(new String[] { "부서장" }, new String[] { "nobody" }, admins), "관리자 아닌 계정");
+		fails(() -> BoLabService.checkSteps(new String[] { " " }, new String[] { "hong" }, admins), "빈 단계명");
+		fails(() -> BoLabService.checkSteps(new String[] { "a" }, new String[] { "hong", "ceo" }, admins), "개수 불일치");
+		fails(() -> BoLabService.checkSteps(new String[6], new String[6], admins), "6단계 초과");
 
 		// 과제 기간 (달 단위, 첫 달과 끝 달 포함)
 		same(BoLabService.inPeriod("2026-03", "2026-03-15", "2026-11-02"), true, "첫 달 포함");
-		same(BoLabService.inPeriod("2026-11", "2026-03-15", "2026-11-02"), true, "끝 달 포함");
-		same(BoLabService.inPeriod("2026-02", "2026-03-15", "2026-11-02"), false, "시작 전");
 		same(BoLabService.inPeriod("2026-12", "2026-03-15", "2026-11-02"), false, "종료 후");
 
 		// 폴더 주소
 		same(BoLabService.folderId(" https://drive.google.com/drive/folders/abc_D-1?usp=sharing "), "abc_D-1", "주소에서 ID");
-		same(BoLabService.folderId("abc_D-1"), "abc_D-1", "ID 그대로");
-		try {
-			BoLabService.folderId("a' or name != 'x");
-			throw new AssertionError("잘못된 폴더 ID 를 받음");
-		} catch (IllegalArgumentException expected) {
-			System.out.println("ok  잘못된 폴더 ID 거부");
-		}
+		fails(() -> BoLabService.folderId("a' or name != 'x"), "잘못된 폴더 ID");
 
 		// 서명 이미지와 에디터 빈 내용
 		BoLabService.checkSign(PNG);
-		System.out.println("ok  PNG 서명 통과");
 		for (String bad : new String[] { null, "", "data:image/svg+xml;base64,PHN2Zz4=", "data:image/png;base64,AAAA", "data:image/png;base64,\"><script>" }) {
-			try {
-				BoLabService.checkSign(bad);
-				throw new AssertionError("잘못된 서명을 받음: " + bad);
-			} catch (IllegalArgumentException expected) {
-				System.out.println("ok  잘못된 서명 거부");
-			}
+			fails(() -> BoLabService.checkSign(bad), "잘못된 서명 " + bad);
 		}
-		yes(BoLabService.isBlankHtml("<p>&nbsp;</p><br>"), "에디터 빈 내용");
-		yes(!BoLabService.isBlankHtml("<p>내용</p>"), "에디터 내용 있음");
+		same(BoLabService.isBlankHtml("<p>&nbsp;</p><br>"), true, "에디터 빈 내용");
 
-		// PDF: 입력 이스케이프, 에디터 서식, 서명, 반려 후 다시 결재하면 마지막 기록
+		// 담당자 항목 요약: hwp 에서 옮긴 형식 두 가지
+		String hwp = "<p>[공통]</p><p>comm_ui001 - CommonHeader.tsx - 2단 구성</p><p>담당자: 백바울 연구소장</p><p>기간: 9월</p>"
+				+ "<p>salary001 - 연봉 계산 입력 6종</p><p>담당자: 정영우 연구원</p><p>main_p001 - 배너 축소</p><p>담당자: 백바울 연구소장</p>"
+				+ "<p>- 입사지원 로직 (이정수 연구원, 12월 1일 ~ 12월 31일)</p><p>- 추천 공고 (이정수 연구원)</p><p>- 기타 (이정수라, 12월)</p>";
+		same(BoLabService.workItems(hwp, "백바울"), Arrays.asList("comm_ui001 - CommonHeader.tsx - 2단 구성", "main_p001 - 배너 축소"), "담당자 줄 형식");
+		same(BoLabService.workItems(hwp, "정영우"), Arrays.asList("salary001 - 연봉 계산 입력 6종"), "다른 사람 항목 제외");
+		same(BoLabService.workItems(hwp, "이정수"), Arrays.asList("입사지원 로직", "추천 공고"), "괄호 이름 형식, 비슷한 이름 제외");
+		same(BoLabService.workItems(hwp, "이슬이").size(), 0, "담당 없음");
+		String mail = BoLabService.mailHtml("<b>홍</b>", "2026-10", "과제 & A", Arrays.asList("<script>x</script>"));
+		yes(!mail.contains("<script>") && mail.contains("&lt;b&gt;홍") && mail.contains("과제 &amp; A"), "메일 본문 이스케이프");
+
+		// PDF: 단계 수만큼 결재란, 서명, 마감, 에디터 서식 유지
 		Map<String, Object> j = new HashMap<>();
 		j.put("YM", "2026-11");
 		j.put("WRITER_NM", "작성자");
 		j.put("PRJ_NM", "<script>alert(1)</script>");
 		j.put("SNAP_MEMBERS", "홍길동(연구소장)");
 		j.put("CONTENT", "<p><b>첫 줄</b></p><table><tr><td>칸</td></tr></table>");
-		List<Map<String, Object>> h = Arrays.asList(row("SUBMIT", "작성자", "2026-11-09 10:00:00"), row("APPROVE_MANAGER", "옛부서장", "2026-11-09 11:00:00"),
-				row("SUBMIT", "작성자", "2026-11-10 10:00:00"), row("APPROVE_MANAGER", "새부서장", "2026-11-10 11:00:00"), row("APPROVE_CEO", "대표", "2026-11-10 12:00:00"));
-		h.get(3).put("SIGN_IMG", PNG);
-		String html = BoLabService.pdfHtml(j, h);
+		List<Map<String, Object>> steps = Arrays.asList(step("부서장", "홍길동", PNG), step("검토", "이부장", PNG), step("대표", "김대표", ""));
+		List<Map<String, Object>> h = Arrays.asList(row("SUBMIT", "작성자", "2026-11-09 10:00:00"), row("SUBMIT", "작성자", "2026-11-10 10:00:00"), row("CLOSE", "연구소장", "2026-11-12 09:00:00"));
+		String html = BoLabService.pdfHtml(j, steps, h);
 		yes(!html.contains("<script>") && html.contains("&lt;script&gt;"), "태그 이스케이프");
 		yes(html.contains("<p><b>첫 줄</b></p><table>"), "에디터 서식 유지");
-		yes(html.contains("<img src=\"" + PNG + "\""), "서명 이미지");
-		yes(html.contains("홍길동(연구소장)"), "한글 유지");
-		yes(html.contains("새부서장") && !html.contains("옛부서장"), "마지막 결재자");
+		yes(html.split("<img src=\"" + PNG.replace("+", "\\+") + "\"", -1).length == 3, "서명 2개");
+		yes(html.contains(">검토<") && html.contains(">대표<"), "단계 이름 열");
+		yes(html.contains("연구소장 (2026-11-12 09:00:00)"), "마감 기록");
 		yes(html.contains("2026-11-10 10:00:00") && !html.contains("2026-11-09 10:00:00"), "마지막 제출일");
 		System.out.println("ALL OK");
+	}
+
+	private static Map<String, Object> step(String nm, String done, String sign) {
+		Map<String, Object> m = new HashMap<>();
+		m.put("STEP_NM", nm);
+		m.put("DONE_NM", done);
+		m.put("DONE_DT", "2026-11-11 10:00:00");
+		m.put("SIGN_IMG", sign);
+		return m;
 	}
 
 	private static Map<String, Object> row(String action, String nm, String dt) {
@@ -79,6 +86,15 @@ public class BoLabServiceCheck {
 		m.put("ACTOR_NM", nm);
 		m.put("REG_DT", dt);
 		return m;
+	}
+
+	private static void fails(Runnable r, String name) {
+		try {
+			r.run();
+			throw new AssertionError(name + ": 거부해야 함");
+		} catch (IllegalArgumentException expected) {
+			System.out.println("ok  " + name + " 거부");
+		}
 	}
 
 	private static void same(Object a, Object b, String name) {

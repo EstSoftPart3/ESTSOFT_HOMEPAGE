@@ -14,8 +14,8 @@
 	.lab-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 	.lab-pill { display: inline-block; padding: 1px 10px; border-radius: 12px; font-size: 13px; background: #eef1f4; color: #343a40; }
 	.lab-pill.SUBMITTED { background: #fff1dc; color: #7a4300; }
-	.lab-pill.MANAGER_OK { background: #dcecf8; color: #0a4a78; }
-	.lab-pill.CEO_OK { background: #0a4a78; color: #fff; }
+	.lab-pill.APPROVED { background: #dcecf8; color: #0a4a78; }
+	.lab-pill.CLOSED { background: #0a4a78; color: #fff; }
 	.lab-info th { width: 120px; background: #f3f6f8; font-weight: 600; }
 	.lab-open { color: #0b6e8a; font-weight: 600; text-decoration: underline; }
 </style>

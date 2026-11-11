@@ -54,8 +54,9 @@ public class BoLabController {
 	}
 
 	@RequestMapping(value = "/admin/lab/saveApprovalData.do", method = RequestMethod.POST)
-	public ModelAndView saveApprovalData(@RequestParam Map<String, Object> param, HttpSession session) {
-		return result(() -> { lab.saveApproval(param, login(session)); return "OK"; });
+	public ModelAndView saveApprovalData(@RequestParam("TEAM_SQ") int teamSq, @RequestParam(value = "STEP_NM", required = false) String[] names,
+			@RequestParam(value = "EMPLY_ID", required = false) String[] ids) {
+		return result(() -> { lab.saveApproval(teamSq, names, ids); return "OK"; });
 	}
 
 	@RequestMapping(value = "/admin/lab/saveResearcherData.do", method = RequestMethod.POST)
@@ -120,9 +121,15 @@ public class BoLabController {
 		return result(() -> { lab.rejectJournal(sq, note, login(session)); return "OK"; });
 	}
 
+	@RequestMapping(value = "/admin/lab/closeJournalData.do", method = RequestMethod.POST)
+	public ModelAndView closeJournalData(@RequestParam("JRN_SQ") int sq, HttpSession session) {
+		return result(() -> lab.closeJournal(sq, login(session)));
+	}
+
+	/** 마감 뒤 PDF 업로드·메일이 실패했을 때 다시 시도 */
 	@RequestMapping(value = "/admin/lab/uploadJournalData.do", method = RequestMethod.POST)
 	public ModelAndView uploadJournalData(@RequestParam("JRN_SQ") int sq, HttpSession session) {
-		return result(() -> { String error = lab.upload(sq, login(session)); if (error != null) throw new IllegalArgumentException(error); return "OK"; });
+		return result(() -> { String error = lab.publish(sq, login(session)); if (error != null) throw new IllegalArgumentException(error); return "OK"; });
 	}
 
 	private interface Call {

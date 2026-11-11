@@ -8,18 +8,26 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.annotation.PostConstruct;
 import javax.imageio.ImageIO;
+import javax.mail.internet.MimeMessage;
 import javax.sql.DataSource;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.HttpStatusCodeException;
@@ -29,12 +37,16 @@ import com.eep.bo.batch.service.GoogleDriveApi;
 import com.eep.bo.staff.service.StaffDriveService;
 import com.eep.mapper.BoLabMapper;
 
-/** 연구소 - 연구팀, 연구원, 연구과제, 월간 연구일지. 결재: 작성 중 -> 제출 -> 부서장 확인 -> 대표 확인(잠금 후 PDF 업로드). 반려하면 작성 중으로 돌아간다 */
+/**
+ * 연구소 - 연구팀, 결재라인, 연구원, 연구과제, 월간 연구일지.
+ * 흐름: 작성 중 -> 제출 -> 결재라인 1~n단계 -> 결재 완료 -> 연구소장 마감(잠금, PDF 업로드, 연구원 메일). 반려하면 작성 중으로 돌아간다
+ */
 @Service
 public class BoLabService {
 
-	static final String DRAFT = "DRAFT", SUBMITTED = "SUBMITTED", MANAGER_OK = "MANAGER_OK", CEO_OK = "CEO_OK";
+	static final String DRAFT = "DRAFT", SUBMITTED = "SUBMITTED", APPROVED = "APPROVED", CLOSED = "CLOSED";
 	static final String JOURNAL_FOLDER = "02. 연구일지";
+	static final int MAX_STEPS = 5;
 	private static final Pattern FOLDER_LINK = Pattern.compile("/folders/([\\w-]+)");
 	private static final Pattern SIGN_PNG = Pattern.compile("^data:image/png;base64,([A-Za-z0-9+/]+={0,2})$");
 	private static final int MAX_SIGN_CHARS = 400_000;
@@ -47,6 +59,10 @@ public class BoLabService {
 	private StaffDriveService driveConnection;
 	@Autowired
 	private DataSource dataSource;
+	@Autowired
+	private JavaMailSender mailSender;
+	@Value("${mail.username}")
+	private String mailFrom;
 
 	private TransactionTemplate tx;
 
@@ -77,12 +93,11 @@ public class BoLabService {
 	}
 
 	public Map<String, Object> teamDetail(Object teamSq, Map<String, Object> login) {
-		Map<String, Object> team = team(teamSq), out = new HashMap<>();
-		out.put("team", team);
-		out.put("researchers", mapper.selectResearchers(one("TEAM_SQ", teamSq)));
-		out.put("managerSign", signImage(str(team.get("MANAGER_EMPLY_ID"))));
-		out.put("ceoSign", signImage(str(team.get("CEO_EMPLY_ID"))));
-		out.put("mySign", signImage(str(login.get("emplyId"))));
+		Map<String, Object> key = one("TEAM_SQ", teamSq), out = new HashMap<>();
+		out.put("team", team(teamSq));
+		out.put("researchers", mapper.selectResearchers(key));
+		out.put("line", mapper.selectApprovalLine(key));
+		out.put("me", login.get("emplyId"));
 		return out;
 	}
 
@@ -98,13 +113,43 @@ public class BoLabService {
 		return p.get("NEW_TEAM_SQ");
 	}
 
-	public void saveApproval(Map<String, Object> p, Map<String, Object> login) {
-		team(p.get("TEAM_SQ"));
-		List<Object> admins = new ArrayList<>();
-		for (Map<String, Object> a : mapper.selectAdminAccounts()) admins.add(a.get("EMPLY_ID"));
-		if (!admins.contains(p.get("MANAGER_EMPLY_ID")) || !admins.contains(p.get("CEO_EMPLY_ID"))) throw new IllegalArgumentException("부서장과 대표 계정을 선택해 주세요.");
-		p.put("UPDT_EMPLY_ID", login.get("emplyId"));
-		mapper.updateTeamApproval(p);
+	/** 결재라인 전체를 화면의 순서대로 다시 저장한다. 이미 제출된 일지는 제출 때 복사한 단계를 쓰므로 바뀌지 않는다 */
+	public void saveApproval(Object teamSq, String[] names, String[] ids) {
+		team(teamSq);
+		List<String[]> steps = checkSteps(names, ids, adminIds());
+		tx.execute(s -> {
+			mapper.deleteApprovalLine(one("TEAM_SQ", teamSq));
+			for (int i = 0; i < steps.size(); i++) {
+				Map<String, Object> p = one("TEAM_SQ", teamSq);
+				p.put("STEP_NO", i + 1);
+				p.put("STEP_NM", steps.get(i)[0]);
+				p.put("EMPLY_ID", steps.get(i)[1]);
+				mapper.insertApprovalStep(p);
+			}
+			return null;
+		});
+	}
+
+	static List<String[]> checkSteps(String[] names, String[] ids, Set<String> admins) {
+		int n = names == null ? 0 : names.length;
+		if (n != (ids == null ? 0 : ids.length)) throw new IllegalArgumentException("결재라인을 다시 불러와 주세요.");
+		if (n > MAX_STEPS) throw new IllegalArgumentException("결재 단계는 " + MAX_STEPS + "단계까지 둘 수 있습니다.");
+		List<String[]> out = new ArrayList<>();
+		Set<String> seen = new HashSet<>();
+		for (int i = 0; i < n; i++) {
+			String nm = names[i] == null ? "" : names[i].trim(), id = ids[i] == null ? "" : ids[i].trim();
+			if (nm.isEmpty() || nm.length() > 50) throw new IllegalArgumentException((i + 1) + "단계 이름을 50자 안으로 입력해 주세요.");
+			if (!admins.contains(id)) throw new IllegalArgumentException((i + 1) + "단계 결재자 계정을 선택해 주세요.");
+			if (!seen.add(id)) throw new IllegalArgumentException("같은 계정을 두 단계에 넣을 수 없습니다.");
+			out.add(new String[] { nm, id });
+		}
+		return out;
+	}
+
+	private Set<String> adminIds() {
+		Set<String> ids = new HashSet<>();
+		for (Map<String, Object> a : mapper.selectAdminAccounts()) ids.add(str(a.get("EMPLY_ID")));
+		return ids;
 	}
 
 	private Map<String, Object> team(Object teamSq) {
@@ -136,11 +181,6 @@ public class BoLabService {
 			}
 		}
 		if (!ok) throw new IllegalArgumentException("서명 이미지를 확인해 주세요.");
-	}
-
-	private String signImage(String emplyId) {
-		Map<String, Object> s = hasText(emplyId) ? mapper.selectLatestSign(emplyId) : null;
-		return s == null ? null : str(s.get("SIGN_IMG"));
 	}
 
 	// ── 연구원 ──
@@ -197,15 +237,40 @@ public class BoLabService {
 	// ── 월간 연구일지 ──
 
 	public Map<String, Object> journalDetail(Object sq, Map<String, Object> login) {
-		Map<String, Object> j = journal(sq);
-		Map<String, Object> out = new HashMap<>();
+		Map<String, Object> j = journal(sq), out = new HashMap<>();
+		String st = str(j.get("STATUS_CD")), me = str(login.get("emplyId"));
+		List<Map<String, Object>> steps = mapper.selectJournalSteps(key(sq));
 		out.put("journal", j);
+		out.put("steps", steps.isEmpty() ? mapper.selectApprovalLine(one("TEAM_SQ", j.get("TEAM_SQ"))) : steps);
 		out.put("history", mapper.selectJournalHistory(key(sq)));
 		out.put("members", hasText(str(j.get("SNAP_MEMBERS"))) ? j.get("SNAP_MEMBERS") : members(j.get("TEAM_SQ"), str(j.get("YM"))));
-		String col = approverColumn(str(j.get("STATUS_CD")));
-		boolean canApprove = col != null && str(j.get(col)).equals(login.get("emplyId"));
+		boolean canApprove = SUBMITTED.equals(st) && me.equals(str(currentStep(j, steps).get("EMPLY_ID")));
 		out.put("canApprove", canApprove);
-		out.put("needSign", canApprove && signImage(str(login.get("emplyId"))) == null);
+		out.put("needSign", canApprove && mapper.selectLatestSign(me) == null);
+		Map<String, Object> head = mapper.selectTeamHead(one("TEAM_SQ", j.get("TEAM_SQ")));
+		out.put("headNm", head == null ? null : head.get("STAFF_NM"));
+		out.put("canClose", APPROVED.equals(st) && head != null && me.equals(str(head.get("EMPLY_ID"))));
+		if (APPROVED.equals(st) || CLOSED.equals(st)) out.put("recipients", recipients(j));
+		return out;
+	}
+
+	private static Map<String, Object> currentStep(Map<String, Object> j, List<Map<String, Object>> steps) {
+		for (Map<String, Object> s : steps) if (str(s.get("STEP_NO")).equals(str(j.get("CUR_STEP")))) return s;
+		return new HashMap<>();
+	}
+
+	/** 마감 메일 받을 사람. 회사 메일을 먼저 쓰고 없으면 개인 메일 */
+	private List<Map<String, Object>> recipients(Map<String, Object> j) {
+		List<Map<String, Object>> out = new ArrayList<>();
+		for (Map<String, Object> r : mapper.selectMonthResearchers(j.get("TEAM_SQ"), str(j.get("YM")))) {
+			Map<String, Object> x = new HashMap<>();
+			String company = str(r.get("COMPANY_EMAIL")).trim(), personal = str(r.get("EMAIL")).trim(), nm = str(r.get("STAFF_NM"));
+			x.put("STAFF_NM", nm);
+			x.put("ADDR", hasText(company) ? company : personal);
+			x.put("KIND", hasText(company) ? "COMPANY" : hasText(personal) ? "PERSONAL" : "NONE");
+			x.put("ITEMS", workItems(str(j.get("CONTENT")), nm));
+			out.add(x);
+		}
 		return out;
 	}
 
@@ -250,13 +315,17 @@ public class BoLabService {
 	public void submitJournal(Object sq, Map<String, Object> login) {
 		Map<String, Object> j = journal(sq);
 		if (isBlankHtml(str(j.get("CONTENT")))) throw new IllegalArgumentException("연구 내용을 입력해 주세요.");
-		if (!hasText(str(j.get("MANAGER_EMPLY_ID"))) || !hasText(str(j.get("CEO_EMPLY_ID")))) throw new IllegalArgumentException("연구소 관리의 결재라인을 먼저 지정해 주세요.");
+		Map<String, Object> team = one("TEAM_SQ", j.get("TEAM_SQ"));
+		if (mapper.selectApprovalLine(team).isEmpty()) throw new IllegalArgumentException("연구소 관리의 결재라인을 먼저 지정해 주세요.");
 		String members = members(j.get("TEAM_SQ"), str(j.get("YM")));
 		if (!hasText(members)) throw new IllegalArgumentException("그 달에 소속된 연구원이 없습니다. 연구소 관리에서 소속 기간을 먼저 확인해 주세요.");
 		Map<String, Object> p = key(sq);
 		p.put("MEMBERS", members);
+		p.put("TEAM_SQ", j.get("TEAM_SQ"));
 		tx.execute(s -> {
 			if (mapper.updateJournalSubmit(p) != 1) throw new IllegalArgumentException("작성 중인 일지만 제출할 수 있습니다.");
+			mapper.deleteJournalSteps(p);
+			mapper.insertJournalSteps(p);
 			history(sq, "SUBMIT", SUBMITTED, null, null, login);
 			return null;
 		});
@@ -267,73 +336,170 @@ public class BoLabService {
 		return html.replaceAll("<[^>]*>", "").replace("&nbsp;", " ").trim().isEmpty();
 	}
 
-	/** @return STATUS_CD, 대표 확인에서 업로드가 실패했으면 uploadError (결재는 유지) */
-	public Map<String, Object> approveJournal(Object sq, Map<String, Object> login) {
-		Map<String, Object> j = journalForApprover(sq, login);
-		String from = str(j.get("STATUS_CD")), to = afterApprove(from);
+	/** @return 처리 후 상태 (마지막 단계면 APPROVED) */
+	public String approveJournal(Object sq, Map<String, Object> login) {
+		Map<String, Object> j = journal(sq);
+		Map<String, Object> step = stepForApprover(j, login);
 		Map<String, Object> sign = mapper.selectLatestSign(str(login.get("emplyId")));
 		if (sign == null) throw new IllegalArgumentException("서명을 먼저 등록해 주세요.");
-		// 제출 뒤 소속이 바뀌었으면 확정하지 않는다
-		if (CEO_OK.equals(to) && !members(j.get("TEAM_SQ"), str(j.get("YM"))).equals(str(j.get("SNAP_MEMBERS")))) {
-			throw new IllegalArgumentException("제출 뒤 연구인원이 바뀌었습니다. 반려한 뒤 다시 제출해 주세요.");
-		}
+		int cur = Integer.parseInt(str(j.get("CUR_STEP")));
+		boolean last = cur >= mapper.selectJournalSteps(key(sq)).size();
+		String to = last ? APPROVED : SUBMITTED;
 		tx.execute(s -> {
-			move(sq, from, to);
-			history(sq, CEO_OK.equals(to) ? "APPROVE_CEO" : "APPROVE_MANAGER", to, null, sign.get("SIGN_SQ"), login);
+			Map<String, Object> p = key(sq);
+			p.put("STEP_NO", cur);
+			p.put("SIGN_SQ", sign.get("SIGN_SQ"));
+			actor(p, login);
+			p.put("FROM_STEP", cur);
+			p.put("TO_STEP", last ? null : cur + 1);
+			p.put("TO", to);
+			if (mapper.updateStepDone(p) != 1 || mapper.updateJournalStep(p) != 1) throw new IllegalArgumentException("다른 사용자가 먼저 처리했습니다. 화면을 다시 열어 주세요.");
+			history(sq, "APPROVE", to, str(step.get("STEP_NM")), sign.get("SIGN_SQ"), login);
 			return null;
 		});
-		Map<String, Object> out = new HashMap<>();
-		out.put("STATUS_CD", to);
-		if (CEO_OK.equals(to)) out.put("uploadError", upload(sq, login));
-		return out;
+		return to;
 	}
 
 	public void rejectJournal(Object sq, String note, Map<String, Object> login) {
 		if (!hasText(note)) throw new IllegalArgumentException("반려 사유를 입력해 주세요.");
-		Map<String, Object> j = journalForApprover(sq, login);
+		Map<String, Object> j = journal(sq);
+		stepForApprover(j, login);
 		tx.execute(s -> {
-			move(sq, str(j.get("STATUS_CD")), DRAFT);
+			move(sq, SUBMITTED, DRAFT);
+			mapper.deleteJournalSteps(key(sq));
 			history(sq, "REJECT", DRAFT, note, null, login);
 			return null;
 		});
 	}
 
+	private Map<String, Object> stepForApprover(Map<String, Object> j, Map<String, Object> login) {
+		if (!SUBMITTED.equals(j.get("STATUS_CD"))) throw new IllegalArgumentException("결재할 단계가 아닙니다.");
+		Map<String, Object> step = currentStep(j, mapper.selectJournalSteps(key(j.get("JRN_SQ"))));
+		if (!str(step.get("EMPLY_ID")).equals(login.get("emplyId"))) throw new IllegalArgumentException("이 단계의 결재자가 아닙니다.");
+		return step;
+	}
+
+	/** 연구소장이 결재 완료된 일지를 마감한다. 잠근 뒤 PDF 업로드와 메일은 실패해도 마감을 되돌리지 않는다 */
+	public Map<String, Object> closeJournal(Object sq, Map<String, Object> login) {
+		Map<String, Object> j = journal(sq);
+		if (!APPROVED.equals(j.get("STATUS_CD"))) throw new IllegalArgumentException("결재가 모두 끝난 일지만 마감할 수 있습니다.");
+		Map<String, Object> head = mapper.selectTeamHead(one("TEAM_SQ", j.get("TEAM_SQ")));
+		if (head == null || !str(head.get("EMPLY_ID")).equals(login.get("emplyId"))) throw new IllegalArgumentException("연구소장만 마감할 수 있습니다.");
+		// 제출 뒤 소속이 바뀌었으면 마감하지 않는다
+		if (!members(j.get("TEAM_SQ"), str(j.get("YM"))).equals(str(j.get("SNAP_MEMBERS")))) {
+			throw new IllegalArgumentException("제출 뒤 연구인원이 바뀌었습니다. 연구소 관리에서 소속 기간을 확인해 주세요.");
+		}
+		tx.execute(s -> {
+			move(sq, APPROVED, CLOSED);
+			history(sq, "CLOSE", CLOSED, null, null, login);
+			return null;
+		});
+		Map<String, Object> out = new HashMap<>();
+		out.put("publishError", publish(sq, login));
+		return out;
+	}
+
 	/**
-	 * PDF 를 만들어 과제 폴더의 '02. 연구일지' 에 올린다. 결재를 되돌리지 않도록 오류는 일지에 적고 메시지로 돌려준다.
-	 * 재시도가 겹쳐 파일이 두 번 올라가지 않게 직렬로 돌린다(앱 서버 1대).
+	 * 마감된 일지의 PDF 를 과제 폴더 '02. 연구일지' 에 올리고 연구원에게 메일을 보낸다. 끝난 것은 다시 하지 않는다.
+	 * 재시도가 겹쳐 두 번 올라가거나 메일이 두 번 가지 않게 직렬로 돌린다(앱 서버 1대).
 	 * @return 실패 메시지, 성공이면 null
 	 */
-	public synchronized String upload(Object sq, Map<String, Object> login) {
+	public synchronized String publish(Object sq, Map<String, Object> login) {
 		Map<String, Object> j = journal(sq);
-		if (!CEO_OK.equals(j.get("STATUS_CD"))) throw new IllegalArgumentException("대표 확인이 끝난 일지만 올릴 수 있습니다.");
-		if (hasText(str(j.get("PDF_FILE_ID")))) return null;
+		if (!CLOSED.equals(j.get("STATUS_CD"))) throw new IllegalArgumentException("마감한 일지만 올릴 수 있습니다.");
+		String name = j.get("YM") + " 월간연구일지_" + j.get("PRJ_NM");
+		byte[] pdf = null;
 		try {
 			String token = driveConnection.token();
-			String parent = str(j.get("DRIVE_FOLDER_ID"));
-			String folder = drive.childFolderId(parent, JOURNAL_FOLDER, token);
-			if (folder == null) folder = drive.createFolder(JOURNAL_FOLDER, parent, token);
-			String name = j.get("YM") + " 월간연구일지_" + j.get("PRJ_NM");
-			Map<String, Object> withSign = key(sq);
-			withSign.put("WITH_SIGN", "Y");
-			byte[] pdf = drive.htmlToPdf(name, pdfHtml(j, mapper.selectJournalHistory(withSign)), token);
-			Map<String, Object> file = drive.upload(name + ".pdf", "application/pdf", pdf, folder, token);
-			Map<String, Object> p = key(sq);
-			p.put("PDF_FILE_ID", file.get("id"));
-			p.put("PDF_LINK", file.get("webViewLink"));
-			tx.execute(s -> {
-				mapper.updateJournalUploaded(p);
-				history(sq, "UPLOAD", CEO_OK, str(file.get("name")), null, login);
-				return null;
-			});
+			if (!hasText(str(j.get("PDF_FILE_ID")))) {
+				String parent = str(j.get("DRIVE_FOLDER_ID"));
+				String folder = drive.childFolderId(parent, JOURNAL_FOLDER, token);
+				if (folder == null) folder = drive.createFolder(JOURNAL_FOLDER, parent, token);
+				Map<String, Object> withSign = key(sq);
+				withSign.put("WITH_SIGN", "Y");
+				pdf = drive.htmlToPdf(name, pdfHtml(j, mapper.selectJournalSteps(withSign), mapper.selectJournalHistory(key(sq))), token);
+				Map<String, Object> file = drive.upload(name + ".pdf", "application/pdf", pdf, folder, token);
+				Map<String, Object> p = key(sq);
+				p.put("PDF_FILE_ID", file.get("id"));
+				p.put("PDF_LINK", file.get("webViewLink"));
+				tx.execute(s -> {
+					mapper.updateJournalUploaded(p);
+					history(sq, "UPLOAD", CLOSED, str(file.get("name")), null, login);
+					return null;
+				});
+			}
+			if (!hasText(str(j.get("MAIL_DT")))) {
+				if (pdf == null) pdf = drive.download(drive.file(str(j.get("PDF_FILE_ID")), token), token);
+				sendMails(j, pdf, name + ".pdf", login);
+			}
 			return null;
 		} catch (RuntimeException e) {
 			String message = uploadMessage(e);
-			System.out.println("LAB_UPLOAD_ERROR journal=" + sq + " " + e.getClass().getSimpleName());
+			System.out.println("LAB_PUBLISH_ERROR journal=" + sq + " " + e.getClass().getSimpleName());
 			Map<String, Object> p = key(sq);
 			p.put("UPLOAD_ERR", message);
 			mapper.updateJournalUploadError(p);
 			return message;
 		}
+	}
+
+	/** 사람마다 한 통씩. 실패한 사람은 이력에 남기고 나머지는 계속 보낸다. 한 번 보낸 일지는 다시 보내지 않는다 */
+	private void sendMails(Map<String, Object> j, byte[] pdf, String fileName, Map<String, Object> login) {
+		Object sq = j.get("JRN_SQ");
+		for (Map<String, Object> r : recipients(j)) {
+			String nm = str(r.get("STAFF_NM")), addr = str(r.get("ADDR"));
+			if (!hasText(addr)) {
+				history(sq, "MAIL_FAIL", CLOSED, nm + ": 메일 주소 없음", null, login);
+				continue;
+			}
+			try {
+				MimeMessage message = mailSender.createMimeMessage();
+				MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+				helper.setFrom(mailFrom);
+				helper.setTo(addr);
+				helper.setSubject("[연구일지] " + j.get("YM") + " " + j.get("PRJ_NM") + " 마감");
+				@SuppressWarnings("unchecked")
+				List<String> items = (List<String>) r.get("ITEMS");
+				helper.setText(mailHtml(nm, str(j.get("YM")), str(j.get("PRJ_NM")), items), true);
+				helper.addAttachment(fileName, new ByteArrayResource(pdf));
+				mailSender.send(message);
+				history(sq, "MAIL", CLOSED, nm + " <" + addr + ">", null, login);
+			} catch (Exception e) {
+				history(sq, "MAIL_FAIL", CLOSED, nm + " <" + addr + "> " + e.getClass().getSimpleName(), null, login);
+			}
+		}
+		mapper.updateJournalMailed(key(sq));
+	}
+
+	static String mailHtml(String name, String ym, String project, List<String> items) {
+		StringBuilder b = new StringBuilder("<p>").append(esc(name)).append("님, ").append(esc(ym)).append(" 월간 연구일지(").append(esc(project)).append(")가 마감되었습니다.</p>");
+		b.append("<p><b>이번 달 본인 작업</b></p>");
+		if (items.isEmpty()) b.append("<p>일지에서 본인 담당 항목을 찾지 못했습니다.</p>");
+		else {
+			b.append("<ul>");
+			for (String i : items) b.append("<li>").append(esc(i)).append("</li>");
+			b.append("</ul>");
+		}
+		return b.append("<p>전체 내용은 첨부한 PDF 를 확인해 주세요.</p>").toString();
+	}
+
+	/**
+	 * 일지 본문에서 이 사람이 담당한 항목 제목만 모은다.
+	 * 형식 1: 제목 줄 다음 줄이 "담당자: 이름 ..." / 형식 2: "- 제목 (이름 연구원, 기간)"
+	 */
+	static List<String> workItems(String html, String name) {
+		String text = HtmlUtils.htmlUnescape(html.replaceAll("(?i)<br\\s*/?>|</p>|</div>|</li>|</tr>|</h\\d>", "\n").replaceAll("<[^>]*>", "")).replace(' ', ' ');
+		List<String> lines = new ArrayList<>();
+		for (String l : text.split("\n")) if (!l.trim().isEmpty()) lines.add(l.trim());
+		Set<String> out = new LinkedHashSet<>();
+		Pattern inline = Pattern.compile("^[-•*]\\s*(.+?)\\s*\\(" + Pattern.quote(name) + "(?![가-힣]).*");
+		for (int i = 0; i < lines.size() && out.size() < 30; i++) {
+			String l = lines.get(i);
+			if (l.matches("^담당자\\s*[:：].*") && l.matches(".*[:：,\\s]" + Pattern.quote(name) + "(?![가-힣]).*") && i > 0) out.add(lines.get(i - 1));
+			Matcher m = inline.matcher(l);
+			if (m.matches()) out.add(m.group(1));
+		}
+		return new ArrayList<>(out);
 	}
 
 	/** 드라이브 응답 본문(토큰·경로가 섞일 수 있음)은 화면에 내보내지 않는다 */
@@ -344,7 +510,7 @@ public class BoLabService {
 			return code == 401 || code == 403 ? "드라이브 권한이 없습니다. 연결 계정에 과제 폴더 편집 권한이 있는지 확인해 주세요. (" + code + ")"
 					: code == 404 ? "드라이브에서 과제 폴더를 찾지 못했습니다. (404)" : "드라이브 업로드에 실패했습니다. (" + code + ")";
 		}
-		return "드라이브 업로드에 실패했습니다. (" + e.getClass().getSimpleName() + ")";
+		return "PDF 업로드·메일 발송에 실패했습니다. (" + e.getClass().getSimpleName() + ")";
 	}
 
 	private void move(Object sq, String from, String to) {
@@ -358,7 +524,7 @@ public class BoLabService {
 		Map<String, Object> h = key(sq);
 		h.put("ACTION_CD", action);
 		h.put("STATUS_CD", status);
-		h.put("NOTE", note);
+		h.put("NOTE", note == null || note.length() <= 1000 ? note : note.substring(0, 1000));
 		h.put("SIGN_SQ", signSq);
 		actor(h, login);
 		mapper.insertJournalHistory(h);
@@ -375,14 +541,6 @@ public class BoLabService {
 		return j;
 	}
 
-	private Map<String, Object> journalForApprover(Object sq, Map<String, Object> login) {
-		Map<String, Object> j = journal(sq);
-		String col = approverColumn(str(j.get("STATUS_CD")));
-		if (col == null) throw new IllegalArgumentException("결재할 단계가 아닙니다.");
-		if (!str(j.get(col)).equals(login.get("emplyId"))) throw new IllegalArgumentException("이 단계의 결재자가 아닙니다.");
-		return j;
-	}
-
 	/** 그 달 연구팀 소속 연구원. 예: 홍길동(연구소장), 김철수(연구원) */
 	private String members(Object teamSq, String ym) {
 		StringBuilder b = new StringBuilder();
@@ -394,40 +552,31 @@ public class BoLabService {
 
 	// ── 규칙 ──
 
-	/** 이 상태를 결재하는 사람이 든 컬럼. 결재 단계가 아니면 null */
-	static String approverColumn(String status) {
-		return SUBMITTED.equals(status) ? "MANAGER_EMPLY_ID" : MANAGER_OK.equals(status) ? "CEO_EMPLY_ID" : null;
-	}
-
-	static String afterApprove(String status) {
-		return SUBMITTED.equals(status) ? MANAGER_OK : CEO_OK;
-	}
-
 	static boolean inPeriod(String ym, String start, String end) {
 		return ym.compareTo(start.substring(0, 7)) >= 0 && ym.compareTo(end.substring(0, 7)) <= 0;
 	}
 
-	/** hwp 양식과 같은 항목. 드라이브가 이 HTML 을 구글 문서로 바꿔 PDF 로 내보낸다 */
-	static String pdfHtml(Map<String, Object> j, List<Map<String, Object>> history) {
-		String written = "", managerNm = "", managerDt = "", managerImg = "", ceoNm = "", ceoDt = "", ceoImg = "";
-		// 반려 후 다시 결재하면 마지막 기록이 남도록 순서대로 덮어쓴다
+	/** hwp 양식과 같은 항목에 결재 단계 수만큼 결재란을 둔다. 드라이브가 이 HTML 을 구글 문서로 바꿔 PDF 로 내보낸다 */
+	static String pdfHtml(Map<String, Object> j, List<Map<String, Object>> steps, List<Map<String, Object>> history) {
+		String written = "", closer = "", closedAt = "";
 		for (Map<String, Object> h : history) {
-			String action = str(h.get("ACTION_CD")), nm = str(h.get("ACTOR_NM")), dt = str(h.get("REG_DT")), img = str(h.get("SIGN_IMG"));
-			if ("SUBMIT".equals(action)) written = dt;
-			if ("APPROVE_MANAGER".equals(action)) { managerNm = nm; managerDt = dt; managerImg = img; }
-			if ("APPROVE_CEO".equals(action)) { ceoNm = nm; ceoDt = dt; ceoImg = img; }
+			if ("SUBMIT".equals(h.get("ACTION_CD"))) written = str(h.get("REG_DT"));
+			if ("CLOSE".equals(h.get("ACTION_CD"))) { closer = str(h.get("ACTOR_NM")); closedAt = str(h.get("REG_DT")); }
 		}
 		String cell = "border:1px solid #000;padding:6px;", head = cell + "background-color:#eeeeee;font-weight:bold;text-align:center;";
 		StringBuilder b = new StringBuilder("<html><head><meta charset=\"UTF-8\"></head><body>");
 		b.append("<h1 style=\"text-align:center;\">월간 연구일지</h1>");
-		b.append("<table style=\"border-collapse:collapse;width:100%;\"><tr>")
-				.append(td(head, "결재", "")).append(td(head, "부서장", "")).append(td(head, "대표", "")).append("</tr><tr>")
-				.append(td(head, "서명", "")).append(signTd(cell, managerImg)).append(signTd(cell, ceoImg)).append("</tr><tr>")
-				.append(td(head, "확인자", "")).append(td(cell, managerNm, "")).append(td(cell, ceoNm, "")).append("</tr><tr>")
-				.append(td(head, "확인일시", "")).append(td(cell, managerDt, "")).append(td(cell, ceoDt, "")).append("</tr></table><p></p>");
+		StringBuilder r1 = new StringBuilder(td(head, "결재", "")), r2 = new StringBuilder(td(head, "서명", "")), r3 = new StringBuilder(td(head, "확인자", "")), r4 = new StringBuilder(td(head, "확인일시", ""));
+		for (Map<String, Object> s : steps) {
+			r1.append(td(head, str(s.get("STEP_NM")), ""));
+			r2.append(signTd(cell, str(s.get("SIGN_IMG"))));
+			r3.append(td(cell, str(s.get("DONE_NM")), ""));
+			r4.append(td(cell, str(s.get("DONE_DT")), ""));
+		}
+		b.append("<table style=\"border-collapse:collapse;width:100%;\"><tr>").append(r1).append("</tr><tr>").append(r2).append("</tr><tr>").append(r3).append("</tr><tr>").append(r4).append("</tr></table><p></p>");
 		b.append("<table style=\"border-collapse:collapse;width:100%;\">");
 		String[][] rows = { { "작성자", str(j.get("WRITER_NM")) }, { "작성일", written }, { "대상 월", str(j.get("YM")) }, { "연구주제", str(j.get("PRJ_NM")) },
-				{ "연구장소", str(j.get("PLACE")) }, { "연구기간", str(j.get("PERIOD")) }, { "연구인원", str(j.get("SNAP_MEMBERS")) } };
+				{ "연구장소", str(j.get("PLACE")) }, { "연구기간", str(j.get("PERIOD")) }, { "연구인원", str(j.get("SNAP_MEMBERS")) }, { "마감", closer.isEmpty() ? "" : closer + " (" + closedAt + ")" } };
 		for (String[] r : rows) b.append("<tr>").append(td(head, r[0], " width=\"20%\"")).append(td(cell, r[1], "")).append("</tr>");
 		// 내용은 에디터 HTML 이다. 이 문서는 구글 문서 변환에만 쓰여 브라우저에서 실행되지 않는다
 		b.append("<tr>").append(td(head, "내용", " width=\"20%\"")).append("<td style=\"").append(cell).append("\">").append(str(j.get("CONTENT"))).append("</td></tr>");
@@ -440,7 +589,11 @@ public class BoLabService {
 	}
 
 	private static String td(String style, String text, String attr) {
-		return "<td style=\"" + style + "\"" + attr + ">" + HtmlUtils.htmlEscape(text).replace("\n", "<br>") + "</td>";
+		return "<td style=\"" + style + "\"" + attr + ">" + esc(text).replace("\n", "<br>") + "</td>";
+	}
+
+	private static String esc(String s) {
+		return HtmlUtils.htmlEscape(s);
 	}
 
 	private static LocalDate date(Map<String, Object> p, String field, String label) {

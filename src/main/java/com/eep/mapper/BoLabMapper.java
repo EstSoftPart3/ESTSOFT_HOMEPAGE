@@ -6,7 +6,7 @@ import java.util.Map;
 import org.apache.ibatis.annotations.Param;
 import org.mybatis.spring.annotation.MapperScan;
 
-/** 연구소 - 연구팀, 연구원, 연구과제, 월간 연구일지, 결재자 서명 */
+/** 연구소 - 연구팀, 결재라인, 연구원, 연구과제, 월간 연구일지, 결재자 서명 */
 @MapperScan
 public interface BoLabMapper {
 
@@ -18,7 +18,10 @@ public interface BoLabMapper {
 	public List<Map<String, Object>> selectTeams(Map<String, Object> param);
 	public int insertTeam(Map<String, Object> param);
 	public int updateTeam(Map<String, Object> param);
-	public int updateTeamApproval(Map<String, Object> param);
+	public List<Map<String, Object>> selectApprovalLine(Map<String, Object> param);
+	public int deleteApprovalLine(Map<String, Object> param);
+	public int insertApprovalStep(Map<String, Object> param);
+	public Map<String, Object> selectTeamHead(Map<String, Object> param);
 
 	public Map<String, Object> selectLatestSign(@Param("emplyId") String emplyId);
 	public int insertSign(Map<String, Object> param);
@@ -37,11 +40,17 @@ public interface BoLabMapper {
 	public List<Map<String, Object>> selectJournals(Map<String, Object> param);
 	public Map<String, Object> selectJournalOne(Map<String, Object> param);
 	public List<Map<String, Object>> selectJournalHistory(Map<String, Object> param);
+	public List<Map<String, Object>> selectJournalSteps(Map<String, Object> param);
+	public int insertJournalSteps(Map<String, Object> param);
+	public int deleteJournalSteps(Map<String, Object> param);
+	public int updateStepDone(Map<String, Object> param);
 	public int insertJournal(Map<String, Object> param);
 	public int updateJournalContent(Map<String, Object> param);
 	public int updateJournalSubmit(Map<String, Object> param);
+	public int updateJournalStep(Map<String, Object> param);
 	public int updateJournalStatus(Map<String, Object> param);
 	public int updateJournalUploaded(Map<String, Object> param);
 	public int updateJournalUploadError(Map<String, Object> param);
+	public int updateJournalMailed(Map<String, Object> param);
 	public int insertJournalHistory(Map<String, Object> param);
 }

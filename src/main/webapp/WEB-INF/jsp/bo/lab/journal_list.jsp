@@ -101,9 +101,8 @@
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
 	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
 	<script>
-	var STATUS = { DRAFT: '작성 중', SUBMITTED: '제출', MANAGER_OK: '부서장 확인', CEO_OK: '대표 확인' };
-	var STEPS = ['DRAFT', 'SUBMITTED', 'MANAGER_OK', 'CEO_OK'];
-	var ACTION = { CREATE: '작성 시작', SAVE: '저장', SUBMIT: '제출', APPROVE_MANAGER: '부서장 확인', APPROVE_CEO: '대표 확인', REJECT: '반려', UPLOAD: '드라이브 업로드' };
+	var STATUS = { DRAFT: '작성 중', SUBMITTED: '결재 중', APPROVED: '결재 완료', CLOSED: '마감' };
+	var ACTION = { CREATE: '작성 시작', SAVE: '저장', SUBMIT: '제출', APPROVE: '확인', REJECT: '반려', CLOSE: '마감', UPLOAD: '드라이브 업로드', MAIL: '메일 발송', MAIL_FAIL: '메일 실패' };
 	var projects = [], teams = [], project = null, journal = null, editing = null, prjTab = 0, jrnTab = 0;
 	var oEditors = [], editorReady = false, editorHtml = '';
 
@@ -156,13 +155,14 @@
 		if (prjTab === 0) {
 			$b.append($('<div class="lab-actions">').append($('<button type="button" class="btn btn-sm btn-primary"><i class="fas fa-plus"></i> 일지 등록</button>').click(function() { openJournal(); })));
 			var $t = $('<tbody>');
-			if (!project.journals.length) $t.append('<tr><td colspan="5" class="text-center text-muted">일지가 없습니다.</td></tr>');
+			if (!project.journals.length) $t.append('<tr><td colspan="6" class="text-center text-muted">일지가 없습니다.</td></tr>');
 			project.journals.forEach(function(j) {
 				var pdf = j.PDF_LINK ? $('<a target="_blank" rel="noopener">열기</a>').attr('href', j.PDF_LINK) : j.UPLOAD_ERR ? $('<span class="text-danger">업로드 실패</span>') : '';
+				var origin = j.ORIGIN_LINK ? $('<a target="_blank" rel="noopener">hwp 원본</a>').attr('href', j.ORIGIN_LINK) : '';
 				$('<tr>').append($('<td>').append($('<a class="lab-open">').attr('href', '#j=' + j.JRN_SQ).text(j.YM)), $('<td>').text(j.WRITER_NM || ''), $('<td>').text(j.WRITE_DT || ''),
-					$('<td>').append(pill(j.STATUS_CD)), $('<td>').append(pdf)).appendTo($t);
+					$('<td>').append(pill(j.STATUS_CD)), $('<td>').append(pdf), $('<td>').append(origin)).appendTo($t);
 			});
-			$b.append($('<div class="table-responsive">').append($('<table class="table table-sm table-hover cal-table mb-0"><thead><tr><th>대상 월</th><th>작성자</th><th>작성일</th><th>결재 상태</th><th>PDF</th></tr></thead></table>').append($t)));
+			$b.append($('<div class="table-responsive">').append($('<table class="table table-sm table-hover cal-table mb-0"><thead><tr><th>대상 월</th><th>작성자</th><th>작성일</th><th>결재 상태</th><th>PDF</th><th>원본</th></tr></thead></table>').append($t)));
 		} else {
 			$b.append($('<div class="lab-actions">').append($('<button type="button" class="btn btn-sm btn-primary">수정</button>').click(function() { openProject(p); })));
 			$b.append(info([['연구팀', p.TEAM_NM], ['과제명', p.PRJ_NM], ['연구기간', p.START_DT + ' ~ ' + p.END_DT], ['연구장소', p.PLACE],
@@ -213,35 +213,61 @@
 			button('수정', 'btn-outline-secondary', function() { openJournal(r); });
 			button('제출', 'btn-primary', function() { act('/admin/lab/submitJournalData.do'); });
 		}
+		var cur = r.steps.filter(function(s) { return String(s.STEP_NO) === String(j.CUR_STEP); })[0];
 		if (r.canApprove) {
 			button('반려', 'btn-outline-danger', function() {
 				bootbox.prompt({ title: '반려 사유', inputType: 'textarea', callback: function(note) { if (note !== null) act('/admin/lab/rejectJournalData.do', { NOTE: note }); } });
 			});
-			button(STATUS[st === 'SUBMITTED' ? 'MANAGER_OK' : 'CEO_OK'], 'btn-primary', function() {
-				act('/admin/lab/approveJournalData.do', {}, function(ok) {
-					if (ok.result.uploadError) bootbox.alert($('<div>').text('결재는 끝났지만 PDF 업로드에 실패했습니다. ' + ok.result.uploadError).html());
-					showCurrent();
-				});
-			});
+			button((cur ? cur.STEP_NM : '') + ' 확인', 'btn-primary', function() { act('/admin/lab/approveJournalData.do'); });
 			if (r.needSign) $head.find('button:last').prop('disabled', true);
 		}
-		if (st === 'CEO_OK' && !j.PDF_LINK) button('업로드 다시 시도', 'btn-primary', function() { act('/admin/lab/uploadJournalData.do'); });
+		if (r.canClose) {
+			button('마감', 'btn-primary', function() {
+				var to = (r.recipients || []).map(function(x) { return x.STAFF_NM; }).join(', ');
+				bootbox.confirm($('<div>').text('마감하면 수정할 수 없게 잠기고, PDF 가 드라이브에 올라가며, 연구원(' + to + ')에게 메일이 갑니다. 마감할까요?').html(), function(ok) {
+					if (!ok) { showCurrent(); return; }
+					act('/admin/lab/closeJournalData.do', {}, function(res) {
+						if (res.result.publishError) bootbox.alert($('<div>').text('마감은 끝났지만 PDF 업로드·메일 발송에 실패했습니다. ' + res.result.publishError).html());
+						showCurrent();
+					});
+				});
+			});
+		}
+		if (st === 'CLOSED' && (!j.PDF_LINK || !j.MAIL_DT)) button('업로드·메일 다시 시도', 'btn-primary', function() { act('/admin/lab/uploadJournalData.do'); });
 		if (j.PDF_LINK) $head.append($('<a target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">드라이브에서 PDF 열기</a>').attr('href', j.PDF_LINK));
 
-		var cur = STEPS.indexOf(st), $s = $('<div class="lab-step">').appendTo($v);
-		STEPS.forEach(function(x, i) { $('<span>').addClass(i < cur ? 'done' : i === cur ? 'now' : '').text(STATUS[x]).appendTo($s); });
-		if (r.needSign) $v.append($('<div class="alert alert-warning py-2">').append('서명을 등록해야 승인할 수 있습니다. ', $('<a class="lab-open">내 서명 등록</a>').attr('href', '/admin/lab/openLabManage.do#t=' + j.TEAM_SQ + '&tab=3&sign=1')));
-		if (st === 'CEO_OK' && j.UPLOAD_ERR && !j.PDF_LINK) $v.append($('<div class="alert alert-danger py-2" role="status">').text('업로드 실패: ' + j.UPLOAD_ERR));
+		// 작성 중 → 제출 → 결재 단계들 → 결재 완료 → 마감
+		var labels = ['작성 중', '제출'].concat(r.steps.map(function(s) { return s.STEP_NO + '단계 ' + s.STEP_NM; })).concat(['결재 완료', '마감']);
+		var at = st === 'DRAFT' ? 0 : st === 'SUBMITTED' ? 1 + Number(j.CUR_STEP) : st === 'APPROVED' ? labels.length - 2 : labels.length;
+		var $s = $('<div class="lab-step">').appendTo($v);
+		labels.forEach(function(x, i) { $('<span>').addClass(i < at ? 'done' : i === at ? 'now' : '').text(x).appendTo($s); });
+		if (r.needSign) $v.append($('<div class="alert alert-warning py-2">').append('서명을 등록해야 승인할 수 있습니다. ', $('<a class="lab-open">결재라인에서 내 서명 등록</a>').attr('href', '/admin/lab/openLabManage.do#t=' + j.TEAM_SQ + '&tab=3')));
+		if (st === 'APPROVED' && !r.canClose) $v.append($('<div class="alert alert-info py-2">').text('결재가 모두 끝났습니다. 연구소장(' + (r.headNm || '미지정') + ')이 마감합니다.'));
+		if (st === 'CLOSED' && j.UPLOAD_ERR && (!j.PDF_LINK || !j.MAIL_DT)) $v.append($('<div class="alert alert-danger py-2" role="status">').text('실패: ' + j.UPLOAD_ERR));
+		if (r.recipients && st === 'APPROVED') {
+			var $rt = $('<tbody>');
+			r.recipients.forEach(function(x) {
+				var kind = { COMPANY: '회사 메일', PERSONAL: '개인 메일 (회사 메일 없음)', NONE: '주소 없음' }[x.KIND];
+				$('<tr>').append($('<td>').text(x.STAFF_NM), $('<td>').text(x.ADDR || ''), $('<td>').toggleClass('text-danger', x.KIND !== 'COMPANY').text(kind), $('<td>').text(x.ITEMS.length + '건')).appendTo($rt);
+			});
+			$v.append($('<div class="cal-panel"><div class="cal-panel-body"><b>마감 메일 받을 연구원</b></div></div>').find('.cal-panel-body')
+				.append($('<div class="table-responsive">').append($('<table class="table table-sm cal-table mb-0"><thead><tr><th>성명</th><th>받는 주소</th><th>구분</th><th>본인 담당 항목</th></tr></thead></table>').append($rt))).end());
+		}
 
 		$v.append(tabBar(['일지 내용', '처리 이력'], jrnTab, function(i) { jrnTab = i; drawJournal(); }));
 		var $panel = $('<div class="cal-panel"><div class="cal-panel-body"></div></div>').appendTo($v), $b = $panel.find('.cal-panel-body');
 		if (jrnTab === 0) {
-			$b.append($('<div class="mb-2">').append(info([['작성자', j.WRITER_NM], ['연구장소', j.PLACE], ['연구기간', j.PERIOD], ['연구인원', r.members || '그 달에 소속된 연구원이 없습니다']])));
+			var rows = [['작성자', j.WRITER_NM], ['연구장소', j.PLACE], ['연구기간', j.PERIOD], ['연구인원', r.members || '그 달에 소속된 연구원이 없습니다']];
+			if (j.ORIGIN_LINK) rows.push(['hwp 원본', $('<a target="_blank" rel="noopener">드라이브에서 열기</a>').attr('href', j.ORIGIN_LINK)]);
+			if (j.MAIL_DT) rows.push(['메일 발송', j.MAIL_DT]);
+			$b.append($('<div class="mb-2">').append(info(rows)));
 			$b.append(richFrame(j.CONTENT));
 		} else {
 			var $t = $('<tbody>');
 			r.history.slice().reverse().forEach(function(h) {
-				$('<tr>').append($('<td>').text(h.REG_DT), $('<td>').text(ACTION[h.ACTION_CD] || h.ACTION_CD), $('<td>').text((h.ACTOR_NM || '') + ' (' + h.ACTOR_ID + ')'), $('<td>').text(h.NOTE || '')).appendTo($t);
+				// 확인 이력의 메모는 단계 이름이라 처리 칸에 붙여 보여 준다
+				$('<tr>').append($('<td>').text(h.REG_DT), $('<td>').text(h.ACTION_CD === 'APPROVE' ? (h.NOTE || '') + ' 확인' : ACTION[h.ACTION_CD] || h.ACTION_CD), $('<td>').text((h.ACTOR_NM || '') + ' (' + h.ACTOR_ID + ')'),
+					$('<td>').text(h.ACTION_CD === 'APPROVE' ? '' : h.NOTE || '')).appendTo($t);
 			});
 			$b.append($('<div class="table-responsive">').append($('<table class="table table-sm cal-table mb-0"><thead><tr><th>일시</th><th>처리</th><th>처리자</th><th>메모</th></tr></thead></table>').append($t)));
 		}
