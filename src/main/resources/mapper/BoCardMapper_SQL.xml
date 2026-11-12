@@ -98,6 +98,12 @@
 		INSERT IGNORE INTO TB_EEP_USER_ROLE_R (EMPLY_ID, ROLE_SQ, REG_EMPLY_ID)
 		SELECT S.EMPLY_ID, R.ROLE_SQ, 'system' FROM TB_EEP_CARD_M C JOIN TB_EEP_HR_STAFF_M S ON S.STAFF_SQ = C.STAFF_SQ JOIN TB_EEP_ROLE_M R ON R.ROLE_CD = 'CARD'
 		WHERE C.USE_YN = 'Y' AND S.EMPLY_ID IS NOT NULL AND S.EMPLY_ID &lt;&gt; '';
+
+		<!-- 마감 엑셀(담당·카드·월·일·사용처·금액·내용·대상)에 맞춰 대상과 마감 시각을 둔다. 마감된 건은 고치지 못한다 -->
+		ALTER TABLE TB_EEP_CARD_USE_D
+			  ADD COLUMN IF NOT EXISTS TARGET_NM varchar(100) NULL COMMENT '대상' AFTER MERCHANT
+			, ADD COLUMN IF NOT EXISTS CLOSE_EMPLY_ID varchar(50) NULL AFTER TARGET_NM
+			, ADD COLUMN IF NOT EXISTS CLOSE_DT datetime NULL COMMENT '마감 시각(KST). 있으면 수정 불가' AFTER CLOSE_EMPLY_ID;
 	</update>
 
 	<!-- 모든 카드를 보는 사람: 슈퍼관리자, 또는 CARD 가 아닌 역할로 법인카드 메뉴를 받은 사람 -->
@@ -131,12 +137,12 @@
 		ORDER BY D.COMN_DTL_CD_ORD IS NULL, D.COMN_DTL_CD_ORD, D.COMN_DTL_CD_SQ
 	</select>
 
-	<!-- 카드 목록. 이번 달 사용 건수·합계와 마지막 정산 확정 월 -->
+	<!-- 카드 목록. 이번 달 사용 건수·합계와 마지막 마감 월 -->
 	<select id="selectCards" parameterType="hashMap" resultType="hashMap">
 		SELECT C.CARD_SQ, C.CARD_NM, C.CARD_CO, C.LAST4, C.STAFF_SQ, IFNULL(H.STAFF_NM, C.HOLDER_NM) AS HOLDER_NM, H.EMPLY_ID AS HOLDER_ID, C.USE_YN
 			, (SELECT COUNT(*) FROM TB_EEP_CARD_USE_D U WHERE U.CARD_SQ = C.CARD_SQ AND DATE_FORMAT(U.USE_DT, '%Y-%m') = #{YM}) AS MONTH_CNT
 			, (SELECT IFNULL(SUM(U.AMT), 0) FROM TB_EEP_CARD_USE_D U WHERE U.CARD_SQ = C.CARD_SQ AND DATE_FORMAT(U.USE_DT, '%Y-%m') = #{YM}) AS MONTH_AMT
-			, (SELECT MAX(S.YM) FROM TB_EEP_CARD_SETTLE_M S WHERE S.CARD_SQ = C.CARD_SQ) AS LAST_SETTLE_YM
+			, (SELECT DATE_FORMAT(MAX(U.USE_DT), '%Y-%m') FROM TB_EEP_CARD_USE_D U WHERE U.CARD_SQ = C.CARD_SQ AND U.CLOSE_DT IS NOT NULL) AS LAST_CLOSE_YM
 		FROM TB_EEP_CARD_M C
 		LEFT JOIN TB_EEP_HR_STAFF_M H ON H.STAFF_SQ = C.STAFF_SQ
 		<where>
@@ -157,41 +163,45 @@
 		WHERE CARD_SQ = #{CARD_SQ}
 	</update>
 
-	<select id="selectMonthUses" parameterType="hashMap" resultType="hashMap">
-		SELECT USE_SQ, CARD_SQ, DATE_FORMAT(USE_DT, '%Y-%m-%d') AS USE_DT, AMT, USE_CD, DETAIL, MERCHANT
+	<!-- FROM~TO 사용 내역(달력 한 달, 정산 기간, 마감 목록이 함께 쓴다) -->
+	<select id="selectUses" parameterType="hashMap" resultType="hashMap">
+		SELECT USE_SQ, CARD_SQ, DATE_FORMAT(USE_DT, '%Y-%m-%d') AS USE_DT, AMT, USE_CD, DETAIL, MERCHANT, TARGET_NM, DATE_FORMAT(CLOSE_DT, '%Y-%m-%d %H:%i') AS CLOSE_DT
 		FROM TB_EEP_CARD_USE_D
-		WHERE CARD_SQ = #{CARD_SQ} AND USE_DT BETWEEN CONCAT(#{YM}, '-01') AND LAST_DAY(CONCAT(#{YM}, '-01'))
+		WHERE CARD_SQ = #{CARD_SQ} AND USE_DT BETWEEN #{FROM} AND #{TO}
+		<if test="CLOSED != null">AND CLOSE_DT IS NOT NULL</if>
 		ORDER BY USE_DT, USE_SQ
 	</select>
 
 	<insert id="insertUse" parameterType="hashMap">
-		INSERT INTO TB_EEP_CARD_USE_D (CARD_SQ, USE_DT, AMT, USE_CD, DETAIL, MERCHANT, REG_EMPLY_ID, REG_DT)
-		VALUES (#{CARD_SQ}, #{USE_DT}, #{AMT}, #{USE_CD}, NULLIF(#{DETAIL}, ''), NULLIF(#{MERCHANT}, ''), #{UPDT_EMPLY_ID}, NOW())
+		INSERT INTO TB_EEP_CARD_USE_D (CARD_SQ, USE_DT, AMT, USE_CD, DETAIL, MERCHANT, TARGET_NM, REG_EMPLY_ID, REG_DT)
+		VALUES (#{CARD_SQ}, #{USE_DT}, #{AMT}, #{USE_CD}, NULLIF(#{DETAIL}, ''), NULLIF(#{MERCHANT}, ''), NULLIF(#{TARGET_NM}, ''), #{UPDT_EMPLY_ID}, NOW())
 	</insert>
 
 	<update id="updateUse" parameterType="hashMap">
 		UPDATE TB_EEP_CARD_USE_D
-		SET USE_DT = #{USE_DT}, AMT = #{AMT}, USE_CD = #{USE_CD}, DETAIL = NULLIF(#{DETAIL}, ''), UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
-		WHERE USE_SQ = #{USE_SQ} AND CARD_SQ = #{CARD_SQ}
+		SET USE_DT = #{USE_DT}, AMT = #{AMT}, USE_CD = #{USE_CD}, DETAIL = NULLIF(#{DETAIL}, ''), MERCHANT = NULLIF(#{MERCHANT}, ''), TARGET_NM = NULLIF(#{TARGET_NM}, '')
+			, UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE USE_SQ = #{USE_SQ} AND CARD_SQ = #{CARD_SQ} AND CLOSE_DT IS NULL
 	</update>
 
 	<delete id="deleteUse" parameterType="hashMap">
-		DELETE FROM TB_EEP_CARD_USE_D WHERE USE_SQ = #{USE_SQ} AND CARD_SQ = #{CARD_SQ}
+		DELETE FROM TB_EEP_CARD_USE_D WHERE USE_SQ = #{USE_SQ} AND CARD_SQ = #{CARD_SQ} AND CLOSE_DT IS NULL
 	</delete>
 
-	<update id="updateMerchant" parameterType="hashMap">
-		UPDATE TB_EEP_CARD_USE_D SET MERCHANT = NULLIF(#{MERCHANT}, '')
-		WHERE USE_SQ = #{USE_SQ} AND CARD_SQ = #{CARD_SQ} AND USE_DT BETWEEN CONCAT(#{YM}, '-01') AND LAST_DAY(CONCAT(#{YM}, '-01'))
+	<!-- 정산 화면에서 바로 고친 칸. 날짜·금액은 그대로 두고 기간 안의 마감 안 된 건만 -->
+	<update id="updateSettleUse" parameterType="hashMap">
+		UPDATE TB_EEP_CARD_USE_D
+		SET USE_CD = #{USE_CD}, DETAIL = NULLIF(#{DETAIL}, ''), MERCHANT = NULLIF(#{MERCHANT}, ''), TARGET_NM = NULLIF(#{TARGET_NM}, ''), UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE USE_SQ = #{USE_SQ} AND CARD_SQ = #{CARD_SQ} AND USE_DT BETWEEN #{FROM} AND #{TO} AND CLOSE_DT IS NULL
 	</update>
 
-	<select id="selectSettle" parameterType="hashMap" resultType="hashMap">
-		SELECT CARD_SQ, YM, FILE_NM, EXCEL_CNT, MATCH_CNT, DONE_EMPLY_ID, DATE_FORMAT(DONE_DT, '%Y-%m-%d %H:%i') AS DONE_DT
-		FROM TB_EEP_CARD_SETTLE_M WHERE CARD_SQ = #{CARD_SQ} AND YM = #{YM}
-	</select>
+	<update id="closeUses" parameterType="hashMap">
+		UPDATE TB_EEP_CARD_USE_D SET CLOSE_DT = DATE_ADD(UTC_TIMESTAMP(), INTERVAL 9 HOUR), CLOSE_EMPLY_ID = #{UPDT_EMPLY_ID}
+		WHERE CARD_SQ = #{CARD_SQ} AND USE_DT BETWEEN #{FROM} AND #{TO} AND CLOSE_DT IS NULL
+	</update>
 
-	<insert id="upsertSettle" parameterType="hashMap">
-		INSERT INTO TB_EEP_CARD_SETTLE_M (CARD_SQ, YM, FILE_NM, EXCEL_CNT, MATCH_CNT, DONE_EMPLY_ID, DONE_DT)
-		VALUES (#{CARD_SQ}, #{YM}, NULLIF(#{FILE_NM}, ''), #{EXCEL_CNT}, #{MATCH_CNT}, #{UPDT_EMPLY_ID}, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 9 HOUR))
-		ON DUPLICATE KEY UPDATE FILE_NM = VALUES(FILE_NM), EXCEL_CNT = VALUES(EXCEL_CNT), MATCH_CNT = VALUES(MATCH_CNT), DONE_EMPLY_ID = VALUES(DONE_EMPLY_ID), DONE_DT = VALUES(DONE_DT)
-	</insert>
+	<update id="reopenUses" parameterType="hashMap">
+		UPDATE TB_EEP_CARD_USE_D SET CLOSE_DT = NULL, CLOSE_EMPLY_ID = NULL
+		WHERE CARD_SQ = #{CARD_SQ} AND USE_DT BETWEEN #{FROM} AND #{TO} AND CLOSE_DT IS NOT NULL
+	</update>
 </mapper>

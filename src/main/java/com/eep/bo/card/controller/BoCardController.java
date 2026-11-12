@@ -1,9 +1,12 @@
 package com.eep.bo.card.controller;
 
+import java.io.IOException;
+import java.net.URLEncoder;
 import java.util.List;
 import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,17 +56,47 @@ public class BoCardController {
 		return call(() -> { service.deleteUse(cardSq, useSq, loginId(session)); return "OK"; });
 	}
 
-	@RequestMapping(value = "/admin/card/compareData.do", method = RequestMethod.POST)
-	public ModelAndView compareData(@RequestParam("CARD_SQ") int cardSq, @RequestParam("YM") String ym, @RequestParam("file") MultipartFile file, HttpSession session) {
-		return call(() -> service.compare(cardSq, ym, file.getBytes(), loginId(session)));
+	/** 정산 기간 목록. 카드사 엑셀(file)은 있으면 대조한다 */
+	@RequestMapping(value = "/admin/card/periodData.do", method = RequestMethod.POST)
+	public ModelAndView periodData(@RequestParam("CARD_SQ") int cardSq, @RequestParam("FROM") String from, @RequestParam("TO") String to,
+			@RequestParam(value = "file", required = false) MultipartFile file, HttpSession session) {
+		return call(() -> service.period(cardSq, from, to, file == null ? null : file.getBytes(), loginId(session)));
 	}
 
-	@RequestMapping(value = "/admin/card/confirmSettleData.do", method = RequestMethod.POST)
-	public ModelAndView confirmSettleData(@RequestParam("CARD_SQ") int cardSq, @RequestParam("YM") String ym, @RequestParam(value = "FILE_NM", required = false) String fileNm,
-			@RequestParam("EXCEL_CNT") int excelCnt, HttpServletRequest req, HttpSession session) {
-		// String[] 로 받으면 값이 하나일 때 쉼표로 쪼개져 "(주)가, 나" 같은 가맹점이 깨지므로 그대로 읽는다
-		return call(() -> { service.confirm(cardSq, ym, fileNm, excelCnt, req.getParameterValues("USE_SQ"), req.getParameterValues("MERCHANT"),
-				req.getParameterValues("NEW_DT"), req.getParameterValues("NEW_AMT"), req.getParameterValues("NEW_CD"), req.getParameterValues("NEW_MERCHANT"), loginId(session)); return "OK"; });
+	/** 중간 저장(CLOSE=N)과 마감(CLOSE=Y). 배열은 String[] 로 받으면 값이 하나일 때 쉼표로 쪼개지므로 그대로 읽는다 */
+	@RequestMapping(value = "/admin/card/savePeriodData.do", method = RequestMethod.POST)
+	public ModelAndView savePeriodData(@RequestParam("CARD_SQ") int cardSq, @RequestParam("FROM") String from, @RequestParam("TO") String to,
+			@RequestParam("CLOSE") String close, HttpServletRequest req, HttpSession session) {
+		return call(() -> service.savePeriod(cardSq, from, to, "Y".equals(close), req.getParameterMap(), loginId(session)));
+	}
+
+	@RequestMapping(value = "/admin/card/closedData.do", method = RequestMethod.POST)
+	public ModelAndView closedData(@RequestParam("CARD_SQ") int cardSq, @RequestParam("FROM") String from, @RequestParam("TO") String to, HttpSession session) {
+		return call(() -> service.closed(cardSq, from, to, loginId(session)));
+	}
+
+	@RequestMapping(value = "/admin/card/reopenData.do", method = RequestMethod.POST)
+	public ModelAndView reopenData(@RequestParam("CARD_SQ") int cardSq, @RequestParam("FROM") String from, @RequestParam("TO") String to, HttpSession session) {
+		return call(() -> service.reopen(cardSq, from, to, loginId(session)));
+	}
+
+	@RequestMapping(value = "/admin/card/closedExcel.do", method = RequestMethod.POST)
+	public void closedExcel(@RequestParam("CARD_SQ") int cardSq, @RequestParam("FROM") String from, @RequestParam("TO") String to, @RequestParam("NAME") String name,
+			HttpSession session, HttpServletResponse res) throws IOException {
+		byte[] x;
+		try {
+			x = service.closedExcel(cardSq, from, to, loginId(session));
+		} catch (IllegalArgumentException e) {
+			res.setContentType("text/plain;charset=UTF-8");
+			res.setStatus(400);
+			res.getWriter().write(e.getMessage());
+			return;
+		}
+		String file = URLEncoder.encode(name.replaceAll("[\\\\/:*?\"<>|]", "_") + ".xlsx", "UTF-8").replace("+", "%20");
+		res.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+		res.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + file);
+		res.setContentLength(x.length);
+		res.getOutputStream().write(x);
 	}
 
 	private interface Call {

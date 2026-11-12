@@ -22,12 +22,11 @@ public interface BoCardMapper {
 	public int insertCard(Map<String, Object> param);
 	public int updateCard(Map<String, Object> param);
 
-	public List<Map<String, Object>> selectMonthUses(Map<String, Object> param);
+	public List<Map<String, Object>> selectUses(Map<String, Object> param);
 	public int insertUse(Map<String, Object> param);
 	public int updateUse(Map<String, Object> param);
 	public int deleteUse(Map<String, Object> param);
-	public int updateMerchant(Map<String, Object> param);
-
-	public Map<String, Object> selectSettle(Map<String, Object> param);
-	public int upsertSettle(Map<String, Object> param);
+	public int updateSettleUse(Map<String, Object> param);
+	public int closeUses(Map<String, Object> param);
+	public int reopenUses(Map<String, Object> param);
 }

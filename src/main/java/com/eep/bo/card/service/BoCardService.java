@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,7 +22,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import com.eep.mapper.BoCardMapper;
 
-/** 경영지원 - 법인카드: 카드 등록, 날짜별 사용 등록, 카드사 엑셀과 대조하는 월 정산 */
+/** 경영지원 - 법인카드: 카드 등록, 날짜별 사용 등록, 기간 정산(카드사 엑셀 대조·바로 수정·중간 저장·마감), 마감 목록과 엑셀 */
 @Service
 public class BoCardService {
 
@@ -104,10 +105,11 @@ public class BoCardService {
 	// ── 사용 내역 ──
 
 	public Map<String, Object> month(Object cardSq, String ym, String loginId) {
-		Map<String, Object> key = monthKey(cardSq, ym), out = new HashMap<>();
+		if (ym == null || !ym.matches("\\d{4}-(0[1-9]|1[0-2])")) throw new IllegalArgumentException("월을 확인해 주세요.");
+		YearMonth m = YearMonth.parse(ym);
+		Map<String, Object> out = new HashMap<>();
 		out.put("card", card(cardSq, loginId));
-		out.put("uses", mapper.selectMonthUses(key));
-		out.put("settle", mapper.selectSettle(key));
+		out.put("uses", mapper.selectUses(range(cardSq, m.atDay(1), m.atEndOfMonth())));
 		return out;
 	}
 
@@ -126,18 +128,25 @@ public class BoCardService {
 		}
 		if (amt == 0 || Math.abs(amt) > 1_000_000_000L) throw new IllegalArgumentException("금액을 확인해 주세요. 취소는 음수로 넣습니다.");
 		p.put("AMT", amt);
-		if (!codeSet().contains(str(p.get("USE_CD")))) throw new IllegalArgumentException("사용처 코드를 선택해 주세요.");
-		if (str(p.get("DETAIL")).length() > 500) throw new IllegalArgumentException("사용 상세 내용은 500자 안으로 입력해 주세요.");
+		checkFields(p, codeSet());
 		p.put("UPDT_EMPLY_ID", loginId);
 		if (str(p.get("USE_SQ")).isEmpty()) mapper.insertUse(p);
-		else if (mapper.updateUse(p) != 1) throw new IllegalArgumentException("사용 내역을 찾지 못했습니다. 화면을 다시 열어 주세요.");
+		else if (mapper.updateUse(p) != 1) throw new IllegalArgumentException("마감됐거나 없는 사용 내역입니다. 화면을 다시 열어 주세요.");
 	}
 
 	public void deleteUse(Object cardSq, Object useSq, String loginId) {
 		card(cardSq, loginId);
 		Map<String, Object> p = one("CARD_SQ", cardSq);
 		p.put("USE_SQ", useSq);
-		if (mapper.deleteUse(p) != 1) throw new IllegalArgumentException("사용 내역을 찾지 못했습니다. 화면을 다시 열어 주세요.");
+		if (mapper.deleteUse(p) != 1) throw new IllegalArgumentException("마감됐거나 없는 사용 내역입니다. 화면을 다시 열어 주세요.");
+	}
+
+	/** 사용처 코드·내용·가맹점·대상. 사용 등록 창과 정산 화면이 같이 쓴다 */
+	private static void checkFields(Map<String, Object> p, Set<String> codes) {
+		if (!codes.contains(str(p.get("USE_CD")))) throw new IllegalArgumentException("사용처 코드를 선택해 주세요.");
+		if (str(p.get("DETAIL")).length() > 500) throw new IllegalArgumentException("내용은 500자 안으로 입력해 주세요.");
+		if (str(p.get("MERCHANT")).length() > 200) throw new IllegalArgumentException("사용처는 200자 안으로 입력해 주세요.");
+		if (str(p.get("TARGET_NM")).length() > 100) throw new IllegalArgumentException("대상은 100자 안으로 입력해 주세요.");
 	}
 
 	private Set<String> codeSet() {
@@ -146,89 +155,170 @@ public class BoCardService {
 		return s;
 	}
 
-	// ── 정산 ──
+	// ── 정산: 기간 목록 ──
 
-	/** 올린 엑셀을 그 달 등록 내역과 대조한다. 파일은 저장하지 않는다 */
-	public Map<String, Object> compare(Object cardSq, String ym, byte[] file, String loginId) {
-		Map<String, Object> key = monthKey(cardSq, ym);
+	/**
+	 * 기간 안의 등록 건을 상태와 함께 준다. 엑셀을 올리면 날짜·금액으로 대조하고(파일은 저장하지 않는다),
+	 * 안 올리면 예전에 대조해 사용처가 붙은 건을 일치로, 나머지는 대조 전(NONE)으로 둔다.
+	 */
+	public Map<String, Object> period(Object cardSq, String from, String to, byte[] file, String loginId) {
+		LocalDate[] r = dates(from, to);
 		card(cardSq, loginId);
-		if (file == null || file.length == 0) throw new IllegalArgumentException("엑셀 파일을 골라 주세요.");
-		if (file.length > 10L * 1024 * 1024) throw new IllegalArgumentException("10MB 이하 파일만 올릴 수 있습니다.");
-		List<Map<String, Object>> excel = new ArrayList<>(), other = new ArrayList<>();
-		for (Map<String, Object> r : CardStatementParser.parse(file)) (str(r.get("USE_DT")).startsWith(ym) ? excel : other).add(r);
+		List<Map<String, Object>> uses = mapper.selectUses(range(cardSq, r[0], r[1])), rows;
 		Map<String, Object> out = new HashMap<>();
-		Set<String> codes = codeSet();
-		List<Map<String, Object>> rows = CardStatementParser.match(excel, mapper.selectMonthUses(key));
-		for (Map<String, Object> r : rows) {
-			// 공통코드관리에서 지운 코드로 추정됐으면 기타, 기타도 없으면 첫 코드
-			if (r.containsKey("GUESS_CD") && !codes.contains(r.get("GUESS_CD"))) r.put("GUESS_CD", codes.contains("ETC") ? "ETC" : codes.isEmpty() ? "" : mapper.selectCodes().get(0).get("CD"));
+		if (file != null && file.length > 0) {
+			if (file.length > 10L * 1024 * 1024) throw new IllegalArgumentException("10MB 이하 파일만 올릴 수 있습니다.");
+			List<Map<String, Object>> excel = new ArrayList<>();
+			int other = 0;
+			for (Map<String, Object> e : CardStatementParser.parse(file)) {
+				LocalDate d = LocalDate.parse(str(e.get("USE_DT")));
+				if (d.isBefore(r[0]) || d.isAfter(r[1])) other++;
+				else excel.add(e);
+			}
+			rows = CardStatementParser.match(excel, uses);
+			Set<String> codes = codeSet();
+			for (Map<String, Object> x : rows) {
+				// 공통코드관리에서 지운 코드로 추정됐으면 기타
+				if (x.containsKey("GUESS_CD") && !codes.contains(x.get("GUESS_CD"))) x.put("GUESS_CD", codes.contains("ETC") ? "ETC" : "");
+			}
+			out.put("excelCnt", excel.size());
+			out.put("otherCnt", other);
+		} else {
+			rows = new ArrayList<>();
+			for (Map<String, Object> u : uses) {
+				Map<String, Object> x = new HashMap<>();
+				x.put("TYPE", str(u.get("MERCHANT")).isEmpty() ? "NONE" : "MATCH");
+				x.put("USE_DT", u.get("USE_DT"));
+				x.put("AMT", u.get("AMT"));
+				x.put("MERCHANT", u.get("MERCHANT"));
+				x.put("USE", u);
+				rows.add(x);
+			}
 		}
 		out.put("rows", rows);
-		out.put("excelCnt", excel.size());
-		out.put("otherMonthCnt", other.size());
 		return out;
 	}
 
-	/** 엑셀 건을 모두 반영한다: 짝지은 건은 가맹점을 붙이고, 등록 안 된 건은 추정 코드로 새로 등록한 뒤 그 달을 정산 완료로 남긴다 */
-	public void confirm(Object cardSq, String ym, String fileNm, int excelCnt, String[] useSqs, String[] merchants,
-			String[] newDts, String[] newAmts, String[] newCds, String[] newMerchants, String loginId) {
-		Map<String, Object> key = monthKey(cardSq, ym);
+	/**
+	 * 정산 화면의 중간 저장과 마감. 등록 건은 코드·내용·사용처·대상을 고치고, 엑셀에만 있던 건은 새로 등록한다.
+	 * close 면 저장 뒤 기간 안의 모든 건을 마감한다.
+	 */
+	public Map<String, Object> savePeriod(Object cardSq, String from, String to, boolean close, Map<String, String[]> a, String loginId) {
+		LocalDate[] r = dates(from, to);
 		card(cardSq, loginId);
-		int n = len(useSqs), k = len(newDts);
-		if (n != len(merchants) || k != len(newAmts) || k != len(newCds) || k != len(newMerchants)) throw new IllegalArgumentException("정산 결과를 다시 불러와 주세요.");
+		String[] sq = arr(a, "USE_SQ"), cd = arr(a, "USE_CD"), dt = arr(a, "DETAIL"), mc = arr(a, "MERCHANT"), tg = arr(a, "TARGET_NM");
+		String[] nDt = arr(a, "NEW_DT"), nAmt = arr(a, "NEW_AMT"), nCd = arr(a, "NEW_CD"), nDetail = arr(a, "NEW_DETAIL"), nMc = arr(a, "NEW_MERCHANT"), nTg = arr(a, "NEW_TARGET_NM");
+		if (!sameLen(sq, cd, dt, mc, tg) || !sameLen(nDt, nAmt, nCd, nDetail, nMc, nTg)) throw new IllegalArgumentException("목록을 다시 불러와 주세요.");
 		Set<String> codes = codeSet();
+		Map<String, Object> key = range(cardSq, r[0], r[1]);
+		key.put("UPDT_EMPLY_ID", loginId);
+		int[] cnt = new int[3];
 		tx.execute(s -> {
-			for (int i = 0; i < n; i++) {
+			for (int i = 0; i < sq.length; i++) {
 				Map<String, Object> p = new HashMap<>(key);
-				p.put("USE_SQ", useSqs[i]);
-				p.put("MERCHANT", cut(merchants[i], 200));
-				if (mapper.updateMerchant(p) != 1) throw new IllegalArgumentException("이 달 사용 내역이 아닌 건이 있습니다. 다시 대조해 주세요.");
+				p.put("USE_SQ", sq[i]);
+				p.put("USE_CD", cd[i]);
+				p.put("DETAIL", dt[i].trim());
+				p.put("MERCHANT", mc[i].trim());
+				p.put("TARGET_NM", tg[i].trim());
+				checkFields(p, codes);
+				if (mapper.updateSettleUse(p) != 1) throw new IllegalArgumentException("마감됐거나 기간 밖의 건이 있습니다. 목록을 다시 불러와 주세요.");
+				cnt[0]++;
 			}
-			for (int i = 0; i < k; i++) {
+			for (int i = 0; i < nDt.length; i++) {
 				Map<String, Object> p = new HashMap<>(key);
-				if (!newDts[i].startsWith(ym)) throw new IllegalArgumentException("다른 달 건이 섞였습니다. 다시 대조해 주세요.");
+				LocalDate d;
 				try {
-					p.put("USE_DT", LocalDate.parse(newDts[i]).toString());
-					p.put("AMT", Long.parseLong(newAmts[i]));
+					d = LocalDate.parse(nDt[i]);
+					p.put("AMT", Long.parseLong(nAmt[i]));
 				} catch (DateTimeParseException | NumberFormatException e) {
-					throw new IllegalArgumentException("정산 결과를 다시 불러와 주세요.");
+					throw new IllegalArgumentException("목록을 다시 불러와 주세요.");
 				}
-				if (!codes.contains(newCds[i])) throw new IllegalArgumentException("사용처 코드를 확인해 주세요.");
-				p.put("USE_CD", newCds[i]);
-				p.put("DETAIL", cut(newMerchants[i], 500));
-				p.put("MERCHANT", cut(newMerchants[i], 200));
-				p.put("UPDT_EMPLY_ID", loginId);
+				if (d.isBefore(r[0]) || d.isAfter(r[1])) throw new IllegalArgumentException("기간 밖의 건이 섞였습니다. 다시 대조해 주세요.");
+				p.put("USE_DT", d.toString());
+				p.put("USE_CD", nCd[i]);
+				p.put("DETAIL", nDetail[i].trim());
+				p.put("MERCHANT", nMc[i].trim());
+				p.put("TARGET_NM", nTg[i].trim());
+				checkFields(p, codes);
 				mapper.insertUse(p);
+				cnt[1]++;
 			}
-			Map<String, Object> p = new HashMap<>(key);
-			p.put("FILE_NM", cut(fileNm, 200));
-			p.put("EXCEL_CNT", excelCnt);
-			p.put("MATCH_CNT", n + k);
-			p.put("UPDT_EMPLY_ID", loginId);
-			mapper.upsertSettle(p);
+			if (close) cnt[2] = mapper.closeUses(key);
 			return null;
 		});
+		Map<String, Object> out = new HashMap<>();
+		out.put("updated", cnt[0]);
+		out.put("added", cnt[1]);
+		out.put("closed", cnt[2]);
+		return out;
 	}
 
-	private static Map<String, Object> monthKey(Object cardSq, String ym) {
-		if (ym == null || !ym.matches("\\d{4}-(0[1-9]|1[0-2])")) throw new IllegalArgumentException("월을 확인해 주세요.");
+	// ── 마감 ──
+
+	public Map<String, Object> closed(Object cardSq, String from, String to, String loginId) {
+		LocalDate[] r = dates(from, to);
+		Map<String, Object> out = new HashMap<>(), key = range(cardSq, r[0], r[1]);
+		out.put("card", card(cardSq, loginId));
+		key.put("CLOSED", "Y");
+		out.put("uses", mapper.selectUses(key));
+		return out;
+	}
+
+	public int reopen(Object cardSq, String from, String to, String loginId) {
+		if (!manager(loginId)) throw new IllegalArgumentException("마감 풀기는 경영지원 담당자만 할 수 있습니다.");
+		LocalDate[] r = dates(from, to);
+		card(cardSq, loginId);
+		return mapper.reopenUses(range(cardSq, r[0], r[1]));
+	}
+
+	/** 마감 건을 경영지원 양식(담당·카드·월·일·사용처·금액·내용·대상, 연도별 시트)으로 */
+	@SuppressWarnings("unchecked")
+	public byte[] closedExcel(Object cardSq, String from, String to, String loginId) {
+		Map<String, Object> c = closed(cardSq, from, to, loginId);
+		List<Map<String, Object>> uses = (List<Map<String, Object>>) c.get("uses");
+		Map<String, String> codeNm = new HashMap<>();
+		for (Map<String, Object> x : mapper.selectCodes()) codeNm.put(str(x.get("CD")), str(x.get("NM")));
+		return CardLedgerExcel.build((Map<String, Object>) c.get("card"), uses, codeNm);
+	}
+
+	// ── 공통 ──
+
+	/** 기간은 하루~1년(366일) */
+	private static LocalDate[] dates(String from, String to) {
+		LocalDate f, t;
+		try {
+			f = LocalDate.parse(str(from));
+			t = LocalDate.parse(str(to));
+		} catch (DateTimeParseException e) {
+			throw new IllegalArgumentException("기간을 확인해 주세요.");
+		}
+		if (t.isBefore(f)) throw new IllegalArgumentException("기간의 끝이 시작보다 빠릅니다.");
+		if (ChronoUnit.DAYS.between(f, t) > 366) throw new IllegalArgumentException("기간은 1년 안으로 잡아 주세요.");
+		return new LocalDate[] { f, t };
+	}
+
+	private static Map<String, Object> range(Object cardSq, LocalDate from, LocalDate to) {
 		Map<String, Object> m = one("CARD_SQ", cardSq);
-		m.put("YM", ym);
+		m.put("FROM", from.toString());
+		m.put("TO", to.toString());
 		return m;
+	}
+
+	private static String[] arr(Map<String, String[]> a, String k) {
+		String[] v = a.get(k);
+		return v == null ? new String[0] : v;
+	}
+
+	private static boolean sameLen(String[]... a) {
+		for (String[] x : a) if (x.length != a[0].length) return false;
+		return true;
 	}
 
 	private static Map<String, Object> one(String k, Object v) {
 		Map<String, Object> m = new HashMap<>();
 		m.put(k, v);
 		return m;
-	}
-
-	private static int len(String[] a) {
-		return a == null ? 0 : a.length;
-	}
-
-	private static String cut(String s, int max) {
-		return s == null ? "" : s.length() > max ? s.substring(0, max) : s;
 	}
 
 	private static String str(Object o) {

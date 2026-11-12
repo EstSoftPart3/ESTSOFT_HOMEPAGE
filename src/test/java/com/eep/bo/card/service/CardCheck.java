@@ -73,6 +73,31 @@ public class CardCheck {
 		same(CardStatementParser.guess("AWS EMEA"), "SW", "구독");
 		same(CardStatementParser.guess("이름 모를 가게"), "ETC", "기타");
 
+		// 마감 엑셀: 연도별 시트, B2 제목, 4행 머리글, 카드는 첫 줄에만, 사용처·대상 빈 값 채움
+		Map<String, Object> cardRow = new HashMap<>();
+		cardRow.put("HOLDER_NM", "홍길동");
+		cardRow.put("CARD_CO", "롯데카드");
+		Map<String, Object> a = use(1, "2025-12-30", 12000), b = use(2, "2026-04-16", 11000), c = use(3, "2026-04-24", 5000);
+		a.put("MERCHANT", "돈오"); a.put("DETAIL", "점심식사"); a.put("TARGET_NM", "홍길동, 대표님");
+		b.put("USE_CD", "MEAL");
+		Map<String, String> nm = new HashMap<>();
+		nm.put("MEAL", "식대");
+		XSSFWorkbook out = new XSSFWorkbook(new java.io.ByteArrayInputStream(CardLedgerExcel.build(cardRow, Arrays.asList(a, b, c), nm)));
+		same(out.getNumberOfSheets(), 2, "연도별 시트");
+		same(out.getSheetAt(1).getSheetName(), "2026", "시트 이름은 연도");
+		Sheet o = out.getSheetAt(1);
+		same(o.getRow(1).getCell(1).getStringCellValue(), "법인카드 사용내역", "B2 제목");
+		same(o.getRow(3).getCell(5).getStringCellValue(), "사용처", "머리글");
+		same(o.getRow(4).getCell(2).getStringCellValue(), "롯데카드", "첫 줄 카드");
+		same(o.getRow(5).getCell(2).getStringCellValue(), "", "둘째 줄 카드 빈칸");
+		same(o.getRow(4).getCell(3).getNumericCellValue(), 4.0, "월");
+		same(o.getRow(4).getCell(4).getNumericCellValue(), 16.0, "일");
+		same(o.getRow(4).getCell(5).getStringCellValue(), "식대", "사용처 없으면 코드 이름");
+		same(o.getRow(4).getCell(6).getNumericCellValue(), 11000.0, "금액");
+		same(o.getRow(4).getCell(8).getStringCellValue(), "홍길동", "대상 없으면 담당");
+		same(out.getSheetAt(0).getRow(4).getCell(8).getStringCellValue(), "홍길동, 대표님", "대상");
+		out.close();
+
 		// 머리글이 없는 엑셀은 거부
 		XSSFWorkbook bad = new XSSFWorkbook();
 		row(bad.createSheet(), 0, "이름", "부서");
