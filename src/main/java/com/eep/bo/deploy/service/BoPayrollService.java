@@ -326,7 +326,57 @@ public class BoPayrollService {
 
 	// ── 다시 계산 ──
 
+	// ── 계산 기준값 (급여관리 계산기 버튼) ──
+
+	/** DB 의 기준값을 계산에 쓴다. 표가 없거나 읽지 못하면 코드 기본값 그대로 */
+	void loadParams() {
+		try {
+			mapper.selectPayrollParams().forEach(p -> PayCalc.setParam(str(p.get("PARAM_K")), n(p.get("PARAM_V"))));
+		} catch (RuntimeException e) {
+			System.out.println("PAYROLL_PARAM_LOAD " + e.getClass().getSimpleName());
+		}
+	}
+
+	public List<Map<String, Object>> params() {
+		Map<String, Map<String, Object>> saved = new HashMap<>();
+		mapper.selectPayrollParams().forEach(p -> saved.put(str(p.get("PARAM_K")), p));
+		List<Map<String, Object>> out = new ArrayList<>();
+		for (Object[] d : PayCalc.PARAMS) {
+			Map<String, Object> m = new HashMap<>(saved.getOrDefault((String) d[0], new HashMap<>()));
+			m.put("PARAM_K", d[0]);
+			m.put("NM", d[1]);
+			m.put("MIN", d[2]);
+			m.put("MAX", d[3]);
+			m.putIfAbsent("PARAM_V", PayCalc.param((String) d[0]));
+			out.add(m);
+		}
+		return out;
+	}
+
+	/** 기준값을 바꾼다. 마감된 달은 다시 계산하지 않으므로 그대로이고, 바꾼 것은 수정이력(직원 없음)에 남는다 */
+	public void saveParam(String key, String raw, String loginId) {
+		Object[] def = null;
+		for (Object[] d : PayCalc.PARAMS) {
+			if (d[0].equals(key)) {
+				def = d;
+			}
+		}
+		require(def != null, "고칠 수 없는 기준값입니다.");
+		long v = BoDeployService.money(raw);
+		require(v >= (Long) def[2] && v <= (Long) def[3], def[1] + "은(는) " + won((Long) def[2]) + " ~ " + won((Long) def[3]) + " 사이로 입력해 주세요.");
+		require(!"PRORATE_UNIT".equals(key) || Arrays.asList(1L, 10L, 100L, 1000L, 10000L).contains(v), "버림 단위는 1·10·100·1,000·10,000 중 하나입니다.");
+		loadParams();
+		long before = PayCalc.param(key);
+		Map<String, Object> q = one("PARAM_K", key);
+		q.put("PARAM_V", v);
+		q.put("EMPLY_ID", loginId);
+		mapper.savePayrollParam(q);
+		PayCalc.setParam(key, v);
+		change(YearMonth.now().toString(), 0, "PARAM_" + key, before, v, "계산 기준값 변경", loginId);
+	}
+
 	void sync(String ym) {
+		loadParams();
 		YearMonth m = YearMonth.parse(ym);
 		int total = m.lengthOfMonth();
 		Map<Object, List<Map<String, Object>>> byStaff = new LinkedHashMap<>();
@@ -512,7 +562,7 @@ public class BoPayrollService {
 					long cost = n(x.get("COST_PRICE")), raw = n(x.get("TOTAL_DAYS")) == 0 ? 0 : cost * n(x.get("WORK_DAYS")) / n(x.get("TOTAL_DAYS"));
 					d.append(d.length() > 0 ? "\n" : "").append(label(x)).append(": (계약단가 ").append(won(cost)).append(" ÷ ").append(x.get("TOTAL_DAYS"))
 							.append("일) × ").append(x.get("WORK_DAYS")).append("일 = ").append(won(n(x.get("BASE_AMT"))))
-							.append(raw != n(x.get("BASE_AMT")) && raw / 1000 * 1000 == n(x.get("BASE_AMT")) ? " (천원 미만 버림)" : "");
+							.append(raw != n(x.get("BASE_AMT")) && raw / PayCalc.PRORATE_UNIT * PayCalc.PRORATE_UNIT == n(x.get("BASE_AMT")) ? " (" + won(PayCalc.PRORATE_UNIT) + "원 미만 버림)" : "");
 				}
 			}
 			flag(f, "일할", d.toString());

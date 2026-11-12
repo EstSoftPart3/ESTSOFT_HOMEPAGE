@@ -10,9 +10,26 @@ public final class PayCalc {
 
 	public static final String REGULAR = "REGULAR";
 	public static final String PROBATION = "PROBATION";
-	// 엑셀 시트 위쪽 고정값(R1, R2). shortcut: 코드 상수라 금액이 바뀌면 배포가 필요하다, 자주 바뀌면 공통코드로 옮긴다
-	static final long PROBATION_PAY = 2160000L;
-	static final long MEAL = 200000L;
+	// 엑셀 시트 위쪽 고정값(R1, R2). 급여관리 계산기 버튼에서 고치고 TB_EEP_PAYROLL_PARAM_M 에서 읽는다(BoPayrollService.loadParams)
+	static volatile long PROBATION_PAY = 2160000L;
+	static volatile long MEAL = 200000L;
+	static volatile long PRORATE_UNIT = 1000L;
+	/** 고칠 수 있는 기준값과 허용 범위: [키, 이름, 최소, 최대] */
+	static final Object[][] PARAMS = { { "PROBATION_PAY", "수습급여(월)", 0L, 20000000L }, { "MEAL", "식대(월)", 0L, 1000000L }, { "PRORATE_UNIT", "일할 버림 단위(원)", 1L, 10000L } };
+
+	static void setParam(String k, long v) {
+		if ("PROBATION_PAY".equals(k)) {
+			PROBATION_PAY = v;
+		} else if ("MEAL".equals(k)) {
+			MEAL = v;
+		} else if ("PRORATE_UNIT".equals(k)) {
+			PRORATE_UNIT = v;
+		}
+	}
+
+	static long param(String k) {
+		return "PROBATION_PAY".equals(k) ? PROBATION_PAY : "MEAL".equals(k) ? MEAL : PRORATE_UNIT;
+	}
 
 	private PayCalc() {
 	}
@@ -46,9 +63,9 @@ public final class PayCalc {
 		return to.isBefore(from) ? 0 : (int) ChronoUnit.DAYS.between(from, to) + 1;
 	}
 
-	/** 월 금액 ÷ 전체일수 × 근무일수, 천원 미만 버림 */
+	/** 월 금액 ÷ 전체일수 × 근무일수, 버림 단위(기본 천원) 미만 버림 */
 	public static long prorate(long monthly, int days, int total) {
-		return monthly * days / total / 1000 * 1000;
+		return monthly * days / total / PRORATE_UNIT * PRORATE_UNIT;
 	}
 
 	/** 정규·수습의 { 기본, 식대 }. lastDay 는 그 달의 마지막 근무일(철수일 또는 말일) */

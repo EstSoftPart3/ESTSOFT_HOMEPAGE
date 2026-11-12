@@ -259,6 +259,19 @@ public class BoDeployController {
 		});
 	}
 
+	@RequestMapping(value = "/admin/pay/paramData.do", method = RequestMethod.POST)
+	public ModelAndView paramData() {
+		return run(() -> payrollService.params());
+	}
+
+	@RequestMapping(value = "/admin/pay/saveParamData.do", method = RequestMethod.POST)
+	public ModelAndView saveParamData(@RequestParam("PARAM_K") String key, @RequestParam("PARAM_V") String value, HttpSession session) {
+		return run(() -> {
+			payrollService.saveParam(key, value, loginId(session));
+			return "OK";
+		});
+	}
+
 	@RequestMapping(value = "/admin/pay/staffYearData.do", method = RequestMethod.POST)
 	public ModelAndView staffYearData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("YEAR") String year, HttpSession session) {
 		return run(() -> {

@@ -27,9 +27,9 @@
 	#lBody td.hr-cell:hover, #lBody td.hr-cell:focus { outline: 1px solid #0b6e8a; outline-offset: -2px; }
 	#lBody td.hr-cell:hover::before { content: '✎ '; color: #0b6e8a; font-size: 10px; }
 	/* 자동 계산 칸: 회색 글씨 + 옅은 빗금, 머리글에 Σ. 묶음 색 배경 위에 무늬만 겹친다 */
-	#lBody td.pl-calc, .pl-key-calc { color: #5f6b75 !important; cursor: not-allowed; background-image: repeating-linear-gradient(135deg, rgba(17,17,17,.06) 0 3px, transparent 3px 7px) !important; }
-	.pl-key-calc { padding: 0 4px; border-radius: 3px; }
-	#lHead th.pl-calc-h::before { content: 'Σ '; color: #8a949c; font-weight: 400; }
+	/* 자동 계산 칸은 머리글의 작은 계산기 버튼으로 표시한다(올리면 계산식, 누르면 계산 기준값) */
+	.pl-calc-btn { border: 1px solid #c9d3da; background: #fff; border-radius: 4px; padding: 0 3px; margin-right: 3px; font-size: 11px; line-height: 16px; cursor: pointer; vertical-align: middle; }
+	.pl-calc-btn:hover, .pl-calc-btn:focus { border-color: #0b6e8a; background: #eef9fc; outline: none; box-shadow: 0 0 0 2px rgba(22,213,255,.35); }
 	#kpiToggle { font-size: 12px; font-weight: 700; color: #5f6b75; }
 	/* 시크릿 행: 시크릿 계정에게만 보이고 맨 위에 옅은 보라 */
 	#lBody tr.pl-secret td { background-color: #f4effc; }
@@ -110,7 +110,7 @@
 								<tbody id="lBody"></tbody>
 							</table>
 						</div>
-						<div class="small text-muted px-3 py-2"><span class="pl-key-edit">점선 밑줄 칸</span>은 눌러서 고칠 수 있고, <span class="pl-key-calc">회색 빗금 칸(Σ)</span>은 자동 계산이라 고칠 수 없습니다(형태·고객사·프로젝트·근무기간·매출단가는 투입현황에서 고칩니다). 칸을 누르면 바로 고치고 수정이력에 남습니다(되돌리기는 ✎ 이력에서). 노란 칸은 자동계산을 사람이 고친 값입니다. 색 띠나 같은 색 버튼으로 칸을 펼칩니다. 확인 사항 ✕ 는 확인 완료로 숨깁니다.</div>
+						<div class="small text-muted px-3 py-2"><span class="pl-key-edit">점선 밑줄 칸</span>은 눌러서 고칠 수 있고, 머리글에 🧮 가 있는 칸은 자동 계산입니다(🧮 에 올리면 계산식, 누르면 계산 기준값을 고칩니다. 기본·식대 말고는 칸을 직접 고칠 수 없습니다)(형태·고객사·프로젝트·근무기간·매출단가는 투입현황에서 고칩니다). 칸을 누르면 바로 고치고 수정이력에 남습니다(되돌리기는 ✎ 이력에서). 노란 칸은 자동계산을 사람이 고친 값입니다. 색 띠나 같은 색 버튼으로 칸을 펼칩니다. 확인 사항 ✕ 는 확인 완료로 숨깁니다.</div>
 					</div>
 				</div>
 			</section>
@@ -169,10 +169,17 @@
 	var ALLOW = [['MEAL_AMT', '식대'], ['RESEARCH_AMT', '연구비'], ['DRIVE_AMT', '운전보조'], ['CHILD_AMT', '자녀보육'], ['BONUS_AMT', '상여'], ['FUEL_AMT', '유류비']];
 	var DED = [['NP_AMT', '국민연금'], ['HI_AMT', '건강보험'], ['LTC_AMT', '장기요양'], ['EI_AMT', '고용보험'], ['ACC_AMT', '산재'], ['IT_AMT', '소득세'], ['LIT_AMT', '지방소득세'], ['_SETTLE', '정산'], ['MUTUAL_AMT', '상조회비'], ['ETC_DED', '기타공제']];
 	var SETTLES = ['NP_SETTLE', 'HI_SETTLE', 'EI_SETTLE', 'LTC_SETTLE', 'IT_SETTLE', 'LIT_SETTLE'];
-	// 자동 계산 칸에 마우스를 올리면 보이는 계산식
-	var CALC = { PAY_TOTAL: 'Σ 자동 계산 · 지급계 = 기본 + 수당 칸 합', DED_TOTAL: 'Σ 자동 계산 · 공제계 = 공제 칸 + 정산 합', NET: 'Σ 자동 계산 · 실지급 = 지급계 − 공제계',
-		DELTA_PCT: 'Σ 자동 계산 · 전월 실지급 대비 증감', REAL_SALE: 'Σ 자동 계산 · 실매출 = 매출단가 ÷ 전체일 × 근무일', COMPANY: 'Σ 자동 계산 · 회사부담 = 4대보험 회사분 + 퇴직금 적립(정규·수습)',
-		PROFIT: 'Σ 자동 계산 · 영업이익 = 실매출 − 지급계 − 회사부담' };
+	// 자동 계산 칸: 머리글 🧮 에 마우스를 올리면 계산식, 누르면 계산 기준값. [계산식 줄들, 쓰는 기준값]
+	var CALC = {
+		BASE_AMT: [['정규 = 계약단가 − 식대', '수습 = 수습급여 (입사 첫 달·수습해제 달은 일할)', '그 외 = (계약단가 ÷ 월 일수) × 근무일수', '칸을 눌러 고치면 노란 칸(수기)으로 고정'], ['PROBATION_PAY', 'MEAL', 'PRORATE_UNIT']],
+		MEAL_AMT: [['정규 = 식대', '수습 = 0 (수습해제 달은 해제 뒤 날짜만 일할)', '칸을 눌러 고치면 노란 칸(수기)으로 고정'], ['MEAL']],
+		PAY_TOTAL: [['지급계 = 기본 + 수당 칸 합']], DED_TOTAL: [['공제계 = 공제 칸 + 정산 칸 합']], _SETTLE: [['정산 = 국민연금·건강·고용·장기요양·소득세·지방소득세 정산 합', '칸별 정산은 성명을 눌러 상세에서 고칩니다']],
+		NET: [['실지급 = 지급계 − 공제계']], DELTA_PCT: [['전월대비 = (이번 달 실지급 − 전월 실지급) ÷ 전월 실지급']],
+		REAL_SALE: [['실매출 = (매출단가 ÷ 월 일수) × 근무일수'], ['PRORATE_UNIT']],
+		COMPANY: [['회사부담 = 4대보험 회사분 + 퇴직금 적립 (정규·수습만)', '퇴직금 적립 = (기본 + 식대 + 연구비 + 유류비 + 상여) ÷ 10']],
+		PROFIT: [['영업이익 = 실매출 − 지급계 − 회사부담']]
+	};
+	var PARAMS = [];
 	var LABEL = { CLOSE: '마감', REOPEN: '마감 해제', MEMO: '메모', BONUS: '상여 적용', BONUS_EXCLUDE: '상여 제외' };
 	DP_PAY.concat(DP_DED).forEach(function(d) { LABEL[d[0]] = d[1]; });
 	var ym = moment().format('YYYY-MM'), rows = [], closed = false, shown = {}, checked = {}, sortKey = 'STAFF_NM', sortDir = 1, detailTab = 0, detailRow = null;
@@ -209,6 +216,7 @@
 		$('#kpiToggle').on('click', function() { kpiOpen = !kpiOpen; try { localStorage.setItem('payKpi', kpiOpen ? 'on' : 'off'); } catch (e) {} paintKpi(); });
 		paintKpi();
 		load();
+		loadParams();
 	});
 
 	function step(d) { ym = moment(ym + '-01').add(d, 'months').format('YYYY-MM'); $('#ym').val(ym); load(); }
@@ -285,9 +293,43 @@
 		});
 	}
 
+	// 자동 계산 머리글의 작은 계산기 버튼
+	function calcBtn(key, text) {
+		var c = CALC[key], $b = $('<button type="button" class="pl-calc-btn">').attr('aria-label', text + ' 계산식 보기 · 누르면 계산 기준값').text('🧮');
+		dpHover($b, $b, function() {
+			var ps = (c[1] || []).map(function(k) { return PARAMS.filter(function(p) { return p.PARAM_K === k; })[0]; }).filter(Boolean);
+			return '<div class="dp-card sm"><div class="dp-card-top">' + dpEsc(text) + '<span>자동 계산 항목</span></div><div class="dp-sec">'
+				+ c[0].map(function(l) { return '<div><span style="white-space:normal">' + dpEsc(l) + '</span></div>'; }).join('') + '</div>'
+				+ (ps.length ? '<div class="dp-sec"><div class="s"><span>쓰는 기준값</span><span></span></div>' + ps.map(function(p) { return dpLine(p.NM, dpWon(p.PARAM_V)); }).join('') + '</div>' : '')
+				+ '<div class="dp-sec"><div><span class="dp-mute">누르면 계산 기준값을 보고 고칩니다</span><span></span></div></div></div>';
+		});
+		return $b.on('click', function(e) { e.stopPropagation(); dpHide(); paramPopup(text, c); });
+	}
+
+	// 계산 기준값 창: 고치면 마감 안 된 달을 열 때 다시 계산된다(마감된 달은 그대로)
+	function paramPopup(text, c) {
+		var $box = $('<div>').append($('<div class="small mb-2">').append($('<b>').text(text + ' 계산식')).append(c[0].map(function(l) { return $('<div class="text-muted">').text(l); })));
+		var $t = $('<table class="table table-sm cal-table mb-1">').append('<thead><tr><th>계산 기준값</th><th class="dp-num">값</th><th>마지막 수정</th><th></th></tr></thead>'), $b = $('<tbody>').appendTo($t);
+		PARAMS.forEach(function(p) {
+			var $in = $('<input class="form-control form-control-sm text-right" inputmode="numeric" style="width:130px;display:inline-block">').attr('aria-label', p.NM).val(Number(p.PARAM_V).toLocaleString('ko-KR'));
+			var $save = $('<button type="button" class="btn btn-sm btn-primary">저장</button>').on('click', function() {
+				bootbox.confirm(p.NM + '을(를) ' + dpWon(p.PARAM_V) + ' → ' + $in.val() + ' 으로 바꿀까요? 마감 안 된 달을 열 때 다시 계산되고, 마감된 달은 그대로입니다.', function(ok) {
+					if (ok) hrPost('/admin/pay/saveParamData.do', { PARAM_K: p.PARAM_K, PARAM_V: $in.val() }, function() { loadParams(function() { $('#dpInfo').modal('hide'); load(); }); });
+				});
+			});
+			$in.on('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); $save.click(); } });
+			$b.append($('<tr>').toggleClass('table-info', (c[1] || []).indexOf(p.PARAM_K) >= 0).append($('<td>').text(p.NM)).append($('<td class="dp-num">').append($in))
+				.append($('<td class="small text-muted">').text(p.UPDT_DT ? (p.EMPLY_NM || p.UPDT_EMPLY_ID) + ' · ' + p.UPDT_DT : '기본값')).append($('<td>').append($save)));
+		});
+		$b.append('<tr class="text-muted"><td>퇴직금 적립 비율</td><td class="dp-num">1/10</td><td class="small" colspan="2">고정 · 바꾸면 마감된 달의 영업이익까지 바뀌어 막아 두었습니다</td></tr>');
+		dpInfo('🧮 계산 기준값', $box.append($t).append('<div class="small text-muted">파란 줄은 이 칸 계산에 쓰는 값입니다. 바꾼 내용은 수정이력(직원 없음)에 남습니다.</div>'));
+	}
+
+	function loadParams(done) { hrPost('/admin/pay/paramData.do', {}, function(res) { PARAMS = res.result || []; if (done) done(); }); }
+
 	function sortTh(text, key, cls) {
 		var on = sortKey === key;
-		return $('<th>').addClass(cls || '').text(text).append($('<button type="button" class="pl-sort">').toggleClass('on', on).attr('aria-label', text + ' 정렬').text(on ? (sortDir > 0 ? '▲' : '▼') : '↕')
+		return $('<th>').addClass(cls || '').text(text).prepend(CALC[key] ? calcBtn(key, text) : '').append($('<button type="button" class="pl-sort">').toggleClass('on', on).attr('aria-label', text + ' 정렬').text(on ? (sortDir > 0 ? '▲' : '▼') : '↕')
 			.on('click', function() { if (sortKey === key) sortDir = -sortDir; else { sortKey = key; sortDir = 1; } render(); }));
 	}
 
@@ -301,7 +343,7 @@
 			.append(sortTh('근무기간', 'PERIOD')).append(sortTh('매출단가', 'SALE_PRICE', 'dp-num')).append(sortTh('기본', 'BASE_AMT', 'dp-num'));
 		ALLOW.forEach(function(a) { $h.append(sortTh(a[1], a[0], 'dp-num x-allow')); });
 		$h.append(sortTh('지급계', 'PAY_TOTAL', 'dp-num c-allow pl-calc-h'));
-		DED.forEach(function(a) { $h.append(a[0] === '_SETTLE' ? $('<th class="dp-num x-ded pl-calc-h">').text(a[1]) : sortTh(a[1], a[0], 'dp-num x-ded')); });
+		DED.forEach(function(a) { $h.append(a[0] === '_SETTLE' ? $('<th class="dp-num x-ded pl-calc-h">').text(a[1]).prepend(calcBtn('_SETTLE', a[1])) : sortTh(a[1], a[0], 'dp-num x-ded')); });
 		$h.append(sortTh('공제계', 'DED_TOTAL', 'dp-num c-ded pl-calc-h')).append(sortTh('실지급', 'NET', 'dp-num pl-calc-h')).append(sortTh('전월대비', 'DELTA_PCT', 'dp-num pl-calc-h')).append('<th class="pl-stub"></th>');
 		[['실매출', 'REAL_SALE'], ['회사부담', 'COMPANY'], ['영업이익', 'PROFIT']].forEach(function(t) { $h.append(sortTh(t[0], t[1], 'dp-num x-pl pl-calc-h')); });
 		$h.append(sortTh('확인 사항', 'FLAGS')).append('<th>메모</th><th>이력</th>');
@@ -320,12 +362,12 @@
 			contractCells(r, cs[0] || {}, true).forEach(function($td) { $tr.append($td); });
 			$tr.append(rs(cell(r, 'BASE_AMT', '')));
 			ALLOW.forEach(function(a) { $tr.append(rs(cell(r, a[0], 'x-allow'))); });
-			$tr.append(rs($('<td class="dp-num c-allow font-weight-bold pl-calc">').text(dpWon(r.PAY_TOTAL)).attr('title', CALC.PAY_TOTAL)));
+			$tr.append(rs($('<td class="dp-num c-allow font-weight-bold pl-calc">').text(dpWon(r.PAY_TOTAL))));
 			DED.forEach(function(a) { $tr.append(rs(a[0] === '_SETTLE' ? $('<td class="dp-num x-ded pl-calc">').text(dpWon(SETTLES.reduce(function(s, k) { return s + Number(r[k] || 0); }, 0))).attr('title', '정산 합계 · 칸별 정산은 성명을 눌러 상세에서 고칩니다') : cell(r, a[0], 'x-ded'))); });
-			$tr.append(rs($('<td class="dp-num c-ded font-weight-bold pl-calc">').text(dpWon(r.DED_TOTAL)).attr('title', CALC.DED_TOTAL))).append(rs($('<td class="dp-num font-weight-bold pl-calc">').text(dpWon(r.NET)).attr('title', CALC.NET)))
-				.append(rs($('<td class="dp-num pl-calc">').text(r.DELTA_PCT === undefined ? '' : (r.DELTA_PCT > 0 ? '+' : '') + r.DELTA_PCT + '%').toggleClass('text-danger', Math.abs(r.DELTA_PCT || 0) >= 10).attr('title', CALC.DELTA_PCT)))
+			$tr.append(rs($('<td class="dp-num c-ded font-weight-bold pl-calc">').text(dpWon(r.DED_TOTAL)))).append(rs($('<td class="dp-num font-weight-bold pl-calc">').text(dpWon(r.NET))))
+				.append(rs($('<td class="dp-num pl-calc">').text(r.DELTA_PCT === undefined ? '' : (r.DELTA_PCT > 0 ? '+' : '') + r.DELTA_PCT + '%').toggleClass('text-danger', Math.abs(r.DELTA_PCT || 0) >= 10)))
 				.append(rs($('<td class="pl-stub">')))
-				.append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.REAL_SALE)).attr('title', CALC.REAL_SALE))).append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.COMPANY)).attr('title', CALC.COMPANY))).append(rs($('<td class="dp-num x-pl font-weight-bold pl-calc">').text(dpWon(r.PROFIT)).attr('title', CALC.PROFIT)))
+				.append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.REAL_SALE)))).append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.COMPANY)))).append(rs($('<td class="dp-num x-pl font-weight-bold pl-calc">').text(dpWon(r.PROFIT))))
 				.append(rs($('<td>')).append(r.FLAGS.map(function(f) { return flagChip(r, f); })))
 				.append(rs($('<td>')).append(countBtn('💬', r.MEMO_CNT, r.STAFF_NM + ' 메모', function() { memoPopup(r); })))
 				.append(rs($('<td>')).append(countBtn('✎', r.CHG_CNT, r.STAFF_NM + ' 수정이력', function() { historyPopup(r); })));

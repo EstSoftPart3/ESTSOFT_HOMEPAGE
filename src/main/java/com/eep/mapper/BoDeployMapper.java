@@ -83,6 +83,8 @@ public interface BoDeployMapper {
 	public int deleteDeployMemo(Map<String, Object> param);						//MEMO_SQ, EMPLY_ID(본인 것만)
 	public String selectDeployMemoStaff(Map<String, Object> param);				//MEMO_SQ 의 STAFF_SQ
 	public List<Map<String, Object>> selectDeployMemoCounts();					//STAFF_SQ, CNT
+	public List<Map<String, Object>> selectPayrollParams();						//급여 계산 기준값
+	public int savePayrollParam(Map<String, Object> param);						//PARAM_K, PARAM_V, EMPLY_ID
 	public List<String> selectSecretStaff();									//시크릿 계정에 연결된 직원
 	public int countSecretViewer(Map<String, Object> param);					//EMPLY_ID 가 사용 중인 시크릿 계정인지
 	public String selectDeployStaff(Map<String, Object> param);					//DEPLOY_SQ 의 STAFF_SQ
