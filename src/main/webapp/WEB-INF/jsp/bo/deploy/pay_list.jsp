@@ -52,6 +52,11 @@
 	#lBody tr.pl-picked > td { box-shadow: inset 0 2px 0 #1d4ed8, inset 0 -2px 0 #1d4ed8; background-color: #eef4ff; }
 	#lBody tr.pl-picked > td:first-child { box-shadow: inset 3px 0 0 #1d4ed8, inset 0 2px 0 #1d4ed8, inset 0 -2px 0 #1d4ed8; }
 	.pl-pick-col { width: 28px; text-align: center; }
+	/* 매출단가 강조(투입현황과 같게)와 일할 표시 */
+	#lHead th.pl-sale, #lBody td.pl-sale { background-color: #e7f6ec; color: #17692f; font-weight: 700; }
+	#lHead th.pl-sale { box-shadow: inset 0 3px 0 #2e9e57; }
+	.pl-pr { color: #5f6b75; font-weight: 400; font-size: 11.5px; cursor: help; }
+	.pl-pr:focus { outline: 2px solid #16d5ff; border-radius: 3px; }
 	#pickCnt { font-size: 12px; font-weight: 700; color: #1d4ed8; }
 	/* 외부 매입: 매입처에 주는 돈(급여 아님) */
 	#lBody td.pl-buy, #lBody tr.pl-other td.dp-num { color: #8a4b00 !important; }
@@ -298,7 +303,7 @@
 		if (dpProbReg(sal.map(typeOf))) {
 			sal.sort(function(a, b) { return String(a.START_DT).localeCompare(String(b.START_DT)); });
 			var last = sal[sal.length - 1];
-			ds = ds.filter(function(d) { return sal.indexOf(d) < 0; }).concat($.extend({}, last, { START_DT: sal[0].START_DT, WORK_DAYS: sum(sal, 'WORK_DAYS'), BASE_AMT: sum(sal, 'BASE_AMT') }));
+			ds = ds.filter(function(d) { return sal.indexOf(d) < 0; }).concat($.extend({}, last, { START_DT: sal[0].START_DT, WORK_DAYS: sum(sal, 'WORK_DAYS'), BASE_AMT: sum(sal, 'BASE_AMT'), REAL_SALE: sum(sal, 'REAL_SALE') }));
 		}
 		// 우리 계약이 늘 윗줄, 다른 계약(매입)은 아래 └ 줄
 		function score(d) { var t = typeOf(d) || r.EMP_TYPE_CD; return (isOther(r, d) ? 4 : 0) + (checked[chipOf(t)] ? 0 : 2) + (t === 'REGULAR' || t === 'PROBATION' ? 0 : 1); }
@@ -388,7 +393,7 @@
 		var $h = $('<tr>').append($('<th class="pl-pick-col">').append($('<input type="checkbox" id="pickAll" aria-label="보이는 사람 모두 체크">')))
 			.append(sortTh('성명', 'STAFF_NM')).append(sortTh('형태', 'TYPE')).append(sortTh('고객사', 'CLIENT')).append(sortTh('프로젝트', 'PRJ'))
 			.append(sortTh('근무기간', 'PERIOD')).append($('<th>').append($('<button type="button" class="pl-prob-btn" id="probToggle">').attr('aria-expanded', probOpen).text(probOpen ? '수습기간 ▾' : '수습 ▸')))
-			.append(sortTh('매출단가', 'SALE_PRICE', 'dp-num')).append(sortTh('계약 단가', 'BASE_AMT', 'dp-num'));
+			.append(sortTh('매출단가', 'SALE_PRICE', 'dp-num pl-sale')).append(sortTh('계약 단가', 'BASE_AMT', 'dp-num'));
 		ALLOW.forEach(function(a) { $h.append(sortTh(a[1], a[0], 'dp-num x-allow')); });
 		$h.append(sortTh('지급계', 'PAY_TOTAL', 'dp-num c-allow pl-calc-h'));
 		DED.forEach(function(a) { $h.append(a[0] === '_SETTLE' ? $('<th class="dp-num x-ded pl-calc-h">').text(a[1]).prepend(calcBtn('_SETTLE', a[1])) : sortTh(a[1], a[0], 'dp-num x-ded')); });
@@ -450,7 +455,23 @@
 			$('<td>').text(d.PRJ_NM || '').append(d.DEPLOY_SQ ? dpInfoBtn(r.STAFF_NM + ' 투입 정보', function() { deployInfo(r, d); }) : ''),
 			$('<td>').text(d.DEPLOY_SQ ? period(d) : ''),
 			$('<td class="pl-prob">').append(prob && prob.inMonth ? [$('<span class="full">').text(prob.from.format('YY/MM/DD') + '~' + prob.to.format('YY/MM/DD')), $('<span class="dot">').attr('title', '수습 ' + prob.from.format('YY/MM/DD') + '~' + prob.to.format('YY/MM/DD')).text('●')] : ''),
-			$('<td class="dp-num">').text(d.SALE_PRICE ? dpWon(d.SALE_PRICE) : '').append(dpDirectIcon(d))];
+			saleCell(d)];
+	}
+
+	// 매출단가: 투입현황과 같게(직접계약이면 원래 금액 취소선 + 차감 금액 + 🤝), 그 달 일부만 근무했으면 일할 금액과 🧮(올리면 계산식). 한 줄로
+	function saleCell(d) {
+		var $td = $('<td class="dp-num pl-sale">'), net = Number(d.SALE_PRICE || 0), dir = Number(d.CLIENT_DIRECT_AMT || 0), days = Number(d.WORK_DAYS || 0), total = Number(d.TOTAL_DAYS || 0);
+		if (!net && !dir) return $td;
+		if (dir) $td.append($('<span class="dp-was">').text(dpWon(net + dir)));
+		$td.append(document.createTextNode(dpWon(net))).append(dpDirectIcon(d));
+		if (days > 0 && total && days < total) {
+			var $c = $('<span class="pl-pr" tabindex="0">').attr('aria-label', '일할 ' + dpWon(d.REAL_SALE) + ': 매출단가 ' + dpWon(net) + ' ÷ ' + total + '일 × ' + days + '일').text(' → 일할 ' + dpWon(d.REAL_SALE) + ' 🧮');
+			dpHover($c, $c, function() {
+				return '<div class="dp-card sm"><div class="dp-sec"><div><b>일할계산</b></div><div>(매출단가 ' + dpWon(net) + ' ÷ ' + total + '일) × ' + days + '일 = ' + dpWon(d.REAL_SALE) + '</div></div></div>';
+			});
+			$td.append($c);
+		}
+		return $td;
 	}
 
 	// 다른 계약: 정규·수습 직원에게 함께 걸린 기타·외부 계약(매입처에 주는 돈). 우리 급여·급여명세서에 들어가지 않는다
