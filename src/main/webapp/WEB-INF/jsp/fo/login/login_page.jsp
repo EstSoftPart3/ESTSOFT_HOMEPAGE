@@ -208,5 +208,17 @@
 
 <script src="/resources/bo/plugins/bootbox/bootbox.all.min.js"></script>
 <script src="/resources/bo/plugins/bootbox/bootbox.locales.js"></script>
+<script>
+var EG = { title: '로그인', tail: false, modals: {}, page: [
+	['.login-type', '직원 / 관리자 고르기', '홈페이지(내 장비 등)를 쓰려면 일반 직원,\n관리자 화면으로 가려면 관리자를 골라요. 관리자 권한이 있는 계정만 관리자로 들어가요.'],
+	['#emplyId', '아이디', '회사 메일(@gmail.com)의 @ 앞부분이 아이디예요.\n예: hong.gd@gmail.com 이면 hong.gd'],
+	['#emplyPw', '비밀번호', '처음엔 가입하거나 발급받을 때 받은 초기 비밀번호를 넣어요.\n로그인 후 바꾸라는 안내가 나오면 바꿔 주세요.'],
+	['label[for="saveId"]', '아이디 저장', '체크하면 다음에 들어올 때 아이디가 미리 채워져 있어요.'],
+	['label[for="autoLogin"]', '자동로그인 (7일)', '체크하면 7일 동안 로그인이 유지돼요.\n여러 사람이 같이 쓰는 PC 에서는 체크하지 마세요.'],
+	['.login-card-body .btn-primary', '로그인', '누르면 들어가요. 아이디나 비밀번호가 틀리면 다시 이 화면으로 와요.'],
+	['.join-line a', '처음이면 가입 신청', '아직 계정이 없는 직원은 여기서 직접 가입해요.\n이름·입사일 등으로 본인 확인 후 회사 메일 인증만 하면 바로 계정이 생겨요.']
+] };
+</script>
+<%@ include file="/WEB-INF/jsp/bo/boinclude/include_guide_core.jspf"%>
 </body>
 </html>

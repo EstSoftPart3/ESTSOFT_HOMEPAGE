@@ -120,6 +120,7 @@ public class boLoggerInterceptor extends HandlerInterceptorAdapter {
 			return false;
 		}
 		request.setAttribute("boMenus", access.tree);
+		request.setAttribute("superUser", access.superUser);
 
 		if (log.isDebugEnabled()) {
 			log.debug(

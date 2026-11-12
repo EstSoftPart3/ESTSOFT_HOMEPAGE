@@ -1,0 +1,136 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%-- 화면 가이드 투어 공통: 우측 하단 ? → 화면을 어둡게 하고 대상을 하나씩 밝혀 화살표·말풍선으로 설명.
+     이 파일 앞에서 EG 를 정의한다: { page: [단계], modals: { 팝업id: [단계] }, title: '화면 이름', tail: false(마지막 '팝업에서도' 안내 끔) }
+     단계 = [대상 선택자, 제목, 설명, 시크릿]. 대상이 화면에 없거나 숨어 있으면 건너뛴다 --%>
+<link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@700&display=swap" rel="stylesheet">
+<style>
+	.eg-fab { position: fixed; right: 22px; bottom: 22px; z-index: 1060; width: 52px; height: 52px; border: 0; border-radius: 50%; background: rgba(37, 99, 235, .55); color: #fff;
+		font-size: 22px; font-weight: 700; cursor: pointer; box-shadow: 0 6px 20px rgba(37, 99, 235, .3); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); transition: background .2s, transform .2s; }
+	.eg-fab:hover, .eg-fab:focus-visible { background: rgba(37, 99, 235, .95); transform: translateY(-2px); outline: none; }
+	.eg-fab::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid rgba(37, 99, 235, .45); animation: eg-ping 2.2s infinite; pointer-events: none; }
+	@keyframes eg-ping { 0% { transform: scale(.9); opacity: 1 } 100% { transform: scale(1.35); opacity: 0 } }
+	.eg-tour { position: fixed; inset: 0; z-index: 1080; }
+	.eg-tour[hidden] { display: none; }
+	.eg-hole { position: fixed; border-radius: 10px; box-shadow: 0 0 0 9999px rgba(15, 23, 42, .62); transition: all .45s cubic-bezier(.65, 0, .35, 1); pointer-events: none; }
+	.eg-hole::after { content: ''; position: absolute; inset: -4px; border: 3px solid #fde047; border-radius: 12px; animation: eg-glow 1.4s ease-in-out infinite; }
+	@keyframes eg-glow { 50% { box-shadow: 0 0 18px 4px rgba(253, 224, 71, .7) } }
+	.eg-arrow { position: fixed; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+	.eg-arrow path { fill: none; stroke: #fde047; stroke-width: 3.5; stroke-linecap: round; }
+	.eg-arrow path.draw { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: eg-draw .5s .35s ease-out forwards; }
+	@keyframes eg-draw { to { stroke-dashoffset: 0 } }
+	.eg-bubble { position: fixed; width: 360px; color: #fff; opacity: 0; transform: translateY(8px); pointer-events: none; }
+	.eg-bubble.show { animation: eg-pop .4s .65s ease-out forwards; }
+	@keyframes eg-pop { to { opacity: 1; transform: none } }
+	.eg-bubble b { display: block; font-family: 'Gaegu', 'Malgun Gothic', cursive; font-size: 30px; line-height: 1.1; color: #fde047; text-shadow: 0 2px 8px rgba(0, 0, 0, .45); transform: rotate(-1.5deg); }
+	.eg-bubble span { display: block; margin-top: 8px; padding: 11px 14px; border-radius: 12px; background: rgba(15, 23, 42, .78); border: 1px solid rgba(253, 224, 71, .35);
+		font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 14.5px; line-height: 1.65; white-space: pre-line; word-break: keep-all; }
+	.eg-bubble span:empty { display: none; }
+	.eg-bubble.sec b { color: #c4b5fd; } .eg-bubble.sec span { border-color: rgba(196, 181, 253, .5); }
+	.eg-ctrl { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; background: rgba(255, 255, 255, .97); border-radius: 30px;
+		padding: 8px 10px 8px 18px; box-shadow: 0 8px 30px rgba(0, 0, 0, .3); font-size: 13px; white-space: nowrap; }
+	.eg-dots { display: flex; gap: 6px; }
+	.eg-dots i { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; transition: .3s; }
+	.eg-dots i.on { background: #2563eb; width: 22px; border-radius: 4px; }
+	.eg-dots i.sec { background: #c4b5fd; } .eg-dots i.sec.on { background: #4338ca; }
+	.eg-ctrl button { border: 0; border-radius: 20px; padding: 7px 14px; cursor: pointer; font-size: 13px; }
+	.eg-ctrl .skip { background: none; color: #64748b; } .eg-ctrl .prev { background: #e2e8f0; color: #334155; } .eg-ctrl .next { background: #2563eb; color: #fff; font-weight: 700; }
+	.eg-ctrl .what { color: #64748b; font-size: 12px; }
+	@media (max-width: 576px) { .eg-bubble { width: 260px; } .eg-bubble b { font-size: 24px; } .eg-bubble span { font-size: 13px; } .eg-ctrl .what, .eg-dots { display: none; } }
+	@media (prefers-reduced-motion: reduce) { .eg-hole, .eg-fab::after { transition: none; animation: none; } .eg-arrow path.draw, .eg-bubble.show { animation-duration: .01s; animation-delay: 0s; } }
+</style>
+
+<button type="button" class="eg-fab" id="egOpen" aria-label="화면 가이드" title="화면 가이드">?</button>
+
+<div class="eg-tour" id="egTour" role="dialog" aria-modal="true" aria-label="화면 가이드" hidden>
+	<div class="eg-hole" id="egHole"></div>
+	<svg class="eg-arrow" aria-hidden="true"><defs><marker id="egHead" markerWidth="10" markerHeight="10" refX="6" refY="5" orient="auto"><path d="M0,0 L8,5 L0,10" style="fill:none;stroke:#fde047;stroke-width:2.5"/></marker></defs><path id="egPath" marker-end="url(#egHead)"/></svg>
+	<div class="eg-bubble" id="egBubble" aria-live="polite"><b></b><span></span></div>
+	<div class="eg-ctrl"><span class="what" id="egWhat"></span><div class="eg-dots" id="egDots"></div><button type="button" class="skip" id="egSkip">그만 보기</button><button type="button" class="prev" id="egPrev">이전</button><button type="button" class="next" id="egNext">다음</button></div>
+</div>
+
+<script>
+(function() {
+	var EGX = window.EG || { page: [], modals: {} };
+	var $tour = document.getElementById('egTour'), hole = document.getElementById('egHole'), bubble = document.getElementById('egBubble'),
+		path = document.getElementById('egPath'), fab = document.getElementById('egOpen'), steps = [], i = 0;
+	function target(sel) {
+		var el = document.querySelector(sel);
+		return el && el.getClientRects().length && el.getBoundingClientRect().width ? el : null;
+	}
+	function text(sel) { var el = document.querySelector(sel); return el ? el.textContent.trim() : ''; }
+	function build() {
+		var modal = document.querySelector('.modal.show'), list;
+		if (modal) {
+			// 설명을 따로 안 만든 팝업(알림창 포함)은 공통 순서로
+			var m = modal.id ? '#' + modal.id : '.modal.show';
+			list = (modal.id && EGX.modals && EGX.modals[modal.id]) || [
+				[m + ' .modal-body', '여기에 입력하거나 확인해요', '팝업 안의 칸을 채우거나 내용을 읽어 보세요.\n바뀐 내용은 아래 버튼을 눌러야 반영돼요.'],
+				[m + ' .modal-footer', '저장 · 닫기', '끝났으면 여기서 저장하거나 닫아요.\n오른쪽 위 × 를 누르면 저장하지 않고 닫혀요.']];
+			document.getElementById('egWhat').textContent = (text(m + ' .modal-title') || '팝업') + ' 팝업';
+		} else {
+			list = (EGX.page && EGX.page.length) ? EGX.page.slice()
+				: [['.main-sidebar', '왼쪽 메뉴', '내 권한에 있는 화면만 보여요.\n메뉴를 누르면 그 화면으로 이동해요.']];
+			if (EGX.tail !== false) list.push(['#egOpen', '팝업에서도 눌러 보세요', '팝업(상세·등록 창)이 열린 상태에서 이 ? 를 누르면\n그 팝업 안을 하나씩 설명해 줘요.']);
+			document.getElementById('egWhat').textContent = (EGX.title || text('.bTitle') || '이 화면') + ' 화면';
+		}
+		return list.filter(function(s) { return target(s[0]); });
+	}
+	function open() {
+		steps = build();
+		if (!steps.length) return;
+		i = 0; $tour.hidden = false; show(); document.getElementById('egNext').focus();
+	}
+	function close() { $tour.hidden = true; fab.focus(); }
+	function show(still) {
+		var s = steps[i], el = target(s[0]);
+		if (!el) { steps.splice(i, 1); if (!steps.length) return close(); i = Math.min(i, steps.length - 1); return show(still); }
+		var W = window.innerWidth, H = window.innerHeight, pad = 8, r = el.getBoundingClientRect();
+		// 화면 밖일 때만 즉시 스크롤 (부드러운 스크롤 도중에 재면 위치가 어긋난다)
+		if (!still && (r.top < 0 || r.bottom > H - 90)) { el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }); r = el.getBoundingClientRect(); }
+		// 아주 큰 대상(표 전체 등)은 화면 안쪽만 밝힌다
+		var top = Math.max(r.top, 8), bottom = Math.min(r.bottom, H - 90), left = Math.max(r.left, 8), right = Math.min(r.right, W - 8);
+		hole.style.left = (left - pad) + 'px'; hole.style.top = (top - pad) + 'px';
+		hole.style.width = (right - left + pad * 2) + 'px'; hole.style.height = (bottom - top + pad * 2) + 'px';
+
+		if (!still) {
+			bubble.className = 'eg-bubble' + (s[3] ? ' sec' : '');
+			bubble.querySelector('b').textContent = s[1]; bubble.querySelector('span').textContent = s[2] || '';
+		}
+		// 말풍선은 아래·위 중 넓은 쪽, 가로는 대상 근처에서 화면 밖으로 안 나가게. 높이는 글 길이대로
+		var bw = bubble.offsetWidth, bh = bubble.offsetHeight, below = (H - 90 - bottom) >= (top - 10);
+		var cx = (left + right) / 2, bx = Math.min(Math.max(cx + (cx > W / 2 ? -bw - 40 : 60), 16), W - bw - 16);
+		var by = below ? Math.min(bottom + pad + 70, H - 100 - bh) : Math.max(top - pad - 70 - bh, 10);
+		bubble.style.left = bx + 'px'; bubble.style.top = by + 'px';
+		if (!still) { void bubble.offsetWidth; bubble.classList.add('show'); }
+
+		// 화살표: 말풍선 가장자리 → 밝힌 칸 가장자리, 옆으로 휘게
+		var sx = bx + (cx > bx + bw / 2 ? bw - 40 : 40), sy = below ? by - 6 : by + bh + 6;
+		var tx = Math.min(Math.max(cx, left + 12), right - 12), ty = below ? bottom + pad + 8 : top - pad - 8;
+		var qx = (sx + tx) / 2 + (tx > sx ? -60 : 60), qy = (sy + ty) / 2;
+		path.setAttribute('d', 'M' + sx + ',' + sy + ' Q' + qx + ',' + qy + ' ' + tx + ',' + ty);
+		path.classList.remove('draw'); path.style.setProperty('--len', path.getTotalLength()); void path.getBBox();
+		if (still) path.style.strokeDashoffset = 0; else { path.style.strokeDashoffset = ''; path.classList.add('draw'); }
+
+		document.getElementById('egDots').innerHTML = steps.map(function(st, k) { return '<i class="' + (k === i ? 'on' : '') + (st[3] ? ' sec' : '') + '"></i>'; }).join('');
+		document.getElementById('egPrev').style.visibility = i ? 'visible' : 'hidden';
+		document.getElementById('egNext').textContent = i === steps.length - 1 ? '끝' : '다음';
+	}
+	function next() { if (i < steps.length - 1) { i++; show(); } else close(); }
+	function prev() { if (i > 0) { i--; show(); } }
+	fab.addEventListener('click', open);
+	document.getElementById('egSkip').addEventListener('click', close);
+	document.getElementById('egPrev').addEventListener('click', prev);
+	document.getElementById('egNext').addEventListener('click', next);
+	// 어두운 곳을 눌러도 다음으로
+	$tour.addEventListener('click', function(e) { if (!e.target.closest('.eg-ctrl')) next(); });
+	// 팝업의 Esc 닫기보다 먼저 받아서 가이드만 닫는다
+	document.addEventListener('keydown', function(e) {
+		if ($tour.hidden) return;
+		if (e.key === 'Escape') close(); else if (e.key === 'ArrowRight') next(); else if (e.key === 'ArrowLeft') prev(); else return;
+		e.preventDefault(); e.stopPropagation();
+	}, true);
+	window.addEventListener('resize', function() { if (!$tour.hidden) show(true); });
+	// 팝업 안 스크롤 등으로 대상이 움직이면 따라간다
+	document.addEventListener('scroll', function() { if (!$tour.hidden) show(true); }, true);
+})();
+</script>
