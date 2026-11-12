@@ -63,7 +63,6 @@ public interface BoMemberMapper {
 	void touchLogin(String emplyId);
 
 	/** 시크릿 (sql/secret.sql) */
-	int countSecret(String emplyId);
 
 	String selectSecretYn(int sq);
 

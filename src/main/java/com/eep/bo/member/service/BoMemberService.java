@@ -71,15 +71,14 @@ public class BoMemberService {
 		return row;
 	}
 
-	/** 시크릿은 시크릿 계정인 슈퍼관리자만 보고 바꾼다. 그 밖의 사람에게는 있다는 것도 알리지 않는다 */
+	/** 시크릿은 슈퍼관리자만 보고 바꾼다(내 계정 포함). 그 밖의 사람에게는 있다는 것도 알리지 않는다 */
 	private boolean canSecret(Actor actor) {
-		return actor.superUser && mapper.countSecret(actor.id) > 0;
+		return actor.superUser;
 	}
 
 	public void setSecret(int sq, boolean on, Actor actor) {
 		require(canSecret(actor), "계정을 찾을 수 없습니다.");
-		Map<String, Object> row = target(sq, actor);
-		require(on || !actor.id.equals(row.get("EMPLY_ID")), "내 계정의 시크릿은 끌 수 없습니다. 다른 시크릿 계정에서 꺼 주세요.");
+		target(sq, actor);
 		Map<String, Object> p = new HashMap<>();
 		p.put("EMPLY_SQ", sq);
 		p.put("SECRET_YN", on ? "Y" : "N");

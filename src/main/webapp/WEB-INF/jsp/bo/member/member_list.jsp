@@ -106,7 +106,7 @@
 					</div>
 					<div class="ac-pane" data-pane="secret" hidden>
 						<div class="custom-control custom-switch mb-2"><input type="checkbox" class="custom-control-input" id="cSecret"><label class="custom-control-label font-weight-bold" for="cSecret">🔒 시크릿 계정</label></div>
-						<div class="small text-muted">켜면 이 계정에 연결된 직원의 투입현황·급여관리 행과 합계·건수·엑셀이 시크릿이 아닌 사람에게 모두 빠집니다. 시크릿 계정끼리는 서로 보입니다. 이 탭은 시크릿 계정인 슈퍼관리자에게만 보이고, 바로 저장됩니다.</div>
+						<div class="small text-muted">켜면 이 계정에 연결된 직원의 투입현황·급여관리 행과 합계·건수·엑셀이 시크릿이 아닌 사람에게 모두 빠집니다. 시크릿 계정끼리는 서로 보입니다. 이 탭은 슈퍼관리자에게만 보이고, 바로 저장됩니다.</div>
 						<div class="small mt-2" id="cSecretNote"></div>
 					</div>
 				</div>
@@ -287,8 +287,8 @@
 			$('#cPw').empty().append(pwPill(card));
 			$('#cLogin').text('최근 로그인 ' + (card.LAST_LOGIN_DT || '-'));
 			paintStatus();
-			$('#cSecret').prop({ checked: card.SECRET_YN === 'Y', disabled: card.EMPLY_ID === data.me && card.SECRET_YN === 'Y' });
-			$('#cSecretNote').text(card.EMPLY_ID === data.me ? '내 계정의 시크릿은 다른 시크릿 계정에서만 끌 수 있습니다.' : card.STAFF_SQ ? '' : '연결된 직원이 없어 숨길 투입·급여가 없습니다.');
+			$('#cSecret').prop('checked', card.SECRET_YN === 'Y');
+			$('#cSecretNote').text(card.STAFF_SQ ? '' : '연결된 직원이 없어 숨길 투입·급여가 없습니다.');
 			showPane('basic');
 			$('#cardModal').modal('show');
 		});

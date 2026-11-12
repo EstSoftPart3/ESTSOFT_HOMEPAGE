@@ -161,9 +161,6 @@
 		SELECT EMPLY_PW FROM TB_EEP_EMPLY_M WHERE EMPLY_ID = #{emplyId}
 	</select>
 
-	<select id="countSecret" parameterType="string" resultType="int">
-		SELECT COUNT(*) FROM TB_EEP_EMPLY_M WHERE EMPLY_ID = #{emplyId} AND SECRET_YN = 'Y' AND IFNULL(USE_YN, 'Y') = 'Y' AND IFNULL(DEL_YN, 'N') = 'N'
-	</select>
 
 	<select id="selectSecretYn" parameterType="int" resultType="string">
 		SELECT SECRET_YN FROM TB_EEP_EMPLY_M WHERE EMPLY_SQ = #{sq}
