@@ -5,7 +5,7 @@
 <%@ include file="/WEB-INF/jsp/bo/hr/hr_common.jspf"%>
 <%@ include file="/WEB-INF/jsp/bo/deploy/deploy_common.jspf"%>
 <style>
-	.st-bonus { white-space: normal; min-width: 260px; }
+	#listHead th, #listBody td { white-space: nowrap; }
 	.st-bn { display: inline-flex; align-items: center; gap: 4px; margin: 1px 4px 1px 0; }
 	.st-bn .dp-pill { cursor: pointer; margin: 0; }
 	.st-bn .dp-pill:focus { outline: 2px solid #16d5ff; }
