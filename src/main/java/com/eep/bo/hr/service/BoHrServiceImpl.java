@@ -19,8 +19,8 @@ public class BoHrServiceImpl implements BoHrService {
 	private static final List<String> SKILL_VALS = Arrays.asList("", "상", "중", "하");
 	private static final List<String> WEEK_CODES = Arrays.asList("1", "2", "3", "OVER");
 	// 목록에서 바로 고칠 수 있는 글자 칸. 코드·날짜 칸은 각 저장 메서드에서 따로 검사한다
-	private static final List<String> INTV_TEXT_FIELDS = Arrays.asList("APLY_NM", "INTV_TM", "PHONE", "JOIN_DT", "MEMO");
-	private static final List<String> TRAINEE_TEXT_FIELDS = Arrays.asList("TRN_NM", "AGE", "INTERVIEW_AVAIL", "MEMO");
+	private static final List<String> INTV_TEXT_FIELDS = Arrays.asList("APLY_NM", "INTV_TM", "PHONE", "JOIN_DT");
+	private static final List<String> TRAINEE_TEXT_FIELDS = Arrays.asList("TRN_NM", "AGE", "INTERVIEW_AVAIL");
 	// 항목별 코드 그룹. 비어 있거나 파라미터가 없으면 값 없음으로 저장한다
 	private static final String[][] INTV_CODES = { { "GENDER", "HR_GENDER" }, { "APLY_ROUTE", "HR_ROUTE" }, { "ATTEND_ST", "HR_ATTEND" },
 			{ "RESULT_ST", "HR_RESULT" }, { "NOTICE_ST", "HR_NOTICE" }, { "JOIN_ST", "HR_JOIN" }, { "LOCAL_YN", "HR_LOCAL" }, { "LANG", "HR_LANG" } };

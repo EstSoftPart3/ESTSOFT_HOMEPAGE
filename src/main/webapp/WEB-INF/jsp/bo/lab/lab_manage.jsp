@@ -61,7 +61,7 @@
 						</div>
 						<div class="cal-panel"><div class="table-responsive px-3">
 							<table class="table table-sm table-hover cal-table mb-0">
-								<thead><tr><th>연구팀</th><th>연구 분야</th><th>연구원</th><th>결재라인</th><th>과제</th><th>사용</th></tr></thead>
+								<thead><tr><th>연구팀</th><th>연구 분야</th><th>연구원</th><th>결재라인</th><th>과제</th><th>사용</th><th>메모</th></tr></thead>
 								<tbody id="listBody"></tbody>
 							</table>
 						</div></div>
@@ -85,7 +85,6 @@
 					<div class="form-group"><label for="FIELD_NM">연구 분야</label><input id="FIELD_NM" class="form-control form-control-sm" maxlength="200"></div>
 					<div class="form-group"><label for="PLACE">소재지</label><input id="PLACE" class="form-control form-control-sm" maxlength="200"></div>
 					<div class="form-group"><label for="USE_YN">사용 여부</label><select id="USE_YN" class="form-control form-control-sm"><option value="Y">사용</option><option value="N">미사용</option></select></div>
-					<div class="form-group mb-0"><label for="MEMO">비고</label><textarea id="MEMO" rows="3" maxlength="1000" class="form-control form-control-sm"></textarea></div>
 				</div>
 				<div class="modal-footer">
 					<button type="button" class="btn btn-sm btn-outline-secondary" data-dismiss="modal">취소</button>
@@ -131,6 +130,8 @@
 	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
 	<script>
 	var TABS = ['기본 정보', '연구원', '소속 현황', '결재라인'];
+	// 비고는 메모로 옮겼다. 목록 💬 버튼과 기본 정보 아래 메모 칸에서 쌓는다
+	var MEMO_API = hrMemoApi('/admin/lab/', 'team');
 	var teams = [], staff = [], accounts = [], detail = null, tab = 0, year = new Date().getFullYear(), picked = null, line = [], dragFrom = null;
 
 	function toast(msg) { $('#labToast').text(msg).stop(true).fadeIn(100).delay(1500).fadeOut(300); }
@@ -140,10 +141,11 @@
 		var name = $('#fName').val().trim().toLowerCase(), use = $('#fUse').val();
 		var list = teams.filter(function(t) { return (!name || t.TEAM_NM.toLowerCase().indexOf(name) >= 0) && (!use || t.USE_YN === use); });
 		var $b = $('#listBody').empty();
-		if (!list.length) $b.append('<tr><td colspan="6" class="text-center text-muted">연구팀이 없습니다.</td></tr>');
+		if (!list.length) $b.append('<tr><td colspan="7" class="text-center text-muted">연구팀이 없습니다.</td></tr>');
 		list.forEach(function(t) {
 			$('<tr>').append($('<td>').append($('<a class="lab-open">').attr('href', '#t=' + t.TEAM_SQ).text(t.TEAM_NM)), $('<td>').text(t.FIELD_NM || ''), $('<td>').text(t.RSCH_CNT + '명'),
-				$('<td>').text(t.APPR_LINE || '미지정'), $('<td>').text(t.PRJ_CNT + '건'), $('<td>').text(t.USE_YN === 'Y' ? '사용' : '미사용')).appendTo($b);
+				$('<td>').text(t.APPR_LINE || '미지정'), $('<td>').text(t.PRJ_CNT + '건'), $('<td>').text(t.USE_YN === 'Y' ? '사용' : '미사용'),
+				$('<td>').append(hrMemoBtn(MEMO_API, t.TEAM_SQ, t.MEMO_CNT, t.TEAM_NM, loadList))).appendTo($b);
 		});
 	}
 
@@ -173,10 +175,12 @@
 	function drawInfo($b) {
 		var t = detail.team, $t = $('<tbody>');
 		$b.append(actions(['수정', function() { openTeam(t); }]));
-		[['연구팀명', t.TEAM_NM], ['연구 분야', t.FIELD_NM], ['소재지', t.PLACE], ['사용 여부', t.USE_YN === 'Y' ? '사용' : '미사용'], ['비고', t.MEMO]].forEach(function(r) {
+		[['연구팀명', t.TEAM_NM], ['연구 분야', t.FIELD_NM], ['소재지', t.PLACE], ['사용 여부', t.USE_YN === 'Y' ? '사용' : '미사용']].forEach(function(r) {
 			$('<tr>').append($('<th scope="row">').text(r[0]), $('<td style="white-space:pre-line;">').text(r[1] || '')).appendTo($t);
 		});
 		$b.append($('<table class="table table-sm table-bordered lab-info mb-0">').append($t));
+		$b.append('<div class="hr-section">메모</div>');
+		hrMemoFeed($('<div>').appendTo($b), MEMO_API, t.TEAM_SQ, loadList);
 	}
 
 	function cardLink(sq) {
@@ -348,14 +352,14 @@
 	// ── 팝업 ──
 	function openTeam(t) {
 		$('#teamTitle').text(t ? '연구팀 수정' : '연구팀 등록');
-		['TEAM_SQ', 'TEAM_NM', 'FIELD_NM', 'PLACE', 'MEMO'].forEach(function(f) { $('#' + f).val(t && t[f] || ''); });
+		['TEAM_SQ', 'TEAM_NM', 'FIELD_NM', 'PLACE'].forEach(function(f) { $('#' + f).val(t && t[f] || ''); });
 		$('#USE_YN').val(t ? t.USE_YN : 'Y');
 		$('#teamModal').modal('show');
 	}
 
 	function saveTeam() {
 		var data = {}, isNew = !$('#TEAM_SQ').val();
-		['TEAM_SQ', 'TEAM_NM', 'FIELD_NM', 'PLACE', 'USE_YN', 'MEMO'].forEach(function(f) { data[f] = $('#' + f).val(); });
+		['TEAM_SQ', 'TEAM_NM', 'FIELD_NM', 'PLACE', 'USE_YN'].forEach(function(f) { data[f] = $('#' + f).val(); });
 		hrPost('/admin/lab/saveTeamData.do', data, function(res) {
 			$('#teamModal').modal('hide');
 			if (isNew) location.hash = '#t=' + res.result; else reload();

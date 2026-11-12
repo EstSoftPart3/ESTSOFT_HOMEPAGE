@@ -39,7 +39,7 @@ public class BoEquipmentService {
 		TYPES.put("KB", "키보드");
 	}
 	// 컬럼명이 SQL 에 그대로 들어가므로 허용 목록으로만 받는다
-	private static final Set<String> FIELDS = new HashSet<>(Arrays.asList("EQP_NO", "BRAND_NM", "MODEL_NM", "SERIAL_NO", "CPU_SPEC", "MEM_SPEC", "SSD_SPEC", "HDD_SPEC", "LAN_YN", "ETC_TXT", "LOCATION_NM", "AUDIT_EXCL_YN", "MEMO"));
+	private static final Set<String> FIELDS = new HashSet<>(Arrays.asList("EQP_NO", "BRAND_NM", "MODEL_NM", "SERIAL_NO", "CPU_SPEC", "MEM_SPEC", "SSD_SPEC", "HDD_SPEC", "LAN_YN", "ETC_TXT", "LOCATION_NM", "AUDIT_EXCL_YN"));
 	private static final Set<String> RENT_FIELDS = new HashSet<>(Arrays.asList("HOLDER_NM", "START_DT", "END_DT", "PURPOSE_NM", "PROJECT_NM", "HANDOVER_NM", "REVIEW_DONE_YN"));
 	private static final Pattern IMAGE = Pattern.compile("^data:image/(png|jpeg);base64,[A-Za-z0-9+/=]+$");
 	private static final long MAX_FILE = 20L * 1024 * 1024;
@@ -78,14 +78,12 @@ public class BoEquipmentService {
 		out.put("list", mapper.selectEquipmentList());
 		out.put("staff", mapper.selectStaffOptions());
 		out.put("seal", mapper.selectSeal() != null);
-		out.put("issues", mapper.selectOpenIssues());
 		return out;
 	}
 
 	public Map<String, Object> card(Object eqpSq) {
 		Map<String, Object> p = one("EQP_SQ", eqpSq), out = new HashMap<>();
 		out.put("rents", mapper.selectRentList(p));
-		out.put("issues", mapper.selectIssueList(p));
 		out.put("files", mapper.selectFileList(p));
 		return out;
 	}
@@ -204,18 +202,10 @@ public class BoEquipmentService {
 		mapper.updateRentField(param);
 	}
 
+	/** 전수조사에서 장비 메모로 남긴다 */
 	public void addIssue(Map<String, Object> param) {
-		if (str(param, "CONTENT").trim().isEmpty()) throw new IllegalArgumentException("이슈 내용을 입력해 주세요.");
+		if (str(param, "CONTENT").trim().isEmpty()) throw new IllegalArgumentException("메모 내용을 입력해 주세요.");
 		mapper.insertIssue(param);
-	}
-
-	public void saveIssue(Map<String, Object> param) {
-		if (str(param, "VALUE").trim().isEmpty()) throw new IllegalArgumentException("이슈 내용을 입력해 주세요.");
-		if (mapper.updateIssue(param) != 1) throw new IllegalArgumentException("이미 해결된 이슈입니다.");
-	}
-
-	public void closeIssue(Map<String, Object> param) {
-		mapper.closeIssue(param);
 	}
 
 	public List<Map<String, Object>> staffEquipment(Object staffSq) {

@@ -21,7 +21,7 @@
 						<div class="cal-panel-body">
 							<div class="form-row align-items-end">
 								<div class="col-md-3 col-12 mb-2">
-									<label for="keyword">검색 (이름·참고사항)</label>
+									<label for="keyword">검색 (이름·메모)</label>
 									<input type="search" id="keyword" class="form-control form-control-sm">
 								</div>
 								<div class="col-md-1 col-6 mb-2"><label for="fGender">성별</label><select id="fGender" class="form-control form-control-sm hr-board-filter"></select></div>
@@ -118,8 +118,10 @@
 		['ADDR', '주소지', 6], ['STATION', '인근 지하철역', 6],
 		['LANG', '외국어', 12, { multi: 'HR_LANG' }], ['LANG_NOTE', '외국어 수준', 12],
 		['LOCAL_YN', '지방 가능', 4, { code: 'HR_LOCAL' }], ['EARLY_YN', '조기파견', 4, { code: 'HR_OXT' }], ['SPECIAL_YN', '특수계약', 4, { code: 'HR_OXT' }],
-		['CAREER', '이전경력', 12], ['MEMO', '참고사항', 12, 'textarea']
+		['CAREER', '이전경력', 12]
 	];
+	// 참고사항은 메모로 옮겼다. 카드 💬 버튼과 상세 창 아래 메모 칸에서 쌓는다
+	var MEMO_API = hrMemoApi('/admin/hr/', 'trainee');
 	var FILTERS = [['#fGender', 'GENDER', 'HR_GENDER'], ['#fInterview', 'INTERVIEW_YN', 'HR_INTERVIEW'], ['#fLocal', 'LOCAL_YN', 'HR_LOCAL'], ['#fLeave', 'LEAVE_NOTE', 'HR_LEAVE']];
 	function code(title, field, grp) {
 		return { t: title, field: field, type: { code: grp }, show: function(r) { return hrCodeName(grp, r[field]); } };
@@ -136,8 +138,7 @@
 		code('퇴사·잠수', 'LEAVE_NOTE', 'HR_LEAVE'),
 		code('인터뷰', 'INTERVIEW_YN', 'HR_INTERVIEW'),
 		text('가능일', 'INTERVIEW_AVAIL'),
-		code('지방', 'LOCAL_YN', 'HR_LOCAL'),
-		text('참고사항', 'MEMO', 'textarea')
+		code('지방', 'LOCAL_YN', 'HR_LOCAL')
 	];
 	// 칸반에서 다시 그려야 하는 칸: 탭, 주차 열, 계산 값이 달라진다
 	var RERENDER = ['STATUS_CD', 'EDU_START_DT', 'INTERVIEW_YN', 'INTERVIEW_AVAIL', 'TRN_NM'];
@@ -255,6 +256,7 @@
 			})));
 		}
 		CARD_FIELDS.forEach(function(f) { $c.append(cardRow(f.t, editableCell(r, f))); });
+		$c.append(cardRow('메모', $('<span>').append(hrMemoBtn(MEMO_API, r.TRN_SQ, r.MEMO_CNT, r.TRN_NM, load))));
 		var top = SKILLS.filter(function(s) { return r[s[0]] === '상'; }).map(function(s) { return s[1]; });
 		if (top.length) $('<div class="hr-card-info">').text('기술 상: ' + top.join(', ')).appendTo($c);
 		return $c;
@@ -386,6 +388,9 @@
 		$('#btnDelete').toggle(!!row.TRN_SQ);
 		// 기술 평가는 저장된 교육생에만 바로 저장할 수 있다
 		$('#skillArea').toggle(!!row.TRN_SQ);
+		if (!$('#editMemo').length) $('<div class="mt-2"><div class="hr-section">메모</div><div id="editMemo"></div></div>').insertAfter('#editFields');
+		$('#editMemo').parent().toggle(!!row.TRN_SQ);
+		if (row.TRN_SQ) hrMemoFeed($('#editMemo'), MEMO_API, row.TRN_SQ, load);
 		var $box = $('#skillBox').empty();
 		if (row.TRN_SQ) SKILLS.forEach(function(s) { $box.append(skillSelect(row, s[0], s[1])); });
 		$('#editModal').modal('show');

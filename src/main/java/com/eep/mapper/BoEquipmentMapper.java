@@ -26,11 +26,7 @@ public interface BoEquipmentMapper {
 	public int insertIssueByRent(Map<String, Object> param);
 	public int closeRentByEquipment(Map<String, Object> param);			//분실 처리 때 진행 중 대여를 닫는다
 
-	public List<Map<String, Object>> selectIssueList(Map<String, Object> param);
-	public List<Map<String, Object>> selectOpenIssues();
-	public int updateIssue(Map<String, Object> param);					//열린 이슈의 내용(VALUE)
-	public int insertIssue(Map<String, Object> param);
-	public int closeIssue(Map<String, Object> param);
+	public int insertIssue(Map<String, Object> param);					//장비 메모로 남긴다(EQP_SQ, CONTENT)
 
 	public List<Map<String, Object>> selectFileList(Map<String, Object> param);
 	public int insertFile(Map<String, Object> param);

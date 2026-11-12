@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 목록 메모. 표는 sql/row_memo.sql -->
+<mapper namespace="com.eep.mapper.BoMemoMapper">
+
+	<select id="selectMemos" parameterType="hashMap" resultType="hashMap">
+		SELECT M.MEMO_SQ, M.CONTENT, M.EMPLY_ID, DATE_FORMAT(M.REG_DT, '%Y-%m-%d %H:%i') AS REG_DT
+			, IF(M.EMPLY_ID = 'MIGRATED', '기존 기록', (SELECT E.EMPLY_NM FROM TB_EEP_EMPLY_M E WHERE E.EMPLY_ID = M.EMPLY_ID LIMIT 1)) AS EMPLY_NM
+		FROM TB_EEP_ROW_MEMO_R M WHERE M.TARGET_CD = #{TARGET_CD} AND M.TARGET_SQ = #{TARGET_SQ}
+		ORDER BY M.MEMO_SQ DESC
+	</select>
+
+	<insert id="insertMemo" parameterType="hashMap">
+		INSERT INTO TB_EEP_ROW_MEMO_R (TARGET_CD, TARGET_SQ, CONTENT, EMPLY_ID) VALUES (#{TARGET_CD}, #{TARGET_SQ}, #{CONTENT}, #{EMPLY_ID})
+	</insert>
+
+	<delete id="deleteMemo" parameterType="hashMap">
+		DELETE FROM TB_EEP_ROW_MEMO_R WHERE MEMO_SQ = #{MEMO_SQ} AND TARGET_CD = #{TARGET_CD} AND EMPLY_ID = #{EMPLY_ID}
+	</delete>
+
+	<select id="selectMemoTarget" parameterType="hashMap" resultType="java.lang.String">
+		SELECT CAST(TARGET_SQ AS CHAR) FROM TB_EEP_ROW_MEMO_R WHERE MEMO_SQ = #{MEMO_SQ} AND TARGET_CD = #{TARGET_CD}
+	</select>
+
+	<select id="selectMemoCounts" parameterType="hashMap" resultType="hashMap">
+		SELECT TARGET_SQ, COUNT(*) AS CNT FROM TB_EEP_ROW_MEMO_R WHERE TARGET_CD = #{TARGET_CD} GROUP BY TARGET_SQ
+	</select>
+</mapper>

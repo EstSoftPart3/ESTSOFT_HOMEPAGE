@@ -50,7 +50,7 @@
 									<select id="weekSel" class="form-control form-control-sm hr-filter-input"></select>
 								</div>
 								<div class="col-md-3 col-6 mb-2">
-									<label for="keyword">검색 (이름·연락처·비고, 모든 연도)</label>
+									<label for="keyword">검색 (이름·연락처·메모, 모든 연도)</label>
 									<input type="search" id="keyword" class="form-control form-control-sm">
 								</div>
 								<div class="col-md-2 col-6 mb-2"><label for="fRoute">경로</label><select id="fRoute" class="form-control form-control-sm hr-filter-input"></select></div>
@@ -122,11 +122,10 @@
 		]],
 		['채용 진행', [
 			['NOTICE_ST', '합격통보', 4, { code: 'HR_NOTICE' }], ['JOIN_ST', '입사여부', 4, { code: 'HR_JOIN' }], ['JOIN_DT', '출근일자', 4, 'date']
-		]],
-		['비고', [
-			['MEMO', '비고', 12, 'textarea', true]
 		]]
 	];
+	// 비고는 메모로 옮겼다. 목록 💬 버튼과 상세 창 아래 메모 칸에서 쌓는다
+	var MEMO_API = hrMemoApi('/admin/hr/', 'interview');
 	var FIELDS = [].concat.apply([], SECTIONS.map(function(s) { return s[1]; }));
 	var TABS = [
 		['', '전체', function() { return true; }],
@@ -154,10 +153,10 @@
 		codeCol('통보', 90, 'NOTICE_ST', 'HR_NOTICE'),
 		codeCol('입사', 90, 'JOIN_ST', 'HR_JOIN'),
 		textCol('출근일', 135, 'JOIN_DT', true, 'date'),
-		textCol('비고', null, 'MEMO', false, 'textarea')
+		{ t: '메모', w: 70, memo: true, v: function(r) { return r.MEMO_CNT; } }
 	];
 	var NONE = '__NONE';
-	// 결과는 탭, 이름·연락처·비고는 검색, 날짜는 연도로 찾으므로 필터에서 뺀다
+	// 결과는 탭, 이름·연락처·메모는 검색, 날짜는 연도로 찾으므로 필터에서 뺀다
 	var FILTERS = [['#fRoute', 'APLY_ROUTE', 'HR_ROUTE'], ['#fAttend', 'ATTEND_ST', 'HR_ATTEND'], ['#fNotice', 'NOTICE_ST', 'HR_NOTICE'], ['#fJoin', 'JOIN_ST', 'HR_JOIN']];
 	// 목록 칸 색. 코드 없는 값은 색을 넣지 않는다
 	var TONES = {
@@ -256,7 +255,7 @@
 		return parts.join(', ');
 	}
 
-	// 비고는 첫 줄만 쓴다. 가져오기 때 붙은 [원본 …] 줄은 건너뛴다
+	// 메모(위가 첫 메모)의 첫 줄만 쓴다. 가져오기 때 붙은 [원본 …] 메모는 건너뛴다
 	function rosterLine(r, i) {
 		var who = [hrCodeName('HR_GENDER', r.GENDER), r.AGE].filter(Boolean).join(',');
 		var info = [who, r.PHONE, hrCodeName('HR_ROUTE', r.APLY_ROUTE)].filter(Boolean).join(', ');
@@ -327,6 +326,7 @@
 		});
 		var $title = $('<tr>'), $new = $('<tr class="hr-new">');
 		COLS.forEach(function(c, i) {
+			if (c.memo) { $new.append('<th></th>'); $title.append($('<th>').attr('data-col', i).text(c.t)); return; }
 			var $add = hrControl(c.type === 'textarea' ? 'text' : c.type, c.field === 'INTV_DT' ? moment().format('YYYY-MM-DD') : c.field === 'APLY_ROUTE' ? firstRoute() : '')
 				.addClass('hr-new-input').attr({ name: c.field, 'aria-label': '새 면접자 ' + c.t });
 			$new.append($('<th>').append($add));
@@ -448,7 +448,8 @@
 		list.forEach(function(r) {
 			var $tr = $('<tr>');
 			COLS.forEach(function(c) {
-				var $td = $('<td>').addClass(c.field === 'MEMO' ? 'hr-memo' : 'small').appendTo($tr);
+				var $td = $('<td class="small">').appendTo($tr);
+				if (c.memo) return $td.append(hrMemoBtn(MEMO_API, r.INTV_SQ, r.MEMO_CNT, r.APLY_NM, load));
 				hrEditable($td, {
 					url: '/admin/hr/saveInterviewFieldData.do', key: { INTV_SQ: r.INTV_SQ }, field: c.field, type: c.type, label: r.APLY_NM + ' ' + c.t,
 					value: function() { return r[c.field]; },
@@ -473,6 +474,8 @@
 		toggleReferrer();
 		$('#editTitle').text('면접자 상세 · 순번 ' + (row.SEQ_NO || '-'));
 		$('#btnTrainee').toggle(!row.TRN_SQ);
+		if (!$('#editMemo').length) $('<div class="mt-2"><div class="hr-section">메모</div><div id="editMemo"></div></div>').insertAfter('#editFields');
+		hrMemoFeed($('#editMemo'), MEMO_API, row.INTV_SQ, load);
 		$('#editModal').modal('show');
 	}
 

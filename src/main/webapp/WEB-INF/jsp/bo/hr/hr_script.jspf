@@ -17,6 +17,50 @@ function hrCodeName(grp, cd) {
 	return found ? found.NM : cd;
 }
 
+// ── 목록 메모(쌓기만, 본인 것만 삭제). 서버는 BoMemoController ──
+// 주소: hrMemoApi('/admin/staff/') → memoListData.do, hrMemoApi('/admin/hr/', 'interview') → interviewMemoListData.do
+function hrMemoApi(prefix, name) {
+	function u(s) { return prefix + (name ? name + s : s.charAt(0).toLowerCase() + s.slice(1)) + 'Data.do'; }
+	return { list: u('MemoList'), save: u('SaveMemo'), del: u('DeleteMemo') };
+}
+
+// $box 에 메모 목록과 입력칸을 그린다. changed 는 메모가 늘거나 줄면 부른다(목록 건수 갱신)
+function hrMemoFeed($box, api, sq, changed, focus) {
+	hrPost(api.list, { TARGET_SQ: sq }, function(res) {
+		function redraw() { hrMemoFeed($box, api, sq, changed, true); if (changed) changed(); }
+		var $f = $('<div class="hr-memo-feed">');
+		res.result.list.forEach(function(m) {
+			var $who = $('<div class="who">').append($('<b>').text(m.EMPLY_NM || m.EMPLY_ID)).append($('<span>').text(m.REG_DT));
+			if (m.EMPLY_ID === res.result.me) $who.append($('<button type="button" class="btn btn-sm btn-link p-0 ml-auto text-danger">삭제</button>').on('click', function() {
+				hrPost(api.del, { MEMO_SQ: m.MEMO_SQ }, redraw);
+			}));
+			$f.append($('<div class="it">').append($who).append($('<div>').text(m.CONTENT)));
+		});
+		if (!res.result.list.length) $f.append('<div class="text-muted small mb-2">메모가 없습니다.</div>');
+		var $ta = $('<textarea class="form-control form-control-sm enter-send" rows="2" maxlength="2000" aria-label="메모 입력" placeholder="메모 입력 · Enter 등록, Shift+Enter 줄바꿈 (작성자·일시는 자동)">');
+		var $add = $('<button type="button" class="btn btn-sm btn-primary mt-1">남기기</button>').on('click', function() {
+			if (!$.trim($ta.val())) { $ta.focus(); return; }
+			$add.prop('disabled', true);
+			hrPost(api.save, { TARGET_SQ: sq, CONTENT: $ta.val() }, redraw, function() { $add.prop('disabled', false); });
+		});
+		$ta.on('enter-send', function() { if (!$add.prop('disabled')) $add.click(); });
+		$box.empty().append($f).append($ta).append($('<div class="text-right">').append($add));
+		if (focus) $ta.focus();
+	});
+}
+
+// 목록 칸의 💬 건수 버튼. 누르면 메모 창이 열린다
+function hrMemoBtn(api, sq, cnt, title, changed) {
+	cnt = Number(cnt || 0);
+	return $('<button type="button" class="hr-memo-btn">').toggleClass('zero', !cnt).attr('aria-label', title + ' 메모 ' + cnt + '건').text('💬' + (cnt ? ' ' + cnt : ''))
+		.on('click', function(e) {
+			e.stopPropagation();
+			var $box = $('<div>');
+			bootbox.dialog({ title: title + ' 메모', message: $box, onEscape: true, backdrop: true }).on('shown.bs.modal', function() { $box.find('textarea').focus(); });
+			hrMemoFeed($box, api, sq, changed);
+		});
+}
+
 function hrPost(url, data, done, failed) {
 	$.post(url, data, function(res) {
 		if (res.error) { bootbox.alert(res.error); if (failed) failed(); return; }

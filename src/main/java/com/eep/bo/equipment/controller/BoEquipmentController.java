@@ -92,16 +92,6 @@ public class BoEquipmentController {
 		return write(param, session, () -> service.addIssue(param));
 	}
 
-	@RequestMapping(value = "/admin/equipment/saveIssueData.do", method = RequestMethod.POST)
-	public ModelAndView saveIssueData(@RequestParam Map<String, Object> param, HttpSession session) {
-		return write(param, session, () -> service.saveIssue(param));
-	}
-
-	@RequestMapping(value = "/admin/equipment/closeIssueData.do", method = RequestMethod.POST)
-	public ModelAndView closeIssueData(@RequestParam Map<String, Object> param, HttpSession session) {
-		return write(param, session, () -> service.closeIssue(param));
-	}
-
 	@RequestMapping(value = "/admin/equipment/uploadFileData.do", method = RequestMethod.POST)
 	public ModelAndView uploadFileData(@RequestParam("EQP_SQ") int eqpSq, @RequestParam("DOC_CD") String doc, @RequestParam("file") MultipartFile file, HttpSession session) {
 		return call(() -> { service.uploadFile(eqpSq, doc, file.getOriginalFilename(), file.getContentType(), file.getBytes(), loginId(session)); return "OK"; });

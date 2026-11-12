@@ -69,7 +69,7 @@
 						<div class="cal-panel-body">
 							<div class="form-row align-items-end">
 								<div class="col-md-3 col-12 mb-2">
-									<label for="keyword">검색 (성명·연락처·메일·부서·비고)</label>
+									<label for="keyword">검색 (성명·연락처·메일·부서·메모)</label>
 									<input type="search" id="keyword" class="form-control form-control-sm">
 								</div>
 								<div class="col-md-1 col-6 mb-2"><label for="fOrg">소속</label><select id="fOrg" class="form-control form-control-sm st-filter" data-field="ORG_NM"></select></div>
@@ -260,7 +260,7 @@
 		['교육·자격', [['EDU_NM', '교육명'], ['EDU_START_DT', '교육 시작'], ['EDU_END_DT', '교육 종료'], ['EDU_ORG', '기관명'], ['CERT_DT', '정보처리기사']]],
 		['계좌(기업)', [['BANK_NM', '은행'], ['ACCOUNT', '계좌번호', 'secret']]],
 		['비상연락망', [['EMG_REL1', '관계1'], ['EMG_TEL1', '연락처1'], ['EMG_REL2', '관계2'], ['EMG_TEL2', '연락처2']]],
-		['기타', [['PREV_CAREER', '이전경력'], ['HOBBY', '취미'], ['LANG_SKILL', '외국어'], ['SPECIALTY', '특기'], ['MEMO', '비고', 'textarea']]],
+		['기타', [['PREV_CAREER', '이전경력'], ['HOBBY', '취미'], ['LANG_SKILL', '외국어'], ['SPECIALTY', '특기']]],
 		['영업 정보', [['GRADE_NM', '등급'], ['REAL_CAREER', '실경력'], ['WISH_PRICE', '희망단가'], ['SCORE', '점수'], ['GAPIL_YN', '가필여부'], ['AUTO_APLY_YN', '자동지원여부'],
 			['SK_FE', 'F/E'], ['SK_BE', 'B/E'], ['WORK_DOMAIN', '업무·도메인'], ['WISH_LOC', '희망 위치'], ['SK_LANG', '언어·스크립트'], ['SK_FW', '프레임워크'],
 			['SK_DB', 'DB'], ['SK_IDE', 'IDE·에디터'], ['SK_VCS', '형상관리'], ['SK_OS', '운영체제'], ['EXPERTISE', '전문분야'], ['REPORT', 'Report'], ['ETC1', '기타1'], ['ETC2', '기타2']]]
@@ -295,6 +295,9 @@
 	});
 
 	$(document).on('click', '.cate-tab', function() { current = $(this).data('tab'); render(); });
+
+	// 비고는 메모로 옮겼다. 목록 💬 버튼과 인사카드 아래 메모 칸에서 쌓는다
+	var MEMO_API = hrMemoApi('/admin/staff/');
 
 	function load(then) {
 		$.post('/admin/staff/staffListData.do', function(res) {
@@ -432,7 +435,7 @@
 		var list = filtered();
 		renderSummary(list);
 		var cols = [['SEQ_NO', 'NO'], ['ORG_NM', '소속'], ['DEPT_NM', '부서'], ['POSITION_NM', '직급'], ['STAFF_NM', '성명'], ['PHONE', '전화번호'], ['EMAIL', '개인 메일'], ['COMPANY_EMAIL', '회사 메일'],
-			['JOIN_DT', '입사일'], current === 'LEFT' ? ['LEAVE_DT', '퇴사일'] : null, ['_TENURE', '근속'], ['_DOCS', '서류'], BN && current !== 'LEFT' ? ['_BONUS', '상여 적용'] : null, ['MEMO', '비고']].filter(Boolean);
+			['JOIN_DT', '입사일'], current === 'LEFT' ? ['LEAVE_DT', '퇴사일'] : null, ['_TENURE', '근속'], ['_DOCS', '서류'], BN && current !== 'LEFT' ? ['_BONUS', '상여 적용'] : null, ['_MEMO', '메모']].filter(Boolean);
 		$('#listHead').empty().append($('<tr>').append(cols.map(function(c) { return $('<th>').text(c[1]); })));
 		var $body = $('#listBody').empty();
 		if (!list.length) { $body.append($('<tr>').append($('<td class="text-center text-muted py-4">').attr('colspan', cols.length).text('해당하는 직원이 없습니다.'))); return; }
@@ -451,9 +454,10 @@
 						.attr('title', miss.map(function(d) { return d[1]; }).join(', '));
 				} else if (c[0] === '_BONUS') {
 					bonusCell($td.addClass('st-bonus'), r);
+				} else if (c[0] === '_MEMO') {
+					$td.append(hrMemoBtn(MEMO_API, r.STAFF_SQ, r.MEMO_CNT, r.STAFF_NM, function() { load(); }));
 				} else {
 					editable($td, r, c[0], /_DT$/.test(c[0]) ? 'date' : null);
-					if (c[0] === 'MEMO') $td.addClass('hr-memo');
 				}
 				$tr.append($td);
 			});
@@ -533,6 +537,8 @@
 			DOCS.forEach(function(d) { $d.append(docRow(r, d)); });
 		}
 		if (!docs || docs.sq !== r.STAFF_SQ) loadDocs(r.STAFF_SQ);
+		$b.append('<div class="hr-section">메모</div>');
+		hrMemoFeed($('<div>').appendTo($b), MEMO_API, r.STAFF_SQ, function() { load(); });
 		$b.append('<div class="hr-section">보유 장비</div>');
 		var $eq = $('<div class="small" id="staffEquipment">').appendTo($b);
 		loadEquipment(r.STAFF_SQ, function(list) {

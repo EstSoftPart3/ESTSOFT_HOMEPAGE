@@ -49,7 +49,7 @@
 						<div class="cal-panel-body">
 							<div class="form-row align-items-end">
 								<div class="col-md-3 col-12 mb-2">
-									<label for="keyword">검색 (장비번호·모델·시리얼·사용자·특이사항)</label>
+									<label for="keyword">검색 (장비번호·모델·시리얼·사용자·메모)</label>
 									<input type="search" id="keyword" class="form-control form-control-sm">
 								</div>
 								<div class="col-md-1 col-6 mb-2"><label for="fType">구분</label><select id="fType" class="form-control form-control-sm"></select></div>
@@ -74,11 +74,11 @@
 								<tbody id="focusBody"></tbody>
 							</table>
 							<table class="table table-sm table-hover cal-table mb-0" id="mainTable">
-								<thead><tr><th><input type="checkbox" id="checkAll" aria-label="이 목록 모두 선택"></th><th>장비번호</th><th>구분</th><th>브랜드</th><th>모델</th><th>시리얼</th><th>상태</th><th>사용자·위치</th><th>대여일</th><th>용도</th><th>최근 점검</th><th>이슈</th><th>특이사항</th></tr></thead>
+								<thead><tr><th><input type="checkbox" id="checkAll" aria-label="이 목록 모두 선택"></th><th>장비번호</th><th>구분</th><th>브랜드</th><th>모델</th><th>시리얼</th><th>상태</th><th>사용자·위치</th><th>대여일</th><th>용도</th><th>최근 점검</th><th>메모</th></tr></thead>
 								<tbody id="listBody"></tbody>
 							</table>
 						</div>
-						<div class="small text-muted px-3 py-2">브랜드, 모델, 시리얼, 특이사항은 칸을 누르면 바로 수정됩니다. 장비 비밀번호는 적지 마세요. 상태와 사용자는 대여·반납 처리로만 바뀝니다.</div>
+						<div class="small text-muted px-3 py-2">브랜드, 모델, 시리얼은 칸을 누르면 바로 수정되고, 💬 로 메모를 남깁니다. 장비 비밀번호는 적지 마세요. 상태와 사용자는 대여·반납 처리로만 바뀝니다.</div>
 					</div>
 				</div>
 			</section>
@@ -153,7 +153,7 @@
 							<div class="form-check form-check-inline" id="formatBox"><input class="form-check-input" type="checkbox" id="tFormat"><label class="form-check-label" for="tFormat">포맷 완료</label></div>
 							<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="tLabel"><label class="form-check-label" for="tLabel">라벨 부착 확인</label></div>
 						</div>
-						<div class="col-12 mb-2"><label for="tIssue">이상 내용 (입력하면 고른 장비에 이슈로 등록)</label><textarea id="tIssue" rows="2" class="form-control form-control-sm"></textarea></div>
+						<div class="col-12 mb-2"><label for="tIssue">이상 내용 (입력하면 고른 장비에 메모로 남김)</label><textarea id="tIssue" rows="2" class="form-control form-control-sm"></textarea></div>
 					</div></div>
 					<div class="modal-footer"><button type="submit" class="btn btn-sm btn-primary">반납 완료</button></div>
 				</form>
@@ -201,7 +201,9 @@
 	<script>
 	var TYPE = { NB: '노트북', MT: '모니터', DT: '데스크탑', MU: '마우스', KB: '키보드' };
 	var STATUS = { RENT: '대여중', STOCK: '보관중', DISPOSED: '폐기', LOST: '분실' };
-	var rows = [], staff = [], openIssues = {}, tab = 'HAVE', alertKey = null, holderKey = null, opened = null, card = null, picked = [];
+	// 특이사항·이슈는 메모로 합쳤다. 목록 💬 버튼과 장비카드 메모 칸에서 쌓는다
+	var MEMO_API = hrMemoApi('/admin/equipment/', 'equipment');
+	var rows = [], staff = [], tab = 'HAVE', alertKey = null, holderKey = null, opened = null, card = null, picked = [];
 
 	$(function() {
 		$('#fType').append('<option value="">전체</option>');
@@ -225,8 +227,6 @@
 		hrPost('/admin/equipment/equipmentListData.do', {}, function(res) {
 			rows = res.result.list || [];
 			staff = res.result.staff || [];
-			openIssues = {};
-			(res.result.issues || []).forEach(function(i) { (openIssues[i.EQP_SQ] = openIssues[i.EQP_SQ] || []).push(i); });
 			$('#sealState').text(res.result.seal ? '등록됨' : '미등록');
 			var keep = $('#fPurpose').val();
 			$('#fPurpose').empty().append('<option value="">전체</option>');
@@ -243,20 +243,18 @@
 	function staffPicked() { var v = $('#rStaff').val(); return staff.filter(function(s) { return staffLabel(s) === v; })[0]; }
 	function have(r) { return r.STATUS_CD === 'RENT' || r.STATUS_CD === 'STOCK'; }
 	function needsReview(r) { return r.REVIEW_OPEN > 0 || r.REVIEW_NODATE > 0 || r.REVIEW_NOEND > 0; }
-	function hasIssue(r) { return r.OPEN_ISSUE > 0; }
 	function find(sq) { return rows.filter(function(r) { return String(r.EQP_SQ) === String(sq); })[0]; }
 
 	var ALERTS = {
 		left: ['퇴사자 미반납', function(r) { return r.STATUS_CD === 'RENT' && r.STAFF_STATUS === 'LEFT'; }],
 		audit: ['이번 회차 미응답', function(r) { return r.AUDIT_RESULT === 'NONE'; }],
-		issue: ['열린 이슈', function(r) { return r.OPEN_ISSUE > 0; }],
 		sign: ['증서 서명 대기', function(r) { return r.SIGN_WAIT === 'Y'; }]
 	};
 
 	function filtered() {
 		var kw = $.trim($('#keyword').val()).toLowerCase(), type = $('#fType').val(), purpose = $('#fPurpose').val();
 		return rows.filter(function(r) {
-			if (tab === 'HAVE' && !have(r) || tab === 'RENT' && r.STATUS_CD !== 'RENT' || tab === 'STOCK' && r.STATUS_CD !== 'STOCK' || tab === 'GONE' && have(r) || tab === 'REVIEW' && !needsReview(r) || tab === 'ISSUE' && !hasIssue(r)) return false;
+			if (tab === 'HAVE' && !have(r) || tab === 'RENT' && r.STATUS_CD !== 'RENT' || tab === 'STOCK' && r.STATUS_CD !== 'STOCK' || tab === 'GONE' && have(r) || tab === 'REVIEW' && !needsReview(r)) return false;
 			if (type && r.TYPE_CD !== type || purpose && r.PURPOSE_NM !== purpose) return false;
 			if (alertKey && !ALERTS[alertKey][1](r)) return false;
 			if (holderKey && r.HOLDER_NM !== holderKey) return false;
@@ -281,12 +279,12 @@
 		var count = function(f) { return rows.filter(f).length; };
 		$('#tabs').empty().append(hrTab('HAVE', '보유', count(have), tab === 'HAVE')).append(hrTab('RENT', '대여중', count(function(r) { return r.STATUS_CD === 'RENT'; }), tab === 'RENT'))
 			.append(hrTab('STOCK', '보관중', count(function(r) { return r.STATUS_CD === 'STOCK'; }), tab === 'STOCK')).append(hrTab('GONE', '폐기·분실', count(function(r) { return !have(r); }), tab === 'GONE'))
-			.append(hrTab('REVIEW', '검토 필요', count(needsReview), tab === 'REVIEW')).append(hrTab('ISSUE', '이슈', count(hasIssue), tab === 'ISSUE'));
-		var list = filtered(), focus = tab === 'REVIEW' || tab === 'ISSUE', $b = $('#listBody').empty();
+			.append(hrTab('REVIEW', '검토 필요', count(needsReview), tab === 'REVIEW'));
+		var list = filtered(), focus = tab === 'REVIEW', $b = $('#listBody').empty();
 		$('#mainTable').prop('hidden', focus);
 		$('#focusTable').prop('hidden', !focus);
 		if (focus) { renderFocus(list); return; }
-		if (!list.length) { $b.append('<tr><td colspan="13" class="cal-empty">해당하는 장비가 없습니다.</td></tr>'); return; }
+		if (!list.length) { $b.append('<tr><td colspan="12" class="cal-empty">해당하는 장비가 없습니다.</td></tr>'); return; }
 		list.forEach(function(r) {
 			var $tr = $('<tr>');
 			$tr.append($('<td>').append($('<input type="checkbox" class="eq-check">').attr('aria-label', r.EQP_NO + ' 선택').val(r.EQP_SQ)));
@@ -304,27 +302,22 @@
 			}
 			$tr.append($who).append($('<td>').text(r.START_DT || '')).append($('<td>').text(r.PURPOSE_NM || ''));
 			$tr.append($('<td>').text(r.AUDIT_EXCL_YN === 'Y' ? '조사 제외' : (r.LAST_CHECK_DT || '')));
-			$tr.append($('<td>').append(r.OPEN_ISSUE > 0 ? $('<span class="eq-pill warn">').text('열림 ' + r.OPEN_ISSUE) : ''));
-			$tr.append(field($('<td class="hr-memo">'), r, 'MEMO', '특이사항', 'textarea'));
+			$tr.append($('<td>').append(hrMemoBtn(MEMO_API, r.EQP_SQ, r.MEMO_CNT, r.EQP_NO, function() { load(); })));
 			$b.append($tr);
 		});
 	}
 
-	// 검토 필요·이슈 탭. 고치면 조건에서 벗어나 목록에서 빠진다
+	// 검토 필요 탭. 고치면 조건에서 벗어나 목록에서 빠진다
 	function renderFocus(list) {
-		var review = tab === 'REVIEW', $b = $('#focusBody').empty();
-		$('#focusLabel').text(review ? '검토 사유' : '열린 이슈');
-		if (review) list = list.slice().sort(function(a, b) { return (b.REVIEW_OPEN > 0) - (a.REVIEW_OPEN > 0); });
+		var $b = $('#focusBody').empty();
+		$('#focusLabel').text('검토 사유');
+		list = list.slice().sort(function(a, b) { return (b.REVIEW_OPEN > 0) - (a.REVIEW_OPEN > 0); });
 		if (!list.length) { $b.append('<tr><td colspan="7" class="cal-empty">해당하는 장비가 없습니다.</td></tr>'); return; }
 		list.forEach(function(r) {
 			var $why = $('<td>');
-			if (review) {
-				if (r.REVIEW_OPEN > 0) $why.append('<span class="eq-pill bad">대여일 없음</span> ');
-				if (r.REVIEW_NODATE > 0) $why.append($('<span class="eq-pill warn">').text('날짜 없는 이력 ' + r.REVIEW_NODATE)).append(' ');
-				if (r.REVIEW_NOEND > 0) $why.append($('<span class="eq-pill warn">').text('반납일 없음 ' + r.REVIEW_NOEND));
-			} else {
-				(openIssues[r.EQP_SQ] || []).forEach(function(i) { $why.append($('<div>').append($('<span class="eq-pill warn">').text(i.OPEN_DT)).append(' ').append(document.createTextNode(i.CONTENT))); });
-			}
+			if (r.REVIEW_OPEN > 0) $why.append('<span class="eq-pill bad">대여일 없음</span> ');
+			if (r.REVIEW_NODATE > 0) $why.append($('<span class="eq-pill warn">').text('날짜 없는 이력 ' + r.REVIEW_NODATE)).append(' ');
+			if (r.REVIEW_NOEND > 0) $why.append($('<span class="eq-pill warn">').text('반납일 없음 ' + r.REVIEW_NOEND));
 			$b.append($('<tr>').append($('<td>').append($('<button type="button" class="eq-link eq-no">').text(r.EQP_NO).on('click', function() { openCard(r.EQP_SQ); })))
 				.append($('<td>').text(TYPE[r.TYPE_CD] || r.TYPE_CD)).append($('<td>').text(r.MODEL_NM || '')).append($('<td>').append(statusPill(r.STATUS_CD)))
 				.append($('<td>').text(r.HOLDER_NM || r.LOCATION_NM || '')).append($why)
@@ -362,9 +355,9 @@
 		var fixes = card.rents.filter(rentNeeds).length;
 		if (fixes) $b.append($('<div class="eq-todo mb-2">').text('고칠 곳 ' + fixes + '건 · 노란 칸에 입력하거나 이대로 확정하세요'));
 		function rents() { paintRents($b); }
-		function issues() { paintIssues($b, r); }
+		function memos() { $b.append('<div class="hr-section">메모</div>'); hrMemoFeed($('<div>').appendTo($b), MEMO_API, r.EQP_SQ, function() { load(); }); }
 		function files() { paintFiles($b, r); }
-		(tab === 'ISSUE' ? [issues, rents, basic, files] : tab === 'REVIEW' ? [rents, basic, issues, files] : [basic, rents, issues, files]).forEach(function(paint) { paint(); });
+		(tab === 'REVIEW' ? [rents, basic, memos, files] : [basic, rents, memos, files]).forEach(function(paint) { paint(); });
 		paintFoot(r);
 
 		function basic() {
@@ -375,7 +368,6 @@
 		$g.append(cardRow(r, 'ETC_TXT', '기타'));
 		if (r.STATUS_CD === 'STOCK') $g.append(cardRow(r, 'LOCATION_NM', '보관 위치'));
 		$g.append(cardRow(r, 'AUDIT_EXCL_YN', '조사 제외', { list: [['N', '대상'], ['Y', '제외 (영구 대여 등)']] }));
-		$g.append($('<div class="hr-card-row">').css('grid-column', '1 / -1').append($('<div class="hr-card-label">').text('특이사항')).append(field($('<div>'), r, 'MEMO', '특이사항', 'textarea')));
 		if (r.DISPOSE_DT) $b.append($('<div class="small text-muted mt-1">').text(STATUS[r.STATUS_CD] + ' ' + r.DISPOSE_DT + (r.DISPOSE_REASON ? ' · ' + r.DISPOSE_REASON : '')));
 		}
 	}
@@ -422,24 +414,6 @@
 			$body.append($tr.append($doc).append($check));
 		});
 		$b.append($('<div class="table-responsive">').append($t));
-	}
-
-	function paintIssues($b, r) {
-		var $h = $('<div class="hr-section d-flex align-items-center">').text('이슈').append($('<button type="button" class="btn btn-sm btn-outline-primary ml-auto">').text('이슈 추가').on('click', function() {
-			bootbox.prompt({ title: r.EQP_NO + ' 이슈 내용', inputType: 'textarea', locale: 'ko', callback: function(v) { if (v) hrPost('/admin/equipment/addIssueData.do', { EQP_SQ: r.EQP_SQ, CONTENT: v }, reloadCard); } });
-		}));
-		$b.append($h);
-		if (!card.issues.length) $b.append('<div class="small text-muted">등록된 이슈가 없습니다.</div>');
-		card.issues.forEach(function(i) {
-			var $row = $('<div class="d-flex align-items-center small mb-1">').css('gap', '8px').toggleClass('eq-fix', tab === 'ISSUE' && !i.CLOSE_DT).append($('<span class="eq-pill">').addClass(i.CLOSE_DT ? 'good' : 'warn').text(i.CLOSE_DT ? '해결' : '열림'));
-			if (i.CLOSE_DT) $row.append($('<span>').text(i.OPEN_DT + ' ' + i.CONTENT + (i.CLOSE_NOTE ? ' → ' + i.CLOSE_NOTE : '')));
-			else $row.append($('<span>').text(i.OPEN_DT)).append(hrEditable($('<div>').css({ flex: '1 1 auto', 'min-width': 0 }), { url: '/admin/equipment/saveIssueData.do', key: { ISSUE_SQ: i.ISSUE_SQ }, field: 'CONTENT', type: 'textarea', label: r.EQP_NO + ' 이슈 내용',
-				show: function() { return i.CONTENT; }, value: function() { return i.CONTENT; }, saved: function(v) { i.CONTENT = v; reloadCard(); } }));
-			if (!i.CLOSE_DT) $row.append($('<button type="button" class="btn btn-sm btn-outline-secondary ml-auto">').text('해결').on('click', function() {
-				bootbox.prompt({ title: '처리 내용 (선택)', locale: 'ko', callback: function(v) { if (v !== null) hrPost('/admin/equipment/closeIssueData.do', { ISSUE_SQ: i.ISSUE_SQ, CLOSE_NOTE: v }, reloadCard); } });
-			}));
-			$b.append($row);
-		});
 	}
 
 	function paintFiles($b, r) {
@@ -511,7 +485,7 @@
 		var $p = $('#rPicked').empty();
 		picked.forEach(function(r) {
 			var $c = $('<span class="eq-chip">').append($('<span class="eq-no">').text(r.EQP_NO));
-			if (r.OPEN_ISSUE > 0) $c.append(' <span class="eq-pill warn">이슈 열림</span>');
+			if (r.MEMO_CNT > 0) $c.append(' ').append($('<span class="eq-pill">').text('메모 ' + r.MEMO_CNT));
 			$p.append($c.append($('<button type="button">').attr('aria-label', r.EQP_NO + ' 빼기').html('&times;').on('click', function() { picked.splice(picked.indexOf(r), 1); paintPicked(); })));
 		});
 	}
@@ -596,9 +570,9 @@
 	}
 
 	function downloadCsv() {
-		var head = ['장비번호', '구분', '브랜드', '모델', '시리얼', '상태', '사용자', '위치', '대여일', '용도', '최근 점검', '열린 이슈', '특이사항'];
+		var head = ['장비번호', '구분', '브랜드', '모델', '시리얼', '상태', '사용자', '위치', '대여일', '용도', '최근 점검', '메모'];
 		var lines = [head.map(csvCell).join(',')].concat(filtered().map(function(r) {
-			return [r.EQP_NO, TYPE[r.TYPE_CD], r.BRAND_NM, r.MODEL_NM, r.SERIAL_NO, STATUS[r.STATUS_CD], r.HOLDER_NM, r.LOCATION_NM, r.START_DT, r.PURPOSE_NM, r.LAST_CHECK_DT, r.OPEN_ISSUE, r.MEMO].map(csvCell).join(',');
+			return [r.EQP_NO, TYPE[r.TYPE_CD], r.BRAND_NM, r.MODEL_NM, r.SERIAL_NO, STATUS[r.STATUS_CD], r.HOLDER_NM, r.LOCATION_NM, r.START_DT, r.PURPOSE_NM, r.LAST_CHECK_DT, r.MEMO].map(csvCell).join(',');
 		}));
 		var a = document.createElement('a');
 		a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }));

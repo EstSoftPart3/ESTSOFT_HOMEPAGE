@@ -54,4 +54,10 @@
 	td[data-tone=warn] { background: #fff5dc; color: #7a5600; }
 	td[data-tone=info] { background: #e5f1fb; color: #165a8f; }
 	td[data-tone=mute] { background: #f0f1f3; color: #5c6168; }
+	/* 목록 메모 (hrMemoBtn·hrMemoFeed) */
+	.hr-memo-btn { border: 1px solid #b9dbe6; background: #f3fbfd; color: #0b6e8a; border-radius: 10px; padding: 0 7px; font-size: 11.5px; font-weight: 700; }
+	.hr-memo-btn.zero { opacity: .55; font-weight: 400; }
+	.hr-memo-feed { max-height: 50vh; overflow-y: auto; }
+	.hr-memo-feed .it { border: 1px solid rgba(17,17,17,.1); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; white-space: pre-wrap; }
+	.hr-memo-feed .who { font-size: 11.5px; color: #5f6b75; display: flex; gap: 8px; align-items: center; white-space: normal; }
 </style>

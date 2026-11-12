@@ -48,7 +48,7 @@
 							<div class="px-3 pt-2"><div class="au-bar" role="img" id="barWrap" aria-label="진행률"><i id="bar" style="width:0"></i></div><div class="small text-muted my-1" id="summary"></div></div>
 							<div class="table-responsive px-3">
 								<table class="table table-sm cal-table mb-0">
-									<thead><tr><th>사용자·위치</th><th>장비번호</th><th>구분</th><th>모델</th><th>결과</th><th>입력</th><th>이번 달 메모</th><th>열린 이슈</th></tr></thead>
+									<thead><tr><th>사용자·위치</th><th>장비번호</th><th>구분</th><th>모델</th><th>결과</th><th>입력</th><th>이번 달 메모</th><th>장비 메모</th></tr></thead>
 									<tbody id="body"></tbody>
 								</table>
 							</div>
@@ -152,9 +152,10 @@
 	}
 
 	function issueCell(r, open) {
+		// 장비 메모는 장비대장에서 본다. 여기서는 건수와 이번 달 메모를 장비 메모로 남기는 버튼만
 		var $c = $('<div>');
-		if (r.OPEN_ISSUES) $c.append($('<span class="eq-pill warn">').attr('title', r.OPEN_ISSUES).text(r.OPEN_ISSUES.length > 24 ? r.OPEN_ISSUES.substr(0, 24) + '…' : r.OPEN_ISSUES));
-		if (open && r.RESULT_CD === 'BAD' && r.NOTE) $c.append($('<button type="button" class="btn btn-sm btn-outline-primary ml-1">').text('이슈로 등록').on('click', function() {
+		if (r.MEMO_CNT > 0) $c.append($('<span class="eq-pill">').text('💬 ' + r.MEMO_CNT));
+		if (open && r.RESULT_CD === 'BAD' && r.NOTE) $c.append($('<button type="button" class="btn btn-sm btn-outline-primary ml-1">').text('장비 메모로 남기기').on('click', function() {
 			hrPost('/admin/equipment/addIssueData.do', { EQP_SQ: r.EQP_SQ, CONTENT: r.NOTE }, loadDetail);
 		}));
 		return $c;
@@ -168,9 +169,9 @@
 
 	function downloadCsv() {
 		if (!current) return;
-		var head = ['사용자·위치', '장비번호', '구분', '모델', '결과', '입력', '메모', '열린 이슈'];
+		var head = ['사용자·위치', '장비번호', '구분', '모델', '결과', '입력', '이번 달 메모', '장비 메모 건수'];
 		var lines = [head.map(csvCell).join(',')].concat(rows.map(function(r) {
-			return [r.HOLDER_NM, r.EQP_NO, TYPE[r.TYPE_CD], r.MODEL_NM, RESULT[r.RESULT_CD], r.RESPONSE_CD === 'SELF' ? '본인' : r.RESPONSE_CD ? '담당자' : '', r.NOTE, r.OPEN_ISSUES].map(csvCell).join(',');
+			return [r.HOLDER_NM, r.EQP_NO, TYPE[r.TYPE_CD], r.MODEL_NM, RESULT[r.RESULT_CD], r.RESPONSE_CD === 'SELF' ? '본인' : r.RESPONSE_CD ? '담당자' : '', r.NOTE, r.MEMO_CNT].map(csvCell).join(',');
 		}));
 		var a = document.createElement('a');
 		a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
