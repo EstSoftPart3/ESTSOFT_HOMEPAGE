@@ -37,15 +37,15 @@
 					<div class="cal-panel">
 						<div class="cal-panel-body">
 							<div class="form-row align-items-end">
-								<div class="col-md-1 col-6 mb-2">
+								<div class="col-md-1 col-6 mb-2" data-keep>
 									<label for="yearSel">연도</label>
 									<select id="yearSel" class="form-control form-control-sm"></select>
 								</div>
-								<div class="col-md-1 col-6 mb-2">
+								<div class="col-md-1 col-6 mb-2" data-keep>
 									<label for="monthSel">월</label>
 									<select id="monthSel" class="form-control form-control-sm hr-filter-input"></select>
 								</div>
-								<div class="col-md-2 col-6 mb-2">
+								<div class="col-md-2 col-6 mb-2" data-keep>
 									<label for="weekSel">주차</label>
 									<select id="weekSel" class="form-control form-control-sm hr-filter-input"></select>
 								</div>

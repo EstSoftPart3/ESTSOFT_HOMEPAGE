@@ -44,6 +44,25 @@
   	:where(.table) > :where(thead) > :where(tr) > :where(th) { position: sticky; top: 0; z-index: 2; background-color: #fff; box-shadow: inset 0 -1px 0 #dee2e6; }
   	/* 가로 스크롤 상자 안에서도 고정되게 세로 스크롤을 상자 안으로 넣는다 */
   	:where(.table-responsive) { max-height: 80vh; overflow-y: auto; }
+  	/* 표는 ui-table.js 가 스크롤 상자에 넣는다(.cal-panel 의 overflow:hidden 안에서도 머리글 고정·가로 스크롤) */
+  	.tbl-scroll { max-height: 80vh; overflow: auto; }
+  	/* 칸은 내용 폭에 맞추고 줄바꿈하지 않는다. 문단·이미지·입력칸이 든 칸은 제외. 아주 긴 글은 …(올리면 전체) */
+  	:where(.table th, .table td):not(:has(p, br, img, ul, ol, table, textarea)) { white-space: nowrap; }
+  	.td-cut { display: inline-block; max-width: 360px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+  	/* 표 줄 간격·제목 여백을 줄여 한 화면에 줄을 더 보인다 */
+  	.table th, .table td { padding: .35rem .55rem; }
+  	.content-wrapper > .content > .card-header { padding-top: .45rem; padding-bottom: .45rem; }
+  	/* 머리글 정렬 */
+  	th.th-sort { cursor: pointer; user-select: none; }
+  	th.th-sort:hover::after, th.th-sort:focus::after { content: ' ↕'; color: #9aa4ac; font-size: 10px; }
+  	th.th-sort[aria-sort=ascending]::after { content: ' ▲'; color: #0b6e8a; font-size: 10px; }
+  	th.th-sort[aria-sort=descending]::after { content: ' ▼'; color: #0b6e8a; font-size: 10px; }
+  	/* 검색필터 접기: 접으면 검색어·기간·버튼만 한 줄, 라벨 숨김 */
+  	.flt-closed { padding-top: 6px !important; padding-bottom: 6px !important; }
+  	.flt-closed .flt-more, .flt-closed .form-row label { display: none; }
+  	.flt-closed > .form-row:first-child > * { flex: 0 0 auto; width: auto; max-width: none; margin-bottom: 0 !important; }
+  	.flt-closed input[type=search] { min-width: 260px; }
+  	.flt-tg { margin-left: auto; }
 
   </style>
   
