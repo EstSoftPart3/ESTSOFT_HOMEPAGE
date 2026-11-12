@@ -425,9 +425,17 @@
 				};
 				$tr.append($('<td>').append($s), $('<td>').append(field('MERCHANT', '사용처', 200)), $('<td>').append(field('DETAIL', '내용', 500, '내용 입력')), $('<td>').append(field('TARGET_NM', '대상', 100, card.HOLDER_NM)));
 			}
+			// 삭제: 등록 건은 바로 지워 달력에서도 사라지고, 엑셀에만 있는 건은 목록에서 빼 저장 때 등록되지 않게 한다
+			$tr.append($('<td>').append(x.closed ? '' : $('<button type="button" class="btn btn-sm btn-outline-danger">삭제</button>').attr('aria-label', what + '삭제').click(function() {
+				function drop() { pRes.rows.splice(pRes.rows.indexOf(x), 1); drawCard(); }
+				if (!x.USE) { drop(); return; }
+				bootbox.confirm($('<div>').text(what + '사용 내역을 삭제할까요? 달력에서도 사라집니다.').html(), function(ok) {
+					if (ok) hrPost('/admin/card/deleteUseData.do', { CARD_SQ: card.CARD_SQ, USE_SQ: x.USE.USE_SQ }, function() { toast('삭제했습니다'); drop(); loadList(); });
+				});
+			})));
 			$t.append($tr);
 		});
-		$b.append($('<div class="table-responsive">').append($('<table class="table table-sm cal-table cd-set mb-2"><thead><tr><th>사용일</th><th>상태</th><th class="text-right">금액</th><th>사용처 코드</th><th>사용처</th><th>내용</th><th>대상</th></tr></thead></table>').append($t)));
+		$b.append($('<div class="table-responsive">').append($('<table class="table table-sm cal-table cd-set mb-2"><thead><tr><th>사용일</th><th>상태</th><th class="text-right">금액</th><th>사용처 코드</th><th>사용처</th><th>내용</th><th>대상</th><th><span class="sr-only">삭제</span></th></tr></thead></table>').append($t)));
 		$b.append($('<div class="d-flex justify-content-end flex-wrap" style="gap:6px;">').append(
 			$('<button type="button" class="btn btn-sm btn-outline-primary">중간 저장</button>').click(function() { savePeriod(false); }),
 			$('<button type="button" class="btn btn-sm btn-primary">마감</button>').click(function() { savePeriod(true); })));
