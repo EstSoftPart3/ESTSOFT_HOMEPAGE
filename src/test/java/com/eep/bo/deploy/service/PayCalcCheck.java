@@ -83,17 +83,19 @@ public class PayCalcCheck {
 		row.put("LEDGER_PAY", 4900000L);
 		same(BoPayrollService.flags(row).get(1).get("D").toString().split("\n")[2], "차이 +200,000", "대장차 설명");
 		row.remove("LEDGER_PAY");
-		// 정규 행 + 소액 계약 행: 퇴직금 적립은 정규 행 기본에만 (엑셀 BP 열은 행마다 계산)
+		// 정규 + 기타 계약(매입처 지급): 기타 몫은 급여(기본)가 아니라 외부 매입, 영업이익에서만 빠진다
 		d.put("DEPLOY_TYPE", "REGULAR");
 		Map<String, Object> split = new HashMap<>();
 		split.put("PAY_YM", "2026-11");
 		split.put("STAFF_SQ", 1);
 		split.put("BASE_AMT", 600000L);
-		split.put("DEPLOY_TYPE", "ETC");
+		split.put("DEPLOY_TYPE", "ETC_P4H");
 		ds.add(split);
-		row.put("BASE_AMT", 4600000L);
 		BoPayrollService.derive(rows, ds);
-		same(row.get("COMPANY"), 852450L, "계약 행 기본에는 퇴직금 적립 없음");
+		same(row.get("PAY_TOTAL"), 4700000L, "기타 계약 몫은 지급계에 안 들어감");
+		same(row.get("COMPANY"), 852450L, "기타 계약 몫에는 퇴직금 적립 없음");
+		same(row.get("BUY"), 600000L, "외부 매입");
+		same(row.get("PROFIT"), 1447550L - 600000L, "영업이익에서 외부 매입을 뺌");
 		ds.remove(split);
 		d.remove("DEPLOY_TYPE");
 		row.put("BASE_AMT", 4000000L);

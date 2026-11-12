@@ -504,11 +504,13 @@ public class BoPayrollService {
 		List<String> out = new ArrayList<>();
 		String ym = str(r.get("PAY_YM"));
 		long auto = 0;
+		boolean salariedPerson = ds.stream().anyMatch(d -> PayCalc.isSalaried(str(d.get("DEPLOY_TYPE"))));
 		for (Map<String, Object> d : ds) {
 			String t = str(d.get("DEPLOY_TYPE")).isEmpty() ? str(r.get("EMP_TYPE_CD")) : str(d.get("DEPLOY_TYPE"));
 			long b = n(d.get("BASE_AMT")), cost = n(d.get("COST_PRICE"));
 			int days = (int) n(d.get("WORK_DAYS")), total = (int) n(d.get("TOTAL_DAYS"));
-			auto += b;
+			boolean buy = salariedPerson && !PayCalc.isSalaried(t);
+			auto += buy ? 0 : b;
 			String how;
 			if (ym.isEmpty() || total == 0) {
 				how = won(b);
@@ -523,7 +525,7 @@ public class BoPayrollService {
 				String s = PayCalc.salariedHow(t, cost, ym, PayCalc.date(r.get("JOIN_DT")), PayCalc.date(d.get("PROB_END_DT")), lastDay);
 				how = s.contains("= " + won(b)) ? s : won(b) + " (저장된 값)";
 			}
-			out.add(label(d) + " · " + (days < total ? days + "/" + total + "일" : "만근") + " : " + how);
+			out.add((buy ? "[외부 매입 · 기본 아님] " : "") + label(d) + " · " + (days < total ? days + "/" + total + "일" : "만근") + " : " + how);
 		}
 		if (manual(r).contains("BASE_AMT")) {
 			out.add("직접 입력 " + won(n(r.get("BASE_AMT"))) + (ds.isEmpty() ? "" : " (자동 계산이면 " + won(auto) + ")"));
@@ -548,7 +550,7 @@ public class BoPayrollService {
 			}
 			String type = str(r.get("EMP_TYPE_CD"));
 			boolean salaried = PayCalc.isSalaried(type);
-			long otherBase = 0; // 정규 행과 함께 있는 소액 계약 행의 기본. 엑셀은 이 금액에 퇴직금을 적립하지 않는다
+			long otherBase = 0; // 정규 직원에게 함께 걸린 기타·외부 계약 몫. 매입처에 주는 돈이라 급여(기본)가 아니고 외부 매입으로 센다
 			for (Map<String, Object> d : ds) {
 				sale += n(d.get("REAL_SALE"));
 				days += n(d.get("WORK_DAYS"));
@@ -563,8 +565,9 @@ public class BoPayrollService {
 			}
 			long company = salaried
 					? n(r.get("NP_AMT")) + n(r.get("HI_AMT")) + n(r.get("EI_AMT")) + n(r.get("LTC_AMT")) + n(r.get("ACC_AMT"))
-							+ PayCalc.retire(Math.max(0, n(r.get("BASE_AMT")) - otherBase), n(r.get("MEAL_AMT")), n(r.get("RESEARCH_AMT")), n(r.get("FUEL_AMT")), n(r.get("BONUS_AMT")))
+							+ PayCalc.retire(n(r.get("BASE_AMT")), n(r.get("MEAL_AMT")), n(r.get("RESEARCH_AMT")), n(r.get("FUEL_AMT")), n(r.get("BONUS_AMT")))
 					: 0;
+			long buy = salaried ? otherBase : 0;
 			Map<String, Object> latest = ds.isEmpty() ? null : ds.get(ds.size() - 1);
 			r.put("DETAILS", ds);
 			r.put("PAY_TOTAL", pay);
@@ -572,7 +575,8 @@ public class BoPayrollService {
 			r.put("NET", pay - ded);
 			r.put("REAL_SALE", sale);
 			r.put("COMPANY", company);
-			r.put("PROFIT", sale - pay - company);
+			r.put("BUY", buy);
+			r.put("PROFIT", sale - pay - company - buy);
 			r.put("WORK_DAYS", Math.min(days, totalDays));
 			r.put("TOTAL_DAYS", totalDays);
 			r.put("SALE_PRICE", latest == null ? 0 : n(latest.get("SALE_PRICE")));

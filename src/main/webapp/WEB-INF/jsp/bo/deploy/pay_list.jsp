@@ -53,6 +53,8 @@
 	#lBody tr.pl-picked > td:first-child { box-shadow: inset 3px 0 0 #1d4ed8, inset 0 2px 0 #1d4ed8, inset 0 -2px 0 #1d4ed8; }
 	.pl-pick-col { width: 28px; text-align: center; }
 	#pickCnt { font-size: 12px; font-weight: 700; color: #1d4ed8; }
+	/* 외부 매입: 매입처에 주는 돈(급여 아님) */
+	.pl-buy-tag { color: #8a4b00; font-size: 11.5px; } .pl-buy-tag b { font-weight: 700; } #lBody td.pl-buy { color: #8a4b00 !important; }
 	/* 중복계약: 왼쪽 주황 띠 + 펼치는 버튼 */
 	#lBody tr.pl-dup > td:first-child { box-shadow: inset 4px 0 0 #e0a800; }
 	.pl-dup-arrow { border: 0; background: none; padding: 0 4px 0 0; color: #b07d00; font-size: 11px; cursor: pointer; }
@@ -187,7 +189,8 @@
 		NET: [['실지급 = 지급계 − 공제계']], DELTA_PCT: [['전월대비 = (이번 달 실지급 − 전월 실지급) ÷ 전월 실지급']],
 		REAL_SALE: [['실매출 = (매출단가 ÷ 월 일수) × 근무일수'], ['PRORATE_UNIT']],
 		COMPANY: [['회사부담 = 4대보험 회사분 + 퇴직금 적립 (정규·수습만)', '퇴직금 적립 = (기본 + 식대 + 연구비 + 유류비 + 상여) ÷ 10']],
-		PROFIT: [['영업이익 = 실매출 − 지급계 − 회사부담']]
+		BUY: [['외부 매입 = 정규 직원에게 함께 걸린 기타·외부 계약 몫 (매입처에 주는 돈, 급여 아님)', '= (계약단가 ÷ 월 일수) × 근무일수'], ['PRORATE_UNIT']],
+		PROFIT: [['영업이익 = 실매출 − 지급계 − 회사부담 − 외부 매입']]
 	};
 	var PARAMS = [];
 	var LABEL = { CLOSE: '마감', REOPEN: '마감 해제', MEMO: '메모', BONUS: '상여 적용', BONUS_EXCLUDE: '상여 제외' };
@@ -366,7 +369,7 @@
 		if (pickedYm !== ym) { picked = {}; pickedYm = ym; }
 		var bands = $('<tr class="pl-bands">').append('<th colspan="10"></th>')
 			.append(band('show-allow', 'allow', '수당', ALLOW.length)).append(band('show-ded', 'ded', '공제', DED.length)).append('<th colspan="2"></th>')
-			.append(band('show-pl', 'pl', '손익', 3)).append('<th colspan="3"></th>');
+			.append(band('show-pl', 'pl', '손익', 4)).append('<th colspan="3"></th>');
 		var $h = $('<tr>').append($('<th class="pl-pick-col">').append($('<input type="checkbox" id="pickAll" aria-label="보이는 사람 모두 체크">')))
 			.append(sortTh('성명', 'STAFF_NM')).append(sortTh('형태', 'TYPE')).append(sortTh('고객사', 'CLIENT')).append(sortTh('프로젝트', 'PRJ'))
 			.append(sortTh('근무기간', 'PERIOD')).append($('<th>').append($('<button type="button" class="pl-prob-btn" id="probToggle">').attr('aria-expanded', probOpen).text(probOpen ? '수습기간 ▾' : '수습 ▸')))
@@ -375,7 +378,7 @@
 		$h.append(sortTh('지급계', 'PAY_TOTAL', 'dp-num c-allow pl-calc-h'));
 		DED.forEach(function(a) { $h.append(a[0] === '_SETTLE' ? $('<th class="dp-num x-ded pl-calc-h">').text(a[1]).prepend(calcBtn('_SETTLE', a[1])) : sortTh(a[1], a[0], 'dp-num x-ded')); });
 		$h.append(sortTh('공제계', 'DED_TOTAL', 'dp-num c-ded pl-calc-h')).append(sortTh('실지급', 'NET', 'dp-num pl-calc-h')).append(sortTh('전월대비', 'DELTA_PCT', 'dp-num pl-calc-h')).append('<th class="pl-stub"></th>');
-		[['실매출', 'REAL_SALE'], ['회사부담', 'COMPANY'], ['영업이익', 'PROFIT']].forEach(function(t) { $h.append(sortTh(t[0], t[1], 'dp-num x-pl pl-calc-h')); });
+		[['실매출', 'REAL_SALE'], ['외부 매입', 'BUY'], ['회사부담', 'COMPANY'], ['영업이익', 'PROFIT']].forEach(function(t) { $h.append(sortTh(t[0], t[1], 'dp-num x-pl pl-calc-h')); });
 		$h.append(sortTh('확인 사항', 'FLAGS')).append('<th>메모</th><th>이력</th>');
 		$('#lHead').empty().append(bands).append($h);
 		var $b = $('#lBody').empty();
@@ -398,7 +401,7 @@
 			$tr.append(rs($('<td class="dp-num c-ded font-weight-bold pl-calc">').text(dpWon(r.DED_TOTAL)))).append(rs($('<td class="dp-num font-weight-bold pl-calc">').text(dpWon(r.NET))))
 				.append(rs($('<td class="dp-num pl-calc">').text(r.DELTA_PCT === undefined ? '' : (r.DELTA_PCT > 0 ? '+' : '') + r.DELTA_PCT + '%').toggleClass('text-danger', Math.abs(r.DELTA_PCT || 0) >= 10)))
 				.append(rs($('<td class="pl-stub">')))
-				.append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.REAL_SALE)))).append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.COMPANY)))).append(rs($('<td class="dp-num x-pl font-weight-bold pl-calc">').text(dpWon(r.PROFIT))))
+				.append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.REAL_SALE)))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(Number(r.BUY) ? dpWon(r.BUY) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.COMPANY)))).append(rs($('<td class="dp-num x-pl font-weight-bold pl-calc">').text(dpWon(r.PROFIT))))
 				.append(rs($('<td>')).append(r.FLAGS.map(function(f) { return flagChip(r, f); })))
 				.append(rs($('<td>')).append(countBtn('💬', r.MEMO_CNT, r.STAFF_NM + ' 메모', function() { memoPopup(r); })))
 				.append(rs($('<td>')).append(countBtn('✎', r.CHG_CNT, r.STAFF_NM + ' 수정이력', function() { historyPopup(r); })));
@@ -420,9 +423,21 @@
 			$('<td>').text(d.PRJ_NM || '').append(d.DEPLOY_SQ ? dpInfoBtn(r.STAFF_NM + ' 투입 정보', function() { deployInfo(r, d); }) : ''),
 			$('<td>').text(d.DEPLOY_SQ ? period(d) : ''),
 			$('<td class="pl-prob">').append(prob && prob.inMonth ? [$('<span class="full">').text(prob.from.format('YY/MM/DD') + '~' + prob.to.format('YY/MM/DD')), $('<span class="dot">').attr('title', '수습 ' + prob.from.format('YY/MM/DD') + '~' + prob.to.format('YY/MM/DD')).text('●')] : ''),
-			$('<td class="dp-num">').text(d.SALE_PRICE ? dpWon(d.SALE_PRICE) : ''),
+			$('<td class="dp-num">').text(d.SALE_PRICE ? dpWon(d.SALE_PRICE) : '').append(dpDirectIcon(d)),
 			// 계약이 여러 건인 사람만: 정규 몫과 P4H·외부 계약 몫을 건별로 보인다
-			$('<td class="dp-num">').append(d.DEPLOY_SQ && contracts(r).length > 1 ? dpWon(d.BASE_AMT) : $('<span class="dp-mute">').text('—'))];
+			contractBase(r, d, t)];
+	}
+
+	// 계약 기본 칸: 정규 직원에게 함께 걸린 기타·외부 계약은 급여가 아니라 '매입'(매입처에 주는 돈)으로 다른 색에 보인다
+	function contractBase(r, d, t) {
+		var $td = $('<td class="dp-num">');
+		if (!d.DEPLOY_SQ || contracts(r).length < 2) return $td.append($('<span class="dp-mute">').text('—'));
+		var salariedPerson = contracts(r).some(function(x) { var y = typeOf(x) || r.EMP_TYPE_CD; return y === 'REGULAR' || y === 'PROBATION'; });
+		if (salariedPerson && t !== 'REGULAR' && t !== 'PROBATION') {
+			return $td.append($('<span class="pl-buy-tag">').attr('title', '매입처에 주는 돈 · 급여(기본)에 들어가지 않고 영업이익에서 외부 매입으로 빠집니다')
+				.append('매입 ').append($('<b>').text(dpWon(d.BASE_AMT))).append(d.BUY_PARTNER_NM ? ' · ' + d.BUY_PARTNER_NM : ''));
+		}
+		return $td.text(dpWon(d.BASE_AMT));
 	}
 
 	// 수습도 정규직이다. 수습 기간 = 입사일부터 3개월(마지막 날은 3개월 되는 날 전날). inMonth: 이 달과 겹침, left: 오늘부터 남은 날
