@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 경영지원 - 법인카드: 카드, 사용 내역, 월 정산 -->
+<mapper namespace="com.eep.mapper.BoCardMapper">
+
+	<!--
+		운영 DB 스키마 변경 경로가 앱 계정뿐이라 기동 때 맞춘다(연구소와 같은 방식). 다시 돌려도 이미 있는 것은 건너뛴다.
+		되돌리기: DROP TABLE TB_EEP_CARD_SETTLE_M, TB_EEP_CARD_USE_D, TB_EEP_CARD_M;
+		          DELETE FROM TB_EEP_ROLE_MENU_R WHERE MENU_CODE = 'K00001'; DELETE FROM TB_EEP_MENU WHERE MENU_CODE = 'K00001';
+		          공통코드관리에서 CARD_USE 그룹 삭제
+	-->
+	<update id="ensureSchema">
+		CREATE TABLE IF NOT EXISTS TB_EEP_CARD_M (
+			  CARD_SQ       int NOT NULL AUTO_INCREMENT
+			, CARD_NM       varchar(50) NOT NULL
+			, CARD_CO       varchar(30) NULL COMMENT '카드사'
+			, LAST4         char(4) NOT NULL COMMENT '카드번호 끝 4자리만 둔다'
+			, HOLDER_NM     varchar(30) NULL COMMENT '사용자'
+			, USE_YN        char(1) NOT NULL DEFAULT 'Y'
+			, UPDT_EMPLY_ID varchar(50) NULL
+			, UPDT_DT       datetime NULL
+			, PRIMARY KEY (CARD_SQ)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='법인카드';
+
+		CREATE TABLE IF NOT EXISTS TB_EEP_CARD_USE_D (
+			  USE_SQ        int NOT NULL AUTO_INCREMENT
+			, CARD_SQ       int NOT NULL
+			, USE_DT        date NOT NULL
+			, AMT           bigint NOT NULL COMMENT '원. 취소는 음수'
+			, USE_CD        varchar(20) NOT NULL COMMENT '공통코드 CARD_USE'
+			, DETAIL        varchar(500) NULL COMMENT '사용 상세 내용'
+			, MERCHANT      varchar(200) NULL COMMENT '정산 때 엑셀에서 붙인 가맹점'
+			, REG_EMPLY_ID  varchar(50) NULL
+			, REG_DT        datetime NULL
+			, UPDT_EMPLY_ID varchar(50) NULL
+			, UPDT_DT       datetime NULL
+			, PRIMARY KEY (USE_SQ)
+			, KEY IX_CARD_USE_MONTH (CARD_SQ, USE_DT)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='법인카드 사용 내역';
+
+		CREATE TABLE IF NOT EXISTS TB_EEP_CARD_SETTLE_M (
+			  CARD_SQ       int NOT NULL
+			, YM            char(7) NOT NULL
+			, FILE_NM       varchar(200) NULL
+			, EXCEL_CNT     int NOT NULL DEFAULT 0
+			, MATCH_CNT     int NOT NULL DEFAULT 0
+			, DONE_EMPLY_ID varchar(50) NULL
+			, DONE_DT       datetime NULL
+			, PRIMARY KEY (CARD_SQ, YM)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='법인카드 월 정산 확정';
+
+		INSERT INTO TB_EEP_COMN_CD_M (COMN_CD, COMN_CD_NM, USE_YN, DEL_YN, REG_DT)
+		SELECT 'CARD_USE', '법인카드 사용처', 'Y', 'N', DATE_FORMAT(NOW(), '%Y-%m-%d') FROM DUAL
+		WHERE NOT EXISTS (SELECT 1 FROM TB_EEP_COMN_CD_M C WHERE C.COMN_CD = 'CARD_USE' AND C.DEL_YN = 'N');
+
+		<!-- 코드를 하나도 안 가진 그룹일 때만 기본값을 넣어, 공통코드관리에서 지운 코드가 다시 살아나지 않게 한다 -->
+		INSERT INTO TB_EEP_COMN_DTL_CD_S (COMN_CD_SQ, COMN_DTL_CD, COMN_DTL_CD_NM, COMN_DTL_CD_ORD, USE_YN, DEL_YN, REG_DT)
+		SELECT C.COMN_CD_SQ, V.CD, V.NM, V.ORD, 'Y', 'N', DATE_FORMAT(NOW(), '%Y-%m-%d')
+		FROM (
+			          SELECT 'MEAL' CD, '식대' NM, 1 ORD
+			UNION ALL SELECT 'DINNER', '회식', 2
+			UNION ALL SELECT 'SUPPLY', '비품·소모품', 3
+			UNION ALL SELECT 'TRANS', '교통·주유', 4
+			UNION ALL SELECT 'PARK', '주차·통행료', 5
+			UNION ALL SELECT 'TRIP', '출장·숙박', 6
+			UNION ALL SELECT 'ENT', '접대', 7
+			UNION ALL SELECT 'EDU', '도서·교육', 8
+			UNION ALL SELECT 'SW', '소프트웨어·구독', 9
+			UNION ALL SELECT 'COMM', '통신', 10
+			UNION ALL SELECT 'POST', '택배·우편', 11
+			UNION ALL SELECT 'EVENT', '경조사', 12
+			UNION ALL SELECT 'ETC', '기타', 13
+		) V
+		JOIN TB_EEP_COMN_CD_M C ON C.COMN_CD = 'CARD_USE' AND C.DEL_YN = 'N'
+		WHERE NOT EXISTS (SELECT 1 FROM TB_EEP_COMN_DTL_CD_S D WHERE D.COMN_CD_SQ = C.COMN_CD_SQ);
+
+		<!-- 메뉴는 장비 묶음(E001)과 같은 부모 아래, 권한은 장비대장(E00001)을 가진 역할에 처음 한 번만 준다 -->
+		INSERT INTO TB_EEP_MENU (MENU_CODE, MENU_NM, REL_CODE, MENU_DEPTH, MENU_URL, ICON_NM, FRST_REG_DT, LAST_UPDT_DT, FRST_REGISTER, SORT_NO, USE_YN, AUTH_PATTERN, NEW_WIN_YN)
+		SELECT 'K00001', '법인카드', REL_CODE, MENU_DEPTH, '/admin/card/openCardList.do', 'fa-credit-card', NOW(), NOW(), 'system', SORT_NO + 1, 'Y', '/admin/card/**', 'N'
+		FROM TB_EEP_MENU WHERE MENU_CODE = 'E001' AND NOT EXISTS (SELECT 1 FROM (SELECT MENU_CODE FROM TB_EEP_MENU) M WHERE M.MENU_CODE = 'K00001');
+		INSERT IGNORE INTO TB_EEP_ROLE_MENU_R (ROLE_SQ, MENU_CODE)
+		SELECT ROLE_SQ, 'K00001' FROM TB_EEP_ROLE_MENU_R WHERE MENU_CODE = 'E00001'
+		  AND NOT EXISTS (SELECT 1 FROM (SELECT MENU_CODE FROM TB_EEP_ROLE_MENU_R) R WHERE R.MENU_CODE = 'K00001');
+	</update>
+
+	<select id="selectCodes" resultType="hashMap">
+		SELECT D.COMN_DTL_CD AS CD, D.COMN_DTL_CD_NM AS NM
+		FROM TB_EEP_COMN_CD_M C
+		JOIN TB_EEP_COMN_DTL_CD_S D ON D.COMN_CD_SQ = C.COMN_CD_SQ
+		WHERE C.COMN_CD = 'CARD_USE' AND C.DEL_YN = 'N' AND D.DEL_YN = 'N' AND D.USE_YN = 'Y'
+		ORDER BY D.COMN_DTL_CD_ORD IS NULL, D.COMN_DTL_CD_ORD, D.COMN_DTL_CD_SQ
+	</select>
+
+	<!-- 카드 목록. 이번 달 사용 건수·합계와 마지막 정산 확정 월 -->
+	<select id="selectCards" parameterType="hashMap" resultType="hashMap">
+		SELECT C.CARD_SQ, C.CARD_NM, C.CARD_CO, C.LAST4, C.HOLDER_NM, C.USE_YN
+			, (SELECT COUNT(*) FROM TB_EEP_CARD_USE_D U WHERE U.CARD_SQ = C.CARD_SQ AND DATE_FORMAT(U.USE_DT, '%Y-%m') = #{YM}) AS MONTH_CNT
+			, (SELECT IFNULL(SUM(U.AMT), 0) FROM TB_EEP_CARD_USE_D U WHERE U.CARD_SQ = C.CARD_SQ AND DATE_FORMAT(U.USE_DT, '%Y-%m') = #{YM}) AS MONTH_AMT
+			, (SELECT MAX(S.YM) FROM TB_EEP_CARD_SETTLE_M S WHERE S.CARD_SQ = C.CARD_SQ) AS LAST_SETTLE_YM
+		FROM TB_EEP_CARD_M C
+		<if test="CARD_SQ != null">WHERE C.CARD_SQ = #{CARD_SQ}</if>
+		ORDER BY C.USE_YN DESC, C.CARD_NM
+	</select>
+
+	<insert id="insertCard" parameterType="hashMap" useGeneratedKeys="true" keyProperty="NEW_CARD_SQ">
+		INSERT INTO TB_EEP_CARD_M (CARD_NM, CARD_CO, LAST4, HOLDER_NM, USE_YN, UPDT_EMPLY_ID, UPDT_DT)
+		VALUES (#{CARD_NM}, NULLIF(#{CARD_CO}, ''), #{LAST4}, NULLIF(#{HOLDER_NM}, ''), #{USE_YN}, #{UPDT_EMPLY_ID}, NOW())
+	</insert>
+
+	<update id="updateCard" parameterType="hashMap">
+		UPDATE TB_EEP_CARD_M
+		SET CARD_NM = #{CARD_NM}, CARD_CO = NULLIF(#{CARD_CO}, ''), LAST4 = #{LAST4}, HOLDER_NM = NULLIF(#{HOLDER_NM}, ''), USE_YN = #{USE_YN}, UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE CARD_SQ = #{CARD_SQ}
+	</update>
+
+	<select id="selectMonthUses" parameterType="hashMap" resultType="hashMap">
+		SELECT USE_SQ, CARD_SQ, DATE_FORMAT(USE_DT, '%Y-%m-%d') AS USE_DT, AMT, USE_CD, DETAIL, MERCHANT
+		FROM TB_EEP_CARD_USE_D
+		WHERE CARD_SQ = #{CARD_SQ} AND USE_DT BETWEEN CONCAT(#{YM}, '-01') AND LAST_DAY(CONCAT(#{YM}, '-01'))
+		ORDER BY USE_DT, USE_SQ
+	</select>
+
+	<insert id="insertUse" parameterType="hashMap">
+		INSERT INTO TB_EEP_CARD_USE_D (CARD_SQ, USE_DT, AMT, USE_CD, DETAIL, REG_EMPLY_ID, REG_DT)
+		VALUES (#{CARD_SQ}, #{USE_DT}, #{AMT}, #{USE_CD}, NULLIF(#{DETAIL}, ''), #{UPDT_EMPLY_ID}, NOW())
+	</insert>
+
+	<update id="updateUse" parameterType="hashMap">
+		UPDATE TB_EEP_CARD_USE_D
+		SET USE_DT = #{USE_DT}, AMT = #{AMT}, USE_CD = #{USE_CD}, DETAIL = NULLIF(#{DETAIL}, ''), UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE USE_SQ = #{USE_SQ} AND CARD_SQ = #{CARD_SQ}
+	</update>
+
+	<delete id="deleteUse" parameterType="hashMap">
+		DELETE FROM TB_EEP_CARD_USE_D WHERE USE_SQ = #{USE_SQ} AND CARD_SQ = #{CARD_SQ}
+	</delete>
+
+	<update id="updateMerchant" parameterType="hashMap">
+		UPDATE TB_EEP_CARD_USE_D SET MERCHANT = NULLIF(#{MERCHANT}, '')
+		WHERE USE_SQ = #{USE_SQ} AND CARD_SQ = #{CARD_SQ} AND USE_DT BETWEEN CONCAT(#{YM}, '-01') AND LAST_DAY(CONCAT(#{YM}, '-01'))
+	</update>
+
+	<select id="selectSettle" parameterType="hashMap" resultType="hashMap">
+		SELECT CARD_SQ, YM, FILE_NM, EXCEL_CNT, MATCH_CNT, DONE_EMPLY_ID, DATE_FORMAT(DONE_DT, '%Y-%m-%d %H:%i') AS DONE_DT
+		FROM TB_EEP_CARD_SETTLE_M WHERE CARD_SQ = #{CARD_SQ} AND YM = #{YM}
+	</select>
+
+	<insert id="upsertSettle" parameterType="hashMap">
+		INSERT INTO TB_EEP_CARD_SETTLE_M (CARD_SQ, YM, FILE_NM, EXCEL_CNT, MATCH_CNT, DONE_EMPLY_ID, DONE_DT)
+		VALUES (#{CARD_SQ}, #{YM}, NULLIF(#{FILE_NM}, ''), #{EXCEL_CNT}, #{MATCH_CNT}, #{UPDT_EMPLY_ID}, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 9 HOUR))
+		ON DUPLICATE KEY UPDATE FILE_NM = VALUES(FILE_NM), EXCEL_CNT = VALUES(EXCEL_CNT), MATCH_CNT = VALUES(MATCH_CNT), DONE_EMPLY_ID = VALUES(DONE_EMPLY_ID), DONE_DT = VALUES(DONE_DT)
+	</insert>
+</mapper>
