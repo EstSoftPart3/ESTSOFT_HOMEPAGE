@@ -167,7 +167,63 @@ public class PayCalcCheck {
 		payslip();
 		ledger();
 		license();
+		tax();
 		System.out.println("PayCalcCheck OK");
+	}
+
+	/** 세무서 엑셀: 구역 나누기(정규 + 알바, 업체 몫 빠짐), 수습, 전월 비교(노란색·기타) */
+	private static void tax() throws Exception {
+		Map<String, Map<String, Object>> staff = new HashMap<>();
+		Map<String, Object> s1 = new HashMap<>();
+		s1.put("RRN", "900101-1234567");
+		s1.put("JOIN_DT", "2026-09-01");
+		staff.put("1", s1);
+		Map<String, Object> s2 = new HashMap<>();
+		s2.put("JOIN_DT", "2025-03-02");
+		s2.put("LEAVE_DT", "2026-10-10");
+		staff.put("2", s2);
+		java.util.function.BiFunction<Long, Long, List<Map<String, Object>>> month = (base1, base2) -> {
+			Map<String, Object> r1 = new HashMap<>(), r2 = new HashMap<>(), r3 = new HashMap<>();
+			r1.put("STAFF_SQ", 1); r1.put("STAFF_NM", "가"); r1.put("EMP_TYPE_CD", "REGULAR");
+			r1.put("BASE_AMT", base1 + 620000L); r1.put("MEAL_AMT", 200000L); r1.put("MUTUAL_AMT", 20000L);
+			r1.put("DETAILS", java.util.Arrays.asList(detail("REGULAR", base1, 3000000L), detail("EMP_INS", 620000L, 620000L), detail("ETC_P4H", 880000L, 880000L)));
+			r2.put("STAFF_SQ", 2); r2.put("STAFF_NM", "나"); r2.put("EMP_TYPE_CD", "SPECIAL");
+			r2.put("BASE_AMT", base2); r2.put("PAY_TOTAL", base2 + 100000L); r2.put("BONUS_AMT", 100000L);
+			r2.put("DETAILS", java.util.Collections.singletonList(detail("SPECIAL", base2, 4000000L)));
+			r3.put("STAFF_SQ", 3); r3.put("STAFF_NM", "업체만"); r3.put("EMP_TYPE_CD", "EXTERNAL_MCS");
+			r3.put("DETAILS", java.util.Collections.singletonList(detail("EXTERNAL_MCS", 5000000L, 5000000L)));
+			return java.util.Arrays.asList(r1, r2, r3);
+		};
+		List<TaxExcel.Line> sep = TaxExcel.lines("2026-09", month.apply(2160000L, 4000000L), staff), oct = TaxExcel.lines("2026-10", month.apply(2160000L, 1290000L), staff);
+		same(oct.size(), 3, "업체 몫만 있는 사람은 빠지고 정규+알바는 두 줄");
+		TaxExcel.Line reg = oct.get(0), alba = oct.get(1), free = oct.get(2);
+		same(reg.sec + "|" + reg.v[TaxExcel.PAY] + "|" + reg.v[2] + "|" + reg.v[4] + "|" + reg.v[TaxExcel.PROB] + "|" + reg.v[TaxExcel.STD], TaxExcel.REG + "|2160000|900101-1234567|9/1|~11/30|" + PayCalc.PROBATION_PAY, "정규 줄: 알바 몫 뺀 기본급·입사일·수습");
+		same(alba.sec + "|" + alba.v[TaxExcel.PAY] + "|" + alba.v[TaxExcel.STD], TaxExcel.ALBA + "|620000|620000", "알바 줄");
+		same(free.v[TaxExcel.PAY] + "|" + free.v[TaxExcel.STD] + "|" + free.v[TaxExcel.BONUS] + "|" + free.v[TaxExcel.LEAVE], "1290000|4000000|100000|10/10", "프리 줄: 급여는 상여 빼고, 퇴사일");
+		TaxExcel.compare(sep, new ArrayList<>());
+		TaxExcel.compare(oct, sep);
+		same(sep.get(0).added + "|" + sep.get(0).notes, "true|[신규]", "전월에 없으면 신규");
+		same(free.yellow[TaxExcel.PAY] + "|" + free.yellow[TaxExcel.STD] + "|" + free.notes, "true|false|[퇴사 10/10]", "바뀐 칸만 노란색, 퇴사는 기타");
+		same(reg.yellow[TaxExcel.PAY] + "|" + reg.notes, "false|[]", "그대로면 표시 없음");
+		List<Map<String, Object>> months = new ArrayList<>();
+		Map<String, Object> mo = new HashMap<>();
+		mo.put("YM", "2026-10");
+		mo.put("CLOSED", true);
+		mo.put("LINES", oct);
+		months.add(mo);
+		try (org.apache.poi.ss.usermodel.Workbook wb = org.apache.poi.ss.usermodel.WorkbookFactory.create(new java.io.ByteArrayInputStream(TaxExcel.build(months)))) {
+			Sheet sh = wb.getSheetAt(0);
+			same(sh.getSheetName(), "26년 10월", "시트 이름");
+			same(sh.getRow(4).getCell(3).getStringCellValue() + "|" + sh.getRow(4).getCell(18).getStringCellValue(), "가|", "정규 첫 줄 이름(D)·기타(S)");
+		}
+	}
+
+	private static Map<String, Object> detail(String type, long base, long cost) {
+		Map<String, Object> d = new HashMap<>();
+		d.put("DEPLOY_TYPE", type);
+		d.put("BASE_AMT", base);
+		d.put("COST_PRICE", cost);
+		return d;
 	}
 
 	/** 실제 대장과 같은 칸 배치의 가짜 파일 */

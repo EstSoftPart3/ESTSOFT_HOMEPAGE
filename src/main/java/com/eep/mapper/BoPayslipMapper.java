@@ -17,4 +17,6 @@ public interface BoPayslipMapper {
 	public int insertLog(Map<String, Object> param);							//YM, STAFF_SQ, CHANNEL, TO_ADDR, RESULT, ERROR_MSG, EMPLY_ID
 	public List<Map<String, Object>> selectLastLogs(Map<String, Object> param);	//YM → 사람별 마지막 발송
 	public List<Map<String, Object>> selectLogs(Map<String, Object> param);		//YM, STAFF_SQ
+	public Map<String, Object> selectTaxConf();									//세무서 자료 메일: 마지막 TAX 설정(TO_ADDR, SUBJECT, BODY)
+	public List<Map<String, Object>> selectTaxLogs();							//세무서 자료 발송 최근 50건
 }

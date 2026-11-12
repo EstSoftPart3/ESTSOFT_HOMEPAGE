@@ -295,7 +295,7 @@ public class PayslipService {
 		MimeMessage message = s.createMimeMessage();
 		MimeMessageHelper h = new MimeMessageHelper(message, true, "UTF-8");
 		h.setFrom(str(conf.get("FROM_ADDR")), str(conf.get("FROM_NM")).isEmpty() ? COMPANY : str(conf.get("FROM_NM")));
-		h.setTo(to);
+		h.setTo(to.split("\\s*,\\s*"));
 		if (!str(conf.get("REPLY_TO")).isEmpty()) {
 			h.setReplyTo(str(conf.get("REPLY_TO")));
 		}
@@ -484,6 +484,134 @@ public class PayslipService {
 		slip.put("DED_TOTAL", 168000L);
 		slip.put("NET", 4032000L);
 		return slip;
+	}
+
+	// ── 세무서 자료: 그해 1월~고른 달 급여 엑셀(달마다 시트)을 정해 둔 주소로 보낸다 ──
+
+	static final List<String> TAX_VARS = Arrays.asList("귀속월", "회사명", "담당자 연락처");
+	static final String TAX_SUBJECT = "[이에스티소프트] {귀속월} 급여 자료";
+	static final String TAX_BODY = "<p>안녕하세요. {회사명} 입니다.</p>"
+			+ "<p>{귀속월} 급여 자료를 첨부해 드립니다.<br>그해 1월부터 {귀속월}까지 달마다 시트로 담았고, 전월과 달라진 칸은 노란색으로 표시했습니다.</p>"
+			+ "<p>문의: 경영지원팀 {담당자 연락처}</p>";
+
+	public static String taxFileName(String ym) {
+		return "이에스티_" + ym.substring(0, 4) + "년_급여관리_" + Integer.parseInt(ym.substring(5)) + "월.xlsx";
+	}
+
+	/** hide: 이 사람을 빼야 하는지(시크릿 직원을 시크릿이 아닌 계정이 받을 때) */
+	@SuppressWarnings("unchecked")
+	public byte[] taxExcel(String ym, java.util.function.Predicate<Object> hide) throws IOException {
+		java.time.YearMonth end = java.time.YearMonth.parse(ym), m = end.withMonth(1);
+		Map<String, Map<String, Object>> staff = staffInfo();
+		staff.values().forEach(s -> {
+			String rrn = str(s.remove("RRN_ENC"));
+			try {
+				s.put("RRN", RrnCipher.isEncrypted(rrn) ? RrnCipher.decrypt(rrn) : rrn);
+			} catch (RuntimeException e) {
+				s.put("RRN", "");
+			}
+		});
+		List<TaxExcel.Line> prev = taxLines(m.minusMonths(1).toString(), staff, hide);
+		List<Map<String, Object>> months = new ArrayList<>();
+		for (; !m.isAfter(end); m = m.plusMonths(1)) {
+			List<TaxExcel.Line> cur = taxLines(m.toString(), staff, hide);
+			TaxExcel.compare(cur, prev);
+			prev = cur;
+			Map<String, Object> mo = new HashMap<>();
+			mo.put("YM", m.toString());
+			mo.put("CLOSED", payroll.closed(m.toString()));
+			mo.put("LINES", cur);
+			months.add(0, mo); // 최근 달이 맨 앞
+		}
+		return TaxExcel.build(months);
+	}
+
+	@SuppressWarnings("unchecked")
+	private List<TaxExcel.Line> taxLines(String ym, Map<String, Map<String, Object>> staff, java.util.function.Predicate<Object> hide) {
+		List<Map<String, Object>> rows = new ArrayList<>((List<Map<String, Object>>) payroll.month(ym).get("rows"));
+		rows.removeIf(r -> hide.test(r.get("STAFF_SQ")));
+		return TaxExcel.lines(ym, rows, staff);
+	}
+
+	public Map<String, Object> taxConf() {
+		Map<String, Object> c = mapper.selectTaxConf(), out = new HashMap<>();
+		c = c == null ? new HashMap<>() : c;
+		Map<String, Object> mail = mapper.selectConf();
+		out.put("TO_ADDR", str(c.get("TO_ADDR")));
+		out.put("SUBJECT", str(c.get("SUBJECT")).isEmpty() ? TAX_SUBJECT : c.get("SUBJECT"));
+		out.put("BODY", str(c.get("BODY")).isEmpty() ? TAX_BODY : c.get("BODY"));
+		out.put("REG_DT", c.get("REG_DT"));
+		out.put("DEFAULT_SUBJECT", TAX_SUBJECT);
+		out.put("DEFAULT_BODY", TAX_BODY);
+		out.put("VARS", TAX_VARS);
+		out.put("FROM_NM", mail.get("FROM_NM"));
+		out.put("FROM_ADDR", mail.get("FROM_ADDR"));
+		out.put("CONTACT", mail.get("CONTACT"));
+		out.put("ready", "Y".equals(mail.get("VERIFIED_YN")));
+		out.put("logs", mapper.selectTaxLogs());
+		return out;
+	}
+
+	/** 받는 주소(쉼표·줄바꿈으로 여러 개)를 정리해 "a, b" 로 */
+	static String taxTo(String raw) {
+		List<String> to = new ArrayList<>();
+		for (String a : str(raw).split("[,;\\s]+")) {
+			if (!a.isEmpty() && !to.contains(a)) {
+				require(EMAIL.matcher(a).matches(), "받는 주소를 확인해 주세요: " + a);
+				to.add(a);
+			}
+		}
+		require(!to.isEmpty() && to.size() <= 10, "받는 주소를 1~10개 넣어 주세요.");
+		String joined = String.join(", ", to);
+		require(joined.length() <= 500, "받는 주소가 너무 깁니다.");
+		return joined;
+	}
+
+	public void saveTaxConf(String toRaw, String subject, String body, String loginId) {
+		String to = taxTo(toRaw), s = str(subject).trim(), b = clean(str(body));
+		require(!s.isEmpty() && s.length() <= 300, "제목을 1~300자로 입력해 주세요.");
+		require(!b.replaceAll("(?s)<[^>]*>|&nbsp;|\\s", "").isEmpty() && b.length() <= 200000, "메일 내용을 입력해 주세요.");
+		for (String text : new String[] { s, b }) {
+			Matcher m = VAR.matcher(text);
+			while (m.find()) {
+				require(TAX_VARS.contains(m.group(1)), "쓸 수 없는 값입니다: {" + m.group(1) + "}. 넣을 수 있는 값은 " + TAX_VARS + " 입니다.");
+			}
+		}
+		hist("TAX", to, s, b, loginId);
+	}
+
+	/** 마감된 달만. 결과는 발송 이력(CHANNEL TAX)에 남기고, 실패하면 이유를 오류로 돌려준다 */
+	public String sendTax(String ym, String baseUrl, String loginId, java.util.function.Predicate<Object> hide) throws IOException {
+		require(payroll.closed(ym), "마감된 달만 보낼 수 있습니다. 급여관리에서 먼저 마감해 주세요(내려받기는 언제든 됩니다).");
+		Map<String, Object> conf = mapper.selectConf(), tax = mapper.selectTaxConf();
+		require("Y".equals(conf.get("VERIFIED_YN")), "보내는 메일 설정(급여명세서 ⚙)에서 연결 확인을 먼저 해 주세요.");
+		require(tax != null && !str(tax.get("TO_ADDR")).isEmpty(), "받는 주소를 먼저 저장해 주세요.");
+		String to = str(tax.get("TO_ADDR")), error = null;
+		conf.put("SUBJECT", tax.get("SUBJECT"));
+		conf.put("BODY", tax.get("BODY"));
+		Map<String, String> v = new LinkedHashMap<>();
+		v.put("귀속월", ym.substring(0, 4) + "년 " + Integer.parseInt(ym.substring(5)) + "월");
+		v.put("회사명", COMPANY);
+		v.put("담당자 연락처", str(conf.get("CONTACT")));
+		byte[] xlsx = taxExcel(ym, hide);
+		try {
+			mail(conf, to, v, taxFileName(ym), xlsx, baseUrl);
+		} catch (IllegalArgumentException e) {
+			error = e.getMessage();
+		} catch (Exception e) {
+			error = reason(e);
+		}
+		Map<String, Object> log = new HashMap<>();
+		log.put("YM", ym);
+		log.put("STAFF_SQ", 0);
+		log.put("CHANNEL", "TAX");
+		log.put("TO_ADDR", to.substring(0, Math.min(200, to.length())));
+		log.put("RESULT", error == null ? "OK" : "FAIL");
+		log.put("ERROR_MSG", error == null ? null : error.substring(0, Math.min(300, error.length())));
+		log.put("EMPLY_ID", loginId);
+		mapper.insertLog(log);
+		require(error == null, error);
+		return to;
 	}
 
 	/** 급여 담당자만 쓰는 칸이지만, 메일로 나가므로 스크립트·폼·이벤트 속성은 걸러 낸다 */

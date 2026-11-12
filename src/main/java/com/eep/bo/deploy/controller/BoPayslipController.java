@@ -143,6 +143,42 @@ public class BoPayslipController {
 		return run(() -> service.testSend(subject, body, baseUrl(request), loginId(session)));
 	}
 
+	// ── 세무서 자료 ──
+
+	/** 그해 1월~YM 급여 엑셀. 시크릿 직원은 시크릿 계정이 받을 때만 들어간다 */
+	@RequestMapping(value = "/admin/payslip/taxExcel.do", method = RequestMethod.GET)
+	public void taxExcel(@RequestParam("YM") String ym, HttpSession session, HttpServletResponse response) throws IOException {
+		try {
+			SecretFilter.View v = secret.view(loginId(session));
+			write(response, service.taxExcel(ym, v::hides), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "attachment", PayslipService.taxFileName(ym));
+		} catch (IllegalArgumentException | java.time.format.DateTimeParseException e) {
+			response.setContentType("text/plain; charset=UTF-8");
+			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+			response.getWriter().write(e.getMessage());
+		}
+	}
+
+	@RequestMapping(value = "/admin/payslip/taxConfData.do", method = RequestMethod.POST)
+	public ModelAndView taxConfData() {
+		return run(() -> service.taxConf());
+	}
+
+	@RequestMapping(value = "/admin/payslip/saveTaxConfData.do", method = RequestMethod.POST)
+	public ModelAndView saveTaxConfData(@RequestParam("TO_ADDR") String to, @RequestParam("SUBJECT") String subject, @RequestParam("BODY") String body, HttpSession session) {
+		return run(() -> {
+			service.saveTaxConf(to, subject, body, loginId(session));
+			return "OK";
+		});
+	}
+
+	@RequestMapping(value = "/admin/payslip/sendTaxData.do", method = RequestMethod.POST)
+	public ModelAndView sendTaxData(@RequestParam("YM") String ym, HttpServletRequest request, HttpSession session) {
+		return run(() -> {
+			SecretFilter.View v = secret.view(loginId(session));
+			return service.sendTax(ym, baseUrl(request), loginId(session), v::hides);
+		});
+	}
+
 	// ── 도움 ──
 
 	/** 메일 본문의 사이트 안 주소를 전체 주소로 바꿀 때 쓴다. 프록시 뒤라 전달된 머리말을 먼저 본다 */

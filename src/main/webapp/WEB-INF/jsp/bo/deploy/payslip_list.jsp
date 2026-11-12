@@ -51,8 +51,41 @@
 						<span class="small text-muted" id="payDt"></span>
 					</div>
 				</div>
+				<div class="cate-tabs" id="pageTabs" role="tablist" aria-label="화면 구분"></div>
 				<div class="card-body">
-					<div class="cal-panel">
+					<div class="cal-panel" data-page="tax" hidden>
+						<div class="ps-note" id="taxNote" hidden></div>
+						<div class="ps-bar">
+							<span id="taxRange"></span>
+							<div class="ml-auto d-flex" style="gap:6px">
+								<button type="button" class="btn btn-sm btn-outline-secondary" id="btnTaxXl">⬇ 엑셀 내려받기</button>
+								<button type="button" class="btn btn-sm btn-primary" id="btnTaxSend">📧 세무서로 보내기</button>
+							</div>
+						</div>
+						<div class="ps-two px-3 pb-3">
+							<div>
+								<div class="ps-form" style="grid-template-columns:80px 1fr">
+									<label for="tTo">받는 주소 *</label><textarea id="tTo" class="form-control form-control-sm" rows="2" placeholder="세무사무소 메일. 여러 곳이면 쉼표나 줄바꿈으로 나눕니다"></textarea>
+									<label for="tSubject">제목 *</label><input id="tSubject" class="form-control form-control-sm" maxlength="300">
+									<label>넣을 값</label><div id="tVars"></div>
+									<label for="tBody">내용 *</label><textarea id="tBody" class="form-control form-control-sm" rows="8"></textarea>
+								</div>
+								<div class="d-flex flex-wrap mt-2" style="gap:6px">
+									<button type="button" class="btn btn-sm btn-outline-secondary" id="btnTaxDefault">기본 문구로 되돌리기</button>
+									<span class="small text-muted align-self-center" id="tSaved"></span>
+									<button type="button" class="btn btn-sm btn-primary ml-auto" id="btnTaxSave">저장</button>
+								</div>
+								<div class="small text-muted mt-2">보내는 계정·답장 주소·숨은 참조는 ⚙ 보내는 메일 설정(급여명세서와 같은 Gmail)을 씁니다.</div>
+							</div>
+							<div>
+								<div class="small text-muted mb-1">보낸 기록</div>
+								<div class="table-responsive" style="max-height:40vh">
+									<table class="table table-sm cal-table mb-0"><thead><tr><th>일시</th><th>누가</th><th>귀속월</th><th>받는 주소</th><th>결과</th></tr></thead><tbody id="taxLogs"></tbody></table>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="cal-panel" data-page="slip">
 						<div class="pl-chks" id="chks" role="group" aria-label="보기 구분"></div>
 						<div class="ps-note" id="note" hidden></div>
 						<div class="ps-bar">
@@ -195,8 +228,84 @@
 		$('#btnDefault').on('click', function() { bootbox.confirm('제목과 내용을 처음 기본 문구로 바꿀까요? 저장을 눌러야 반영됩니다.', function(ok) { if (ok) setBody(conf.DEFAULT_SUBJECT, conf.DEFAULT_BODY); }); });
 		$('#cSubject, #cFromNm, #cFromAddr, #cContact').on('input', paintPreview);
 		$('#confModal').on('hidden.bs.modal', function() { clearInterval(pvTimer); load(); });
+		$('#pageTabs').on('click', '.cate-tab', function() { showPage($(this).attr('data-tab')); });
+		$('#btnTaxXl').on('click', function() { window.open('/admin/payslip/taxExcel.do?YM=' + ym, '_blank'); });
+		$('#btnTaxSave').on('click', saveTax);
+		$('#btnTaxSend').on('click', sendTax);
+		$('#btnTaxDefault').on('click', function() { $('#tSubject').val(taxConf.DEFAULT_SUBJECT); $('#tBody').val(htmlText(taxConf.DEFAULT_BODY)); $('#tSaved').text('저장을 눌러야 반영됩니다'); });
+		showPage((function() { try { return localStorage.getItem('payslipPage'); } catch (e) { return null; } })() === 'tax' ? 'tax' : 'slip');
 		load();
 	});
+
+	// ── 화면 탭: 급여명세서 / 세무서 자료 ──
+
+	var page = 'slip', taxConf = null;
+	function showPage(key) {
+		page = key;
+		try { localStorage.setItem('payslipPage', key); } catch (e) {}
+		$('#pageTabs').empty().append(hrTab('slip', '급여명세서', '', key === 'slip')).append(hrTab('tax', '세무서 자료', '', key === 'tax'));
+		$('[data-page]').each(function() { $(this).prop('hidden', $(this).attr('data-page') !== key); });
+		if (key === 'tax') loadTax();
+	}
+
+	function loadTax() {
+		paintTaxRange();
+		hrPost('/admin/payslip/taxConfData.do', {}, function(res) {
+			taxConf = res.result;
+			$('#tTo').val((taxConf.TO_ADDR || '').split(', ').join('\n'));
+			$('#tSubject').val(taxConf.SUBJECT);
+			$('#tBody').val(htmlText(taxConf.BODY));
+			$('#tSaved').text(taxConf.REG_DT ? '저장 ' + taxConf.REG_DT : '아직 저장 전 (기본 문구)');
+			$('#tVars').empty().append(taxConf.VARS.map(function(v) { return $('<button type="button" class="ps-var">').text('{' + v + '}').on('click', function() { insertAt($('#tBody')[0], '{' + v + '}'); }); }));
+			var $l = $('#taxLogs').empty();
+			taxConf.logs.forEach(function(x) {
+				$l.append($('<tr>').append($('<td>').text(x.REG_DT)).append($('<td>').text(x.EMPLY_NM || '')).append($('<td>').text(dpYmLabel(x.PAY_YM))).append($('<td>').text(x.TO_ADDR || ''))
+					.append($('<td>').append($('<span class="dp-pill">').addClass(x.RESULT === 'OK' ? 'ok' : 'bad').text(x.RESULT === 'OK' ? '보냄' : '실패')).append(x.ERROR_MSG ? document.createTextNode(' ' + x.ERROR_MSG) : '')));
+			});
+			if (!taxConf.logs.length) $l.append('<tr><td colspan="5" class="text-center text-muted py-3">보낸 적이 없습니다.</td></tr>');
+			paintTaxRange();
+		});
+	}
+
+	function paintTaxRange() {
+		var y = ym.substring(0, 4), m = Number(ym.substring(5));
+		$('#taxRange').empty().append($('<b>').text(y + '년 1월 ~ ' + m + '월')).append(document.createTextNode(' · 달마다 시트(최근 달이 앞) · 전월과 달라진 칸은 노란색, 신규·퇴사·기본급 변경·수습 종료는 기타 칸에 적습니다'));
+		var note = !monthClosed ? dpYmLabel(ym) + '은 아직 작성중이라 보낼 수 없습니다(내려받기는 지금 값으로 됩니다).' : taxConf && !taxConf.ready ? '⚙ 보내는 메일 설정에서 Gmail 연결 확인을 먼저 해 주세요.' : '';
+		$('#taxNote').prop('hidden', !note).text(note);
+		$('#btnTaxSend').prop('disabled', !monthClosed || !(taxConf && taxConf.ready));
+	}
+
+	// 내용 칸은 글로 고치고, 저장할 때 HTML 로 바꾼다
+	function htmlText(html) {
+		return $('<div>').html(String(html || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>\s*/gi, '\n\n')).text().replace(/\n{3,}/g, '\n\n').trim();
+	}
+	function textHtml(t) {
+		return t.trim().split(/\n{2,}/).map(function(p) { return '<p>' + dpEsc(p).replace(/\n/g, '<br>') + '</p>'; }).join('');
+	}
+	function insertAt(el, v) {
+		var s = el.selectionStart === null ? el.value.length : el.selectionStart;
+		el.value = el.value.substring(0, s) + v + el.value.substring(el.selectionEnd === null ? s : el.selectionEnd);
+		el.focus(); el.setSelectionRange(s + v.length, s + v.length);
+	}
+
+	function saveTax(after, fail) {
+		hrPost('/admin/payslip/saveTaxConfData.do', { TO_ADDR: $('#tTo').val(), SUBJECT: $('#tSubject').val(), BODY: textHtml($('#tBody').val()) }, function() {
+			if (typeof after === 'function') after(); else { loadTax(); bootbox.alert('저장했습니다.'); }
+		}, typeof fail === 'function' ? fail : undefined);
+	}
+
+	function sendTax() {
+		var to = $('#tTo').val().split(/[\s,;]+/).filter(Boolean);
+		bootbox.confirm({ title: dpYmLabel(ym) + ' 세무서 자료 보내기', message: $('<div>').append($('<div>').text('받는 곳: ' + to.join(', '))).append($('<div>').text('첨부: ' + ym.substring(0, 4) + '년 1월~' + Number(ym.substring(5)) + '월 급여 엑셀 (주민번호 전체가 들어 있습니다)')).append('<div class="small text-muted mt-1">지금 화면의 주소·문구를 저장한 뒤 보냅니다.</div>').html(),
+			callback: function(ok) {
+				if (!ok) return;
+				var $b = $('#btnTaxSend').prop('disabled', true).text('보내는 중…');
+				function done() { $b.text('📧 세무서로 보내기'); loadTax(); }
+				saveTax(function() {
+					hrPost('/admin/payslip/sendTaxData.do', { YM: ym }, function(res) { done(); bootbox.alert(res.result + ' 로 보냈습니다.'); }, done);
+				}, done);
+			} });
+	}
 
 	function chipKeys() { return (secretViewer ? ['_SECRET'] : []).concat(TYPES.map(function(c) { return c[0]; }), SENT.map(function(c) { return c[0]; })); }
 	function chipOf(type) { var c = TYPES.filter(function(c) { return c[2].indexOf(type) >= 0; })[0]; return c ? c[0] : 'BIZ'; }
@@ -209,6 +318,7 @@
 			rows = res.result.rows; monthClosed = res.result.closed; ready = res.result.ready; secretViewer = res.result.secretViewer;
 			$('#payDt').text('지급일자 ' + (res.result.PAY_DT || ''));
 			render();
+			if (page === 'tax') paintTaxRange();
 		});
 	}
 

@@ -7,7 +7,18 @@
 <mapper namespace="com.eep.mapper.BoPayslipMapper">
 
 	<select id="selectStaffInfo" resultType="hashMap">
-		SELECT STAFF_SQ, STAFF_NM, RRN_ENC, POSITION_NM, DEPT_NM, ORG_NM, JOIN_DT, EMAIL FROM TB_EEP_HR_STAFF_M
+		SELECT STAFF_SQ, STAFF_NM, RRN_ENC, POSITION_NM, DEPT_NM, ORG_NM, JOIN_DT, LEAVE_DT, EMAIL FROM TB_EEP_HR_STAFF_M
+	</select>
+
+	<!-- 세무서 자료 메일 설정: 설정 이력의 마지막 TAX 줄이 지금 설정 (SUMMARY = 받는 주소들) -->
+	<select id="selectTaxConf" resultType="hashMap">
+		SELECT SUMMARY AS TO_ADDR, SUBJECT, BODY, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%i') AS REG_DT FROM TB_EEP_PAYSLIP_CONF_H WHERE KIND_CD = 'TAX' ORDER BY HIST_SQ DESC LIMIT 1
+	</select>
+
+	<select id="selectTaxLogs" resultType="hashMap">
+		SELECT L.PAY_YM, L.TO_ADDR, L.RESULT, L.ERROR_MSG, DATE_FORMAT(L.REG_DT, '%Y-%m-%d %H:%i') AS REG_DT
+			, (SELECT E.EMPLY_NM FROM TB_EEP_EMPLY_M E WHERE E.EMPLY_ID = L.EMPLY_ID LIMIT 1) AS EMPLY_NM
+		FROM TB_EEP_PAYSLIP_LOG_H L WHERE L.CHANNEL = 'TAX' ORDER BY L.LOG_SQ DESC LIMIT 50
 	</select>
 
 	<select id="selectEmplyEmail" parameterType="hashMap" resultType="string">
@@ -43,7 +54,7 @@
 	<select id="selectConfHist" resultType="hashMap">
 		SELECT H.HIST_SQ, H.KIND_CD, H.SUMMARY, DATE_FORMAT(H.REG_DT, '%Y-%m-%d %H:%i') AS REG_DT, H.EMPLY_ID
 			, (SELECT E.EMPLY_NM FROM TB_EEP_EMPLY_M E WHERE E.EMPLY_ID = H.EMPLY_ID LIMIT 1) AS EMPLY_NM
-		FROM TB_EEP_PAYSLIP_CONF_H H ORDER BY H.HIST_SQ DESC LIMIT 50
+		FROM TB_EEP_PAYSLIP_CONF_H H WHERE H.KIND_CD &lt;&gt; 'TAX' ORDER BY H.HIST_SQ DESC LIMIT 50
 	</select>
 
 	<select id="selectConfHistOne" parameterType="hashMap" resultType="hashMap">
