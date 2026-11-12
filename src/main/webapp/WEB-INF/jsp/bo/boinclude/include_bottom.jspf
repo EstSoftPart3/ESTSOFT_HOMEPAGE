@@ -76,8 +76,8 @@
 $(document).on('keydown', 'textarea.enter-send, textarea.bootbox-input-textarea', function(e) {
 	if (e.key !== 'Enter' || e.shiftKey || e.originalEvent.isComposing) return;
 	e.preventDefault();
-	var $m = $(this).closest('.bootbox');
-	if ($m.length) $m.find('.bootbox-accept').click(); else $(this).trigger('enter-send');
+	// bootbox prompt 입력칸만 확인 버튼을 누른다. 메모 창(bootbox.dialog)의 메모 칸은 자기 '남기기'로
+	if ($(this).is('.bootbox-input-textarea')) $(this).closest('.bootbox').find('.bootbox-accept').click(); else $(this).trigger('enter-send');
 });
 </script>
 <%@ include file="/WEB-INF/jsp/bo/boinclude/include_guide.jspf"%>
