@@ -13,6 +13,11 @@
 	.st-bn select { width: 100px; height: 22px; font-size: 11px; padding: 0 2px; }
 	.st-bn-toggle { background: none; border: 0; padding: 0 4px; color: #888; font-size: 11px; vertical-align: middle; }
 	.st-bn-toggle:hover, .st-bn-toggle:focus { color: #0b6e8a; }
+	.pl-chks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 14px 0; }
+	.pl-chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(17,17,17,.15); font-weight: 700; font-size: 12.5px; color: #444; cursor: pointer; user-select: none; margin: 0; background: #fff; }
+	.pl-chip input { margin: 0; cursor: pointer; }
+	.pl-chip .cnt { background: rgba(17,17,17,.08); border-radius: 999px; padding: 0 7px; font-size: 11px; }
+	.pl-chip.on { border-color: #0b6e8a; background: #eef9fc; color: #0b6e8a; }
 	.st-name { background: none; border: 0; padding: 0; color: #0b6e8a; font-weight: 600; text-decoration: underline; cursor: pointer; }
 	.st-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 2px 18px; }
 	.st-grid .hr-card-label { flex-basis: 84px; }
@@ -98,7 +103,7 @@
 					</div>
 
 					<div class="cal-panel">
-						<div class="cate-tabs" id="tabs" role="tablist" aria-label="재직 상태"></div>
+						<div class="pl-chks" id="stChks" role="group" aria-label="재직 상태"></div>
 						<div class="d-flex flex-wrap align-items-center">
 							<div class="btn-group btn-group-sm mx-3 mt-2 mb-2" id="orgSeg" role="group" aria-label="소속 빠른 선택"></div>
 							<div class="ml-auto mr-3 d-none align-items-center" id="bonusBar" style="gap:6px">
@@ -222,7 +227,9 @@
 	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
 
 	<script>
-	var STATUS = { WORK: '재직', LEFT: '퇴사', WAIT: '대기' };
+	// 공통코드 HR_STAFF_STATUS 의 이름·순서. 코드가 없을 때만 기본값
+	var STATUS = hrCodeMap('HR_STAFF_STATUS');
+	if ($.isEmptyObject(STATUS)) STATUS = { WORK: '재직', LEFT: '퇴사', WAIT: '대기' };
 	// 인사카드 탭: [이름, 그 탭에 그릴 SECTIONS 이름]. 영업정보/수행이력과 서류는 따로 그린다
 	var CARD_TABS = [['기초정보', ['기초정보', '일자', '계좌(기업)', '비상연락망', '기타']], ['학력/교육', ['학력', '병역', '교육·자격']], ['영업정보/수행이력', []], ['서류', []], ['메모', []], ['보유 장비', []]];
 	var SALES_TERMS = ['GRADE_NM', 'REAL_CAREER', 'WISH_PRICE', 'SCORE', 'GAPIL_YN', 'AUTO_APLY_YN', 'WISH_LOC'];
@@ -269,7 +276,7 @@
 	SECTIONS.forEach(function(s) { s[1].forEach(function(f) { LABELS[f[0]] = f[1]; }); });
 	DOCS.forEach(function(d) { LABELS[d[0]] = d[1]; });
 
-	var rows = [], current = 'WORK', opened = null;
+	var rows = [], shownSt = { WORK: true }, opened = null; // shownSt: 켜 둔 재직 상태 칩
 	var revealed = {}; // 'STAFF_SQ|FIELD' -> 원문. 화면을 닫으면 사라진다
 
 	$(function() {
@@ -294,7 +301,23 @@
 		loadDrive();
 	});
 
-	$(document).on('click', '.cate-tab', function() { current = $(this).data('tab'); render(); });
+	$(document).on('change', '#stChks input.pl-chk', function() { shownSt[this.value] = this.checked; render(); });
+	$(document).on('click', '#stChks #stAll', function() {
+		var all = Object.keys(STATUS).every(function(k) { return shownSt[k]; });
+		Object.keys(STATUS).forEach(function(k) { shownSt[k] = !all; });
+		render();
+	});
+
+	function renderStatusChips() {
+		var keys = Object.keys(STATUS), all = keys.every(function(k) { return shownSt[k]; });
+		var $c = $('#stChks').empty().append($('<button type="button" class="btn btn-sm btn-outline-secondary" id="stAll">').text(all ? '☑ 전체 해제' : '☐ 전체 선택'));
+		keys.forEach(function(k) {
+			$c.append($('<label class="pl-chip">').toggleClass('on', !!shownSt[k]).append($('<input type="checkbox" class="pl-chk">').val(k).prop('checked', !!shownSt[k]))
+				.append($('<span>').text(STATUS[k])).append($('<span class="cnt">').text(rows.filter(function(r) { return r.STATUS_CD === k; }).length)));
+		});
+	}
+
+	function onlyLeft() { return shownSt.LEFT && !Object.keys(STATUS).some(function(k) { return k !== 'LEFT' && shownSt[k]; }); }
 
 	// 비고는 메모로 옮겼다. 목록 💬 버튼과 인사카드 메모 탭에서 쌓는다
 	var MEMO_API = hrMemoApi('/admin/staff/');
@@ -390,14 +413,14 @@
 	function resetFilters() {
 		$('#keyword').val('');
 		$('.st-filter').val('');
-		$('#sortSel').val(current === 'LEFT' ? 'leaveDesc' : 'joinDesc');
+		$('#sortSel').val(onlyLeft() ? 'leaveDesc' : 'joinDesc');
 		render();
 	}
 
 	function filtered() {
 		var kw = $.trim($('#keyword').val()).toLowerCase();
 		return rows.filter(function(r) {
-			if (r.STATUS_CD !== current) return false;
+			if (!shownSt[r.STATUS_CD]) return false;
 			var ok = true;
 			$('.st-filter').each(function() { if ($(this).val() && r[$(this).data('field')] !== $(this).val()) ok = false; });
 			if (!ok) return false;
@@ -429,13 +452,12 @@
 	}
 
 	function render() {
-		$('#tabs').empty();
-		$.each(STATUS, function(k, v) { $('#tabs').append(hrTab(k, v, rows.filter(function(r) { return r.STATUS_CD === k; }).length, current === k)); });
+		renderStatusChips();
 		renderOrgSeg();
-		var list = filtered();
+		var list = filtered(), multi = Object.keys(STATUS).filter(function(k) { return shownSt[k]; }).length > 1;
 		renderSummary(list);
-		var cols = [['SEQ_NO', 'NO'], ['ORG_NM', '소속'], ['DEPT_NM', '부서'], ['POSITION_NM', '직급'], ['STAFF_NM', '성명'], ['PHONE', '전화번호'], ['EMAIL', '개인 메일'], ['COMPANY_EMAIL', '회사 메일'],
-			['JOIN_DT', '입사일'], current === 'LEFT' ? ['LEAVE_DT', '퇴사일'] : null, ['_TENURE', '근속'], ['_DOCS', '서류'], BN && current !== 'LEFT' ? ['_BONUS', '상여 적용'] : null, ['_MEMO', '메모']].filter(Boolean);
+		var cols = [['SEQ_NO', 'NO'], multi ? ['_STATUS', '재직 상태'] : null, ['ORG_NM', '소속'], ['DEPT_NM', '부서'], ['POSITION_NM', '직급'], ['STAFF_NM', '성명'], ['PHONE', '전화번호'], ['EMAIL', '개인 메일'], ['COMPANY_EMAIL', '회사 메일'],
+			['JOIN_DT', '입사일'], shownSt.LEFT ? ['LEAVE_DT', '퇴사일'] : null, ['_TENURE', '근속'], ['_DOCS', '서류'], BN && !onlyLeft() ? ['_BONUS', '상여 적용'] : null, ['_MEMO', '메모']].filter(Boolean);
 		$('#listHead').empty().append($('<tr>').append(cols.map(function(c) { return $('<th>').text(c[1]); })));
 		var $body = $('#listBody').empty();
 		if (!list.length) { $body.append($('<tr>').append($('<td class="text-center text-muted py-4">').attr('colspan', cols.length).text('해당하는 직원이 없습니다.'))); return; }
@@ -452,8 +474,10 @@
 					var miss = missingDocs(r);
 					$td.text(miss.length ? '미제출 ' + miss.length : '완료').attr('data-tone', miss.length ? 'warn' : 'good')
 						.attr('title', miss.map(function(d) { return d[1]; }).join(', '));
+				} else if (c[0] === '_STATUS') {
+					$td.text(STATUS[r.STATUS_CD] || r.STATUS_CD);
 				} else if (c[0] === '_BONUS') {
-					bonusCell($td.addClass('st-bonus'), r);
+					if (r.STATUS_CD !== 'LEFT') bonusCell($td.addClass('st-bonus'), r);
 				} else if (c[0] === '_MEMO') {
 					$td.append(hrMemoBtn(MEMO_API, r.STAFF_SQ, r.MEMO_CNT, r.STAFF_NM, function() { load(); }));
 				} else {
@@ -467,7 +491,7 @@
 
 	// 소속 드롭다운의 빠른 선택. 인원은 지금 탭 기준
 	function renderOrgSeg() {
-		var inTab = rows.filter(function(r) { return r.STATUS_CD === current; }), org = $('#fOrg').val() || '', $s = $('#orgSeg').empty();
+		var inTab = rows.filter(function(r) { return shownSt[r.STATUS_CD]; }), org = $('#fOrg').val() || '', $s = $('#orgSeg').empty();
 		[['', '전체'], ['정규직', '정규직'], ['프리', '프리']].forEach(function(o) {
 			var n = o[0] ? inTab.filter(function(r) { return r.ORG_NM === o[0]; }).length : inTab.length;
 			$s.append($('<button type="button" class="btn btn-outline-secondary">').toggleClass('active', org === o[0]).attr('aria-pressed', org === o[0]).text(o[1] + ' ' + n)
@@ -504,6 +528,18 @@
 		$('#cardModal').modal('show');
 	}
 
+	// 탭 이름 뒤 건수. 0건이면 붙이지 않는다
+	function cardTabLabel(r, i) {
+		var n = i === 2 ? (prjs && prjs.sq === r.STAFF_SQ ? prjs.list.length : r.PRJ_CNT) : i === 4 ? r.MEMO_CNT : i === 5 ? r.EQP_CNT : 0;
+		if (i === 3) { var miss = missingDocs(r).length; return CARD_TABS[i][0] + (miss ? '(미제출 ' + miss + ')' : ''); }
+		return CARD_TABS[i][0] + (n ? '(' + n + ')' : '');
+	}
+
+	function refreshCardTabs() {
+		var r = find(opened);
+		if (r) $('#cardBody > ul .nav-link').each(function(i) { $(this).text(cardTabLabel(r, i)); });
+	}
+
 	function paintCard() {
 		var r = find(opened);
 		if (!r) return;
@@ -514,7 +550,7 @@
 		var $tabs = $('<ul class="nav nav-tabs mb-3" role="tablist">').appendTo($b), $p = $('<div role="tabpanel">').appendTo($b);
 		CARD_TABS.forEach(function(t, i) {
 			$('<li class="nav-item">').append($('<button type="button" class="nav-link" role="tab">').toggleClass('active', i === cardTab).attr('aria-selected', i === cardTab)
-				.text(i === 3 ? t[0] + ' (미제출 ' + missingDocs(r).length + ')' : t[0])
+				.text(cardTabLabel(r, i))
 				.on('click', function() { cardTab = i; paintCard(); $('#cardBody .nav-link.active').focus(); })).appendTo($tabs);
 		});
 		SECTIONS.filter(function(s) { return CARD_TABS[cardTab][1].indexOf(s[0]) >= 0; }).forEach(function(s) {
@@ -537,7 +573,7 @@
 			DOCS.forEach(function(d) { $d.append(docRow(r, d)); });
 		}
 		if (!docs || docs.sq !== r.STAFF_SQ) loadDocs(r.STAFF_SQ);
-		if (cardTab === 4) hrMemoFeed($('<div>').appendTo($p), MEMO_API, r.STAFF_SQ, function() { load(); });
+		if (cardTab === 4) hrMemoFeed($('<div>').appendTo($p), MEMO_API, r.STAFF_SQ, function() { load(refreshCardTabs); });
 		if (cardTab === 5) {
 			var $eq = $('<div id="staffEquipment">').appendTo($p);
 			loadEquipment(r.STAFF_SQ, function(list) {
@@ -996,7 +1032,7 @@
 				if (!ok) return;
 				hrPost('/admin/staff/saveStaffFieldData.do', { STAFF_SQ: r.STAFF_SQ, FIELD: 'STATUS_CD', VALUE: to }, function() {
 					r.STATUS_CD = to;
-					current = to;
+					shownSt[to] = true;
 					paintCard();
 					render();
 				});
@@ -1012,7 +1048,7 @@
 			if (!ok) return;
 			hrPost('/admin/staff/saveStaffFieldData.do', { STAFF_SQ: r.STAFF_SQ, FIELD: 'STATUS_CD', VALUE: to }, function() {
 				r.STATUS_CD = to;
-				current = to;
+				shownSt[to] = true;
 				paintCard();
 				render();
 			});
@@ -1033,14 +1069,14 @@
 
 	function openNew() {
 		$('#newForm')[0].reset();
-		$('#newForm [name=STATUS_CD]').val(current);
+		$('#newForm [name=STATUS_CD]').val(Object.keys(STATUS).filter(function(k) { return shownSt[k]; })[0] || 'WORK');
 		$('#newModal').modal('show');
 	}
 
 	function saveNew() {
 		hrPost('/admin/staff/insertStaffData.do', $('#newForm').serialize(), function(res) {
 			$('#newModal').modal('hide');
-			current = $('#newForm [name=STATUS_CD]').val();
+			shownSt[$('#newForm [name=STATUS_CD]').val()] = true;
 			load(function() { openCard(res.STAFF_SQ); });
 		});
 	}
