@@ -445,9 +445,11 @@ public class BoPayrollService {
 				row.put("STAFF_SQ", d.get("STAFF_SQ"));
 				row.put("WORK_DAYS", days);
 				row.put("TOTAL_DAYS", total);
-				row.put("SALE_PRICE", n(d.get("SALE_PRICE")));
+				// 고객사 직접계약 금액만큼 우리 매출이 준다
+				long sale = Math.max(0, n(d.get("SALE_PRICE")) - n(d.get("CLIENT_DIRECT_AMT")));
+				row.put("SALE_PRICE", sale);
 				row.put("COST_PRICE", n(d.get("COST_PRICE")));
-				row.put("REAL_SALE", PayCalc.prorate(n(d.get("SALE_PRICE")), days, total));
+				row.put("REAL_SALE", PayCalc.prorate(sale, days, total));
 				row.put("BASE_AMT", b);
 				mapper.savePayrollDetail(row);
 				keepDeploy.add(d.get("DEPLOY_SQ"));

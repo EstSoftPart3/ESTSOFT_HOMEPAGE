@@ -79,6 +79,10 @@
 	.pl-btn.zero { opacity: .55; font-weight: 400; }
 	#dpBody tr.dp-sub td { background: #fff8e8; font-size: 12px; }
 	#dpBody tr.dp-sub td[data-c=EMP_TYPE_CD]::before { content: '└ '; color: #8a949c; }
+	/* 단가 강조: 매출단가 연두, 계약단가 주황 */
+	#dpHead th[data-c=SALE_PRICE], #dpBody td[data-c=SALE_PRICE] { background-color: #e7f6ec; color: #17692f; font-weight: 700; }
+	#dpHead th[data-c=COST_PRICE], #dpBody td[data-c=COST_PRICE] { background-color: #fff1e2; color: #8a4b00; font-weight: 700; }
+	#dpHead th[data-c=SALE_PRICE] { box-shadow: inset 0 3px 0 #2e9e57; } #dpHead th[data-c=COST_PRICE] { box-shadow: inset 0 3px 0 #d9822b; }
 	/* 같은 달 다른 계약이 있는 사람: 왼쪽 주황 띠 + 성명 앞 작은 화살표 */
 	#dpBody tr.dp-dup > td:first-child { box-shadow: inset 4px 0 0 #e0a800; }
 	.pl-dup-arrow { border: 0; background: none; padding: 0 4px 0 0; color: #b07d00; font-size: 11px; cursor: pointer; }
@@ -454,6 +458,30 @@
 		return $tr;
 	}
 
+	// 고객사 직접계약 입력·수정 팝업: 종류(공통코드 HR_CLIENT_DIRECT)와 금액, 우리 매출 계산 줄
+	function directPopup(r) {
+		var sale = Number(r.SALE_PRICE || 0), $cd = $('<select class="form-control form-control-sm" id="dirCd">').append('<option value="">종류 선택</option>');
+		hrAllCodes('HR_CLIENT_DIRECT').forEach(function(c) { $cd.append($('<option>').val(c.CD).text(c.NM)); });
+		var $amt = $('<input class="form-control form-control-sm text-right" id="dirAmt" inputmode="numeric">').val(r.CLIENT_DIRECT_AMT ? Number(r.CLIENT_DIRECT_AMT).toLocaleString('ko-KR') : '');
+		var $calc = $('<div class="small p-2 mt-2" style="background:#f6f8fa;border-radius:6px">');
+		function amt() { return Number(String($amt.val()).replace(/[^0-9]/g, '')) || 0; }
+		function paint() { $calc.html('매출단가 ' + dpWon(sale) + ' − 직접계약 ' + dpWon(amt()) + ' = <b>우리 매출 ' + dpWon(sale - amt()) + '</b>'); }
+		$cd.val(r.CLIENT_DIRECT_CD || '');
+		$amt.on('input', paint);
+		function send(cd, a) { hrPost('/admin/deploy/saveDirectData.do', { DEPLOY_SQ: r.DEPLOY_SQ, CLIENT_DIRECT_CD: cd, CLIENT_DIRECT_AMT: a }, function() { $('#dpInfo').modal('hide'); load(); }); }
+		var $box = $('<div>').append($('<label class="small text-muted mb-1" for="dirCd">').text('종류')).append($cd)
+			.append($('<label class="small text-muted mb-1 mt-2" for="dirAmt">').text('금액')).append($amt).append($calc)
+			.append($('<div class="d-flex mt-3" style="gap:6px">')
+				.append(r.CLIENT_DIRECT_AMT ? $('<button type="button" class="btn btn-sm btn-outline-danger mr-auto">직접계약 없음으로</button>').on('click', function() { send('', ''); }) : $('<span class="mr-auto">'))
+				.append($('<button type="button" class="btn btn-sm btn-primary">저장</button>').on('click', function() {
+					if (!$cd.val()) { $cd.focus(); return; }
+					send($cd.val(), amt());
+				})));
+		paint();
+		$('#dpInfo').one('shown.bs.modal', function() { ($cd.val() ? $amt : $cd).focus(); });
+		dpInfo(r.STAFF_NM + ' · 고객사 직접계약', $box);
+	}
+
 	// 칸 하나 바로 수정. 저장되면 다시 불러온다(이력 건수·두 줄 묶음이 바뀔 수 있어서)
 	function editCell($td, r, c) {
 		var e = EDIT[c[0]], field = e[0], type = e[1] === 'SALE_YN' || e[1] === 'BUY_YN' ? partnerOptions(e[1], r[field]) : e[1];
@@ -462,7 +490,9 @@
 			show: function() { return r[c[0]]; }, value: function() { return r[field]; }, saved: function() { load(); },
 			paint: function($c, v) {
 				if (c[0] === 'EMP_TYPE_CD') $c.text(typeLabel(r));
-				else if (c[2]) $c.text(v ? dpWon(v) : '').append(c[0] === 'SALE_PRICE' ? dpInfoBtn(r.STAFF_NM + ' 단가·급여 이력', function() { payHistory(r); }) : '');
+				else if (c[0] === 'SALE_PRICE' && Number(r.CLIENT_DIRECT_AMT)) $c.append($('<span class="dp-was">').text(dpWon(v))).append(document.createTextNode(dpWon(v - r.CLIENT_DIRECT_AMT)))
+					.append(dpDirectIcon(r, function() { directPopup(r); })).append(dpInfoBtn(r.STAFF_NM + ' 단가·급여 이력', function() { payHistory(r); }));
+				else if (c[2]) $c.text(v ? dpWon(v) : '').append(c[0] === 'SALE_PRICE' ? [dpDirectIcon(r, function() { directPopup(r); }), dpInfoBtn(r.STAFF_NM + ' 단가·급여 이력', function() { payHistory(r); })] : '');
 				else if (c[0] === 'WORK_AREA') $c.text(v || '').append(farFrom(r.HOME_ADDR, v) ? $('<span class="dp-far">원거리</span>') : '');
 				else $c.text(v || '');
 			} });

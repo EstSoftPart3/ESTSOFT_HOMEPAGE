@@ -90,6 +90,8 @@ public class BoDeployService {
 			all.forEach(r -> {
 				r.remove("SALE_PRICE");
 				r.remove("COST_PRICE");
+				r.remove("CLIENT_DIRECT_CD");
+				r.remove("CLIENT_DIRECT_AMT");
 			});
 		}
 		Map<String, Object> out = new HashMap<>();
@@ -138,8 +140,10 @@ public class BoDeployService {
 
 	/** 수정이력에 남기는 칸. 단가는 급여 권한이 있을 때만 남기고 보여 준다 */
 	static final List<String> TRACK = Arrays.asList("EMP_TYPE_CD", "SALE_PARTNER_SQ", "BUY_PARTNER_SQ", "CLIENT_NM", "PRJ_NM", "WORK_AREA", "GRADE_CD",
-			"START_DT", "END_DT", "PROB_END_DT", "SALE_PRICE", "COST_PRICE", "MEMO");
-	static final List<String> PRICES = Arrays.asList("SALE_PRICE", "COST_PRICE");
+			"START_DT", "END_DT", "PROB_END_DT", "SALE_PRICE", "COST_PRICE", "MEMO", "CLIENT_DIRECT_CD", "CLIENT_DIRECT_AMT");
+	static final List<String> PRICES = Arrays.asList("SALE_PRICE", "COST_PRICE", "CLIENT_DIRECT_CD", "CLIENT_DIRECT_AMT");
+	/** 고객사 직접계약: 매출단가 옆 아이콘 팝업에서만 고친다(saveDirect) */
+	static final List<String> DIRECT = Arrays.asList("CLIENT_DIRECT_CD", "CLIENT_DIRECT_AMT");
 
 	private Map<String, Object> deployOne(Object deploySq) {
 		Map<String, Object> q = new HashMap<>();
@@ -174,7 +178,7 @@ public class BoDeployService {
 				continue;
 			}
 			String b = norm(before.get(f)), a = norm(after.get(f));
-			boolean same = PRICES.contains(f) ? BoPayrollService.n(b.isEmpty() ? 0 : before.get(f)) == BoPayrollService.n(a.isEmpty() ? 0 : after.get(f)) : b.equals(a);
+			boolean same = PRICES.contains(f) && !"CLIENT_DIRECT_CD".equals(f) ? BoPayrollService.n(b.isEmpty() ? 0 : before.get(f)) == BoPayrollService.n(a.isEmpty() ? 0 : after.get(f)) : b.equals(a);
 			if (!same) {
 				change(after.get("DEPLOY_SQ"), after.get("STAFF_SQ"), f, b, a, reason, loginId);
 			}
@@ -186,6 +190,12 @@ public class BoDeployService {
 		require(TRACK.contains(field), "고칠 수 없는 칸입니다.");
 		require(canPay || !PRICES.contains(field), "단가는 급여 권한이 있어야 고칠 수 있습니다.");
 		Map<String, Object> row = deployOne(deploySq);
+		if (DIRECT.contains(field)) { // 되돌리기로 들어온 직접계약 칸 하나
+			require(row != null, "투입 건을 찾지 못했습니다. 새로 고쳐 주세요.");
+			String cd = "CLIENT_DIRECT_CD".equals(field) ? value : norm(row.get("CLIENT_DIRECT_CD")), amt = "CLIENT_DIRECT_AMT".equals(field) ? value : norm(row.get("CLIENT_DIRECT_AMT"));
+			saveDirect(deploySq, cd, amt, canPay, loginId, reason);
+			return;
+		}
 		require(row != null, "투입 건을 찾지 못했습니다. 새로 고쳐 주세요.");
 		Map<String, Object> p = new HashMap<>();
 		row.forEach((k, v) -> p.put(k, v == null ? "" : v.toString()));
@@ -196,6 +206,27 @@ public class BoDeployService {
 	}
 
 	/** staffSq 는 화면이 보낸 직원. 이력의 직원과 같아야 한다(시크릿 검사를 그 직원으로 했으므로) */
+	/**
+	 * 고객사 직접계약 종류·금액. 종류가 비면 둘 다 지운다. 금액은 0보다 크고 매출단가보다 작아야 한다.
+	 * 종류는 공통코드 HR_CLIENT_DIRECT 값(화면이 공통코드로 고르게 한다)
+	 */
+	public void saveDirect(Object deploySq, String cd, String amt, boolean canPay, String loginId, String reason) {
+		require(canPay, "고객사 직접계약은 급여 권한이 있어야 고칠 수 있습니다.");
+		Map<String, Object> before = deployOne(deploySq);
+		require(before != null, "투입 건을 찾지 못했습니다. 새로 고쳐 주세요.");
+		String c = cd == null ? "" : cd.trim();
+		long a = c.isEmpty() ? 0 : money(amt);
+		require(c.isEmpty() || c.matches("[A-Z0-9_]{1,20}"), "직접계약 종류가 올바르지 않습니다.");
+		require(c.isEmpty() || (a > 0 && a < BoPayrollService.n(before.get("SALE_PRICE"))), "직접계약 금액은 0보다 크고 매출단가보다 작아야 합니다.");
+		Map<String, Object> p = new HashMap<>();
+		p.put("DEPLOY_SQ", deploySq);
+		p.put("CLIENT_DIRECT_CD", c.isEmpty() ? null : c);
+		p.put("CLIENT_DIRECT_AMT", c.isEmpty() ? null : a);
+		p.put("UPDT_EMPLY_ID", loginId);
+		mapper.updateDeployDirect(p);
+		diff(before, deployOne(deploySq), true, reason, loginId);
+	}
+
 	public void revert(Object chgSq, Object staffSq, boolean canPay, String loginId) {
 		Map<String, Object> q = new HashMap<>();
 		q.put("CHG_SQ", chgSq);

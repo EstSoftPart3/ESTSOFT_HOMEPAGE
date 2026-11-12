@@ -73,6 +73,7 @@ public interface BoDeployMapper {
 	public int saveBonusApply(Map<String, Object> param);						//BONUS_SQ, STAFF_SQ, AMT, REFERRER_SQ, EMPLY_ID
 	public int deleteBonusApply(Map<String, Object> param);
 	public Map<String, Object> selectDeployOne(Map<String, Object> param);		//DEPLOY_SQ
+	public int updateDeployDirect(Map<String, Object> param);					//DEPLOY_SQ, CLIENT_DIRECT_CD, CLIENT_DIRECT_AMT, UPDT_EMPLY_ID
 	public int insertDeployChange(Map<String, Object> param);					//DEPLOY_SQ, STAFF_SQ, FIELD, BEFORE_VAL, AFTER_VAL, REASON, EMPLY_ID
 	public List<Map<String, Object>> selectDeployChanges(Map<String, Object> param);	//STAFF_SQ
 	public Map<String, Object> selectDeployChange(Map<String, Object> param);		//CHG_SQ

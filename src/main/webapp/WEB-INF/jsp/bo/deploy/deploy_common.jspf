@@ -28,6 +28,10 @@
 	.dp-net b { font-size: 17px; font-variant-numeric: tabular-nums; }
 	.dp-net.minus { background: #fdeaea; color: #a32020; }
 	.dp-card.sm { width: 340px; }
+	.dp-direct { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; padding: 0; border-radius: 4px; font-size: 11px; margin-left: 4px; vertical-align: middle; border: 1px dashed #b9c2ca; color: #9aa4ac; background: #fff; cursor: pointer; }
+	.dp-direct.on { border: 0; background: #8b5cf6; color: #fff; }
+	.dp-direct:focus { outline: 2px solid #16d5ff; }
+	.dp-was { color: #8a949c; text-decoration: line-through; font-weight: 400; font-size: 11px; margin-right: 4px; }
 	/* 정보 팝업(#dpInfo, 1065) 안에서 띄운 확인 창이 뒤에 가리지 않게 */
 	.bootbox.modal { z-index: 1075 !important; }
 	/* 시크릿: 시크릿 계정에게만 보이는 행과 칩 */
@@ -57,6 +61,17 @@ function dpSteps(s) { return String(s || '').split(',').filter(Boolean).map(func
 function dpStepText(st) { return (st.m ? st.m + '개월' + (st.c !== 'NONE' ? ' ' + (hrCodeMap('BONUS_COND')[st.c] || st.c) : '') : '계약 시') + ' → ' + dpWon(st.a); }
 function dpBaseText(b) { return (b.TARGET_CD === 'REFERRER' ? '추천한 인재의 ' : '') + (hrCodeMap('BONUS_BASE')[b.BASE_CD] || b.BASE_CD); }
 function dpWon(v) { return v === null || v === undefined || v === '' ? '—' : Number(v).toLocaleString('ko-KR'); }
+// 고객사 직접계약 아이콘(매출단가 옆). 있으면 보라 🤝, 없으면 옅은 + (open 이 있을 때만). 마우스를 올리면 [고객사 직접계약/종류] 금액
+function dpDirectIcon(x, open) {
+	var amt = Number(x.CLIENT_DIRECT_AMT || 0);
+	if (!amt && !open) return '';
+	var nm = (hrAllCodes('HR_CLIENT_DIRECT').filter(function(c) { return c.CD === x.CLIENT_DIRECT_CD; })[0] || {}).NM || x.CLIENT_DIRECT_CD;
+	var $b = $('<button type="button" class="dp-direct">').toggleClass('on', !!amt).text(amt ? '🤝' : '+')
+		.attr('aria-label', amt ? '고객사 직접계약 ' + nm + ' ' + dpWon(amt) + '원' : '고객사 직접계약 입력');
+	if (amt) dpHover($b, $b, function() { return '<div class="dp-card sm"><div class="dp-sec"><div><b>[고객사 직접계약/' + dpEsc(nm) + ']</b></div><div>금액 : ' + dpWon(amt) + '원</div></div></div>'; });
+	if (open) $b.on('click', function(e) { e.stopPropagation(); dpHide(); open(); }); else $b.prop('tabIndex', 0).css('cursor', 'help');
+	return $b;
+}
 function dpEsc(s) { return $('<div>').text(s === null || s === undefined ? '' : String(s)).html(); }
 function dpLine(k, v, cls) { return '<div class="' + (cls || '') + '"><span>' + dpEsc(k) + '</span><span>' + dpEsc(v) + '</span></div>'; }
 // 수습은 수습해제일까지 남은 날을 붙인다: 수습(D-57)

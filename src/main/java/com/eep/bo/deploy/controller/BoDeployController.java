@@ -122,6 +122,18 @@ public class BoDeployController {
 		});
 	}
 
+	/** 고객사 직접계약 종류·금액. 종류(CLIENT_DIRECT_CD)를 비우면 지운다 */
+	@RequestMapping(value = "/admin/deploy/saveDirectData.do", method = RequestMethod.POST)
+	public ModelAndView saveDirectData(@RequestParam("DEPLOY_SQ") int deploySq, @RequestParam(value = "CLIENT_DIRECT_CD", defaultValue = "") String cd,
+			@RequestParam(value = "CLIENT_DIRECT_AMT", defaultValue = "") String amt, HttpSession session) {
+		return run(() -> {
+			String id = loginId(session);
+			secret.view(id).guard(secret.staffOfDeploy(deploySq));
+			deployService.saveDirect(deploySq, cd, amt, canPay(id), id, null);
+			return "OK";
+		});
+	}
+
 	@RequestMapping(value = "/admin/deploy/changeListData.do", method = RequestMethod.POST)
 	public ModelAndView deployChangeListData(@RequestParam("STAFF_SQ") int staffSq, HttpSession session) {
 		return run(() -> {
