@@ -423,6 +423,9 @@
 	<!-- 시크릿 (sql/secret.sql) -->
 	<select id="selectSecretStaff" resultType="java.lang.String">
 		SELECT CAST(S.STAFF_SQ AS CHAR) FROM TB_EEP_HR_STAFF_M S JOIN TB_EEP_EMPLY_M E ON E.EMPLY_ID = S.EMPLY_ID WHERE E.SECRET_YN = 'Y'
+		UNION
+		<!-- 로그인 계정이 없는 직원은 직원에 직접 켠다 (sql/hr_staff_secret.sql) -->
+		SELECT CAST(STAFF_SQ AS CHAR) FROM TB_EEP_HR_STAFF_M WHERE SECRET_YN = 'Y'
 	</select>
 
 	<select id="countSecretViewer" parameterType="hashMap" resultType="int">

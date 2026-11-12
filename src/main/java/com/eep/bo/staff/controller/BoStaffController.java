@@ -83,7 +83,11 @@ public class BoStaffController {
 	@RequestMapping(value = "/admin/staff/staffSecretData.do", method = RequestMethod.POST)
 	public ModelAndView staffSecretData(@RequestParam("STAFF_SQ") int staffSq, HttpSession session) {
 		try {
-			return json("result", memberService.staffSecret(BoStaffService.emplyIdOf(staffSq), actor(session)));
+			Map<String, Object> staff = BoStaffService.one(staffSq);
+			Map<String, Object> out = memberService.staffSecret((String) staff.get("EMPLY_ID"), actor(session));
+			// 계정이 없거나, 계정 연결 전에 직원에 켜 둔 시크릿도 켜진 것으로 보인다
+			if ("Y".equals(staff.get("SECRET_YN"))) out.put("SECRET_YN", "Y");
+			return json("result", out);
 		} catch (IllegalArgumentException e) {
 			return json("error", e.getMessage());
 		}
@@ -92,7 +96,9 @@ public class BoStaffController {
 	@RequestMapping(value = "/admin/staff/setStaffSecretData.do", method = RequestMethod.POST)
 	public ModelAndView setStaffSecretData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("SECRET_YN") String on, HttpSession session) {
 		try {
-			memberService.setStaffSecret(BoStaffService.emplyIdOf(staffSq), "Y".equals(on), actor(session));
+			boolean toAccount = memberService.setStaffSecret((String) BoStaffService.one(staffSq).get("EMPLY_ID"), "Y".equals(on), actor(session));
+			// 계정에 저장했으면 직원 쪽 표시는 지워 두 값이 어긋나지 않게 한다
+			BoStaffService.setSecret(staffSq, !toAccount && "Y".equals(on));
 			return json("result", "OK");
 		} catch (IllegalArgumentException e) {
 			return json("error", e.getMessage());

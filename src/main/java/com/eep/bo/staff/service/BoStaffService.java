@@ -135,13 +135,21 @@ public class BoStaffService {
 		BoStaffMapper.deleteStaff(param);
 	}
 
-	/** 직원에 연결된 로그인 계정 아이디. 없으면 null */
-	public String emplyIdOf(Object staffSq) {
+	/** 시크릿 탭이 쓰는 직원 한 명(EMPLY_ID, SECRET_YN). 없으면 오류 */
+	public Map<String, Object> one(Object staffSq) {
 		Map<String, Object> p = new HashMap<>();
 		p.put("STAFF_SQ", staffSq);
 		Map<String, Object> s = BoStaffMapper.selectStaffOne(p);
 		if (s == null) throw new IllegalArgumentException("직원을 찾을 수 없습니다.");
-		return (String) s.get("EMPLY_ID");
+		return s;
+	}
+
+	/** 계정 없는 직원의 시크릿. 권한 검사는 부르는 쪽(BoMemberService.setStaffSecret)이 먼저 한다 */
+	public void setSecret(Object staffSq, boolean on) {
+		Map<String, Object> p = new HashMap<>();
+		p.put("STAFF_SQ", staffSq);
+		p.put("SECRET_YN", on ? "Y" : "N");
+		BoStaffMapper.updateStaffSecret(p);
 	}
 
 	public List<Map<String, Object>> itemList(Map<String, Object> param) {

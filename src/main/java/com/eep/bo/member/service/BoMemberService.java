@@ -76,7 +76,7 @@ public class BoMemberService {
 		return actor.superUser;
 	}
 
-	/** 직원관리 인사카드의 시크릿 탭. 계정관리와 같은 정책(슈퍼관리자만)이고, 시크릿은 직원에 연결된 로그인 계정에 저장된다 */
+	/** 직원관리 인사카드의 시크릿 탭. 계정관리와 같은 정책(슈퍼관리자만). 계정이 연결된 직원은 계정에, 없는 직원은 직원에 저장한다(BoStaffController) */
 	public Map<String, Object> staffSecret(String emplyId, Actor actor) {
 		require(canSecret(actor), "직원을 찾을 수 없습니다.");
 		Integer sq = emplyId == null || emplyId.isEmpty() ? null : mapper.selectEmplySqById(emplyId);
@@ -89,11 +89,13 @@ public class BoMemberService {
 		return out;
 	}
 
-	public void setStaffSecret(String emplyId, boolean on, Actor actor) {
+	/** @return 연결된 계정이 있어 계정에 저장했으면 true. false 면 부르는 쪽이 직원에 저장한다 */
+	public boolean setStaffSecret(String emplyId, boolean on, Actor actor) {
 		require(canSecret(actor), "직원을 찾을 수 없습니다.");
 		Integer sq = emplyId == null || emplyId.isEmpty() ? null : mapper.selectEmplySqById(emplyId);
-		require(sq != null, "로그인 계정이 연결된 직원만 시크릿을 켤 수 있습니다.");
+		if (sq == null) return false;
 		setSecret(sq, on, actor);
+		return true;
 	}
 
 	public void setSecret(int sq, boolean on, Actor actor) {

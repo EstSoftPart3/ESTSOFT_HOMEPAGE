@@ -21,6 +21,7 @@ public interface BoStaffMapper {
 	public Map<String, Object> selectEmplyLinkCheck(Map<String, Object> param);	//VALUE 계정의 존재 수(ACCOUNT_CNT), STAFF_SQ 외 연결 수(TAKEN_CNT)
 
 	public Map<String, Object> selectStaffOne(Map<String, Object> param);		//STAFF_SQ 한 명 (암호문 포함, 서버 안에서만 쓴다)
+	public int updateStaffSecret(Map<String, Object> param);					//STAFF_SQ, SECRET_YN (계정 없는 직원의 시크릿)
 	public int updateStaffFolder(Map<String, Object> param);					//STAFF_SQ, DRIVE_FOLDER_ID
 	public List<Map<String, Object>> selectStaffDocList(Map<String, Object> param);	//STAFF_SQ 의 서류 파일
 	public int insertStaffDoc(Map<String, Object> param);						//서류 파일 연결 (같은 파일·칸이면 무시)

@@ -606,13 +606,13 @@
 		hrPost('/admin/staff/staffSecretData.do', { STAFF_SQ: r.STAFF_SQ }, function(res) {
 			var s = res.result || {};
 			$box.empty().append($('<div class="hr-section">').text('🔒 시크릿'));
-			if (!s.linked) { $box.append('<div class="small text-muted">로그인 계정이 연결되지 않아 켤 수 없습니다. 기초정보의 로그인 계정을 먼저 연결해 주세요.</div>'); return; }
 			var $chk = $('<input type="checkbox" class="custom-control-input" id="stSecret">').prop('checked', s.SECRET_YN === 'Y');
-			$box.append($('<div class="custom-control custom-switch mb-2">').append($chk).append($('<label class="custom-control-label font-weight-bold" for="stSecret">').text('🔒 시크릿 계정 (' + s.EMPLY_ID + ')')))
-				.append('<div class="small text-muted">켜면 이 직원의 투입현황·급여관리 행과 합계·건수·엑셀이 시크릿이 아닌 사람에게 모두 빠집니다. 시크릿 계정끼리는 서로 보입니다. 계정관리의 시크릿 탭과 같은 설정이며, 이 탭은 슈퍼관리자에게만 보이고 바로 저장됩니다.</div>');
+			$box.append($('<div class="custom-control custom-switch mb-2">').append($chk).append($('<label class="custom-control-label font-weight-bold" for="stSecret">').text(s.linked ? '🔒 시크릿 계정 (' + s.EMPLY_ID + ')' : '🔒 시크릿 직원 (로그인 계정 없음)')))
+				.append($('<div class="small text-muted">').text('켜면 이 직원의 직원관리·투입현황·급여관리 행과 합계·건수·엑셀이 시크릿이 아닌 사람에게 모두 빠집니다. 시크릿 계정끼리는 서로 보입니다. '
+					+ (s.linked ? '계정관리의 시크릿 탭과 같은 설정이며, ' : '로그인 계정이 없어 이 직원은 숨겨지기만 하고, 시크릿 직원을 보는 권한은 계정에 켭니다. ') + '이 탭은 슈퍼관리자에게만 보이고 바로 저장됩니다.'));
 			$chk.on('change', function() {
 				var box = this;
-				hrPost('/admin/staff/setStaffSecretData.do', { STAFF_SQ: r.STAFF_SQ, SECRET_YN: box.checked ? 'Y' : 'N' }, function() { toast('시크릿을 ' + (box.checked ? '켰습니다' : '껐습니다')); }, function() { box.checked = !box.checked; });
+				hrPost('/admin/staff/setStaffSecretData.do', { STAFF_SQ: r.STAFF_SQ, SECRET_YN: box.checked ? 'Y' : 'N' }, function() { toast('시크릿을 ' + (box.checked ? '켰습니다' : '껐습니다')); load(); }, function() { box.checked = !box.checked; });
 			});
 		});
 	}

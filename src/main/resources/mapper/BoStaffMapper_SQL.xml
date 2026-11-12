@@ -54,6 +54,10 @@
 		SELECT * FROM TB_EEP_HR_STAFF_M WHERE STAFF_SQ = #{STAFF_SQ}
 	</select>
 
+	<update id="updateStaffSecret" parameterType="hashMap">
+		UPDATE TB_EEP_HR_STAFF_M SET SECRET_YN = #{SECRET_YN} WHERE STAFF_SQ = #{STAFF_SQ}
+	</update>
+
 	<update id="updateStaffFolder" parameterType="hashMap">
 		UPDATE TB_EEP_HR_STAFF_M SET DRIVE_FOLDER_ID = #{DRIVE_FOLDER_ID} WHERE STAFF_SQ = #{STAFF_SQ}
 	</update>
