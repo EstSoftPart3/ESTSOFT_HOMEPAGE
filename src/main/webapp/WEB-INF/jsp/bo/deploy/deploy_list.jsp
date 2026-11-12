@@ -479,6 +479,9 @@
 				})));
 		paint();
 		$('#dpInfo').one('shown.bs.modal', function() { ($cd.val() ? $amt : $cd).focus(); });
+		// 공통 팝업을 이 팝업만 좁게 쓰고, 닫으면 원래 너비로
+		var $dlg = $('#dpInfo .modal-dialog').css('max-width', '420px');
+		$('#dpInfo').one('hidden.bs.modal', function() { $dlg.css('max-width', ''); });
 		dpInfo(r.STAFF_NM + ' · 고객사 직접계약', $box);
 	}
 
