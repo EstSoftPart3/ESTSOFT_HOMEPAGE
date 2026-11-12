@@ -181,9 +181,10 @@
 	var data = null, order = [], view = 'table', drag = null, page = 'ACTIVE', prjCache = {};
 	// 기준월과 체크 칩(급여관리와 같은 구분). [키, 이름, 고용형태들]
 	var ym = moment().format('YYYY-MM'), sortKey = 'REMAIN', sortDir = 1;
-	var CHIPS = [['REGULAR', '정규', ['REGULAR']], ['PROBATION', '수습', ['PROBATION']], ['SPECIAL', '특고프리', ['SPECIAL']], ['BIZ', '사업자·기타', ['BIZ', 'EMP_INS', 'ETC']], ['EXTERNAL', '외부업체', ['EXTERNAL']]], checked = {};
+	// 고용형태 공통코드(HR_EMP_TYPE) 순서·이름대로 칩 하나씩. 코드에 없는 형태는 '코드 없음'
+	var CHIPS = hrAllCodes('HR_EMP_TYPE').map(function(c) { return [c.CD, c.NM, [c.CD]]; }).concat([['_NONE', '코드 없음', []]]), checked = {};
 	CHIPS.forEach(function(c) { checked[c[0]] = true; });
-	function chipOf(type) { var c = CHIPS.filter(function(c) { return c[2].indexOf(type) >= 0; })[0]; return c ? c[0] : 'BIZ'; }
+	function chipOf(type) { var c = CHIPS.filter(function(c) { return c[2].indexOf(type) >= 0; })[0]; return c ? c[0] : '_NONE'; }
 	// 칸 바로 수정: 화면 칸 → [저장 칸, 입력 종류]
 	var EDIT = { EMP_TYPE_CD: ['EMP_TYPE_CD', { code: 'HR_EMP_TYPE' }], GRADE_CD: ['GRADE_CD', { code: 'HR_DEPLOY_GRADE' }], SALE_PARTNER_NM: ['SALE_PARTNER_SQ', 'SALE_YN'], BUY_PARTNER_NM: ['BUY_PARTNER_SQ', 'BUY_YN'],
 		CLIENT_NM: ['CLIENT_NM'], PRJ_NM: ['PRJ_NM'], WORK_AREA: ['WORK_AREA'], START_DT: ['START_DT', 'date'], END_DT: ['END_DT', 'date'], SALE_PRICE: ['SALE_PRICE'], COST_PRICE: ['COST_PRICE'] };
@@ -322,6 +323,7 @@
 		var $c = $('#chks').empty().append($('<button type="button" class="btn btn-sm btn-outline-secondary" id="chkAll">').text(all ? '☑ 전체 해제' : '☐ 전체 선택'));
 		CHIPS.forEach(function(c) {
 			var n = groups.filter(function(g) { return g.rows.some(function(x) { return chipOf(x.EMP_TYPE_CD) === c[0]; }); }).length;
+			if (c[0] === '_NONE' && !n) return;
 			$c.append($('<label class="pl-chip">').toggleClass('on', !!checked[c[0]]).append($('<input type="checkbox" class="pl-chk">').val(c[0]).prop('checked', !!checked[c[0]]))
 				.append($('<span>').text(c[1])).append($('<span class="cnt">').text(n)));
 		});
@@ -339,7 +341,7 @@
 			var deps = depsOf(s.STAFF_SQ);
 			if (deps.some(isActive)) return null;
 			var last = deps[deps.length - 1];
-			if (last && last.EMP_TYPE_CD === 'EXTERNAL') return null;
+			if (last && /^EXTERNAL/.test(last.EMP_TYPE_CD)) return null;
 			var future = deps.filter(function(x) { return moment(x.START_DT).isAfter(today); })[0];
 			var past = deps.filter(function(x) { return x.END_DT && moment(x.END_DT).isBefore(today); }).pop();
 			var kind = future ? 'FUTURE' : past ? 'WAIT' : 'NONE';
