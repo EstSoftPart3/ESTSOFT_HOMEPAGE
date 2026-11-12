@@ -1,479 +1,387 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
-<%-- 화면 가이드: 우측 하단 버튼 → 지금 화면의 사용법. 화면은 JSP 경로로 고른다. 시크릿 설명은 시크릿 계정(secretViewer)에게만 출력 --%>
+<%-- 화면 가이드 투어: 우측 하단 ? → 화면을 어둡게 하고 실제 버튼·칸을 하나씩 밝혀 화살표와 말풍선으로 설명.
+     열린 팝업이 있으면 그 팝업 설명. 단계 = [대상 선택자, 제목, 한 줄, 시크릿]. 대상이 화면에 없으면 그 단계는 건너뜀.
+     시크릿 단계는 시크릿 계정(secretViewer)일 때만 출력한다 --%>
 <c:set var="guidePath" value="${pageContext.request.servletPath}"/>
+<link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@700&display=swap" rel="stylesheet">
 <style>
-	.eg-fab { position: fixed; right: 22px; bottom: 22px; z-index: 1030; display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 16px 0 14px; border: 0; border-radius: 26px;
-		background: rgba(37, 99, 235, .55); color: #fff; font-size: 14px; font-weight: 600; box-shadow: 0 6px 20px rgba(37, 99, 235, .3); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-		cursor: pointer; transition: background .2s, transform .2s, box-shadow .2s; }
-	.eg-fab:hover, .eg-fab:focus-visible { background: rgba(37, 99, 235, .95); transform: translateY(-2px); box-shadow: 0 10px 26px rgba(37, 99, 235, .4); outline: none; }
-	.eg-fab .q { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,.25); font-size: 16px; }
-	.eg-fab .t { max-width: 0; overflow: hidden; white-space: nowrap; transition: max-width .25s; }
-	.eg-fab:hover .t, .eg-fab:focus-visible .t { max-width: 90px; }
-	.eg-bg { position: fixed; inset: 0; z-index: 1070; background: rgba(15, 23, 42, .45); display: flex; align-items: center; justify-content: center; padding: 24px; opacity: 0; transition: opacity .2s; }
-	.eg-bg[hidden] { display: none; }
-	.eg-bg.on { opacity: 1; }
-	.eg-box { position: relative; width: min(880px, 100%); max-height: calc(100vh - 48px); overflow: auto; background: #fff; border-radius: 20px; box-shadow: 0 24px 60px rgba(15, 23, 42, .3); transform: translateY(12px) scale(.98); transition: transform .2s; }
-	.eg-bg.on .eg-box { transform: none; }
-	.eg-head { position: relative; padding: 30px 34px 26px; background: linear-gradient(135deg, #2563eb, #7c3aed); color: #fff; border-radius: 20px 20px 0 0; }
-	.eg-head .ic { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 14px; background: rgba(255,255,255,.18); font-size: 24px; margin-bottom: 12px; }
-	.eg-head h2 { margin: 0 0 6px; font-size: 24px; font-weight: 700; }
-	.eg-head p { margin: 0; font-size: 15px; opacity: .92; line-height: 1.6; }
-	/* 스크롤해도 보이게 sticky. float 로 머리 위에 겹친다 */
-	.eg-x { position: sticky; top: 14px; float: right; margin: 14px 14px -52px 0; z-index: 2; width: 38px; height: 38px; border: 0; border-radius: 50%; background: rgba(255,255,255,.18); color: #fff; font-size: 20px; line-height: 1; cursor: pointer; }
-	.eg-x:hover, .eg-x:focus-visible { background: rgba(255,255,255,.32); outline: none; }
-	.eg-body { padding: 26px 34px 32px; }
-	.eg-body h3 { font-size: 16px; font-weight: 700; color: #1e293b; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
-	.eg-body h3 + * { margin-bottom: 26px; }
-	.eg-steps { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; counter-reset: eg; }
-	.eg-steps li { position: relative; padding: 16px 16px 16px 58px; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc; counter-increment: eg; }
-	.eg-steps li::before { content: counter(eg); position: absolute; left: 16px; top: 15px; width: 30px; height: 30px; border-radius: 50%; background: #2563eb; color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-	.eg-steps b { display: block; font-size: 14.5px; color: #0f172a; margin-bottom: 4px; }
-	.eg-steps span { font-size: 13.5px; color: #475569; line-height: 1.6; }
-	.eg-tips { list-style: none; padding: 0; }
-	.eg-tips li { position: relative; padding: 11px 14px 11px 40px; border-radius: 12px; background: #fffbeb; color: #78350f; font-size: 13.5px; line-height: 1.6; margin-bottom: 8px; }
-	.eg-tips li::before { content: '💡'; position: absolute; left: 14px; top: 11px; }
-	.eg-secret { padding: 18px 20px; border-radius: 14px; background: #1e1b4b; color: #e0e7ff; font-size: 13.5px; line-height: 1.7; }
-	.eg-secret b { color: #fff; }
-	.eg-secret ul { margin: 6px 0 0; padding-left: 18px; }
-	.eg-foot { padding: 14px 34px; border-top: 1px solid #e2e8f0; font-size: 12.5px; color: #64748b; text-align: center; }
-	kbd.eg { background: #e2e8f0; color: #0f172a; border-radius: 4px; padding: 1px 6px; font-size: 12px; }
-	@media (max-width: 576px) { .eg-head, .eg-body { padding-left: 20px; padding-right: 20px; } .eg-fab { right: 14px; bottom: 14px; } }
-	@media (prefers-reduced-motion: reduce) { .eg-fab, .eg-bg, .eg-box, .eg-fab .t { transition: none; } }
+	.eg-fab { position: fixed; right: 22px; bottom: 22px; z-index: 1060; width: 52px; height: 52px; border: 0; border-radius: 50%; background: rgba(37, 99, 235, .55); color: #fff;
+		font-size: 22px; font-weight: 700; cursor: pointer; box-shadow: 0 6px 20px rgba(37, 99, 235, .3); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); transition: background .2s, transform .2s; }
+	.eg-fab:hover, .eg-fab:focus-visible { background: rgba(37, 99, 235, .95); transform: translateY(-2px); outline: none; }
+	.eg-fab::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid rgba(37, 99, 235, .45); animation: eg-ping 2.2s infinite; pointer-events: none; }
+	@keyframes eg-ping { 0% { transform: scale(.9); opacity: 1 } 100% { transform: scale(1.35); opacity: 0 } }
+	.eg-tour { position: fixed; inset: 0; z-index: 1080; }
+	.eg-tour[hidden] { display: none; }
+	.eg-hole { position: fixed; border-radius: 10px; box-shadow: 0 0 0 9999px rgba(15, 23, 42, .62); transition: all .45s cubic-bezier(.65, 0, .35, 1); pointer-events: none; }
+	.eg-hole::after { content: ''; position: absolute; inset: -4px; border: 3px solid #fde047; border-radius: 12px; animation: eg-glow 1.4s ease-in-out infinite; }
+	@keyframes eg-glow { 50% { box-shadow: 0 0 18px 4px rgba(253, 224, 71, .7) } }
+	.eg-arrow { position: fixed; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+	.eg-arrow path { fill: none; stroke: #fde047; stroke-width: 3.5; stroke-linecap: round; }
+	.eg-arrow path.draw { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: eg-draw .5s .35s ease-out forwards; }
+	@keyframes eg-draw { to { stroke-dashoffset: 0 } }
+	.eg-bubble { position: fixed; width: 300px; font-family: 'Gaegu', 'Malgun Gothic', cursive; color: #fff; opacity: 0; transform: translateY(8px) rotate(-1.5deg); pointer-events: none; }
+	.eg-bubble.show { animation: eg-pop .4s .65s ease-out forwards; }
+	@keyframes eg-pop { to { opacity: 1; transform: none } }
+	.eg-bubble b { display: block; font-size: 30px; line-height: 1.1; color: #fde047; text-shadow: 0 2px 8px rgba(0, 0, 0, .45); }
+	.eg-bubble span { display: block; font-size: 22px; line-height: 1.3; margin-top: 4px; text-shadow: 0 2px 8px rgba(0, 0, 0, .55); }
+	.eg-bubble.sec b { color: #c4b5fd; }
+	.eg-ctrl { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; background: rgba(255, 255, 255, .97); border-radius: 30px;
+		padding: 8px 10px 8px 18px; box-shadow: 0 8px 30px rgba(0, 0, 0, .3); font-size: 13px; white-space: nowrap; }
+	.eg-dots { display: flex; gap: 6px; }
+	.eg-dots i { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; transition: .3s; }
+	.eg-dots i.on { background: #2563eb; width: 22px; border-radius: 4px; }
+	.eg-dots i.sec { background: #c4b5fd; } .eg-dots i.sec.on { background: #4338ca; }
+	.eg-ctrl button { border: 0; border-radius: 20px; padding: 7px 14px; cursor: pointer; font-size: 13px; }
+	.eg-ctrl .skip { background: none; color: #64748b; } .eg-ctrl .prev { background: #e2e8f0; color: #334155; } .eg-ctrl .next { background: #2563eb; color: #fff; font-weight: 700; }
+	.eg-ctrl .what { color: #64748b; font-size: 12px; }
+	@media (max-width: 576px) { .eg-bubble { width: 230px; } .eg-bubble b { font-size: 24px; } .eg-bubble span { font-size: 18px; } .eg-ctrl .what { display: none; } }
+	@media (prefers-reduced-motion: reduce) { .eg-hole, .eg-fab::after { transition: none; animation: none; } .eg-arrow path.draw, .eg-bubble.show { animation-duration: .01s; animation-delay: 0s; } }
 </style>
 
-<button type="button" class="eg-fab" id="egOpen" aria-haspopup="dialog" aria-controls="egPanel"><span class="q" aria-hidden="true">?</span><span class="t">화면 가이드</span></button>
+<button type="button" class="eg-fab" id="egOpen" aria-label="화면 가이드" title="화면 가이드">?</button>
 
-<div class="eg-bg" id="egPanel" role="dialog" aria-modal="true" aria-labelledby="egTitle" hidden>
-	<div class="eg-box">
-		<button type="button" class="eg-x" id="egClose" aria-label="가이드 닫기">&times;</button>
-		<c:choose>
-		<%-- ───────── 투입현황 ───────── --%>
-		<c:when test="${guidePath eq '/WEB-INF/jsp/bo/deploy/deploy_list.jsp'}">
-			<div class="eg-head"><span class="ic"><i class="fas fa-user-tie"></i></span><h2 id="egTitle">투입현황</h2><p>누가 어느 고객사·프로젝트에 나가 있는지, 쉬고 있는 사람과 곧 끝나는 사람이 누구인지 한눈에 봅니다.</p></div>
-			<div class="eg-body">
-				<h3>🧭 이렇게 써요</h3>
-				<ol class="eg-steps">
-					<li><b>기준월 고르기</b><span>오른쪽 위 ◀ ▶ 로 달을 바꾸면 그 달에 일한 사람만 보입니다.</span></li>
-					<li><b>보기 탭 고르기</b><span><b style="display:inline">투입 현황</b>·<b style="display:inline">대기 현황</b>(쉬는 사람)·<b style="display:inline">철수 임박</b>(이번·다음 달 종료)을 눌러 바꿉니다.</span></li>
-					<li><b>원하는 사람만 추리기</b><span>정규·수습·특고프리 같은 칩을 켜고 끄거나, 검색창과 고객사·지역·등급 목록으로 좁힙니다.</span></li>
-					<li><b>표에서 바로 고치기</b><span>칸을 누르면 그 자리에서 고칠 수 있고, 누가 언제 바꿨는지 이력에 남습니다.</span></li>
-					<li><b>사람 자세히 보기</b><span>이름을 누르면 투입 상세가 열려 기간·단가를 고치거나 <b style="display:inline">철수 후 다음 투입</b>을 등록합니다.</span></li>
-					<li><b>새 투입 등록</b><span>오른쪽 위 <b style="display:inline">+ 추가</b>를 누르면 표 맨 위에 입력 줄이 생깁니다.</span></li>
-				</ol>
-				<h3>✨ 알아두면 좋아요</h3>
-				<ul class="eg-tips">
-					<li>표/타임라인 버튼으로 기간을 막대 그래프처럼 볼 수 있습니다.</li>
-					<li>머리글을 끌어 칸 순서를 바꿀 수 있고, <b>컬럼 순서 초기화</b>로 원래대로 돌립니다.</li>
-					<li>한 사람이 같은 달에 계약이 두 건이면 두 줄로 묶여 보이고, 아랫줄은 └ 표시가 붙습니다.</li>
-					<li>✎ 이력 버튼에서 잘못 고친 값을 <b>↶ 되돌리기</b>로 되돌릴 수 있습니다. 💬 메모는 작성자·시간이 자동으로 남습니다.</li>
-				</ul>
-				<c:if test="${secretViewer}">
-				<h3>🔒 시크릿 (시크릿 계정에게만 보이는 안내)</h3>
-				<div class="eg-secret">시크릿 계정에 연결된 직원은 <b>시크릿 계정에게만</b> 보이고, 다른 관리자에게는 행·합계·건수·엑셀에서 모두 빠집니다.
-					<ul>
-						<li>목록 위 <b>🔒 시크릿</b> 칩을 끄면 시크릿 직원을 잠시 숨기고 볼 수 있습니다. 숫자는 시크릿 인원 수입니다.</li>
-						<li>시크릿 직원 행에는 🔒 표시가 붙고 위쪽으로 모입니다.</li>
-						<li>화면을 다른 사람과 같이 볼 때는 칩을 꺼 두세요.</li>
-					</ul>
-				</div>
-				</c:if>
-			</div>
-		</c:when>
-
-		<%-- ───────── 급여관리 ───────── --%>
-		<c:when test="${guidePath eq '/WEB-INF/jsp/bo/deploy/pay_list.jsp'}">
-			<div class="eg-head"><span class="ic"><i class="fas fa-won-sign"></i></span><h2 id="egTitle">급여관리</h2><p>달마다 직원별 급여·수당·공제·손익을 계산하고, 확인이 끝나면 마감합니다.</p></div>
-			<div class="eg-body">
-				<h3>🧭 이렇게 써요</h3>
-				<ol class="eg-steps">
-					<li><b>급여 월 고르기</b><span>◀ ▶ 로 달을 고르고, 옆 칸에 <b style="display:inline">지급일자</b>를 넣습니다.</span></li>
-					<li><b>공제 불러오기</b><span>급여대장·사업소득대장 엑셀(.xls)을 올리면 공제 금액이 자동으로 들어갑니다.</span></li>
-					<li><b>칸 펼쳐 보기</b><span><b style="display:inline">수당·공제·손익 펼치기</b> 버튼이나 머리글 색 띠를 누르면 자세한 칸이 열립니다.</span></li>
-					<li><b>값 확인·수정</b><span>칸을 누르면 바로 고쳐지고 이력에 남습니다. <span style="background:#fff3bf;padding:0 4px;border-radius:3px">노란 칸</span>은 자동계산을 사람이 고친 값입니다.</span></li>
-					<li><b>확인 사항 정리</b><span>이름 옆 칩(예: 만근미달)을 보고, 확인했으면 ✕ 로 숨깁니다.</span></li>
-					<li><b>마감</b><span>모두 확인되면 오른쪽 위 마감 버튼을 누릅니다. 마감 해제는 사유를 남겨야 합니다.</span></li>
-				</ol>
-				<h3>✨ 알아두면 좋아요</h3>
-				<ul class="eg-tips">
-					<li>위쪽 숫자 카드는 이번 달 인원·합계 요약입니다.</li>
-					<li>이름을 누르면 직원 상세 팝업에서 투입 정보와 계약을 같이 봅니다.</li>
-					<li>상여는 <b>상여관리</b>에서 조건을 정하고 <b>직원관리</b>에서 사람별로 켜면 자동으로 들어옵니다. 이번 달만 빼려면 상여 칩의 ✕ 를 누릅니다.</li>
-					<li>잘못 고쳤으면 ✎ 이력에서 <b>↶ 되돌리기</b>를 누릅니다.</li>
-				</ul>
-				<c:if test="${secretViewer}">
-				<h3>🔒 시크릿 (시크릿 계정에게만 보이는 안내)</h3>
-				<div class="eg-secret">시크릿 직원의 급여 행은 <b>시크릿 계정에게만</b> 보이고, 다른 관리자 화면에서는 행·합계·건수·엑셀에서 모두 빠집니다.
-					<ul>
-						<li>체크 칩 중 <b>🔒 시크릿</b> 칩을 끄면 시크릿 직원을 숨기고 볼 수 있습니다.</li>
-						<li>합계 카드는 지금 화면에 보이는 행 기준이라, 칩을 끄면 시크릿 금액이 빠진 합계가 됩니다.</li>
-					</ul>
-				</div>
-				</c:if>
-			</div>
-		</c:when>
-
-		<%-- ───────── 상여관리 ───────── --%>
-		<c:when test="${guidePath eq '/WEB-INF/jsp/bo/deploy/bonus_list.jsp'}">
-			<div class="eg-head"><span class="ic"><i class="fas fa-gift"></i></span><h2 id="egTitle">상여관리</h2><p>만근·근속 상여 같은 지급 조건을 정해 두면 급여관리에 자동으로 들어갑니다.</p></div>
-			<div class="eg-body">
-				<h3>🧭 이렇게 써요</h3>
-				<ol class="eg-steps">
-					<li><b>상여 항목 등록</b><span>오른쪽 위 <b style="display:inline">+ 상여 항목 등록</b>을 누릅니다.</span></li>
-					<li><b>조건 정하기</b><span>기준과 금액을 넣고, 필요하면 <b style="display:inline">+ 단계 추가</b>로 기간별 금액을 나눕니다.</span></li>
-					<li><b>사람에게 켜기</b><span><b style="display:inline">직원관리</b>에서 사람별 상여 칩을 켜야 그 사람에게 적용됩니다.</span></li>
-					<li><b>적용 인원 확인</b><span>목록의 <b style="display:inline">n명</b>을 누르면 켜진 직원이 보입니다.</span></li>
-				</ol>
-				<h3>✨ 알아두면 좋아요</h3>
-				<ul class="eg-tips">
-					<li>상여는 달성한 달의 <b>다음 달 급여</b>에 들어갑니다.</li>
-					<li>만근 = 기준일부터 달성일 전날까지 매일 근무, 근속 = 달성일 전날 근무 중. 못 채우면 급여관리에 '만근미달' 칩이 뜹니다.</li>
-					<li>사용을 끄면 다음 계산부터 빠지고, 이미 마감된 달은 그대로입니다.</li>
-				</ul>
-			</div>
-		</c:when>
-
-		<%-- ───────── 매출/매입처 ───────── --%>
-		<c:when test="${guidePath eq '/WEB-INF/jsp/bo/deploy/partner_list.jsp'}">
-			<div class="eg-head"><span class="ic"><i class="fas fa-handshake"></i></span><h2 id="egTitle">매출/매입처</h2><p>투입현황에서 고르는 거래처(매출처·매입처)를 등록하고 관리합니다.</p></div>
-			<div class="eg-body">
-				<h3>🧭 이렇게 써요</h3>
-				<ol class="eg-steps">
-					<li><b>탭으로 보기</b><span>전체·매출처·매입처·사용 중지 탭으로 나눠 봅니다.</span></li>
-					<li><b>거래처 등록</b><span>등록 버튼을 누르고 상호·사업자 정보와 매출처·매입처 여부를 고릅니다.</span></li>
-					<li><b>서류 붙이기</b><span>사업자등록증 같은 서류를 올리면 칩으로 표시됩니다.</span></li>
-					<li><b>수정</b><span>거래처 이름이나 <b style="display:inline">수정</b>을 누르면 정보를 고칠 수 있습니다.</span></li>
-				</ol>
-				<h3>✨ 알아두면 좋아요</h3>
-				<ul class="eg-tips">
-					<li>삭제는 투입 기록이 없는 거래처만 됩니다.</li>
-					<li>기록이 있는 거래처는 <b>사용 중지</b>로 바꾸면 새 입력 목록에서만 빠지고 과거 기록은 남습니다.</li>
-				</ul>
-			</div>
-		</c:when>
-
-		<%-- ───────── 직원관리 ───────── --%>
-		<c:when test="${guidePath eq '/WEB-INF/jsp/bo/staff/staff_list.jsp'}">
-			<div class="eg-head"><span class="ic"><i class="fas fa-id-card"></i></span><h2 id="egTitle">직원관리</h2><p>직원 명부와 인사카드(개인정보·계좌·서류·프로젝트 이력)를 관리합니다.</p></div>
-			<div class="eg-body">
-				<h3>🧭 이렇게 써요</h3>
-				<ol class="eg-steps">
-					<li><b>찾기</b><span>재직 상태 탭, 소속 버튼, 직급·정렬 목록으로 원하는 직원을 찾습니다.</span></li>
-					<li><b>바로 고치기</b><span>표의 칸을 누르면 그 자리에서 수정됩니다.</span></li>
-					<li><b>인사카드 열기</b><span>이름을 누르면 인사카드가 열려 탭별로 정보를 보고 고칩니다.</span></li>
-					<li><b>서류 연결</b><span>인사카드에서 구글 드라이브에 있는 서류를 골라 연결하면 글자를 읽어 칸을 채워 줍니다.</span></li>
-					<li><b>직원 등록</b><span>오른쪽 위 <b style="display:inline">+ 직원 등록</b> → 등록하면 인사카드가 바로 열립니다.</span></li>
-				</ol>
-				<h3>✨ 알아두면 좋아요</h3>
-				<ul class="eg-tips">
-					<li>칸 위에 마우스를 올리고 <kbd class="eg">Ctrl</kbd>+<kbd class="eg">C</kbd> 를 누르면 그 칸 값만 복사됩니다. 가려진 주민번호·계좌번호도 원문이 복사됩니다.</li>
-					<li>주민번호·계좌번호는 가려져 있고, 👁 버튼을 눌러야 원문이 보입니다.</li>
-					<li>상여 항목을 고르면 사람별 상여 칩을 켜고 끌 수 있습니다.</li>
-					<li>미제출 서류가 있으면 인사카드 서류 탭에 건수가 표시됩니다.</li>
-				</ul>
-			</div>
-		</c:when>
-
-		<%-- ───────── 계정관리 ───────── --%>
-		<c:when test="${guidePath eq '/WEB-INF/jsp/bo/member/member_list.jsp'}">
-			<div class="eg-head"><span class="ic"><i class="fas fa-user-shield"></i></span><h2 id="egTitle">계정관리</h2><p>직원에게 로그인 계정을 발급하고, 관리자 권한과 사용 상태를 관리합니다.</p></div>
-			<div class="eg-body">
-				<h3>🧭 이렇게 써요</h3>
-				<ol class="eg-steps">
-					<li><b>계정 발급</b><span><b style="display:inline">+ 계정 발급</b>을 누릅니다. 아이디는 회사 메일 @ 앞부분입니다.</span></li>
-					<li><b>초기 비밀번호 전달</b><span>발급 직후 <b style="display:inline">한 번만</b> 보여 주니 복사해서 본인에게 전달합니다.</span></li>
-					<li><b>계정 카드</b><span>이름을 누르면 기본정보·권한정보·비밀번호 탭이 있는 계정 카드가 열립니다.</span></li>
-					<li><b>권한 주기</b><span>권한정보 탭에서 권한을 하나라도 주면 관리자 계정이 됩니다.</span></li>
-					<li><b>여러 명 한 번에</b><span>체크한 뒤 <b style="display:inline">전체 사용중지·퇴사·삭제</b>를 누릅니다.</span></li>
-				</ol>
-				<h3>✨ 알아두면 좋아요</h3>
-				<ul class="eg-tips">
-					<li>위쪽 알림의 <b>퇴사한 직원의 사용 중 계정</b>을 누르면 정리할 계정만 모아 봅니다.</li>
-					<li>비밀번호 목록에서 '초기 비밀번호'를 고르면 아직 비밀번호를 안 바꾼 사람을 찾습니다.</li>
-					<li>주민등록번호와 주소는 계정 카드에서만 볼 수 있습니다.</li>
-				</ul>
-				<c:if test="${secretViewer}">
-				<h3>🔒 시크릿 (시크릿 계정에게만 보이는 안내)</h3>
-				<div class="eg-secret">계정 카드의 <b>시크릿</b> 탭에서 시크릿 계정을 켜고 끕니다. 누르는 즉시 저장됩니다.
-					<ul>
-						<li>시크릿을 켜면 이 계정에 연결된 직원의 투입현황·급여관리 행과 합계·건수·엑셀이 시크릿이 아닌 사람에게 모두 빠집니다.</li>
-						<li>시크릿 계정끼리는 서로 보입니다.</li>
-						<li>이 탭은 시크릿 계정인 슈퍼관리자에게만 보이고, 내 계정의 시크릿은 다른 시크릿 계정이 바꿔야 합니다.</li>
-					</ul>
-				</div>
-				</c:if>
-			</div>
-		</c:when>
-
-		<%-- ───────── 면접관리 ───────── --%>
-		<c:when test="${guidePath eq '/WEB-INF/jsp/bo/hr/interview_list.jsp'}">
-			<div class="eg-head"><span class="ic"><i class="fas fa-comments"></i></span><h2 id="egTitle">면접 관리</h2><p>면접자 일정·참석·합격 통보·입사 여부를 기록하고, 결과를 대시보드로 봅니다.</p></div>
-			<div class="eg-body">
-				<h3>🧭 이렇게 써요</h3>
-				<ol class="eg-steps">
-					<li><b>기간 고르기</b><span>연도·월·주차를 고르면 그 기간 면접자만 보입니다.</span></li>
-					<li><b>찾기</b><span>검색창은 이름·연락처·비고를 <b style="display:inline">모든 연도</b>에서 찾습니다. 경로·참석·통보·입사로 더 좁힐 수 있습니다.</span></li>
-					<li><b>등록·수정</b><span><b style="display:inline">등록</b>으로 새 면접자를 넣고, <b style="display:inline">상세</b>로 내용을 고칩니다.</span></li>
-					<li><b>교육생으로 넘기기</b><span>입사가 정해지면 상세에서 <b style="display:inline">교육생으로 등록</b>을 누릅니다.</span></li>
-				</ol>
-				<h3>✨ 알아두면 좋아요</h3>
-				<ul class="eg-tips">
-					<li>맨 위 대시보드는 지금 검색 조건 기준 통계입니다. <b>보고 내용 복사</b>로 메신저에 바로 붙여 넣을 수 있습니다.</li>
-					<li>신입면접 배치가 켜져 있으면 캘린더의 면접 일정이 매일 자동으로 들어옵니다.</li>
-				</ul>
-			</div>
-		</c:when>
-
-		<%-- ───────── 교육생관리 ───────── --%>
-		<c:when test="${guidePath eq '/WEB-INF/jsp/bo/hr/trainee_list.jsp'}">
-			<div class="eg-head"><span class="ic"><i class="fas fa-graduation-cap"></i></span><h2 id="egTitle">교육생 관리</h2><p>입사한 면접자의 교육 진행 상황을 주차별 카드로 관리합니다.</p></div>
-			<div class="eg-body">
-				<h3>🧭 이렇게 써요</h3>
-				<ol class="eg-steps">
-					<li><b>면접자 가져오기</b><span>입사여부가 '입사'인 면접자를 골라 <b style="display:inline">선택한 면접자 가져오기</b>를 누르면 교육진행중으로 등록됩니다.</span></li>
-					<li><b>주차 옮기기</b><span>교육진행중 카드를 끌어서 다른 주차로 옮깁니다.</span></li>
-					<li><b>바로 고치기</b><span>카드의 값을 누르면 바로 수정됩니다. <b style="display:inline">상세</b>로 전체 내용을 봅니다.</span></li>
-				</ol>
-				<h3>✨ 알아두면 좋아요</h3>
-				<ul class="eg-tips">
-					<li>교육일수는 일요일을 뺀 일수입니다.</li>
-					<li>연장은 기준 28일을 넘긴 일수입니다.</li>
-				</ul>
-			</div>
-		</c:when>
-
-		<%-- ───────── 연구일지 ───────── --%>
-		<c:when test="${guidePath eq '/WEB-INF/jsp/bo/lab/journal_list.jsp'}">
-			<div class="eg-head"><span class="ic"><i class="fas fa-flask"></i></span><h2 id="egTitle">연구일지</h2><p>연구 과제를 등록하고, 과제별 연구일지를 쓰고 결재 상태를 확인합니다.</p></div>
-			<div class="eg-body">
-				<h3>🧭 이렇게 써요</h3>
-				<ol class="eg-steps">
-					<li><b>과제 찾기</b><span>연구팀·과제명·진행 여부를 고르고 <b style="display:inline">조회</b>를 누릅니다.</span></li>
-					<li><b>과제 등록</b><span><b style="display:inline">+ 과제 등록</b>에서 연구팀·과제명·기간을 넣습니다.</span></li>
-					<li><b>일지 쓰기</b><span>과제 줄의 일지 버튼을 눌러 날짜별 연구일지를 작성합니다.</span></li>
-					<li><b>결재 확인</b><span>목록의 결재 상태에서 진행 상황을 봅니다.</span></li>
-				</ol>
-				<h3>✨ 알아두면 좋아요</h3>
-				<ul class="eg-tips">
-					<li>연구팀·결재라인·연구원은 <b>연구소 관리</b> 화면에서 정합니다.</li>
-				</ul>
-			</div>
-		</c:when>
-
-		<%-- ───────── 연구소 관리 ───────── --%>
-		<c:when test="${guidePath eq '/WEB-INF/jsp/bo/lab/lab_manage.jsp'}">
-			<div class="eg-head"><span class="ic"><i class="fas fa-microscope"></i></span><h2 id="egTitle">연구소 관리</h2><p>연구팀, 연구원, 결재라인, 서명을 관리합니다.</p></div>
-			<div class="eg-body">
-				<h3>🧭 이렇게 써요</h3>
-				<ol class="eg-steps">
-					<li><b>연구팀 등록</b><span><b style="display:inline">+ 연구팀 등록</b>으로 팀 이름과 연구 분야를 넣습니다.</span></li>
-					<li><b>연구원 지정</b><span>팀을 눌러 들어가 연도별 연구원을 정합니다. 이전·다음 연도로 넘겨 봅니다.</span></li>
-					<li><b>결재라인</b><span><b style="display:inline">+ 결재자 추가</b> 후 ⋮⋮ 를 끌거나 ▲▼ 로 순서를 바꿉니다.</span></li>
-					<li><b>서명</b><span>서명 칸에 직접 그리고 저장합니다. 다시 그리려면 지우기.</span></li>
-				</ol>
-				<h3>✨ 알아두면 좋아요</h3>
-				<ul class="eg-tips">
-					<li>안 쓰는 팀은 사용을 끄면 연구일지 선택 목록에서 빠집니다.</li>
-				</ul>
-			</div>
-		</c:when>
-
-		<%-- ───────── 장비대장 ───────── --%>
-		<c:when test="${guidePath eq '/WEB-INF/jsp/bo/equipment/equipment_list.jsp'}">
-			<div class="eg-head"><span class="ic"><i class="fas fa-laptop"></i></span><h2 id="egTitle">장비대장</h2><p>회사 장비를 등록하고 대여·반납·폐기와 대여증서 서명을 처리합니다.</p></div>
-			<div class="eg-body">
-				<h3>🧭 이렇게 써요</h3>
-				<ol class="eg-steps">
-					<li><b>장비 등록</b><span><b style="display:inline">+ 장비 등록</b>으로 새 장비를 넣습니다.</span></li>
-					<li><b>대여</b><span><b style="display:inline">대여 등록</b> → 저장하면 받는 사람에게 대여증서 서명을 요청합니다.</span></li>
-					<li><b>반납·처리</b><span>장비를 눌러 반납 완료나 폐기·분실 처리를 합니다.</span></li>
-					<li><b>상태별로 보기</b><span>위쪽 탭으로 대여 중·보관·폐기 장비를 나눠 봅니다.</span></li>
-				</ol>
-				<h3>✨ 알아두면 좋아요</h3>
-				<ul class="eg-tips">
-					<li>브랜드·모델·시리얼·특이사항은 칸을 눌러 바로 고칩니다. 상태와 사용자는 대여·반납으로만 바뀝니다.</li>
-					<li><b>장비 비밀번호는 적지 마세요.</b></li>
-					<li><b>직인</b>에 회사 도장 이미지(500KB 이하 PNG·JPG)를 올리면 대여증서에 찍힙니다.</li>
-					<li>체크한 장비는 <b>라벨 인쇄</b>, 목록 전체는 <b>엑셀 내려받기</b>를 할 수 있습니다.</li>
-				</ul>
-			</div>
-		</c:when>
-
-		<%-- ───────── 전수조사 ───────── --%>
-		<c:when test="${guidePath eq '/WEB-INF/jsp/bo/equipment/audit_list.jsp'}">
-			<div class="eg-head"><span class="ic"><i class="fas fa-clipboard-check"></i></span><h2 id="egTitle">전수조사</h2><p>장비가 실제로 제자리에 있는지 회차별로 확인합니다.</p></div>
-			<div class="eg-body">
-				<h3>🧭 이렇게 써요</h3>
-				<ol class="eg-steps">
-					<li><b>응답 확인</b><span>계정이 있는 직원은 홈페이지 '내 장비'에서 직접 응답합니다.</span></li>
-					<li><b>수기 입력</b><span>게스트·보관 장비는 담당자가 직접 확인하고 입력합니다.</span></li>
-					<li><b>미응답 챙기기</b><span><b style="display:inline">미응답만</b>을 눌러 아직 답이 없는 장비만 봅니다.</span></li>
-					<li><b>회차 마감</b><span>확인이 끝나면 <b style="display:inline">회차 마감</b>을 누릅니다.</span></li>
-				</ol>
-				<h3>✨ 알아두면 좋아요</h3>
-				<ul class="eg-tips">
-					<li>문제가 있는 장비는 이슈로 남기면 장비대장에 표시됩니다.</li>
-					<li><b>엑셀 내려받기</b>로 결과를 보고용으로 받을 수 있습니다.</li>
-				</ul>
-			</div>
-		</c:when>
-
-		<%-- ───────── 캘린더 가져오기 ───────── --%>
-		<c:when test="${guidePath eq '/WEB-INF/jsp/bo/calendar/calendar_sync.jsp'}">
-			<div class="eg-head"><span class="ic"><i class="fas fa-calendar-plus"></i></span><h2 id="egTitle">캘린더 일정 가져오기·분류</h2><p>구글 캘린더 일정을 가져와 분류를 정하고 확정합니다.</p></div>
-			<div class="eg-body">
-				<h3>🧭 이렇게 써요</h3>
-				<ol class="eg-steps">
-					<li><b>처음 한 번 연동</b><span>'구글 연동 설정'에 클라이언트 ID·시크릿을 넣고 저장합니다. '설정됨'이 뜨면 끝.</span></li>
-					<li><b>일정 조회</b><span>시작일·종료일·캘린더를 고르고 <b style="display:inline">조회</b>를 누릅니다.</span></li>
-					<li><b>분류 고르기</b><span>가져온 일정마다 분류를 정합니다.</span></li>
-					<li><b>확정</b><span>체크한 뒤 <b style="display:inline">선택 확정</b>. 한 번에 고르려면 '미확정 전체 선택'.</span></li>
-				</ol>
-				<h3>✨ 알아두면 좋아요</h3>
-				<ul class="eg-tips">
-					<li>확정한 일정은 <b>확정 일정 분류별 보기</b> 화면에서 모아 봅니다.</li>
-				</ul>
-			</div>
-		</c:when>
-
-		<%-- ───────── 확정 일정 보기 ───────── --%>
-		<c:when test="${guidePath eq '/WEB-INF/jsp/bo/calendar/calendar_list.jsp'}">
-			<div class="eg-head"><span class="ic"><i class="fas fa-calendar-check"></i></span><h2 id="egTitle">확정 일정 분류별 보기</h2><p>확정한 일정을 분류별로 모아 봅니다.</p></div>
-			<div class="eg-body">
-				<h3>🧭 이렇게 써요</h3>
-				<ol class="eg-steps">
-					<li><b>기간 고르기</b><span>시작일·종료일을 고르고 <b style="display:inline">조회</b>를 누릅니다.</span></li>
-					<li><b>분류 탭</b><span>위쪽 분류 탭을 눌러 그 분류 일정만 봅니다.</span></li>
-					<li><b>확정자 확인</b><span>표에서 장소와 누가 확정했는지 같이 보입니다.</span></li>
-				</ol>
-				<h3>✨ 알아두면 좋아요</h3>
-				<ul class="eg-tips">
-					<li>일정을 새로 가져오거나 분류를 바꾸려면 <b>캘린더 일정 가져오기·분류</b> 화면으로 갑니다.</li>
-				</ul>
-			</div>
-		</c:when>
-
-		<%-- ───────── 신입면접 배치 ───────── --%>
-		<c:when test="${guidePath eq '/WEB-INF/jsp/bo/batch/interview_batch.jsp'}">
-			<div class="eg-head"><span class="ic"><i class="fas fa-robot"></i></span><h2 id="egTitle">신입면접 배치</h2><p>구글 캘린더의 면접 일정과 드라이브의 이력서를 매일 자동으로 면접관리에 넣어 줍니다.</p></div>
-			<div class="eg-body">
-				<h3>🧭 이렇게 써요</h3>
-				<ol class="eg-steps">
-					<li><b>가져올 곳 등록</b><span>이름, iCal 비공개 주소, 이력서 폴더 주소를 넣고 <b style="display:inline">저장</b>합니다. 여러 개면 <b style="display:inline">새로 추가</b>.</span></li>
-					<li><b>구글 계정 연결</b><span>클라이언트 ID·시크릿을 넣고 <b style="display:inline">연결</b>을 눌러 드라이브 계정을 연결합니다.</span></li>
-					<li><b>자동 실행 켜기</b><span>'자동 09:00'을 켜면 매일 아침 9시에 가져옵니다.</span></li>
-					<li><b>바로 실행</b><span>기다리지 않고 지금 가져오려면 <b style="display:inline">지금 실행</b>.</span></li>
-				</ol>
-				<h3>✨ 알아두면 좋아요</h3>
-				<ul class="eg-tips">
-					<li>실행 기록의 <b>보기</b>를 누르면 몇 건을 넣었는지와 문제 내용이 보입니다.</li>
-					<li>클라이언트 ID와 시크릿은 모든 줄에 공통으로 쓰입니다.</li>
-				</ul>
-			</div>
-		</c:when>
-
-		<%-- ───────── 게시판 관리 ───────── --%>
-		<c:when test="${guidePath eq '/WEB-INF/jsp/bo/board/board_list_tabs.jsp' or guidePath eq '/WEB-INF/jsp/bo/board/board_view.jsp' or guidePath eq '/WEB-INF/jsp/bo/board/board_form.jsp'}">
-			<div class="eg-head"><span class="ic"><i class="fas fa-clipboard-list"></i></span><h2 id="egTitle">게시판 관리</h2><p>공지사항·자유·기술문의·교육일정 게시판의 글을 쓰고 관리합니다.</p></div>
-			<div class="eg-body">
-				<h3>🧭 이렇게 써요</h3>
-				<ol class="eg-steps">
-					<li><b>게시판 고르기</b><span>위쪽 탭에서 게시판을 고릅니다.</span></li>
-					<li><b>걸러 보기</b><span>사용/미사용, 삭제 포함 여부, 블라인드만 보기 버튼으로 목록을 거릅니다.</span></li>
-					<li><b>여러 글 한 번에</b><span>체크한 뒤 블라인드·블라인드 해제 같은 버튼을 누릅니다.</span></li>
-					<li><b>글 보기·쓰기</b><span>제목을 누르면 글이 열리고, 글쓰기에서 새 글을 올립니다.</span></li>
-				</ol>
-				<h3>✨ 알아두면 좋아요</h3>
-				<ul class="eg-tips">
-					<li><b>블라인드</b>는 글을 지우지 않고 홈페이지에서만 가립니다.</li>
-					<li>체크박스는 <kbd class="eg">Shift</kbd>+클릭으로 사이를 한 번에 고를 수 있습니다.</li>
-				</ul>
-			</div>
-		</c:when>
-
-		<%-- ───────── 메뉴 관리 ───────── --%>
-		<c:when test="${guidePath eq '/WEB-INF/jsp/bo/system/menu_manage.jsp'}">
-			<div class="eg-head"><span class="ic"><i class="fas fa-sitemap"></i></span><h2 id="egTitle">메뉴 관리</h2><p>왼쪽 관리자 메뉴의 이름·주소·순서·숨김을 정합니다.</p></div>
-			<div class="eg-body">
-				<h3>🧭 이렇게 써요</h3>
-				<ol class="eg-steps">
-					<li><b>메뉴 고르기</b><span>목록에서 메뉴를 누르면 오른쪽에 정보가 나옵니다.</span></li>
-					<li><b>고치고 저장</b><span>이름·상위 메뉴·화면 주소·아이콘·표시(사용/숨김)를 바꾸고 <b style="display:inline">저장</b>합니다.</span></li>
-					<li><b>순서 바꾸기</b><span>목록에서 메뉴를 끌어 놓으면 순서가 바로 저장됩니다.</span></li>
-					<li><b>권한 연결</b><span>메뉴를 만든 뒤 <b style="display:inline">권한 관리</b>에서 누가 쓸지 정합니다.</span></li>
-				</ol>
-				<h3>✨ 알아두면 좋아요</h3>
-				<ul class="eg-tips">
-					<li>새 화면은 <b>접근 경로</b>에 데이터 요청 주소까지 넣어야 권한이 있는 사람이 쓸 수 있습니다.</li>
-					<li>하위 메뉴가 있는 메뉴는 지울 수 없습니다.</li>
-				</ul>
-			</div>
-		</c:when>
-
-		<%-- ───────── 권한 관리 ───────── --%>
-		<c:when test="${guidePath eq '/WEB-INF/jsp/bo/system/role_manage.jsp'}">
-			<div class="eg-head"><span class="ic"><i class="fas fa-key"></i></span><h2 id="egTitle">권한 관리</h2><p>권한(역할)을 만들고, 그 권한이 쓸 메뉴와 사람을 정합니다.</p></div>
-			<div class="eg-body">
-				<h3>🧭 이렇게 써요</h3>
-				<ol class="eg-steps">
-					<li><b>권한 만들기</b><span>권한 이름을 넣고 <b style="display:inline">저장</b>합니다.</span></li>
-					<li><b>메뉴 고르기</b><span>권한을 골라 쓸 수 있는 메뉴를 체크하고 저장합니다.</span></li>
-					<li><b>사람 넣기</b><span>계정을 골라 <b style="display:inline">추가</b>, 빼려면 <b style="display:inline">제외</b>.</span></li>
-				</ol>
-				<h3>✨ 알아두면 좋아요</h3>
-				<ul class="eg-tips">
-					<li>슈퍼관리자는 항상 모든 메뉴를 씁니다.</li>
-					<li>계정관리에서 관리자로 지정된, 사용 중인 계정만 추가할 수 있습니다.</li>
-				</ul>
-			</div>
-		</c:when>
-
-		<%-- ───────── 공통코드 ───────── --%>
-		<c:when test="${guidePath eq '/WEB-INF/jsp/bo/code/codeList.jsp'}">
-			<div class="eg-head"><span class="ic"><i class="fas fa-list-ol"></i></span><h2 id="egTitle">공통코드</h2><p>화면의 선택 목록(고용형태·등급 등)에 쓰는 코드를 관리합니다.</p></div>
-			<div class="eg-body">
-				<h3>🧭 이렇게 써요</h3>
-				<ol class="eg-steps">
-					<li><b>상위 코드 고르기</b><span>왼쪽 표에서 코드 묶음을 고르면 오른쪽에 세부 코드가 나옵니다.</span></li>
-					<li><b>코드 추가</b><span>각 표의 <b style="display:inline">코드추가</b>를 누르고 값을 넣습니다.</span></li>
-					<li><b>고치기</b><span>표의 줄을 눌러 이름이나 순서를 바꿉니다.</span></li>
-				</ol>
-				<h3>✨ 알아두면 좋아요</h3>
-				<ul class="eg-tips">
-					<li>쓰고 있는 코드를 바꾸면 그 코드를 쓰는 화면의 선택 목록이 같이 바뀌니 신중히 고칩니다.</li>
-				</ul>
-			</div>
-		</c:when>
-
-		<%-- ───────── 그 밖의 화면: 공통 사용법 ───────── --%>
-		<c:otherwise>
-			<div class="eg-head"><span class="ic"><i class="fas fa-compass"></i></span><h2 id="egTitle">관리자 화면 사용법</h2><p>관리자 화면에서 공통으로 쓰는 기능입니다.</p></div>
-			<div class="eg-body">
-				<h3>🧭 이렇게 써요</h3>
-				<ol class="eg-steps">
-					<li><b>메뉴 이동</b><span>왼쪽 메뉴에서 화면을 고릅니다. 내 권한에 있는 메뉴만 보입니다.</span></li>
-					<li><b>화면 가이드</b><span>어느 화면이든 오른쪽 아래 <b style="display:inline">?</b> 버튼을 누르면 그 화면 사용법이 나옵니다.</span></li>
-					<li><b>바로 수정</b><span>표의 칸을 눌러 바로 고치는 화면이 많습니다. 고친 내용은 자동 저장됩니다.</span></li>
-				</ol>
-				<h3>✨ 알아두면 좋아요</h3>
-				<ul class="eg-tips">
-					<li>체크박스는 <kbd class="eg">Shift</kbd>+클릭으로 사이를 한 번에 고를 수 있습니다.</li>
-				</ul>
-			</div>
-		</c:otherwise>
-		</c:choose>
-		<div class="eg-foot"><kbd class="eg">Esc</kbd> 키나 바깥을 누르면 닫힙니다.</div>
-	</div>
+<div class="eg-tour" id="egTour" role="dialog" aria-modal="true" aria-label="화면 가이드" hidden>
+	<div class="eg-hole" id="egHole"></div>
+	<svg class="eg-arrow" aria-hidden="true"><defs><marker id="egHead" markerWidth="10" markerHeight="10" refX="6" refY="5" orient="auto"><path d="M0,0 L8,5 L0,10" style="fill:none;stroke:#fde047;stroke-width:2.5"/></marker></defs><path id="egPath" marker-end="url(#egHead)"/></svg>
+	<div class="eg-bubble" id="egBubble" aria-live="polite"><b></b><span></span></div>
+	<div class="eg-ctrl"><span class="what" id="egWhat"></span><div class="eg-dots" id="egDots"></div><button type="button" class="skip" id="egSkip">그만 보기</button><button type="button" class="prev" id="egPrev">이전</button><button type="button" class="next" id="egNext">다음</button></div>
 </div>
 
 <script>
+var EG = { page: [], modals: {} };
+<c:choose>
+<c:when test="${guidePath eq '/WEB-INF/jsp/bo/deploy/deploy_list.jsp'}">
+EG.page = [
+	['#ymBox', '여기서 달을 바꿔요', '그 달에 일한 사람만 보여요'],
+	['#btnAdd', '새 투입은 여기!', '입력 줄이 생겨요. Enter 로 저장'],
+	['#views', '보고 싶은 목록 고르기', '일하는 중 · 쉬는 사람 · 곧 끝나는 사람'],
+	<c:if test="${secretViewer}">['#secretBox', '시크릿 직원', '끄면 잠깐 숨겨요. 시크릿 계정에만 보여요', 1],</c:if>
+	['#chks', '눌러서 켜고 끄기', '켜 둔 고용형태만 표에 나와요'],
+	['[data-view="timeline"]', '타임라인으로 보기', '기간을 막대 그래프로 봐요'],
+	['.dp-bar', '이름으로 찾기', '고객사 · 지역 · 등급으로도 좁혀요'],
+	['#dpHead', '머리글을 끌어서 순서 바꾸기', '내 계정에 저장돼요'],
+	['#dpBody .dp-name', '이름을 누르면', '투입 상세 팝업이 열려요'],
+	['#dpBody .pl-btn', '메모 · 수정 이력', '칸을 고치면 자동으로 남고, 여기서 되돌려요']
+];
+EG.modals.detailModal = [
+	['#detailFields', '계약 정보', '칸을 고치고 저장을 눌러요'],
+	['#histBody', '지난 프로젝트', '이 사람이 거쳐 온 투입 이력'],
+	['#detailModal .modal-footer .btn-outline-secondary', '철수하고 다음 현장으로', '끝나는 날과 새 투입을 한 번에'],
+	['#detailModal .modal-footer .btn-primary', '다 고쳤으면 저장', '저장해야 표에 반영돼요'],
+	['#detailModal .modal-footer .btn-outline-danger', '잘못 넣은 투입만 삭제', '지우면 되돌릴 수 없어요']
+];
+</c:when>
+<c:when test="${guidePath eq '/WEB-INF/jsp/bo/deploy/pay_list.jsp'}">
+EG.page = [
+	['#ym', '급여 달 고르기', '◀ ▶ 로 달을 바꿔요'],
+	['#payDt', '지급일 넣기', '이번 달 급여 주는 날'],
+	['#btnImport', '공제는 엑셀로 한 번에', '급여대장 파일을 올리면 자동으로 들어가요'],
+	['#kpis', '이번 달 요약', '인원과 합계를 한눈에'],
+	['#chks', '눌러서 켜고 끄기', '보고 싶은 구분만 표에 나와요'],
+	<c:if test="${secretViewer}">['#chks .pl-chip.secret', '시크릿 직원', '끄면 잠깐 숨겨요. 합계에서도 빠져요', 1],</c:if>
+	['[data-t="show-allow"]', '칸 펼치기', '수당 · 공제 · 손익 칸을 열어 봐요'],
+	['#lBody .dp-name', '이름을 누르면', '직원 상세 팝업이 열려요'],
+	['#lBody .pl-btn', '메모 · 수정 이력', '칸을 고치면 남고, 여기서 되돌려요'],
+	['#btnClose', '다 확인했으면 마감', '마감을 풀 땐 사유를 남겨요']
+];
+EG.modals.detailModal = [
+	['#detailTabs', '보고 싶은 정보 고르기', '탭을 눌러 바꿔요'],
+	['#detailBody', '직원 상세', '투입 · 계약 내용을 같이 봐요']
+];
+EG.modals.importModal = [
+	['#importFiles', '엑셀 파일 고르기', '급여대장 · 사업소득대장을 같이 골라요'],
+	['#importResult', '미리 보기', '누가 연결됐는지 확인해요'],
+	['#btnApply', '반영', '공제 금액만 들어가요']
+];
+</c:when>
+<c:when test="${guidePath eq '/WEB-INF/jsp/bo/deploy/bonus_list.jsp'}">
+EG.page = [
+	['#btnNew', '상여 항목 만들기', '조건과 금액을 정해요'],
+	['#bList', '상여 목록', '눌러서 고치고, 몇 명에게 켜졌는지 봐요'],
+	['#bList .btn-link', '적용 인원', '켜는 건 직원관리에서 사람별로']
+];
+EG.modals.bModal = [
+	['#bNm', '상여 이름', '급여표에 이 이름으로 나와요'],
+	['#bSteps', '단계별 금액', '기간마다 금액을 나눠요'],
+	['#btnStep', '단계 추가', '필요한 만큼 더해요'],
+	['#bModal .modal-footer .btn-primary', '저장', '다음 급여 계산부터 들어가요']
+];
+</c:when>
+<c:when test="${guidePath eq '/WEB-INF/jsp/bo/deploy/partner_list.jsp'}">
+EG.page = [
+	['[onclick="openForm(null);"]', '거래처 등록', '새 매출처 · 매입처를 넣어요'],
+	['#tabs', '구분별로 보기', '매출처 · 매입처 · 사용 중지'],
+	['#keyword', '찾기', '거래처명 · 사업자번호 · 담당자'],
+	['#body .dp-name', '이름을 누르면', '정보를 고칠 수 있어요']
+];
+EG.modals.formModal = [
+	['#drop', '서류 올리기', '사업자등록증 같은 파일을 끌어다 놓아요'],
+	['#bizFields', '사업자 정보', '상호 · 사업자번호 · 주소'],
+	['#typeField', '매출처 / 매입처', '둘 다 고를 수도 있어요'],
+	['#formModal .modal-footer .btn-primary', '저장', '투입현황 선택 목록에 바로 나와요']
+];
+</c:when>
+<c:when test="${guidePath eq '/WEB-INF/jsp/bo/staff/staff_list.jsp'}">
+EG.page = [
+	['#keyword', '이름으로 찾기', '연락처 · 메일 · 부서로도 찾아요'],
+	['[onclick="openNew();"]', '직원 등록', '등록하면 인사카드가 바로 열려요'],
+	['#tabs', '재직 상태별로', '눌러서 나눠 봐요'],
+	['#orgSeg', '소속 빠르게 고르기', '한 번 누르면 그 소속만'],
+	['#listBody .st-name', '이름을 누르면', '인사카드가 열려요'],
+	['#listBody', '칸을 누르면 바로 수정', '마우스 올리고 Ctrl+C 하면 그 칸만 복사']
+];
+EG.modals.cardModal = [
+	['#cardBody [role="tablist"]', '탭으로 정보 고르기', '눌러서 다른 정보를 봐요'],
+	['#cardBody', '고칠 땐 수정 버튼', '가려진 번호는 눈 모양을 눌러 봐요'],
+	['#btnStatus', '재직 상태 바꾸기', '퇴사 · 복직 처리'],
+	['#cardModal .modal-footer .btn-outline-danger', '삭제', '지우면 되돌릴 수 없어요']
+];
+EG.modals.newModal = [
+	['#newFields', '기본 정보 입력', '이름부터 넣어요'],
+	['#newModal .modal-footer .btn-primary', '등록', '인사카드가 이어서 열려요']
+];
+</c:when>
+<c:when test="${guidePath eq '/WEB-INF/jsp/bo/member/member_list.jsp'}">
+EG.page = [
+	['#alerts', '확인할 일', '정리할 계정을 알려 줘요'],
+	['#keyword', '찾기', '이름 · 아이디 · 메일'],
+	['[onclick="openIssue();"]', '계정 발급', '여러 명을 한 번에 만들어요'],
+	['#tabs', '계정 구분', '눌러서 나눠 봐요'],
+	['#listBody .ac-link', '이름을 누르면', '계정 카드가 열려요'],
+	['[onclick="downloadCsv();"]', '엑셀 내려받기', '지금 목록 그대로']
+];
+EG.modals.cardModal = [
+	['#cardTabs', '탭 고르기', '기본정보 · 권한 · 비밀번호'],
+	['#cStaffSearch', '직원 연결', '인사카드 정보를 불러와요'],
+	<c:if test="${secretViewer}">['#cardTabs', '🔒 시크릿 탭', '켜면 연결된 직원이 다른 사람에게 안 보여요', 1],</c:if>
+	['#cardModal .modal-footer .btn-primary', '저장', '고친 내용을 반영해요']
+];
+EG.modals.issueModal = [
+	['[aria-label="계정 구분"]', '계정 종류', '직원 계정 / 관리자 계정'],
+	['#iSearch', '사람 찾기', '재직자 이름 · 메일'],
+	['#issueRows', '체크해서 고르기', '여러 명 한 번에'],
+	['#issueBtn', '발급', '초기 비밀번호는 한 번만 보여요']
+];
+</c:when>
+<c:when test="${guidePath eq '/WEB-INF/jsp/bo/hr/interview_list.jsp'}">
+EG.page = [
+	['#dashBox', '검색 기준 통계', '보고 내용 복사로 바로 공유'],
+	['#yearSel', '기간 고르기', '연도 · 월 · 주차'],
+	['#keyword', '찾기', '이름 · 연락처, 모든 연도에서'],
+	['#tabs', '구분 탭', '눌러서 나눠 봐요'],
+	['[onclick="addRow();"]', '면접자 등록', '새 줄을 넣어요'],
+	['#listBody .btn-outline-secondary', '상세', '내용 고치기 · 교육생으로 넘기기']
+];
+EG.modals.editModal = [
+	['#editModal .modal-body', '면접 내용', '참석 · 통보 · 입사 여부를 기록해요'],
+	['#btnTrainee', '교육생으로 넘기기', '입사가 정해지면 눌러요'],
+	['#editModal .modal-footer .btn-primary', '저장', '']
+];
+</c:when>
+<c:when test="${guidePath eq '/WEB-INF/jsp/bo/hr/trainee_list.jsp'}">
+EG.page = [
+	['#keyword', '찾기', '이름으로 찾아요'],
+	['#tabs', '진행 상태별로', '눌러서 나눠 봐요'],
+	['#board', '교육 카드', '끌어서 주차를 옮기고, 값을 눌러 바로 고쳐요'],
+	['#board .btn-outline-secondary', '상세', '모든 정보를 고쳐요']
+];
+EG.modals.importModal = [
+	['#importKeyword', '찾기', ''],
+	['#importBody', '가져올 면접자 고르기', '입사로 표시된 사람만 나와요'],
+	['#btnImport', '가져오기', '교육진행중으로 등록돼요']
+];
+EG.modals.editModal = [
+	['#editFields', '교육생 정보', ''],
+	['#skillBox', '기술 체크', ''],
+	['#editModal .modal-footer .btn-primary', '저장', '']
+];
+</c:when>
+<c:when test="${guidePath eq '/WEB-INF/jsp/bo/lab/journal_list.jsp'}">
+EG.page = [
+	['#fTeam', '연구팀 고르기', ''],
+	['#fName', '과제명 찾기', '고르고 조회를 눌러요'],
+	['[onclick="openProject();"]', '과제 등록', '연구팀 · 과제명 · 기간'],
+	['#listBody', '과제 목록', '줄의 버튼으로 일지를 써요']
+];
+EG.modals.projectModal = [
+	['#TEAM_SQ', '연구팀', ''],
+	['#PRJ_NM', '과제명', ''],
+	['#projectModal .modal-footer .btn-primary', '저장', '']
+];
+EG.modals.journalModal = [
+	['#journalModal .modal-body', '일지 쓰기', '한 일과 결과를 적어요'],
+	['#jSave', '저장', '']
+];
+</c:when>
+<c:when test="${guidePath eq '/WEB-INF/jsp/bo/lab/lab_manage.jsp'}">
+EG.page = [
+	['#fName', '팀 이름으로 찾기', ''],
+	['[onclick="openTeam();"]', '연구팀 등록', ''],
+	['#listBody', '팀 목록', '눌러서 연구원 · 결재라인 · 서명을 정해요']
+];
+</c:when>
+<c:when test="${guidePath eq '/WEB-INF/jsp/bo/equipment/equipment_list.jsp'}">
+EG.page = [
+	['#alerts', '처리할 일', '챙겨야 할 장비를 알려 줘요'],
+	['#keyword', '찾기', '장비번호 · 모델 · 사용자'],
+	['[onclick="openNew();"]', '장비 등록', ''],
+	['[onclick="openRent();"]', '대여 등록', '저장하면 받는 사람에게 서명을 요청해요'],
+	['[onclick="openSeal();"]', '직인', '대여증서에 찍힐 회사 도장'],
+	['[onclick="printLabels();"]', '라벨 인쇄', '체크한 장비 라벨'],
+	['#tabs', '상태별로 보기', '대여 중 · 보관 · 폐기'],
+	['#listBody', '칸을 누르면 바로 수정', '장비 비밀번호는 적지 마세요']
+];
+</c:when>
+<c:when test="${guidePath eq '/WEB-INF/jsp/bo/equipment/audit_list.jsp'}">
+EG.page = [
+	['#rounds', '조사 회차', '눌러서 회차를 골라요'],
+	['#barWrap', '응답 진행률', '얼마나 답했는지 한눈에'],
+	['#btnNone', '미응답만', '아직 답 없는 장비만'],
+	['#body', '장비별 응답', '직원은 홈페이지에서 직접, 나머지는 여기서 입력'],
+	['#btnClose', '회차 마감', '다 확인했으면 눌러요']
+];
+</c:when>
+<c:when test="${guidePath eq '/WEB-INF/jsp/bo/calendar/calendar_sync.jsp'}">
+EG.page = [
+	['[data-target="#confBox"]', '처음 한 번 구글 연동', '설정됨이 뜨면 끝'],
+	['#fromDt', '기간 고르기', ''],
+	['#calId', '캘린더 고르기', ''],
+	['#btnFetch', '가져오기', ''],
+	['#tmpBody', '분류 고르기', '일정마다 분류를 정해요'],
+	['[onclick="confirmSelected();"]', '선택 확정', '체크한 일정을 확정해요']
+];
+</c:when>
+<c:when test="${guidePath eq '/WEB-INF/jsp/bo/calendar/calendar_list.jsp'}">
+EG.page = [
+	['#fromDt', '기간 고르기', ''],
+	['[onclick="loadList();"]', '조회', ''],
+	['#cateTabs', '분류 탭', '그 분류 일정만 봐요'],
+	['#evtBody', '확정 일정', '누가 확정했는지도 보여요']
+];
+</c:when>
+<c:when test="${guidePath eq '/WEB-INF/jsp/bo/batch/interview_batch.jsp'}">
+EG.page = [
+	['#icalBody', '가져올 캘린더', '자동 09:00 을 켜면 매일 아침 실행'],
+	['#icalNm', '새로 등록', '이름 · iCal 주소 · 이력서 폴더'],
+	['#driveConnect', '구글 계정 연결', ''],
+	['#runBtn', '지금 실행', '기다리지 않고 바로 가져와요'],
+	['#logBody', '실행 기록', '보기를 누르면 자세히']
+];
+</c:when>
+<c:when test="${guidePath eq '/WEB-INF/jsp/bo/board/board_list_tabs.jsp'}">
+EG.page = [
+	['#tabs', '게시판 고르기', ''],
+	['.brd-filters', '걸러 보기', '사용 · 삭제 · 블라인드'],
+	['#searchForm', '검색', ''],
+	['#boardBody', '체크해서 한 번에', 'Shift+클릭으로 사이를 한 번에 체크'],
+	['#btnWrite', '글쓰기', '']
+];
+</c:when>
+<c:when test="${guidePath eq '/WEB-INF/jsp/bo/system/menu_manage.jsp'}">
+EG.page = [
+	['#tree', '메뉴 목록', '누르면 고치고, 끌어서 순서를 바꿔요'],
+	['#menuForm', '메뉴 정보', '이름 · 주소 · 아이콘 · 숨김'],
+	['#fPattern', '접근 경로', '데이터 주소까지 넣어야 권한이 먹어요'],
+	['#menuForm .btn-primary', '저장', ''],
+	['#delBtn', '삭제', '하위 메뉴가 있으면 못 지워요']
+];
+</c:when>
+<c:when test="${guidePath eq '/WEB-INF/jsp/bo/system/role_manage.jsp'}">
+EG.page = [
+	['#roles', '권한 목록', '눌러서 골라요'],
+	['#roleTools', '권한 추가 · 수정', ''],
+	['#tabs', '메뉴 / 사람', '이 권한이 쓸 메뉴와 사람'],
+	['#tabBody', '체크하고 저장', '슈퍼관리자는 항상 전부 써요']
+];
+</c:when>
+<c:when test="${guidePath eq '/WEB-INF/jsp/bo/code/codeList.jsp'}">
+EG.page = [
+	['#gridCodeList', '코드 묶음', '누르면 오른쪽에 세부 코드'],
+	['#BtnAddgridCodeList', '코드 추가', ''],
+	['#subGridCodeList', '세부 코드', '줄을 눌러 고쳐요'],
+	['#btnAddsubGridCodeList', '세부 코드 추가', '']
+];
+</c:when>
+</c:choose>
+
 (function() {
-	var bg = document.getElementById('egPanel'), fab = document.getElementById('egOpen');
-	function open() { bg.hidden = false; requestAnimationFrame(function() { bg.classList.add('on'); }); document.getElementById('egClose').focus(); }
-	function close() { bg.classList.remove('on'); bg.hidden = true; fab.focus(); }
+	var $tour = document.getElementById('egTour'), hole = document.getElementById('egHole'), bubble = document.getElementById('egBubble'),
+		path = document.getElementById('egPath'), fab = document.getElementById('egOpen'), steps = [], i = 0;
+	// 화면이 바뀌어 대상이 없거나 숨어 있으면 그 단계는 건너뛴다
+	function target(sel) {
+		var el = document.querySelector(sel);
+		return el && el.getClientRects().length && el.getBoundingClientRect().width ? el : null;
+	}
+	function build() {
+		var modal = document.querySelector('.modal.show'), list;
+		if (modal) {
+			// 설명을 따로 안 만든 팝업은 공통 순서로
+			list = EG.modals[modal.id] || [['#' + modal.id + ' .modal-body', '여기에 입력해요', '칸을 채우거나 내용을 확인해요'], ['#' + modal.id + ' .modal-footer', '저장 · 닫기', '끝났으면 여기서']];
+			document.getElementById('egWhat').textContent = ($(modal).find('.modal-title').first().text() || '팝업') + ' 팝업';
+		} else {
+			list = EG.page.length ? EG.page.concat([['#egOpen', '팝업에서도 눌러 보세요', '열린 팝업 설명이 나와요']])
+				: [['.main-sidebar', '왼쪽 메뉴', '내 권한에 있는 화면만 보여요'], ['#egOpen', '언제든 여기!', '화면마다 설명이 나와요']];
+			document.getElementById('egWhat').textContent = ($('.bTitle').first().text() || '이 화면') + ' 화면';
+		}
+		return list.filter(function(s) { return target(s[0]); });
+	}
+	function open() {
+		steps = build();
+		if (!steps.length) return;
+		i = 0; $tour.hidden = false; show(); document.getElementById('egNext').focus();
+	}
+	function close() { $tour.hidden = true; fab.focus(); }
+	function show(still) {
+		var s = steps[i], el = target(s[0]);
+		if (!el) { steps.splice(i, 1); if (!steps.length) return close(); i = Math.min(i, steps.length - 1); return show(still); }
+		var W = window.innerWidth, H = window.innerHeight, pad = 8, r = el.getBoundingClientRect();
+		// 화면 밖일 때만 즉시 스크롤 (부드러운 스크롤 도중에 재면 위치가 어긋난다)
+		if (!still && (r.top < 0 || r.bottom > H - 90)) { el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }); r = el.getBoundingClientRect(); }
+		// 아주 큰 대상(표 전체 등)은 화면 안쪽만 밝힌다
+		var top = Math.max(r.top, 8), bottom = Math.min(r.bottom, H - 90), left = Math.max(r.left, 8), right = Math.min(r.right, W - 8);
+		hole.style.left = (left - pad) + 'px'; hole.style.top = (top - pad) + 'px';
+		hole.style.width = (right - left + pad * 2) + 'px'; hole.style.height = (bottom - top + pad * 2) + 'px';
+
+		// 말풍선은 아래·위 중 넓은 쪽, 가로는 대상 근처에서 화면 밖으로 안 나가게
+		var bw = W < 576 ? 230 : 300, below = (H - 90 - bottom) >= (top - 10);
+		var cx = (left + right) / 2, bx = Math.min(Math.max(cx + (cx > W / 2 ? -bw - 40 : 60), 16), W - bw - 16);
+		var by = below ? Math.min(bottom + pad + 90, H - 190) : Math.max(top - pad - 170, 10);
+		bubble.style.left = bx + 'px'; bubble.style.top = by + 'px';
+		if (!still) {
+			bubble.className = 'eg-bubble' + (s[3] ? ' sec' : '');
+			bubble.querySelector('b').textContent = s[1]; bubble.querySelector('span').textContent = s[2];
+			void bubble.offsetWidth; bubble.classList.add('show');
+		}
+
+		// 화살표: 말풍선 가장자리 → 밝힌 칸 가장자리, 옆으로 휘게
+		var sx = bx + (cx > bx + bw / 2 ? bw - 40 : 40), sy = below ? by - 6 : by + 80;
+		var tx = Math.min(Math.max(cx, left + 12), right - 12), ty = below ? bottom + pad + 8 : top - pad - 8;
+		var qx = (sx + tx) / 2 + (tx > sx ? -60 : 60), qy = (sy + ty) / 2;
+		path.setAttribute('d', 'M' + sx + ',' + sy + ' Q' + qx + ',' + qy + ' ' + tx + ',' + ty);
+		path.classList.remove('draw'); path.style.setProperty('--len', path.getTotalLength()); void path.getBBox();
+		if (still) path.style.strokeDashoffset = 0; else { path.style.strokeDashoffset = ''; path.classList.add('draw'); }
+
+		document.getElementById('egDots').innerHTML = steps.map(function(st, k) { return '<i class="' + (k === i ? 'on' : '') + (st[3] ? ' sec' : '') + '"></i>'; }).join('');
+		document.getElementById('egPrev').style.visibility = i ? 'visible' : 'hidden';
+		document.getElementById('egNext').textContent = i === steps.length - 1 ? '끝' : '다음';
+	}
+	function next() { if (i < steps.length - 1) { i++; show(); } else close(); }
+	function prev() { if (i > 0) { i--; show(); } }
 	fab.addEventListener('click', open);
-	document.getElementById('egClose').addEventListener('click', close);
-	bg.addEventListener('click', function(e) { if (e.target === bg) close(); });
-	document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && !bg.hidden) close(); });
+	document.getElementById('egSkip').addEventListener('click', close);
+	document.getElementById('egPrev').addEventListener('click', prev);
+	document.getElementById('egNext').addEventListener('click', next);
+	// 어두운 곳을 눌러도 다음으로
+	$tour.addEventListener('click', function(e) { if (!e.target.closest('.eg-ctrl')) next(); });
+	// 팝업의 Esc 닫기보다 먼저 받아서 가이드만 닫는다
+	document.addEventListener('keydown', function(e) {
+		if ($tour.hidden) return;
+		if (e.key === 'Escape') close(); else if (e.key === 'ArrowRight') next(); else if (e.key === 'ArrowLeft') prev(); else return;
+		e.preventDefault(); e.stopPropagation();
+	}, true);
+	window.addEventListener('resize', function() { if (!$tour.hidden) show(true); });
+	// 팝업 안 스크롤 등으로 대상이 움직이면 따라간다
+	document.addEventListener('scroll', function() { if (!$tour.hidden) show(true); }, true);
 })();
 </script>
