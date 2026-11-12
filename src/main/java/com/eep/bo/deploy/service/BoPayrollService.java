@@ -438,7 +438,10 @@ public class BoPayrollService {
 				} else {
 					b = 0; // 고정급은 한 달에 한 번만
 				}
-				base += b;
+				// 정규·수습 직원에게 함께 걸린 기타·외부 계약은 매입처에 주는 돈(외부 매입)이라 급여 기본에 넣지 않는다. 건별 기본(PAYROLL_D)에는 남겨 derive 가 매입으로 센다
+				if (!PayCalc.isSalaried(type) || PayCalc.isSalaried(str(d.get("EMP_TYPE_CD")))) {
+					base += b;
+				}
 				Map<String, Object> row = new HashMap<>();
 				row.put("YM", ym);
 				row.put("DEPLOY_SQ", d.get("DEPLOY_SQ"));
