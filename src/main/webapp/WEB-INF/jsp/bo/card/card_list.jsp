@@ -434,8 +434,11 @@
 
 	function setFile(f) {
 		if (!/\.xlsx?$/i.test(f.name)) { bootbox.alert('엑셀 파일(.xls, .xlsx)만 올릴 수 있습니다.'); return; }
-		pFile = f; pRes = null;
-		loadPeriod();
+		// 고를 때 한 번 읽어 메모리에 둔다. 디스크 파일을 그대로 쓰면 저장 뒤 다시 대조할 때 엑셀에서 열려 있거나 바뀐 파일을 브라우저가 못 읽어 요청이 실패한다
+		var reader = new FileReader();
+		reader.onload = function() { pFile = new File([reader.result], f.name, { type: f.type }); pRes = null; loadPeriod(); };
+		reader.onerror = function() { bootbox.alert('파일을 읽지 못했습니다. 엑셀에서 열려 있으면 닫고 다시 올려 주세요.'); };
+		reader.readAsArrayBuffer(f);
 	}
 
 	function savePeriod(close) {
@@ -451,8 +454,10 @@
 			hrPost('/admin/card/savePeriodData.do', $.param(data, true), function(res) {
 				var n = res.result;
 				toast(close ? n.closed + '건을 마감했습니다' : '저장했습니다' + (n.added ? ' (새로 등록 ' + n.added + '건)' : ''));
+				// 저장은 끝났으니 예전 목록을 바로 지워, 다시 불러오기가 실패해도 같은 건을 두 번 저장하지 못하게 한다
 				pRes = null; cRes = null;
-				loadList(loadPeriod);
+				drawCard();
+				loadList();
 			});
 		}
 		if (!close) { if (!open.length) { toast('저장할 건이 없습니다'); return; } send(); return; }
