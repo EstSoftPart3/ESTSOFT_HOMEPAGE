@@ -866,9 +866,27 @@
 	var SKILL_COLS = [['LANG_NM', '언어'], ['FRAMEWORK_NM', 'FRAMEWORK'], ['DBMS_NM', 'DBMS'], ['IND_NM', '산업']];
 	var ENV_COLS = [['IND_NM', '산업'], ['APP_NM', '응용'], ['MACHINE_NM', '기종'], ['OS_NM', 'O.S'], ['LANG_NM', '언어'], ['DBMS_NM', 'DBMS'], ['TOOL_NM', 'TOOL'], ['FRAMEWORK_NM', 'FRAMEWORK'], ['ETC_NM', '기타']];
 
-	function prjCount(sq) { return Number(staffOf(sq).PRJ_CNT || 0) + depsOf(sq).length; }
+	// 같은 고객사·프로젝트에서 기간이 겹치거나 바로 이어지는 투입 건(정규+외부 계약, 수습→정규)은 한 프로젝트로 묶는다. s·e 는 시작·종료 칸 이름
+	function mergeDeps(list, s, e) {
+		var out = [];
+		list.slice().sort(function(a, b) { return String(a[s]).localeCompare(String(b[s])); }).forEach(function(x) {
+			var key = (x.CLIENT_NM || '') + '|' + (x.PRJ_NM || '');
+			var g = out.filter(function(o) { return o._key === key && (!o[e] || !moment(x[s]).isAfter(moment(o[e]).add(1, 'days'))); })[0];
+			if (!g) { out.push($.extend({ _key: key, TYPES: [x.EMP_TYPE_CD] }, x)); return; }
+			if (g.TYPES.indexOf(x.EMP_TYPE_CD) < 0) g.TYPES.push(x.EMP_TYPE_CD);
+			g[e] = !g[e] || !x[e] ? null : x[e] > g[e] ? x[e] : g[e];
+		});
+		return out;
+	}
+	// 수습은 정규로 보고 겹치는 형태 이름은 한 번만
+	function typesText(types) { return types.map(function(t) { return typeName(t === 'PROBATION' ? 'REGULAR' : t); }).filter(function(v, i, a) { return a.indexOf(v) === i; }).join('·'); }
+	function prjCount(sq) { return Number(staffOf(sq).PRJ_CNT || 0) + mergeDeps(depsOf(sq), 'START_DT', 'END_DT').length; }
 	function prjLoad(sq) {
-		if (!prjCache[sq]) prjCache[sq] = $.post('/admin/deploy/projectHistoryData.do', { STAFF_SQ: sq }).then(function(res) { return res.result || []; });
+		if (!prjCache[sq]) prjCache[sq] = $.post('/admin/deploy/projectHistoryData.do', { STAFF_SQ: sq }).then(function(res) {
+			var items = res.result || [];
+			return items.filter(function(it) { return it.SRC !== 'DEPLOY'; }).concat(mergeDeps(items.filter(function(it) { return it.SRC === 'DEPLOY'; }), 'START', 'END'))
+				.sort(function(a, b) { return (!b.END) - (!a.END) || String(b.START).localeCompare(String(a.START)); });
+		});
 		return prjCache[sq];
 	}
 	function tokens(v) { return String(v || '').split(/[,/·\n]+/).map(function(t) { return $.trim(t); }).filter(Boolean); }
@@ -922,7 +940,7 @@
 				var $it = $('<div class="prj-item">').toggleClass('now', now).toggleClass('plan', plan);
 				var $h = $('<div class="prj-head">').append($('<span class="t">').text(it.PRJ_NM || '(프로젝트명 없음)'));
 				if (it.CLIENT_NM) $h.append($('<span class="dp-pill rent">').text(it.CLIENT_NM));
-				if (it.ROLE_NM || it.EMP_TYPE_CD) $h.append($('<span class="dp-pill">').text(it.ROLE_NM || typeName(it.EMP_TYPE_CD)));
+				if (it.ROLE_NM || it.EMP_TYPE_CD) $h.append($('<span class="dp-pill">').text(it.ROLE_NM || (it.TYPES ? typesText(it.TYPES) : typeName(it.EMP_TYPE_CD))));
 				$h.append($('<span class="prj-src">').text(it.SRC === 'DEPLOY' ? '사내 투입' : '수행이력'));
 				$h.append($('<span class="when">').text(ymDot(it.START) + ' ~ ' + (it.END ? ymDot(it.END) : plan ? '예정' : '진행중')).append($('<span>').text(months(it))));
 				$it.append($h);
