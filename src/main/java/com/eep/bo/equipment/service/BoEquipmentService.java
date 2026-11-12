@@ -268,6 +268,20 @@ public class BoEquipmentService {
 		if (mapper.updateAuditResult(param) != 1) throw new IllegalArgumentException("마감된 회차는 고칠 수 없습니다.");
 	}
 
+	/** @return 바뀐 대수 */
+	public int saveAuditResults(int auditSq, String result, int[] eqpSqs, String loginId) {
+		checkResult(result, true);
+		if (eqpSqs == null || eqpSqs.length == 0) throw new IllegalArgumentException("결과를 바꿀 장비를 골라 주세요.");
+		if (eqpSqs.length > 1000) throw new IllegalArgumentException("한 번에 1000대까지 바꿀 수 있습니다.");
+		Map<String, Object> p = one("AUDIT_SQ", auditSq);
+		p.put("RESULT_CD", result);
+		p.put("EQP_SQS", eqpSqs);
+		p.put("UPDT_EMPLY_ID", loginId);
+		int n = mapper.updateAuditResults(p);
+		if (n == 0) throw new IllegalArgumentException("마감된 회차는 고칠 수 없습니다.");
+		return n;
+	}
+
 	public void closeAudit(Object auditSq) {
 		Map<String, Object> p = one("AUDIT_SQ", auditSq);
 		tx.execute(status -> {

@@ -30,6 +30,7 @@ public class BoMemoController {
 		TARGET.put("/admin/hr/interview", "INTV");					// /admin/hr/*nterview*
 		TARGET.put("/admin/hr/trainee", "TRAINEE");					// /admin/hr/*rainee*
 		TARGET.put("/admin/equipment/equipment", "EQP");			// /admin/equipment/*quipment*
+		TARGET.put("/admin/equipment/audit", "EQP");				// /admin/equipment/*udit* (전수조사 권한만 있어도 같은 장비 메모)
 		TARGET.put("/admin/lab/team", "LAB_TEAM");					// /admin/lab/*eam*
 	}
 
@@ -40,7 +41,7 @@ public class BoMemoController {
 	private SecretFilter secret;
 
 	@RequestMapping(value = { "/admin/staff/memoListData.do", "/admin/hr/interviewMemoListData.do", "/admin/hr/traineeMemoListData.do",
-			"/admin/equipment/equipmentMemoListData.do", "/admin/lab/teamMemoListData.do" }, method = RequestMethod.POST)
+			"/admin/equipment/equipmentMemoListData.do", "/admin/equipment/auditMemoListData.do", "/admin/lab/teamMemoListData.do" }, method = RequestMethod.POST)
 	public ModelAndView memoListData(@RequestParam("TARGET_SQ") int targetSq, HttpServletRequest request, HttpSession session) {
 		return run(() -> {
 			Map<String, Object> q = key(request, session, targetSq);
@@ -68,7 +69,7 @@ public class BoMemoController {
 	}
 
 	@RequestMapping(value = { "/admin/staff/saveMemoData.do", "/admin/hr/interviewSaveMemoData.do", "/admin/hr/traineeSaveMemoData.do",
-			"/admin/equipment/equipmentSaveMemoData.do", "/admin/lab/teamSaveMemoData.do" }, method = RequestMethod.POST)
+			"/admin/equipment/equipmentSaveMemoData.do", "/admin/equipment/auditSaveMemoData.do", "/admin/lab/teamSaveMemoData.do" }, method = RequestMethod.POST)
 	public ModelAndView saveMemoData(@RequestParam("TARGET_SQ") int targetSq, @RequestParam("CONTENT") String content, HttpServletRequest request, HttpSession session) {
 		return run(() -> {
 			Map<String, Object> q = key(request, session, targetSq);
@@ -84,7 +85,7 @@ public class BoMemoController {
 	}
 
 	@RequestMapping(value = { "/admin/staff/deleteMemoData.do", "/admin/hr/interviewDeleteMemoData.do", "/admin/hr/traineeDeleteMemoData.do",
-			"/admin/equipment/equipmentDeleteMemoData.do", "/admin/lab/teamDeleteMemoData.do" }, method = RequestMethod.POST)
+			"/admin/equipment/equipmentDeleteMemoData.do", "/admin/equipment/auditDeleteMemoData.do", "/admin/lab/teamDeleteMemoData.do" }, method = RequestMethod.POST)
 	public ModelAndView deleteMemoData(@RequestParam("MEMO_SQ") long memoSq, HttpServletRequest request, HttpSession session) {
 		return run(() -> {
 			Map<String, Object> q = new HashMap<>();

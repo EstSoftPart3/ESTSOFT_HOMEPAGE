@@ -178,6 +178,13 @@
 		WHERE d.AUDIT_SQ = #{AUDIT_SQ} AND d.EQP_SQ = #{EQP_SQ} AND m.STATUS_CD = 'OPEN'
 	</update>
 
+	<update id="updateAuditResults" parameterType="hashMap">
+		UPDATE TB_EEP_EQP_AUDIT_D d JOIN TB_EEP_EQP_AUDIT_M m ON m.AUDIT_SQ = d.AUDIT_SQ
+		SET d.RESULT_CD = #{RESULT_CD}, d.RESPONSE_CD = 'ADMIN', d.CHECK_EMPLY_ID = #{UPDT_EMPLY_ID}, d.CHECK_DT = NOW()
+		WHERE d.AUDIT_SQ = #{AUDIT_SQ} AND m.STATUS_CD = 'OPEN'
+		  AND d.EQP_SQ IN <foreach collection="EQP_SQS" item="sq" open="(" separator="," close=")">#{sq}</foreach>
+	</update>
+
 	<update id="updateAuditSelf" parameterType="hashMap">
 		UPDATE TB_EEP_EQP_AUDIT_D d JOIN TB_EEP_EQP_AUDIT_M m ON m.AUDIT_SQ = d.AUDIT_SQ
 		SET d.RESULT_CD = #{RESULT_CD}, d.NOTE = NULLIF(#{NOTE}, ''), d.RESPONSE_CD = 'SELF', d.CHECK_EMPLY_ID = #{UPDT_EMPLY_ID}, d.CHECK_DT = NOW()

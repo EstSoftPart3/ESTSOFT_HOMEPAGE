@@ -43,6 +43,7 @@ public interface BoEquipmentMapper {
 	public int insertAuditDetail(Map<String, Object> param);
 	public List<Map<String, Object>> selectAuditDetail(Map<String, Object> param);
 	public int updateAuditResult(Map<String, Object> param);			//담당자 입력. 진행 중 회차만
+	public int updateAuditResults(Map<String, Object> param);			//AUDIT_SQ, EQP_SQS[], RESULT_CD 일괄. 메모는 그대로, 진행 중 회차만
 	public int updateAuditSelf(Map<String, Object> param);				//본인 응답. 진행 중 회차의 본인 행만
 	public int closeAudit(Map<String, Object> param);
 	public int updateLastCheck(Map<String, Object> param);

@@ -134,6 +134,13 @@ public class BoEquipmentController {
 		return write(param, session, () -> service.saveAuditResult(param));
 	}
 
+	/** 체크한 장비의 결과를 한 번에 바꾼다. 메모(NOTE)는 그대로 둔다 */
+	@RequestMapping(value = "/admin/equipment/saveAuditResultsData.do", method = RequestMethod.POST)
+	public ModelAndView saveAuditResultsData(@RequestParam("AUDIT_SQ") int auditSq, @RequestParam("RESULT_CD") String result,
+			@RequestParam(value = "EQP_SQ", required = false) int[] eqpSqs, HttpSession session) {
+		return call(() -> service.saveAuditResults(auditSq, result, eqpSqs, loginId(session)));
+	}
+
 	@RequestMapping(value = "/admin/equipment/closeAuditData.do", method = RequestMethod.POST)
 	public ModelAndView closeAuditData(@RequestParam("AUDIT_SQ") int auditSq) {
 		return call(() -> { service.closeAudit(auditSq); return "OK"; });
