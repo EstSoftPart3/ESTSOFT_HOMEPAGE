@@ -22,8 +22,8 @@ public final class InterviewCalendarParser {
 
 	private static final DateTimeFormatter ICS_DT = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss");
 	private static final DateTimeFormatter ICS_D = DateTimeFormatter.ofPattern("yyyyMMdd");
-	// 예: [취소][신입]이름(사람인_공고/010-0000-0000), [경력]면접-이름(...), [경력재지원]-이름(...)
-	private static final Pattern TITLE = Pattern.compile("^((?:\\[[^\\]]*\\]\\s*)*)-?\\s*(?:면접\\s*-\\s*)?([^\\s\\[\\]()/]+)\\s*\\(([^()]*)\\)\\s*$");
+	// 예: [취소][신입]이름(사람인_공고/010-0000-0000), [신입]이름/사람인_공고/010-0000-0000, [경력]면접-이름(...), [경력재지원]-이름(...)
+	private static final Pattern TITLE = Pattern.compile("^((?:\\[[^\\]]*\\]\\s*)*)-?\\s*(?:면접\\s*-\\s*)?([^\\s\\[\\]()/]+)\\s*(?:\\(([^()]*)\\)|/([^()]+))\\s*$");
 	private static final Pattern TAG = Pattern.compile("\\[([^\\]]*)\\]");
 	private static final Pattern LEAD_TAGS = Pattern.compile("^((?:\\[[^\\]]*\\]\\s*)*)");
 	private static final Pattern PHONE = Pattern.compile("01\\d-?\\d{3,4}-?\\d{4}");
@@ -159,7 +159,7 @@ public final class InterviewCalendarParser {
 				else if (tag.equals("불합격")) row.put("RESULT_ST", "FAIL");
 			}
 		}
-		for (String raw : m.group(3).split("/")) {
+		for (String raw : (m.group(3) != null ? m.group(3) : m.group(4)).split("/")) {
 			String part = raw.trim();
 			Matcher phone = PHONE.matcher(part);
 			if (part.isEmpty()) continue;
