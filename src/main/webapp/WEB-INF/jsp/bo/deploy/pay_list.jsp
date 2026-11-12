@@ -55,9 +55,13 @@
 	#pickCnt { font-size: 12px; font-weight: 700; color: #1d4ed8; }
 	/* 중복계약: 왼쪽 주황 띠 + 펼치는 버튼 */
 	#lBody tr.pl-dup > td:first-child { box-shadow: inset 4px 0 0 #e0a800; }
-	.pl-dup-pill { border: 1px solid #e0a800; background: #fff3d6; color: #7a5600; font-weight: 700; cursor: pointer; }
-	.pl-dup-pill[aria-expanded=true] { background: #e0a800; color: #fff; }
-	.pl-dup-all { display: block; border: 0; background: none; padding: 0; color: #7a5600; font-size: 11px; font-weight: 700; cursor: pointer; }
+	.pl-dup-arrow { border: 0; background: none; padding: 0 4px 0 0; color: #b07d00; font-size: 11px; cursor: pointer; }
+	.pl-dup-arrow:focus { outline: 2px solid #16d5ff; border-radius: 3px; }
+	/* 수습기간 열: 접으면 좁게(수습 중이면 점만), 펴면 기간 */
+	.pl-prob-btn { border: 0; background: none; padding: 0; color: #0b6e8a; font-weight: 700; font-size: 12px; cursor: pointer; white-space: nowrap; }
+	#lBody td.pl-prob { color: #5f6b75; font-size: 12px; text-align: center; }
+	#ledger:not(.show-prob) #lBody td.pl-prob .full, #ledger.show-prob #lBody td.pl-prob .dot { display: none; }
+	#lBody td.pl-prob .dot { color: #0b6e8a; }
 	#lBody td.pl-type { color: #444; }
 	#lBody tr.pl-child td.pl-type::before { content: '└ '; color: #8a949c; }
 	.pl-btn { border: 1px solid #b9dbe6; background: #f3fbfd; color: #0b6e8a; border-radius: 10px; padding: 0 7px; font-size: 11.5px; font-weight: 700; }
@@ -263,8 +267,13 @@
 		return typesOf(r).some(function(t) { return checked[chipOf(t)]; });
 	}
 	// 중복계약 줄은 기본으로 접는다. 사람별로 누른 상태가 '모두 접기/펼치기'보다 우선
-	var openDup = {}, dupAll = false;
-	function isOpen(r) { return r.STAFF_SQ in openDup ? openDup[r.STAFF_SQ] : dupAll; }
+	// 같은 달 다른 계약 줄은 기본으로 접고, 성명 앞 작은 화살표로 사람별로 편다
+	var openDup = {};
+	function isOpen(r) { return !!openDup[r.STAFF_SQ]; }
+	// 수습기간 열 접기. 이 브라우저에 기억한다
+	var probOpen = false;
+	try { probOpen = localStorage.getItem('payProb') === 'on'; } catch (e) {}
+	$(document).on('click', '#probToggle', function() { probOpen = !probOpen; try { localStorage.setItem('payProb', probOpen ? 'on' : 'off'); } catch (e) {} render(); });
 	// 체크한 형태의 계약이 윗줄. 둘 다면 정규·수습 먼저
 	function contracts(r) {
 		var ds = r.DETAILS.slice(), sal = ds.filter(function(d) { var t = typeOf(d) || r.EMP_TYPE_CD; return t === 'REGULAR' || t === 'PROBATION'; });
@@ -358,11 +367,10 @@
 		var bands = $('<tr class="pl-bands">').append('<th colspan="9"></th>')
 			.append(band('show-allow', 'allow', '수당', ALLOW.length)).append(band('show-ded', 'ded', '공제', DED.length)).append('<th colspan="2"></th>')
 			.append(band('show-pl', 'pl', '손익', 3)).append('<th colspan="3"></th>');
-		var $dupTh = sortTh('중복계약', 'DUP').append($('<button type="button" class="pl-dup-all">').attr('aria-expanded', dupAll).text(dupAll ? '▾ 모두 접기' : '▸ 모두 펼치기')
-			.on('click', function() { dupAll = !dupAll; openDup = {}; render(); }));
 		var $h = $('<tr>').append($('<th class="pl-pick-col">').append($('<input type="checkbox" id="pickAll" aria-label="보이는 사람 모두 체크">')))
-			.append(sortTh('성명', 'STAFF_NM')).append($dupTh).append(sortTh('형태', 'TYPE')).append(sortTh('고객사', 'CLIENT')).append(sortTh('프로젝트', 'PRJ'))
-			.append(sortTh('근무기간', 'PERIOD')).append(sortTh('매출단가', 'SALE_PRICE', 'dp-num')).append(sortTh('기본', 'BASE_AMT', 'dp-num'));
+			.append(sortTh('성명', 'STAFF_NM')).append(sortTh('형태', 'TYPE')).append(sortTh('고객사', 'CLIENT')).append(sortTh('프로젝트', 'PRJ'))
+			.append(sortTh('근무기간', 'PERIOD')).append($('<th>').append($('<button type="button" class="pl-prob-btn" id="probToggle">').attr('aria-expanded', probOpen).text(probOpen ? '수습기간 ▾' : '수습 ▸')))
+			.append(sortTh('매출단가', 'SALE_PRICE', 'dp-num')).append(sortTh('기본', 'BASE_AMT', 'dp-num'));
 		ALLOW.forEach(function(a) { $h.append(sortTh(a[1], a[0], 'dp-num x-allow')); });
 		$h.append(sortTh('지급계', 'PAY_TOTAL', 'dp-num c-allow pl-calc-h'));
 		DED.forEach(function(a) { $h.append(a[0] === '_SETTLE' ? $('<th class="dp-num x-ded pl-calc-h">').text(a[1]).prepend(calcBtn('_SETTLE', a[1])) : sortTh(a[1], a[0], 'dp-num x-ded')); });
@@ -381,8 +389,7 @@
 			function rs($td) { return $td.attr('rowspan', span); }
 			var $tr = $('<tr>').attr('data-sq', r.STAFF_SQ).toggleClass('pl-picked', !!picked[r.STAFF_SQ]).toggleClass('pl-secret', !!r.SECRET).toggleClass('pl-dup', dup)
 				.append(rs($('<td class="pl-pick-col">')).append($('<input type="checkbox" class="pl-pick">').val(r.STAFF_SQ).prop('checked', !!picked[r.STAFF_SQ]).attr('aria-label', r.STAFF_NM + ' 체크')))
-				.append(rs($('<td>')).append(r.SECRET ? $('<span title="시크릿">').text('🔒 ') : '').append($('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { openDetail(r); })))
-				.append(rs($('<td>')).append(dupCell(r, cs)));
+				.append(rs($('<td>')).append(dupArrow(r, cs)).append(r.SECRET ? $('<span title="시크릿">').text('🔒 ') : '').append($('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { openDetail(r); })));
 			contractCells(r, cs[0] || {}, true).forEach(function($td) { $tr.append($td); });
 			$tr.append(rs(cell(r, 'BASE_AMT', '')));
 			ALLOW.forEach(function(a) { $tr.append(rs(cell(r, a[0], 'x-allow'))); });
@@ -399,6 +406,7 @@
 			if (open) cs.slice(1).forEach(function(d) { $b.append($('<tr class="pl-child pl-dup">').attr('data-sq', r.STAFF_SQ).toggleClass('pl-picked', !!picked[r.STAFF_SQ]).toggleClass('pl-secret', !!r.SECRET).append(contractCells(r, d, false))); });
 		});
 		applyBands();
+		$('#ledger').toggleClass('show-prob', probOpen);
 		paintPicked();
 		// 두 번째 머리글 줄은 색 띠 아래에 붙고, 위 스크롤 막대 길이는 표 너비에 맞춘다
 		$('#lHead tr').eq(1).children().css('top', $('#lHead tr').eq(0).outerHeight());
@@ -410,7 +418,8 @@
 		var t = typeOf(d) || r.EMP_TYPE_CD, prob = probation(r, t);
 		return [$('<td class="pl-type">').text(prob ? '정규' + (prob.left > 0 ? '(수습 D-' + prob.left + ')' : '') : (TYPE_NM[t] || t || '')), $('<td>').text(d.CLIENT_NM || ''),
 			$('<td>').text(d.PRJ_NM || '').append(d.DEPLOY_SQ ? dpInfoBtn(r.STAFF_NM + ' 투입 정보', function() { deployInfo(r, d); }) : ''),
-			$('<td>').text(d.DEPLOY_SQ ? period(d) : '').append(prob && prob.inMonth ? $('<span class="dp-mute small ml-1">').text('· 수습 ' + prob.from.format('YY/MM/DD') + '~' + prob.to.format('YY/MM/DD')) : ''),
+			$('<td>').text(d.DEPLOY_SQ ? period(d) : ''),
+			$('<td class="pl-prob">').append(prob && prob.inMonth ? [$('<span class="full">').text(prob.from.format('YY/MM/DD') + '~' + prob.to.format('YY/MM/DD')), $('<span class="dot">').attr('title', '수습 ' + prob.from.format('YY/MM/DD') + '~' + prob.to.format('YY/MM/DD')).text('●')] : ''),
 			$('<td class="dp-num">').text(d.SALE_PRICE ? dpWon(d.SALE_PRICE) : '')];
 	}
 
@@ -423,10 +432,11 @@
 		return { from: from, to: to, left: to.diff(moment().startOf('day'), 'days') + 1, inMonth: !to.isBefore(first) && !from.isAfter(first.clone().endOf('month')) };
 	}
 
-	function dupCell(r, cs) {
-		if (cs.length < 2) return $('<span class="dp-mute">').text('—');
+	// 다른 계약이 있으면 성명 앞에 ▸/▾. 마우스를 올리면 건별 계약
+	function dupArrow(r, cs) {
+		if (cs.length < 2) return '';
 		var open = isOpen(r);
-		var $p = $('<button type="button" class="dp-pill pl-dup-pill">').attr({ 'aria-expanded': open, 'aria-label': r.STAFF_NM + ' 중복계약 ' + cs.length + '건 ' + (open ? '접기' : '펼치기') }).text((open ? '▾ ' : '▸ ') + cs.length + '건')
+		var $p = $('<button type="button" class="pl-dup-arrow">').attr({ 'aria-expanded': open, 'aria-label': r.STAFF_NM + ' 다른 계약 ' + (cs.length - 1) + '건 ' + (open ? '접기' : '펼치기') }).text(open ? '▾' : '▸')
 			.on('click', function() { openDup[r.STAFF_SQ] = !open; dpHide(); render(); });
 		dpHover($p, $p, function() {
 			return '<div class="dp-card sm"><div class="dp-card-top">중복계약 ' + cs.length + '건</div><div class="dp-sec">' + cs.map(function(d) {
