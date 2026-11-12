@@ -3,6 +3,7 @@
  * - 머리글을 누르면(또는 Enter) 그 칸으로 정렬, 다시 누르면 반대로. 빈 칸은 항상 아래
  * - BO: 표를 스크롤 상자에 넣어 머리글 고정·가로 스크롤이 되게 하고, 잘린 칸은 올리면 전체 글
  * - BO: 검색필터 줄(.cal-panel-body 첫 줄)을 접고 편다. 접으면 검색어·기간·버튼만 한 줄
+ * - BO: 목록 표 맨 앞 체크박스(없으면 넣음)와 체크한 줄 파란 테두리 강조
  * 화면이 직접 정렬을 그리는 표(.pl-sort), 줄 합치기(rowspan)·하위 줄이 있는 표, data-nosort 표는 건드리지 않는다.
  */
 (function () {
@@ -43,6 +44,7 @@
 
 	function scan() {
 		[].forEach.call(document.querySelectorAll('table.table'), function (t) {
+			if (BO && pickable(t)) addPicks(t);
 			if (sortable(t)) [].forEach.call(t.tHead.rows[0].cells, function (th) {
 				if (th.classList.contains('th-sort') || th.querySelector('input, select, button') || !text(th)) return;
 				th.classList.add('th-sort');
@@ -98,6 +100,90 @@
 			body.classList.toggle('flt-closed', on() !== '0');
 			paint();
 		});
+	}
+
+	// ── 체크박스·체크한 줄 강조 (BO 목록 표) ──
+	// 체크박스가 없는 표는 맨 앞에 칸을 넣고, 화면이 직접 넣은 체크박스가 있는 표는 강조만 한다.
+	// 표를 다시 그려도 앞쪽 칸 글자로 같은 줄을 찾아 체크를 살린다(새로고침하면 지워진다). 팝업 안 표·data-nopick 표는 빼고, 줄 합친(rowspan) 줄은 하나로 본다
+	var picked = {};
+	function pickable(t) {
+		return !!(t.tHead && t.tHead.rows.length && t.tBodies.length === 1 && !t.hasAttribute('data-nopick') && !t.classList.contains('dataTable') && t.closest('.content-wrapper') && !t.closest('.modal'));
+	}
+	function firstBox(tr) { var c = tr.cells[0]; return c && c.tagName === 'TD' && c.querySelector('input[type=checkbox]'); }
+	// 체크 칸을 뺀 앞쪽 네 칸 글자
+	function rowKey(tr) { return [].filter.call(tr.cells, function (c) { return !c.classList.contains('tp-pick'); }).slice(0, 4).map(text).join('|'); }
+	function store(t) { var i = [].indexOf.call(document.querySelectorAll('table.table'), t), k = location.pathname + ':' + (t.id || i); return picked[k] || (picked[k] = {}); }
+	// 줄과 그 줄이 rowspan 으로 덮는 아래 줄들
+	function block(tr) { var out = [tr], n = tr.cells[0] ? tr.cells[0].rowSpan : 1; for (var r = tr; --n > 0 && (r = r.nextElementSibling);) out.push(r); return out; }
+
+	function addPicks(t) {
+		var rows = t.tBodies[0].rows, h0 = t.tHead.rows[0].cells[0];
+		// 화면이 직접 넣은 체크박스가 있으면 칸은 넣지 않는다(먼저 넣어 둔 것이 있으면 걷어 낸다)
+		var own = (h0 && h0.querySelector('input[type=checkbox]:not(.tp-all)')) || [].some.call(rows, function (r) { var b = firstBox(r); return b && !b.classList.contains('tp-row'); });
+		if (own) { [].forEach.call(t.querySelectorAll('.tp-pick'), function (c) { c.remove(); }); return; }
+		// 아직 그리기 전(빈 표, 안내 한 줄뿐)이면 기다린다
+		var hr = t.tHead.rows[0], set = store(t);
+		if (!hr.querySelector('.tp-pick') && ![].some.call(rows, function (r) { return r.cells.length > 1; })) return;
+		if (!hr.querySelector('.tp-pick')) {
+			var th = document.createElement('th');
+			th.className = 'tp-pick';
+			th.setAttribute('data-c', '_PICK');
+			th.rowSpan = t.tHead.rows.length;
+			th.innerHTML = '<input type="checkbox" class="tp-all" aria-label="보이는 줄 전체 선택">';
+			hr.insertBefore(th, hr.firstChild);
+		}
+		for (var i = 0, cover = 0; i < rows.length; i++) {
+			var r = rows[i];
+			if (cover > 0) { cover--; continue; }
+			if (r.getAttribute('data-tp') === 'msg') continue;
+			var pc = r.cells[0] && r.cells[0].classList.contains('tp-pick') ? r.cells[0] : null;
+			if (!pc) {
+				// '목록이 없습니다' 같은 한 칸 줄은 칸만 늘린다
+				if (r.cells.length === 1 && r.cells[0].colSpan > 1) { r.cells[0].colSpan += 1; r.setAttribute('data-tp', 'msg'); continue; }
+				pc = document.createElement('td');
+				pc.className = 'tp-pick';
+				pc.setAttribute('data-c', '_PICK');
+				pc.rowSpan = r.cells[0] ? r.cells[0].rowSpan : 1;
+				if (!/edit|form/.test(r.className)) {
+					var key = rowKey(r), cb = document.createElement('input');
+					cb.type = 'checkbox';
+					cb.className = 'tp-row';
+					cb.setAttribute('data-key', key);
+					cb.setAttribute('aria-label', (key.split('|')[0] || '줄') + ' 선택');
+					cb.checked = !!set[key];
+					pc.appendChild(cb);
+				}
+				r.insertBefore(pc, r.firstChild);
+			}
+			cover = pc.rowSpan - 1;
+		}
+		paintPicks();
+	}
+
+	// 체크 상태를 줄 강조·전체 선택·기억에 맞춘다. 화면이 체크를 코드로 바꿔도(change 없이) 다음 change 때 맞춰진다
+	function paintPicks() {
+		[].forEach.call(document.querySelectorAll('.content-wrapper table.table > tbody > tr'), function (tr) {
+			var b = firstBox(tr);
+			if (!b || tr.closest('.modal')) return;
+			block(tr).forEach(function (x) { x.classList.toggle('tp-on', b.checked); });
+			if (b.classList.contains('tp-row')) store(tr.closest('table'))[b.getAttribute('data-key')] = b.checked;
+		});
+		[].forEach.call(document.querySelectorAll('input.tp-all'), function (a) {
+			var all = a.closest('table').querySelectorAll('tbody input.tp-row');
+			a.checked = all.length > 0 && [].every.call(all, function (x) { return x.checked; });
+		});
+	}
+	document.addEventListener('change', function (e) {
+		if (e.target.classList && e.target.classList.contains('tp-all')) {
+			[].forEach.call(e.target.closest('table').querySelectorAll('tbody input.tp-row'), function (x) { x.checked = e.target.checked; });
+		}
+		if (e.target.type === 'checkbox') setTimeout(paintPicks, 0);
+	});
+	if (BO) {
+		var css = document.createElement('style');
+		css.textContent = '.tp-pick{width:30px;text-align:center;padding-left:8px!important;padding-right:4px!important}'
+			+ 'tr.tp-on{outline:2px solid #2563eb;outline-offset:-2px}tr.tp-on>td{background-color:#eef4ff}';
+		document.head.appendChild(css);
 	}
 
 	var timer = null;
