@@ -13,6 +13,11 @@ public interface BoCardMapper {
 
 	public List<Map<String, Object>> selectCodes();
 
+	public int countManager(String emplyId);
+	public List<Map<String, Object>> selectStaffs();
+	public Map<String, Object> selectStaff(Map<String, Object> param);
+	public int grantCardRole(Map<String, Object> param);
+
 	public List<Map<String, Object>> selectCards(Map<String, Object> param);
 	public int insertCard(Map<String, Object> param);
 	public int updateCard(Map<String, Object> param);

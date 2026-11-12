@@ -72,7 +72,7 @@
 								<div class="form-row align-items-end">
 									<div class="col-md-3 col-6 mb-2"><label for="fName">카드명·사용자</label><input type="search" id="fName" class="form-control form-control-sm"></div>
 									<div class="col-md-2 col-6 mb-2"><label for="fUse">사용 여부</label><select id="fUse" class="form-control form-control-sm"><option value="Y">사용</option><option value="N">미사용</option><option value="">전체</option></select></div>
-									<div class="col-md-7 col-12 mb-2 text-right"><button type="button" class="btn btn-sm btn-primary" onclick="openCard();"><i class="fas fa-plus"></i> 카드 등록</button></div>
+									<div class="col-md-7 col-12 mb-2 text-right"><button type="button" class="btn btn-sm btn-primary" id="cardAdd" style="display:none;" onclick="openCard();"><i class="fas fa-plus"></i> 카드 등록</button></div>
 								</div>
 							</div>
 						</div>
@@ -104,10 +104,10 @@
 						<div class="form-group col-6"><label for="LAST4">카드번호 끝 4자리</label><input id="LAST4" class="form-control form-control-sm" inputmode="numeric" pattern="\d{4}" maxlength="4" required></div>
 					</div>
 					<div class="form-row">
-						<div class="form-group col-6"><label for="HOLDER_NM">사용자</label><input id="HOLDER_NM" class="form-control form-control-sm" maxlength="30"></div>
+						<div class="form-group col-6"><label for="STAFF_SQ">사용자 (직원)</label><select id="STAFF_SQ" class="form-control form-control-sm" required aria-describedby="staffHint"></select></div>
 						<div class="form-group col-6"><label for="USE_YN">사용 여부</label><select id="USE_YN" class="form-control form-control-sm"><option value="Y">사용</option><option value="N">미사용</option></select></div>
 					</div>
-					<small class="text-muted">카드번호는 끝 4자리만 저장합니다.</small>
+					<small class="text-muted d-block" id="staffHint">사용자는 직원관리 명단에서 고르며, 그 직원은 로그인하면 본인 카드만 봅니다. 카드번호는 끝 4자리만 저장합니다.</small>
 				</div>
 				<div class="modal-footer">
 					<button type="button" class="btn btn-sm btn-outline-secondary" data-dismiss="modal">취소</button>
@@ -152,7 +152,7 @@
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
 	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
 	<script>
-	var cards = [], codes = [], codeNm = {}, codeIx = {}, card = null, uses = [], settle = null, tab = 0, ym = kstYm(0), settleYm = kstYm(-1), lastFile = null, compared = null;
+	var manager = false, staffs = [], cards = [], codes = [], codeNm = {}, codeIx = {}, card = null, uses = [], settle = null, tab = 0, ym = kstYm(0), settleYm = kstYm(-1), lastFile = null, compared = null;
 	var DOW = ['일', '월', '화', '수', '목', '금', '토'];
 
 	function kstYm(add) { var d = new Date(Date.now() + 9 * 3600000); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + add); return d.toISOString().slice(0, 7); }
@@ -166,7 +166,7 @@
 	function drawList() {
 		var q = $('#fName').val().trim().toLowerCase(), use = $('#fUse').val(), $b = $('#listBody').empty();
 		var list = cards.filter(function(c) { return (!use || c.USE_YN === use) && (!q || ((c.CARD_NM || '') + ' ' + (c.HOLDER_NM || '')).toLowerCase().indexOf(q) >= 0); });
-		if (!list.length) $b.append('<tr><td colspan="7" class="text-center text-muted">등록된 카드가 없습니다.</td></tr>');
+		if (!list.length) $b.append($('<tr><td colspan="7" class="text-center text-muted"></td></tr>').find('td').text(manager ? '등록된 카드가 없습니다.' : '내가 사용자로 지정된 카드가 없습니다.').end());
 		list.forEach(function(c) {
 			$('<tr>').append($('<td>').append($('<a class="cd-open">').attr('href', '#c=' + c.CARD_SQ).text(c.CARD_NM)), $('<td class="cd-no">').text('****-' + c.LAST4),
 				$('<td>').text(c.CARD_CO || ''), $('<td>').text(c.HOLDER_NM || ''), $('<td>').text(c.MONTH_CNT + '건 · ' + won(c.MONTH_AMT) + '원'),
@@ -178,6 +178,9 @@
 		hrPost('/admin/card/cardListData.do', {}, function(res) {
 			cards = res.result.cards;
 			codes = res.result.codes;
+			manager = res.result.manager;
+			staffs = res.result.staffs || [];
+			$('#cardAdd').toggle(manager);
 			codeNm = {}; codeIx = {};
 			codes.forEach(function(c, i) { codeNm[c.CD] = c.NM; codeIx[c.CD] = i; });
 			drawList();
@@ -189,7 +192,8 @@
 	function drawCard() {
 		var c = card, $v = $('#viewCard').empty();
 		$v.append($('<div class="cd-head">').append($('<h4>').text(c.CARD_NM + ' ').append($('<span class="cd-no">').text('****-' + c.LAST4)),
-			$('<button type="button" class="btn btn-sm btn-outline-secondary">카드 수정</button>').click(function() { openCard(c); })));
+			$('<span class="text-muted">').text(c.HOLDER_NM ? '사용자 ' + c.HOLDER_NM : ''),
+			manager ? $('<button type="button" class="btn btn-sm btn-outline-secondary">카드 수정</button>').click(function() { openCard(c); }) : ''));
 		var $t = $('<div class="cd-tabs" role="tablist">').appendTo($v);
 		['캘린더', '정산'].forEach(function(n, i) {
 			$('<button type="button" role="tab">').attr('aria-selected', i === tab ? 'true' : 'false').text(n).click(function() { tab = i; drawCard(); }).appendTo($t);
@@ -235,14 +239,18 @@
 	// ── 카드 등록·수정 ──
 	function openCard(c) {
 		$('#cardTitle').text(c ? '카드 수정' : '카드 등록');
-		['CARD_SQ', 'CARD_NM', 'CARD_CO', 'LAST4', 'HOLDER_NM'].forEach(function(f) { $('#' + f).val(c && c[f] || ''); });
+		var $s = $('#STAFF_SQ').empty().append('<option value="">직원 선택</option>');
+		staffs.forEach(function(s) {
+			$s.append($('<option>').val(s.STAFF_SQ).text(s.STAFF_NM + (s.DEPT_NM ? ' · ' + s.DEPT_NM : '') + (s.STATUS_CD === 'LEFT' ? ' (퇴사)' : '') + (s.EMPLY_ID ? '' : ' (BO 계정 없음)')));
+		});
+		['CARD_SQ', 'CARD_NM', 'CARD_CO', 'LAST4', 'STAFF_SQ'].forEach(function(f) { $('#' + f).val(c && c[f] || ''); });
 		$('#USE_YN').val(c ? c.USE_YN : 'Y');
 		$('#cardModal').modal('show');
 	}
 
 	function saveCard() {
 		var data = {}, isNew = !$('#CARD_SQ').val();
-		['CARD_SQ', 'CARD_NM', 'CARD_CO', 'LAST4', 'HOLDER_NM', 'USE_YN'].forEach(function(f) { data[f] = $('#' + f).val(); });
+		['CARD_SQ', 'CARD_NM', 'CARD_CO', 'LAST4', 'STAFF_SQ', 'USE_YN'].forEach(function(f) { data[f] = $('#' + f).val(); });
 		hrPost('/admin/card/saveCardData.do', data, function(res) {
 			$('#cardModal').modal('hide');
 			if (isNew) { loadList(); location.hash = '#c=' + res.result; } else loadList(function() { loadMonth(); });
@@ -305,7 +313,7 @@
 	}
 
 	// ── 정산: 엑셀을 올리면 날짜·금액이 같은 등록 건과 짝짓는다 ──
-	var TYPE = { MATCH: '일치', AMBIG: '확인 필요', EXCEL_ONLY: '등록 안 됨', REG_ONLY: '엑셀에 없음' };
+	var TYPE = { MATCH: '일치', EXCEL_ONLY: '새로 등록', REG_ONLY: '엑셀에 없음' };
 
 	function drawSettle($b) {
 		var $file = $('<input type="file" accept=".xls,.xlsx" class="d-none" id="settleFile">').on('change', function() { if (this.files[0]) compare(this.files[0]); this.value = ''; });
@@ -315,14 +323,13 @@
 			.on('drop', function(e) { e.preventDefault(); $drop.removeClass('over'); var f = e.originalEvent.dataTransfer.files[0]; if (f) compare(f); });
 		var $ym = $('<input type="month" class="form-control form-control-sm" id="settleYm">').val(settleYm).on('change', function() { settleYm = this.value; compared = null; if (lastFile) compare(lastFile); else drawCard(); });
 		$b.append($('<div class="d-flex flex-wrap align-items-end" style="gap:12px;">').append($('<div>').append('<label for="settleYm">정산 월</label>', $ym), $drop));
-		if (!compared) { $b.append('<p class="text-muted mt-3 mb-0">엑셀을 올리면 이용일·금액이 같은 등록 건을 찾아 사용처 코드와 내용을 붙여 보여 줍니다.</p>'); return; }
-		var r = compared, cnt = { MATCH: 0, AMBIG: 0, EXCEL_ONLY: 0, REG_ONLY: 0 }, excelSum = 0;
+		if (!compared) { $b.append('<p class="text-muted mt-3 mb-0">엑셀을 올리면 엑셀의 모든 건을 매핑합니다. 이용일·금액이 같은 등록 건에는 가맹점을 붙이고, 등록 안 된 건은 가맹점으로 사용처 코드를 추정해 새로 등록합니다.</p>'); return; }
+		var r = compared, cnt = { MATCH: 0, EXCEL_ONLY: 0, REG_ONLY: 0 }, excelSum = 0;
 		r.rows.forEach(function(x) { cnt[x.TYPE]++; if (x.TYPE !== 'REG_ONLY') excelSum += Number(x.AMT); });
 		$b.append($('<div class="cd-stat">').append(
 			$('<div>').append('엑셀 이용 건', $('<b>').text(r.excelCnt + '건'), won(excelSum) + '원'),
-			$('<div>').append($('<span class="t-MATCH">').text('일치'), $('<b>').text(cnt.MATCH + '건'), '자동 연결'),
-			$('<div>').append($('<span class="t-AMBIG">').text('확인 필요'), $('<b>').text(cnt.AMBIG + '건'), '같은 날 같은 금액 여러 개'),
-			$('<div>').append($('<span class="t-EXCEL_ONLY">').text('등록 안 됨'), $('<b>').text(cnt.EXCEL_ONLY + '건'), '엑셀에만 있음'),
+			$('<div>').append($('<span class="t-MATCH">').text('일치'), $('<b>').text(cnt.MATCH + '건'), '등록 건에 가맹점 붙임'),
+			$('<div>').append($('<span class="t-EXCEL_ONLY">').text('새로 등록'), $('<b>').text(cnt.EXCEL_ONLY + '건'), '확정하면 추정 코드로 등록'),
 			$('<div>').append($('<span class="t-REG_ONLY">').text('엑셀에 없음'), $('<b>').text(cnt.REG_ONLY + '건'), '등록에만 있음')));
 		if (r.otherMonthCnt) $b.append($('<p class="small text-muted">').text('엑셀에 다른 달 이용 ' + r.otherMonthCnt + '건이 있어 대조에서 뺐습니다.'));
 		if (settle) $b.append($('<div class="alert alert-info py-2">').text(settle.YM + ' 정산 완료 · ' + settle.DONE_DT + ' · 일치 ' + settle.MATCH_CNT + '/' + settle.EXCEL_CNT + '건 (다시 확정하면 덮어씁니다)'));
@@ -331,14 +338,12 @@
 			var $tr = $('<tr>').addClass('r-' + x.TYPE).append($('<td>').text(x.USE_DT.slice(5)), $('<td>').text(x.TYPE === 'REG_ONLY' ? '(엑셀에 없음)' : x.MERCHANT || ''), $('<td class="text-right">').text(won(x.AMT)),
 				$('<td>').append($('<span>').addClass('t-' + x.TYPE).text(TYPE[x.TYPE])));
 			if (x.TYPE === 'MATCH' || x.TYPE === 'REG_ONLY') $tr.append($('<td>').append(chip(x.USE.USE_CD)), $('<td>').text(x.USE.DETAIL || ''));
-			else if (x.TYPE === 'AMBIG') {
-				var $s = $('<select class="form-control form-control-sm">').attr('aria-label', x.USE_DT + ' ' + won(x.AMT) + '원 후보 선택').append('<option value="">후보 중 선택</option>');
-				x.CANDIDATES.forEach(function(c) { $s.append($('<option>').val(c.USE_SQ).text((codeNm[c.USE_CD] || c.USE_CD) + ' · ' + (c.DETAIL || ''))); });
-				$s.val(x.PICK || '').on('change', function() { x.PICK = this.value; });
-				$tr.append($('<td colspan="2">').append($s));
-			} else {
-				$tr.append($('<td colspan="2">').append($('<button type="button" class="btn btn-sm btn-primary">이 내용으로 등록</button>').click(function() { tab = 1; openUse(null, x.USE_DT, x); }),
-					' <span class="small text-muted">날짜·금액·가맹점이 채워진 등록 창이 열립니다</span>'));
+			else {
+				// 추정한 코드는 확정 전에 바꿀 수 있다
+				var $s = $('<select class="form-control form-control-sm">').attr('aria-label', x.USE_DT + ' ' + (x.MERCHANT || '') + ' 사용처 코드');
+				codes.forEach(function(c) { $s.append($('<option>').val(c.CD).text(c.NM)); });
+				$s.val(x.GUESS_CD).on('change', function() { x.GUESS_CD = this.value; });
+				$tr.append($('<td>').append($s), $('<td>').text(x.MERCHANT || ''));
 			}
 			$t.append($tr);
 		});
@@ -364,29 +369,23 @@
 	}
 
 	function confirmSettle() {
-		var pick = [], seen = {}, dup = false, open = 0;
-		compared.rows.forEach(function(x) {
-			var sq = x.TYPE === 'MATCH' ? x.USE.USE_SQ : x.TYPE === 'AMBIG' ? x.PICK : null;
-			if (x.TYPE === 'AMBIG' && !x.PICK) open++;
-			if (!sq) return;
-			if (seen[sq]) dup = true;
-			seen[sq] = 1;
-			pick.push([sq, x.MERCHANT || '']);
-		});
-		if (dup) { bootbox.alert('확인 필요 건에서 같은 등록 건을 두 번 골랐습니다.'); return; }
-		var msg = settleYm + ' 정산을 확정할까요? 일치 ' + pick.length + '건의 가맹점을 사용 내역에 붙입니다.' + (open ? ' 아직 고르지 않은 확인 필요 ' + open + '건은 빠집니다.' : '');
+		var match = compared.rows.filter(function(x) { return x.TYPE === 'MATCH'; }), add = compared.rows.filter(function(x) { return x.TYPE === 'EXCEL_ONLY'; });
+		var msg = settleYm + ' 정산을 확정할까요? 일치 ' + match.length + '건에 가맹점을 붙이고, ' + add.length + '건을 새로 등록합니다.';
 		bootbox.confirm($('<div>').text(msg).html(), function(ok) {
 			if (!ok) return;
-			var data = { CARD_SQ: card.CARD_SQ, YM: settleYm, FILE_NM: lastFile ? lastFile.name : '', EXCEL_CNT: compared.excelCnt, USE_SQ: pick.map(function(p) { return p[0]; }), MERCHANT: pick.map(function(p) { return p[1]; }) };
-			hrPost('/admin/card/confirmSettleData.do', $.param(data, true), function() { toast(settleYm + ' 정산을 확정했습니다'); loadList(); compare(lastFile); });
+			function col(list, f) { return list.map(f); }
+			var data = { CARD_SQ: card.CARD_SQ, YM: settleYm, FILE_NM: lastFile ? lastFile.name : '', EXCEL_CNT: compared.excelCnt,
+				USE_SQ: col(match, function(x) { return x.USE.USE_SQ; }), MERCHANT: col(match, function(x) { return x.MERCHANT || ''; }),
+				NEW_DT: col(add, function(x) { return x.USE_DT; }), NEW_AMT: col(add, function(x) { return x.AMT; }), NEW_CD: col(add, function(x) { return x.GUESS_CD; }), NEW_MERCHANT: col(add, function(x) { return x.MERCHANT || ''; }) };
+			hrPost('/admin/card/confirmSettleData.do', $.param(data, true), function() { toast(settleYm + ' 정산을 확정했습니다'); loadList(function() { compare(lastFile); }); });
 		});
 	}
 
 	function downloadCsv() {
 		var lines = [['이용일', '가맹점', '금액', '대조', '사용처 코드', '사용 상세 내용']];
 		compared.rows.forEach(function(x) {
-			var u = x.TYPE === 'MATCH' || x.TYPE === 'REG_ONLY' ? x.USE : x.TYPE === 'AMBIG' && x.PICK ? x.CANDIDATES.filter(function(c) { return String(c.USE_SQ) === String(x.PICK); })[0] : null;
-			lines.push([x.USE_DT, x.MERCHANT || '', x.AMT, TYPE[x.TYPE], u ? codeNm[u.USE_CD] || u.USE_CD : '', u ? u.DETAIL || '' : '']);
+			var u = x.USE || { USE_CD: x.GUESS_CD, DETAIL: x.MERCHANT };
+			lines.push([x.USE_DT, x.MERCHANT || '', x.AMT, TYPE[x.TYPE], codeNm[u.USE_CD] || u.USE_CD || '', u.DETAIL || '']);
 		});
 		var csv = '﻿' + lines.map(function(l) { return l.map(function(v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(','); }).join('\r\n');
 		var a = document.createElement('a');

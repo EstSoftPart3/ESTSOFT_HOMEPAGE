@@ -4,8 +4,10 @@ import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -51,15 +53,25 @@ public class CardCheck {
 		// 대조: 일치 1, 같은 날 같은 금액 2건은 확인 필요, 엑셀에만 1, 등록에만 1
 		List<Map<String, Object>> uses = new ArrayList<>(Arrays.asList(use(1, "2026-10-03", 42000), use(2, "2026-10-09", 18000), use(3, "2026-10-09", 18000), use(4, "2026-10-28", 25000)));
 		List<Map<String, Object>> m = CardStatementParser.match(excel, uses);
-		same(count(m, "MATCH"), 1, "일치");
-		same(count(m, "AMBIG"), 2, "확인 필요");
+		same(count(m, "MATCH"), 3, "일치(같은 날 같은 금액은 순서대로)");
 		same(count(m, "EXCEL_ONLY"), 1, "엑셀에만");
 		same(count(m, "REG_ONLY"), 1, "등록에만");
 		same(((Map<?, ?>) m.get(0).get("USE")).get("USE_SQ"), 1, "일치 건 연결");
-		// 엑셀 2건 · 등록 1건이면 하나는 확인 필요, 하나는 엑셀에만
+		Set<Object> paired = new HashSet<>();
+		for (Map<String, Object> r : m) if ("MATCH".equals(r.get("TYPE"))) paired.add(((Map<?, ?>) r.get("USE")).get("USE_SQ"));
+		same(paired.size(), 3, "한 등록 건을 두 번 쓰지 않음");
+		// 엑셀 2건 · 등록 1건이면 하나는 일치, 하나는 엑셀에만
 		List<Map<String, Object>> m2 = CardStatementParser.match(excel, Arrays.asList(use(9, "2026-10-09", 18000)));
-		same(count(m2, "AMBIG") + count(m2, "EXCEL_ONLY"), 4, "남는 엑셀 건");
-		same(count(m2, "AMBIG"), 1, "후보 1건뿐인 중복");
+		same(count(m2, "MATCH"), 1, "후보 1건뿐인 중복");
+		same(count(m2, "EXCEL_ONLY"), 3, "남는 엑셀 건");
+		for (Map<String, Object> r : m2) if ("EXCEL_ONLY".equals(r.get("TYPE")) && r.get("GUESS_CD") == null) throw new AssertionError("추정 코드 없음");
+		// 가맹점으로 사용처 코드 추정
+		same(CardStatementParser.guess("스타벅스 강남점"), "MEAL", "카페");
+		same(CardStatementParser.guess("서울역 주차장"), "PARK", "주차");
+		same(CardStatementParser.guess("코레일 KTX"), "TRANS", "KTX 는 통신 아님");
+		same(CardStatementParser.guess("KT 통신요금"), "COMM", "통신");
+		same(CardStatementParser.guess("AWS EMEA"), "SW", "구독");
+		same(CardStatementParser.guess("이름 모를 가게"), "ETC", "기타");
 
 		// 머리글이 없는 엑셀은 거부
 		XSSFWorkbook bad = new XSSFWorkbook();

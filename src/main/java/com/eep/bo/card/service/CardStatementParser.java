@@ -136,9 +136,9 @@ public final class CardStatementParser {
 	}
 
 	/**
-	 * 같은 날짜·금액끼리 짝짓는다. 한 건씩이면 일치, 여러 건이면 사람이 고르게 확인 필요, 남으면 한쪽에만 있음.
+	 * 같은 날짜·금액끼리 짝짓는다. 같은 날 같은 금액이 여러 건이면 순서대로 짝짓고, 남은 엑셀 건은 가맹점으로 사용처 코드를 추정해 둔다(확정 때 자동 등록).
 	 * @param uses 등록한 사용 내역 [{USE_SQ, USE_DT, AMT, ...}]
-	 * @return [{TYPE: MATCH|AMBIG|EXCEL_ONLY|REG_ONLY, USE_DT, AMT, MERCHANT, USE, CANDIDATES}]
+	 * @return [{TYPE: MATCH|EXCEL_ONLY|REG_ONLY, USE_DT, AMT, MERCHANT, USE, GUESS_CD}]
 	 */
 	public static List<Map<String, Object>> match(List<Map<String, Object>> excel, List<Map<String, Object>> uses) {
 		Map<String, List<Map<String, Object>>> byKey = new LinkedHashMap<>(), excelByKey = new LinkedHashMap<>();
@@ -150,9 +150,8 @@ public final class CardStatementParser {
 			List<Map<String, Object>> rows = en.getValue();
 			for (int i = 0; i < rows.size(); i++) {
 				Map<String, Object> r = new HashMap<>(rows.get(i));
-				if (i >= regs.size()) r.put("TYPE", "EXCEL_ONLY");
-				else if (rows.size() == 1 && regs.size() == 1) { r.put("TYPE", "MATCH"); r.put("USE", regs.get(0)); }
-				else { r.put("TYPE", "AMBIG"); r.put("CANDIDATES", regs); }
+				if (i >= regs.size()) { r.put("TYPE", "EXCEL_ONLY"); r.put("GUESS_CD", guess(String.valueOf(r.get("MERCHANT")))); }
+				else { r.put("TYPE", "MATCH"); r.put("USE", regs.get(i)); }
 				out.add(r);
 			}
 			for (int i = rows.size(); i < regs.size(); i++) out.add(regOnly(regs.get(i)));
@@ -162,6 +161,29 @@ public final class CardStatementParser {
 		}
 		out.sort((a, b) -> String.valueOf(a.get("USE_DT")).compareTo(String.valueOf(b.get("USE_DT"))));
 		return out;
+	}
+
+	// 앞에서부터 먼저 걸리는 코드를 쓴다. 주차를 교통보다, KTX 를 KT(통신)보다 먼저 본다
+	private static final String[][] GUESS = {
+		{ "PARK", "주차", "파킹", "parking", "하이패스", "도로공사", "통행료" },
+		{ "TRANS", "주유", "에너지", "오일", "칼텍스", "s-oil", "택시", "카카오t", "코레일", "ktx", "srt", "티머니", "버스", "렌터카", "쏘카" },
+		{ "TRIP", "호텔", "모텔", "숙박", "리조트", "야놀자", "여기어때", "항공", "에어", "airbnb", "agoda", "아고다" },
+		{ "POST", "우체국", "택배", "대한통운", "한진", "로젠", "퀵" },
+		{ "COMM", "kt", "skt", "sk텔레콤", "유플러스", "lgu+", "통신" },
+		{ "SW", "aws", "amazonweb", "google", "구글", "microsoft", "마이크로소프트", "adobe", "github", "notion", "slack", "openai", "anthropic", "claude", "zoom", "figma", "jetbrains", "apple.com", "atlassian" },
+		{ "EDU", "서점", "문고", "교보", "영풍", "yes24", "예스24", "알라딘", "인프런", "유데미", "udemy", "패스트캠퍼스", "교육" },
+		{ "EVENT", "꽃", "플라워", "화환", "장례" },
+		{ "DINNER", "주점", "호프", "포차", "이자카야", "맥주", "술집" },
+		{ "SUPPLY", "다이소", "오피스", "문구", "알파", "쿠팡", "11번가", "g마켓", "지마켓", "옥션", "이마트", "홈플러스", "롯데마트", "하이마트", "전자랜드" },
+		{ "MEAL", "식당", "김밥", "국수", "분식", "한식", "중식", "일식", "반점", "치킨", "피자", "버거", "맥도날드", "롯데리아", "도시락", "배달", "요기요", "쿠팡이츠",
+			"카페", "커피", "스타벅스", "투썸", "이디야", "메가", "빽다방", "베이커리", "파리바게뜨", "뚜레쥬르", "고기", "갈비", "국밥", "찌개", "냉면", "초밥", "돈까스", "샐러드" },
+	};
+
+	/** 가맹점 이름으로 사용처 코드를 추정한다. 못 찾으면 ETC */
+	static String guess(String merchant) {
+		String m = squash(merchant == null ? "" : merchant).toLowerCase();
+		for (String[] g : GUESS) for (int i = 1; i < g.length; i++) if (m.contains(g[i])) return g[0];
+		return "ETC";
 	}
 
 	private static Map<String, Object> regOnly(Map<String, Object> u) {
