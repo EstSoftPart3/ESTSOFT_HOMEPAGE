@@ -4,7 +4,7 @@
      단계 = [대상 선택자, 제목, 설명, 시크릿]. 대상이 화면에 없거나 숨어 있으면 건너뛴다 --%>
 <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@700&display=swap" rel="stylesheet">
 <style>
-	.eg-fab { position: fixed; right: 22px; bottom: 22px; z-index: 1060; width: 52px; height: 52px; border: 0; border-radius: 50%; background: rgba(37, 99, 235, .55); color: #fff;
+	.eg-fab { position: fixed; right: 22px; bottom: 22px; z-index: 1070; width: 52px; height: 52px; border: 0; border-radius: 50%; background: rgba(37, 99, 235, .55); color: #fff;
 		font-size: 22px; font-weight: 700; cursor: pointer; box-shadow: 0 6px 20px rgba(37, 99, 235, .3); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); transition: background .2s, transform .2s; }
 	.eg-fab:hover, .eg-fab:focus-visible { background: rgba(37, 99, 235, .95); transform: translateY(-2px); outline: none; }
 	.eg-fab::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid rgba(37, 99, 235, .45); animation: eg-ping 2.2s infinite; pointer-events: none; }

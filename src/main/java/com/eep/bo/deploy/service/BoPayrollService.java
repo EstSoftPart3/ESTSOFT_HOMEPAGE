@@ -83,7 +83,7 @@ public class BoPayrollService {
 			r.put("CHG_CNT", chg.getOrDefault(sq, 0L));
 		}
 		String payDt = mapper.selectPayDate(q);
-		out.put("PAY_DT", payDt != null && !payDt.isEmpty() ? payDt : YearMonth.parse(ym).plusMonths(1).atDay(10).toString());
+		out.put("PAY_DT", payDt != null && !payDt.isEmpty() ? payDt : YearMonth.parse(ym).plusMonths(1).atDay(15).toString()); // 따로 정하지 않으면 익월 15일
 		return out;
 	}
 

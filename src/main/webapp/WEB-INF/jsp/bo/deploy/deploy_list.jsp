@@ -878,7 +878,7 @@
 		items.forEach(function(it) { tokens(it[col]).filter(function(t, i, a) { return a.indexOf(t) === i; }).forEach(function(t) { c[t] = (c[t] || 0) + 1; }); });
 		return Object.keys(c).sort(function(a, b) { return c[b] - c[a]; }).map(function(k) { return [k, c[k]]; });
 	}
-	function ym(v) { return v ? String(v).substring(0, 7).replace('-', '.') : ''; }
+	function ymDot(v) { return v ? String(v).substring(0, 7).replace('-', '.') : ''; }
 	function months(it) {
 		var s = moment(String(it.START).substring(0, 7) + '-01'), e = it.END ? moment(String(it.END).substring(0, 7) + '-01') : moment().startOf('month');
 		var m = e.diff(s, 'months') + 1;
@@ -904,7 +904,7 @@
 				var recent = items[0];
 				return '<div class="dp-card sm"><div class="dp-card-top">많이 쓴 기술<span>프로젝트 ' + items.length + '건 · ' + dpEsc(career(items)) + '</span></div>'
 					+ (rows || '<div class="dp-sec"><div><span class="dp-mute">수행이력에 입력된 기술이 없습니다</span></div></div>')
-					+ (recent ? '<div class="dp-sec"><div><span class="dp-mute">최근 ' + dpEsc([recent.CLIENT_NM, recent.PRJ_NM].filter(Boolean).join(' ')) + ' (' + ym(recent.START) + '~' + (ym(recent.END) || '진행중') + ') · 클릭하면 전체</span></div></div>' : '') + '</div>';
+					+ (recent ? '<div class="dp-sec"><div><span class="dp-mute">최근 ' + dpEsc([recent.CLIENT_NM, recent.PRJ_NM].filter(Boolean).join(' ')) + ' (' + ymDot(recent.START) + '~' + (ymDot(recent.END) || '진행중') + ') · 클릭하면 전체</span></div></div>' : '') + '</div>';
 			});
 		});
 		return $b;
@@ -924,7 +924,7 @@
 				if (it.CLIENT_NM) $h.append($('<span class="dp-pill rent">').text(it.CLIENT_NM));
 				if (it.ROLE_NM || it.EMP_TYPE_CD) $h.append($('<span class="dp-pill">').text(it.ROLE_NM || typeName(it.EMP_TYPE_CD)));
 				$h.append($('<span class="prj-src">').text(it.SRC === 'DEPLOY' ? '사내 투입' : '수행이력'));
-				$h.append($('<span class="when">').text(ym(it.START) + ' ~ ' + (it.END ? ym(it.END) : plan ? '예정' : '진행중')).append($('<span>').text(months(it))));
+				$h.append($('<span class="when">').text(ymDot(it.START) + ' ~ ' + (it.END ? ymDot(it.END) : plan ? '예정' : '진행중')).append($('<span>').text(months(it))));
 				$it.append($h);
 				$it.append($('<div class="prj-meta">').append('<div class="k">업무단</div>').append($('<div>').text(it.WORK_NM || '—'))
 					.append('<div class="k">근무지역</div>').append($('<div>').text(it.WORK_AREA || '—')));
