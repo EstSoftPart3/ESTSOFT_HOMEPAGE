@@ -33,11 +33,16 @@
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.8.2/css/all.min.css">
     <style>
-    	/* 표 머리글 틀고정: 위 메뉴(sticky-top, 로고 100px) 바로 아래에 붙는다. 머리글 줄 배경색(thead 인라인)을 칸이 이어받는다 */
+    	/* 표 머리글 틀고정: 위 메뉴(sticky-top) 바로 아래에 붙는다. 머리글 줄 배경색(thead 인라인)을 칸이 이어받는다(부트스트랩 칸 배경보다 우선) */
     	:where(.table) > :where(thead) { background-color: #fff; }
     	:where(.table) > :where(thead) > :where(tr) { background-color: inherit; }
-    	:where(.table) > :where(thead) > :where(tr) > :where(th) { position: sticky; top: 100px; z-index: 2; background-color: inherit; box-shadow: inset 0 -1px 0 #dee2e6; }
+    	.table > thead > tr > th { position: sticky; top: var(--fo-nav, 0); z-index: 2; background-color: inherit; }
     </style>
+    <script>
+    	// 메뉴 높이는 화면 너비(접힌 메뉴)에 따라 달라 실제 높이를 잰다
+    	function foNav() { var n = document.querySelector('nav.sticky-top'); if (n) document.documentElement.style.setProperty('--fo-nav', n.offsetHeight + 'px'); }
+    	document.addEventListener('DOMContentLoaded', foNav); window.addEventListener('resize', foNav);
+    </script>
     
     <!-- 네이버 에디터 본체는 SmartEditor2Skin.html(iframe)이 직접 불러온다. 페이지에는 footer 의 HuskyEZCreator.js 만 있으면 된다 -->
 	<script type="text/javascript">
