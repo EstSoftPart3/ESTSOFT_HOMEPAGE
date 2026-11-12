@@ -9,7 +9,9 @@
 	if (!bar || window.top !== window.self) return;
 	window.BO_TABS = true;
 	var MAX = 10, KEY = 'boTabs';
-	var tabs = [], active = null, selfTab = null;
+	// trail: 본 탭 순서(뒤로 = 직전 탭). 탭마다 stack: 그 탭 안에서 지나온 주소(뒤로 = 탭 안 이전 화면).
+	// history.back() 은 iframe 들이 기록을 함께 써서 다른 탭이 뒤로 갈 수 있어 직접 기록한다
+	var tabs = [], active = null, selfTab = null, trail = [], backBtn = document.getElementById('boBack');
 	var frames = document.createElement('div');
 	frames.className = 'bo-frames';
 	document.body.appendChild(frames);
@@ -79,6 +81,35 @@
 		bar.appendChild(sel);
 		var on = bar.querySelector('.bo-tab.on');
 		if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+		paintBack();
+	}
+
+	function backTarget() {
+		if (active && active.stack && active.stack.length > 1) return { inTab: true, title: menuName(active.stack[active.stack.length - 2]) || '이전 화면' };
+		var prev = trail.slice(0, -1).reverse().filter(function (x) { return tabs.indexOf(x) >= 0; })[0];
+		return prev ? { tab: prev, title: prev.title } : null;
+	}
+
+	function paintBack() {
+		if (!backBtn) return;
+		var b = backTarget();
+		backBtn.disabled = !b;
+		backBtn.title = b ? '뒤로: ' + b.title + (b.inTab ? ' (이 탭 안)' : '') : '뒤로 갈 화면이 없습니다';
+		backBtn.setAttribute('aria-label', backBtn.title);
+	}
+
+	function back() {
+		var b = backTarget();
+		if (!b) return;
+		if (b.inTab) {
+			active.stack.pop();
+			active.backing = true;
+			active.frame.contentWindow.location.replace(active.stack[active.stack.length - 1]);
+			return;
+		}
+		trail.pop();
+		while (trail.length && trail[trail.length - 1] !== b.tab) trail.pop();
+		activate(b.tab, true);
 	}
 
 	function markMenu(url) {
@@ -102,6 +133,9 @@
 				// 로그인이 끊겼거나 관리자 화면이 아니면 탭 하나가 아니라 전체를 그 화면으로
 				if (p.indexOf('/admin/') !== 0 || !w.document.querySelector('.content-wrapper')) { location.href = w.location.href; return; }
 				t.url = p + w.location.search;
+				if (t.backing) t.backing = false;
+				else if (!t.stack) t.stack = [t.url];
+				else if (t.stack[t.stack.length - 1] !== t.url) t.stack.push(t.url);
 				t.title = menuName(t.url) || t.title;
 				f.title = t.title;
 				if (t === active) { history.replaceState(null, '', t.url); markMenu(t.url); }
@@ -114,8 +148,9 @@
 		return f;
 	}
 
-	function activate(t) {
+	function activate(t, fromBack) {
 		if (!t) return;
+		if (!fromBack) { trail = trail.filter(function (x) { return x !== t; }); trail.push(t); }
 		active = t;
 		t.seen = Date.now();
 		[].forEach.call(frames.children, function (f) { f.classList.remove('on'); });
@@ -135,7 +170,8 @@
 		var i = tabs.indexOf(t);
 		if (i < 0) return;
 		tabs.splice(i, 1);
-		if (t.frame) { t.frame.remove(); t.frame = null; }
+		trail = trail.filter(function (x) { return x !== t; });
+		if (t.frame) { t.frame.remove(); t.frame = null; t.stack = null; }
 		if (t === active) activate(tabs[i] || tabs[i - 1]);
 		else { render(); save(); }
 	}
@@ -187,6 +223,8 @@
 		open(a.href, a.textContent.trim());
 		if (document.body.classList.contains('sidebar-open')) { var p = document.querySelector('[data-widget="pushmenu"]'); if (p) p.click(); }
 	});
+
+	if (backBtn) backBtn.addEventListener('click', back);
 
 	// 가운데 버튼으로 닫기
 	bar.addEventListener('auxclick', function (e) {

@@ -10,6 +10,10 @@
         <%-- 펼침: « 메뉴 접기 / 접힘: 파란 바탕 » 메뉴 펴기. 아이콘은 반 바퀴 돌며 바뀐다 --%>
         <a class="nav-link bo-push" data-widget="pushmenu" data-enable-remember="true" href="#" role="button" title="메뉴 접기/펴기" aria-label="왼쪽 메뉴 접기/펴기"><i class="fas fa-angle-double-left bo-push-ico" aria-hidden="true"></i><span class="bo-push-txt"></span></a>
       </li>
+      <li class="nav-item">
+        <%-- 뒤로: 탭 안에서 넘어간 화면이 있으면 그 탭 안에서, 없으면 직전에 보던 탭으로(bo-tabs.js) --%>
+        <button type="button" id="boBack" class="bo-back" disabled aria-label="뒤로" title="뒤로 갈 화면이 없습니다"><i class="fas fa-arrow-left" aria-hidden="true"></i><span class="bo-back-txt">뒤로</span></button>
+      </li>
     </ul>
 
     <%-- 연 화면 탭(작업표시줄). bo-tabs.js 가 채운다 --%>
@@ -71,6 +75,12 @@
     .sidebar-collapse .bo-push-ico { transform: rotate(180deg); }
     .sidebar-collapse .bo-push-txt::after { content: '메뉴 펴기'; }
     @media (max-width: 575px) { .bo-push-txt { display: none; } }
+    .bo-back { display: inline-flex; align-items: center; gap: 6px; margin: 8px 2px 0; padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(17,17,17,.12); background: #fff; color: #444; font-size: 12.5px; font-weight: 600; white-space: nowrap; transition: background-color .2s, color .2s, border-color .2s; }
+    .bo-back:hover:not(:disabled), .bo-back:focus-visible { background: #eef9fc; border-color: #0b6e8a; color: #0b6e8a; outline: none; }
+    .bo-back:hover:not(:disabled) .fa-arrow-left { transform: translateX(-2px); }
+    .bo-back .fa-arrow-left { transition: transform .2s; }
+    .bo-back:disabled { opacity: .4; cursor: default; }
+    @media (max-width: 575px) { .bo-back-txt { display: none; } }
     /* 연 화면 탭(bo-tabs.js) */
     .bo-tabs { flex: 1 1 auto; min-width: 0; align-self: stretch; display: flex; align-items: flex-end; gap: 3px; padding: 7px 8px 0; margin-right: 8px; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
     .bo-tab { flex: 0 0 auto; display: inline-flex; align-items: center; max-width: 190px; height: 36px; padding: 0 4px 0 2px; border: 1px solid rgba(17,17,17,.12); border-bottom: 0; border-radius: 8px 8px 0 0; background: #f2f4f6; }
