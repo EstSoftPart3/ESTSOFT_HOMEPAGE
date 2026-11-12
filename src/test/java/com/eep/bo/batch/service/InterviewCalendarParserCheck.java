@@ -55,6 +55,14 @@ public class InterviewCalendarParserCheck {
 		eq(r, "CAREER", "신입");
 		check(InterviewCalendarParser.parseTitle("[신입]홍길동/사람인_공고") == null, "'/' 형식도 전화번호가 없으면 실패");
 
+		// 실제로 들어온 짝 없는 닫는 괄호, 여는 괄호만 있는 경우
+		r = title("[신입]홍길동/사람인_공고/010-1111-2222)");
+		eq(r, "APLY_NM", "홍길동");
+		eq(r, "PHONE", "010-1111-2222");
+		r = title("[신입]홍길동(사람인_공고/010-1111-2222");
+		eq(r, "PHONE", "010-1111-2222");
+		eq(r, "APLY_TARGET", "이에스티");
+
 		r = title("[신입]ooo(010-1111-2222)");
 		eq(r, "APLY_NM", "ooo");
 		eq(r, "APLY_TARGET", "이에스티");
