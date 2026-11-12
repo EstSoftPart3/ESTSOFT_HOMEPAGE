@@ -48,6 +48,11 @@
 	.pl-sort { background: none; border: 0; padding: 0 0 0 3px; color: #9aa4ac; font-size: 10px; cursor: pointer; }
 	.pl-sort.on { color: #0b6e8a; }
 	#lBody tr.pl-child td { background: #fff8e8; font-size: 12px; }
+	/* 체크한 사람: 줄 위아래 진한 파란 테두리 + 옅은 파란 바탕(보기용, 저장 안 함) */
+	#lBody tr.pl-picked > td { box-shadow: inset 0 2px 0 #1d4ed8, inset 0 -2px 0 #1d4ed8; background-color: #eef4ff; }
+	#lBody tr.pl-picked > td:first-child { box-shadow: inset 3px 0 0 #1d4ed8, inset 0 2px 0 #1d4ed8, inset 0 -2px 0 #1d4ed8; }
+	.pl-pick-col { width: 28px; text-align: center; }
+	#pickCnt { font-size: 12px; font-weight: 700; color: #1d4ed8; }
 	/* 중복계약: 왼쪽 주황 띠 + 펼치는 버튼 */
 	#lBody tr.pl-dup > td:first-child { box-shadow: inset 4px 0 0 #e0a800; }
 	.pl-dup-pill { border: 1px solid #e0a800; background: #fff3d6; color: #7a5600; font-weight: 700; cursor: pointer; }
@@ -97,7 +102,8 @@
 					<div class="cal-panel pl-ledger" id="ledger">
 						<div class="d-flex flex-wrap align-items-center pr-3">
 							<div class="pl-chks" id="chks" role="group" aria-label="보기 구분"></div>
-							<div class="ml-auto d-flex" style="gap:6px">
+							<div class="ml-auto d-flex align-items-center" style="gap:6px">
+								<span id="pickCnt" role="status"></span>
 								<button type="button" class="btn btn-sm t-allow" data-t="show-allow" aria-pressed="false">수당 펼치기</button>
 								<button type="button" class="btn btn-sm t-ded" data-t="show-ded" aria-pressed="false">공제 펼치기</button>
 								<button type="button" class="btn btn-sm t-pl" data-t="show-pl" aria-pressed="false">손익 펼치기</button>
@@ -184,6 +190,19 @@
 	DP_PAY.concat(DP_DED).forEach(function(d) { LABEL[d[0]] = d[1]; });
 	var ym = moment().format('YYYY-MM'), rows = [], closed = false, shown = {}, checked = {}, sortKey = 'STAFF_NM', sortDir = 1, detailTab = 0, detailRow = null;
 	CHIPS.forEach(function(c) { checked[c[0]] = true; });
+	// 행 체크: 보기용 표시. 서버에 저장하지 않고 달을 바꾸면 풀린다
+	var picked = {}, pickedYm = ym;
+	function paintPicked() {
+		var n = Object.keys(picked).length, $boxes = $('#lBody .pl-pick');
+		$('#pickCnt').text(n ? '✔ ' + n + '명 체크' : '');
+		$('#pickAll').prop({ checked: $boxes.length > 0 && $boxes.filter(':checked').length === $boxes.length, indeterminate: $boxes.filter(':checked').length > 0 && $boxes.filter(':not(:checked)').length > 0 });
+	}
+	$(document).on('change', '#lBody .pl-pick', function() {
+		if (this.checked) picked[this.value] = true; else delete picked[this.value];
+		$('#lBody tr[data-sq="' + this.value + '"]').toggleClass('pl-picked', this.checked);
+		paintPicked();
+	});
+	$(document).on('change', '#pickAll', function() { var on = this.checked; $('#lBody .pl-pick').each(function() { if (this.checked !== on) $(this).prop('checked', on).trigger('change'); }); });
 
 	$(function() {
 		$('#ym').val(ym).on('change', function() { if (this.value) { ym = this.value; load(); } });
@@ -334,12 +353,14 @@
 	}
 
 	function renderLedger(list) {
-		var bands = $('<tr class="pl-bands">').append('<th colspan="8"></th>')
+		if (pickedYm !== ym) { picked = {}; pickedYm = ym; }
+		var bands = $('<tr class="pl-bands">').append('<th colspan="9"></th>')
 			.append(band('show-allow', 'allow', '수당', ALLOW.length)).append(band('show-ded', 'ded', '공제', DED.length)).append('<th colspan="2"></th>')
 			.append(band('show-pl', 'pl', '손익', 3)).append('<th colspan="3"></th>');
 		var $dupTh = sortTh('중복계약', 'DUP').append($('<button type="button" class="pl-dup-all">').attr('aria-expanded', dupAll).text(dupAll ? '▾ 모두 접기' : '▸ 모두 펼치기')
 			.on('click', function() { dupAll = !dupAll; openDup = {}; render(); }));
-		var $h = $('<tr>').append(sortTh('성명', 'STAFF_NM')).append($dupTh).append(sortTh('형태', 'TYPE')).append(sortTh('고객사', 'CLIENT')).append(sortTh('프로젝트', 'PRJ'))
+		var $h = $('<tr>').append($('<th class="pl-pick-col">').append($('<input type="checkbox" id="pickAll" aria-label="보이는 사람 모두 체크">')))
+			.append(sortTh('성명', 'STAFF_NM')).append($dupTh).append(sortTh('형태', 'TYPE')).append(sortTh('고객사', 'CLIENT')).append(sortTh('프로젝트', 'PRJ'))
 			.append(sortTh('근무기간', 'PERIOD')).append(sortTh('매출단가', 'SALE_PRICE', 'dp-num')).append(sortTh('기본', 'BASE_AMT', 'dp-num'));
 		ALLOW.forEach(function(a) { $h.append(sortTh(a[1], a[0], 'dp-num x-allow')); });
 		$h.append(sortTh('지급계', 'PAY_TOTAL', 'dp-num c-allow pl-calc-h'));
@@ -357,7 +378,9 @@
 		list.forEach(function(r) {
 			var cs = contracts(r), dup = cs.length > 1, open = dup && isOpen(r), span = open ? cs.length : 1;
 			function rs($td) { return $td.attr('rowspan', span); }
-			var $tr = $('<tr>').toggleClass('pl-secret', !!r.SECRET).toggleClass('pl-dup', dup).append(rs($('<td>')).append(r.SECRET ? $('<span title="시크릿">').text('🔒 ') : '').append($('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { openDetail(r); })))
+			var $tr = $('<tr>').attr('data-sq', r.STAFF_SQ).toggleClass('pl-picked', !!picked[r.STAFF_SQ]).toggleClass('pl-secret', !!r.SECRET).toggleClass('pl-dup', dup)
+				.append(rs($('<td class="pl-pick-col">')).append($('<input type="checkbox" class="pl-pick">').val(r.STAFF_SQ).prop('checked', !!picked[r.STAFF_SQ]).attr('aria-label', r.STAFF_NM + ' 체크')))
+				.append(rs($('<td>')).append(r.SECRET ? $('<span title="시크릿">').text('🔒 ') : '').append($('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { openDetail(r); })))
 				.append(rs($('<td>')).append(dupCell(r, cs)));
 			contractCells(r, cs[0] || {}, true).forEach(function($td) { $tr.append($td); });
 			$tr.append(rs(cell(r, 'BASE_AMT', '')));
@@ -372,9 +395,10 @@
 				.append(rs($('<td>')).append(countBtn('💬', r.MEMO_CNT, r.STAFF_NM + ' 메모', function() { memoPopup(r); })))
 				.append(rs($('<td>')).append(countBtn('✎', r.CHG_CNT, r.STAFF_NM + ' 수정이력', function() { historyPopup(r); })));
 			$b.append($tr);
-			if (open) cs.slice(1).forEach(function(d) { $b.append($('<tr class="pl-child pl-dup">').toggleClass('pl-secret', !!r.SECRET).append(contractCells(r, d, false))); });
+			if (open) cs.slice(1).forEach(function(d) { $b.append($('<tr class="pl-child pl-dup">').attr('data-sq', r.STAFF_SQ).toggleClass('pl-picked', !!picked[r.STAFF_SQ]).toggleClass('pl-secret', !!r.SECRET).append(contractCells(r, d, false))); });
 		});
 		applyBands();
+		paintPicked();
 		// 두 번째 머리글 줄은 색 띠 아래에 붙고, 위 스크롤 막대 길이는 표 너비에 맞춘다
 		$('#lHead tr').eq(1).children().css('top', $('#lHead tr').eq(0).outerHeight());
 		$('#topScroll div').width($('#mainScroll table').outerWidth());
