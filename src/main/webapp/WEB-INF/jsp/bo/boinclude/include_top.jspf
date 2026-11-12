@@ -66,6 +66,8 @@
   	.flt-closed > .form-row:first-child > * { flex: 0 0 auto; width: auto; max-width: none; margin-bottom: 0 !important; }
   	.flt-closed input[type=search] { min-width: 260px; }
   	.flt-tg { margin-left: auto; }
+  	/* ui-table.js 가 칸 맨 위로 올린 버튼 줄 */
+  	.bo-act-top { margin: 0 0 .6rem !important; }
 
   </style>
   

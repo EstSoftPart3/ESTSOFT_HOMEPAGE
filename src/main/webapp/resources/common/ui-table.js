@@ -29,7 +29,10 @@
 		[].forEach.call(th.parentNode.cells, function (c) { c.removeAttribute('aria-sort'); });
 		th.setAttribute('aria-sort', dir > 0 ? 'ascending' : 'descending');
 		var all = [].slice.call(b.rows), rows = all.filter(function (r) { return r.cells.length === n; });
+		// 시크릿 줄(tr 의 dp-secret·pl-secret·ps-secret·st-secret-row)은 어느 칸으로 정렬해도 맨 위에 둔다
+		function pin(r) { return /(^|\s)[\w-]*secret[\w-]*(\s|$)/.test(r.className) ? 0 : 1; }
 		rows.map(function (r, i) { return { r: r, k: key(text(r.cells[idx])), i: i }; }).sort(function (x, y) {
+			if (pin(x.r) !== pin(y.r)) return pin(x.r) - pin(y.r);
 			if (x.k === '' || y.k === '') return (x.k === '') - (y.k === '') || x.i - y.i;
 			return dir * cmp(x.k, y.k) || x.i - y.i;
 		}).forEach(function (o) { b.appendChild(o.r); });
@@ -62,7 +65,23 @@
 				d.appendChild(t);
 			}
 		});
-		if (BO) filters();
+		if (BO) { filters(); actionsTop(); }
+	}
+
+	// ── 아래 끝 버튼 줄(중간 저장·마감·목록 등)을 그 칸의 맨 위로 ──
+	// 버튼만 든 줄이 칸의 마지막이고 칸 위에서 200px 넘게 떨어져 있으면 옮긴다. 팝업·표·폼·입력칸 줄·고정 바는 그대로
+	function actionsTop() {
+		[].forEach.call(document.querySelectorAll('.content-wrapper div, .content-wrapper footer'), function (e) {
+			var p = e.parentElement;
+			if (!p || e.classList.contains('bo-act-top') || e !== p.lastElementChild || p.firstElementChild === e) return;
+			if (!e.children.length || [].some.call(e.children, function (k) { return !k.matches('.btn, button'); })) return;
+			if (e.closest('.modal, table, form, .form-row, .btn-group, .input-group, .dropdown-menu, .eg-tour')) return;
+			if (/sticky|fixed|absolute/.test(getComputedStyle(e).position)) return;
+			var er = e.getBoundingClientRect(), pr = p.getBoundingClientRect();
+			if (!er.height || er.top - pr.top < 200) return;
+			e.classList.add('bo-act-top');
+			p.insertBefore(e, p.firstElementChild);
+		});
 	}
 
 	// ── 검색필터 접기 ──
