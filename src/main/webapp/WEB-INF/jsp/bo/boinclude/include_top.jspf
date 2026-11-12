@@ -38,6 +38,9 @@
   <!--2022-03-10 추가 -->	
   <style type="text/css">
   	
+  	/* 탭(bo-tabs.js) 안에 뜬 화면: 상단·왼쪽 메뉴·바닥글은 바깥 틀 것만 쓴다 */
+  	html.in-tab .main-header, html.in-tab .main-sidebar, html.in-tab .main-footer { display: none !important; }
+  	html.in-tab .content-wrapper { margin: 0 !important; }
   	.bTitle{ font-size:15px; }
   	.sTitle{ font-size:12px; height:30px; }
   	/* 모든 표 머리글 틀고정. :where 로 우선순위 0 이라 화면별 머리글 색·고정이 그대로 이긴다 */
@@ -66,6 +69,10 @@
 
   </style>
   
+  <script>
+  	// 바깥 틀(bo-tabs.js)의 탭 안에서 열렸으면 그리기 전에 표시해 둔다
+  	try { if (window.top !== window.self && window.top.BO_TABS) document.documentElement.className += ' in-tab'; } catch (e) {}
+  </script>
   <link href="/resources/navereditor/css/smart_editor2.css" rel="stylesheet" type="text/css">
 	
 	<!-- 네이버 에디터 -->
