@@ -86,6 +86,35 @@ public final class PayCalc {
 		return new long[] { base, probationDays > 0 ? MEAL * (total - probationDays) / total : 0 };
 	}
 
+	/** salaried() 의 기본을 어떻게 셌는지 글로. 갈래는 salaried() 와 같다 */
+	public static String salariedHow(String type, long cost, String ym, LocalDate join, LocalDate release, LocalDate lastDay) {
+		YearMonth m = YearMonth.parse(ym);
+		int total = m.lengthOfMonth();
+		long base = salaried(type, cost, ym, join, release, lastDay)[0];
+		if (REGULAR.equals(type) || (release != null && !release.isAfter(m.atDay(1)))) {
+			return "계약단가 " + won(cost) + " − 식대 " + won(MEAL) + " = " + won(base);
+		}
+		int probationDays = release != null && YearMonth.from(release).equals(m) ? release.getDayOfMonth() - 1 : 0;
+		long span = join == null ? Long.MAX_VALUE : ChronoUnit.DAYS.between(join, lastDay) + 1;
+		if (span > total && probationDays > 0) {
+			return "수습급여 " + won(PROBATION_PAY) + " × " + probationDays + "/" + total + "일 + 계약단가 " + won(cost) + " × " + (total - probationDays) + "/" + total + "일 = " + won(base) + " (수습해제 달)";
+		}
+		if (span > total) {
+			return "수습급여 " + won(PROBATION_PAY) + " = " + won(base);
+		}
+		return "수습급여 " + won(PROBATION_PAY) + " × " + span + "/" + total + "일 = " + won(base) + " (입사 첫 달)";
+	}
+
+	/** 일할: (계약단가 ÷ 월 일수) × 근무일수, 버림 단위 미만 버림 */
+	public static String prorateHow(long monthly, int days, int total) {
+		long v = prorate(monthly, days, total);
+		return "(계약단가 " + won(monthly) + " ÷ " + total + "일) × " + days + "일 = " + won(v) + (days < total && monthly * days / total != v ? " (" + won(PRORATE_UNIT) + "원 미만 버림)" : "");
+	}
+
+	static String won(long v) {
+		return String.format("%,d", v);
+	}
+
 	/** 퇴직금 적립: (기본+식대+연구비+유류비+상여) ÷ 10 */
 	public static long retire(long base, long meal, long research, long fuel, long bonus) {
 		return (base + meal + research + fuel + bonus) / 10;

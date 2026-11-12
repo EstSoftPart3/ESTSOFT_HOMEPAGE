@@ -163,7 +163,7 @@
 	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
 
 	<script>
-	var TYPE_NM = { REGULAR: '정규', PROBATION: '수습', SPECIAL: '특고프리', BIZ: '사업자프리', EMP_INS: '고용보험알바', ETC: '기타계약', EXTERNAL: '외부업체' };
+	var TYPE_NM = hrCodeMap('HR_EMP_TYPE');
 	// 체크 칩: [키, 이름, 고용형태들]
 	var CHIPS = [['_FLAG', '확인 필요'], ['REGULAR', '정규', ['REGULAR']], ['PROBATION', '수습', ['PROBATION']], ['SPECIAL', '특고프리', ['SPECIAL']], ['BIZ', '사업자·기타', ['BIZ', 'EMP_INS', 'ETC']], ['EXTERNAL', '외부업체', ['EXTERNAL']]];
 	var ALLOW = [['MEAL_AMT', '식대'], ['RESEARCH_AMT', '연구비'], ['DRIVE_AMT', '운전보조'], ['CHILD_AMT', '자녀보육'], ['BONUS_AMT', '상여'], ['FUEL_AMT', '유류비']];
@@ -382,10 +382,20 @@
 	}
 
 	function contractCells(r, d, top) {
-		var t = typeOf(d) || r.EMP_TYPE_CD;
-		return [$('<td class="pl-type">').text((TYPE_NM[t] || t || '') + dpProbLeft(t, d.PROB_END_DT)), $('<td>').text(d.CLIENT_NM || ''),
+		var t = typeOf(d) || r.EMP_TYPE_CD, prob = probation(r, t);
+		return [$('<td class="pl-type">').text(prob ? '정규' + (prob.left > 0 ? '(수습 D-' + prob.left + ')' : '') : (TYPE_NM[t] || t || '')), $('<td>').text(d.CLIENT_NM || ''),
 			$('<td>').text(d.PRJ_NM || '').append(d.DEPLOY_SQ ? dpInfoBtn(r.STAFF_NM + ' 투입 정보', function() { deployInfo(r, d); }) : ''),
-			$('<td>').text(d.DEPLOY_SQ ? period(d) : ''), $('<td class="dp-num">').text(d.SALE_PRICE ? dpWon(d.SALE_PRICE) : '')];
+			$('<td>').text(d.DEPLOY_SQ ? period(d) : '').append(prob && prob.inMonth ? $('<span class="dp-mute small ml-1">').text('· 수습 ' + prob.from.format('YY/MM/DD') + '~' + prob.to.format('YY/MM/DD')) : ''),
+			$('<td class="dp-num">').text(d.SALE_PRICE ? dpWon(d.SALE_PRICE) : '')];
+	}
+
+	// 수습도 정규직이다. 수습 기간 = 입사일부터 3개월(마지막 날은 3개월 되는 날 전날). inMonth: 이 달과 겹침, left: 오늘부터 남은 날
+	function probation(r, t) {
+		if (t !== 'REGULAR' && t !== 'PROBATION') return null;
+		var from = moment(r.JOIN_DT, 'YYYY-MM-DD', true);
+		if (!from.isValid()) return t === 'PROBATION' ? { left: 0, inMonth: false } : null;
+		var to = from.clone().add(3, 'months').subtract(1, 'days'), first = moment(ym + '-01');
+		return { from: from, to: to, left: to.diff(moment().startOf('day'), 'days') + 1, inMonth: !to.isBefore(first) && !from.isAfter(first.clone().endOf('month')) };
 	}
 
 	function dupCell(r, cs) {
@@ -450,9 +460,23 @@
 
 	function cell(r, f, cls) {
 		var $td = $('<td class="dp-num">').addClass(cls).toggleClass('pl-manual', isManual(r, f));
-		if (closed) return $td.text(dpWon(r[f]));
-		return hrEditable($td, { url: '/admin/pay/saveFieldData.do', key: { YM: ym, STAFF_SQ: r.STAFF_SQ }, field: f, label: r.STAFF_NM + ' ' + (LABEL[f] || f),
+		// 기본 칸은 앞에 🧮: 올리면 이 사람의 계산 과정, 누르면 같은 내용을 창으로(칸 수정은 숫자를 누를 때)
+		function paint($c, v) { $c.text(v || ''); if (f === 'BASE_AMT' && (r.BASE_HOW || []).length) $c.prepend(baseHowBtn(r)); }
+		if (closed) { paint($td, dpWon(r[f])); return $td; }
+		return hrEditable($td, { url: '/admin/pay/saveFieldData.do', key: { YM: ym, STAFF_SQ: r.STAFF_SQ }, field: f, label: r.STAFF_NM + ' ' + (LABEL[f] || f), paint: paint,
 			show: function() { return dpWon(r[f]); }, value: function() { return r[f]; }, saved: function() { load(function() { if (detailRow) refreshDetail(); }); } });
+	}
+
+	function baseHowBtn(r) {
+		var title = r.STAFF_NM + ' · ' + dpYmLabel(ym) + ' 기본 ' + dpWon(r.BASE_AMT);
+		function lines() { return r.BASE_HOW.map(function(l) { return '<div><span style="white-space:normal">' + dpEsc(l) + '</span></div>'; }).join(''); }
+		var $b = $('<button type="button" class="pl-calc-btn">').attr('aria-label', r.STAFF_NM + ' 기본 계산 과정 보기').text('🧮');
+		dpHover($b, $b, function() { return '<div class="dp-card"><div class="dp-card-top">' + dpEsc(title) + '<span>계산 과정</span></div><div class="dp-sec">' + lines() + '</div></div>'; });
+		return $b.on('click', function(e) {
+			e.stopPropagation(); dpHide();
+			dpInfo(title + ' 계산 과정', $('<div>').append(r.BASE_HOW.map(function(l) { return $('<div class="mb-1">').text(l); }))
+				.append('<div class="small text-muted mt-2">기준값(식대·수습급여·일할 버림 단위)은 기본 머리글 🧮 에서 봅니다. 숫자를 누르면 직접 고칠 수 있고, 고친 값은 노란 칸으로 고정됩니다.</div>'));
+		});
 	}
 
 	// ── 메모 (쌓기만, 본인 것만 삭제) ──

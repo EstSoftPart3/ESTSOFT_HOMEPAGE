@@ -496,6 +496,41 @@ public class BoPayrollService {
 		return overlap.get(overlap.size() - 1);
 	}
 
+	/**
+	 * 기본 칸을 어떻게 셌는지 투입 건별 한 줄씩. sync 와 같은 식을 지금 기준값으로 다시 써 보고,
+	 * 저장된 건별 기본과 다르면(마감 달의 엑셀 값, 바뀐 기준값) 저장된 금액만 보인다
+	 */
+	static List<String> baseHow(Map<String, Object> r, List<Map<String, Object>> ds) {
+		List<String> out = new ArrayList<>();
+		String ym = str(r.get("PAY_YM"));
+		long auto = 0;
+		for (Map<String, Object> d : ds) {
+			String t = str(d.get("DEPLOY_TYPE")).isEmpty() ? str(r.get("EMP_TYPE_CD")) : str(d.get("DEPLOY_TYPE"));
+			long b = n(d.get("BASE_AMT")), cost = n(d.get("COST_PRICE"));
+			int days = (int) n(d.get("WORK_DAYS")), total = (int) n(d.get("TOTAL_DAYS"));
+			auto += b;
+			String how;
+			if (ym.isEmpty() || total == 0) {
+				how = won(b);
+			} else if (!PayCalc.isSalaried(t)) {
+				how = PayCalc.prorate(cost, days, total) == b ? PayCalc.prorateHow(cost, days, total) : won(b) + " (저장된 값)";
+			} else if (b == 0 && days > 0) {
+				how = "0 (고정급은 한 달에 한 건만 셉니다)";
+			} else {
+				YearMonth m = YearMonth.parse(ym);
+				LocalDate end = PayCalc.date(d.get("END_DT"));
+				LocalDate lastDay = end != null && YearMonth.from(end).equals(m) ? end : m.atEndOfMonth();
+				String s = PayCalc.salariedHow(t, cost, ym, PayCalc.date(r.get("JOIN_DT")), PayCalc.date(d.get("PROB_END_DT")), lastDay);
+				how = s.contains("= " + won(b)) ? s : won(b) + " (저장된 값)";
+			}
+			out.add(label(d) + " · " + (days < total ? days + "/" + total + "일" : "만근") + " : " + how);
+		}
+		if (manual(r).contains("BASE_AMT")) {
+			out.add("직접 입력 " + won(n(r.get("BASE_AMT"))) + (ds.isEmpty() ? "" : " (자동 계산이면 " + won(auto) + ")"));
+		}
+		return out;
+	}
+
 	/** 합계·손익·확인 사항을 붙인다. details 는 같은 범위의 투입 건별 행 */
 	static List<Map<String, Object>> derive(List<Map<String, Object>> rows, List<Map<String, Object>> details) {
 		Map<String, List<Map<String, Object>>> byKey = new HashMap<>();
@@ -542,6 +577,7 @@ public class BoPayrollService {
 			r.put("TOTAL_DAYS", totalDays);
 			r.put("SALE_PRICE", latest == null ? 0 : n(latest.get("SALE_PRICE")));
 			r.put("COST_PRICE", latest == null ? 0 : n(latest.get("COST_PRICE")));
+			r.put("BASE_HOW", baseHow(r, ds));
 		}
 		return rows;
 	}

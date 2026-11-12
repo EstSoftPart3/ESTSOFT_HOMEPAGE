@@ -124,6 +124,24 @@ public class PayCalcCheck {
 		same(BoPayrollService.pickPrimary(ov), ov.get(1), "정규 건이 기준");
 		ov.remove(1);
 		same(BoPayrollService.pickPrimary(ov), ov.get(1), "정규 없으면 마지막 건");
+		// 기본 계산 과정 글: 정규·수습 첫 달·프리 일할
+		same(PayCalc.salariedHow("REGULAR", 4200000, "2026-11", LocalDate.parse("2025-10-13"), null, LocalDate.parse("2026-11-30")), "계약단가 4,200,000 − 식대 200,000 = 4,000,000", "정규 계산 글");
+		same(PayCalc.salariedHow("PROBATION", 3000000, "2026-09", LocalDate.parse("2026-09-14"), null, LocalDate.parse("2026-09-30")), "수습급여 2,160,000 × 17/30일 = 1,224,000 (입사 첫 달)", "수습 첫 달 글");
+		same(PayCalc.prorateHow(4700000, 6, 30), "(계약단가 4,700,000 ÷ 30일) × 6일 = 940,000", "일할 글");
+		Map<String, Object> hr = new HashMap<>(), hd = new HashMap<>();
+		hr.put("PAY_YM", "2026-11");
+		hr.put("EMP_TYPE_CD", "SPECIAL");
+		hr.put("MANUAL_FIELDS", "BASE_AMT");
+		hr.put("BASE_AMT", 900000L);
+		hd.put("DEPLOY_TYPE", "SPECIAL");
+		hd.put("PRJ_NM", "개발2");
+		hd.put("COST_PRICE", 4700000L);
+		hd.put("WORK_DAYS", 6);
+		hd.put("TOTAL_DAYS", 30);
+		hd.put("BASE_AMT", 940000L);
+		List<String> how = BoPayrollService.baseHow(hr, java.util.Collections.singletonList(hd));
+		same(how.get(0), "개발2 · 6/30일 : (계약단가 4,700,000 ÷ 30일) × 6일 = 940,000", "건별 계산 글");
+		same(how.get(1), "직접 입력 900,000 (자동 계산이면 940,000)", "수기 글");
 		secret();
 		ledger();
 		license();
