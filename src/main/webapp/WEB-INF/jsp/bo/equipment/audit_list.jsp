@@ -18,6 +18,12 @@
 	.au-bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; background: #e3f6fb; border: 1px solid #9fd3e3; border-radius: 6px; padding: 6px 10px; margin: 6px 0; font-size: 13px; }
 	.au-note { display: block; font-size: 11px; color: #555; max-width: 260px; white-space: normal; }
 	.au-chk-col { width: 34px; text-align: center; }
+	.au-filter { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid #dee2e6; margin: 4px 0 6px; }
+	.au-filter label { display: inline-flex; align-items: center; gap: 5px; margin: 0; padding: 6px 12px; border-bottom: 3px solid transparent; cursor: pointer; font-size: 13px; color: #555; }
+	.au-filter label:has(input:checked) { border-bottom-color: #0b6e8a; color: #0b6e8a; font-weight: 700; }
+	.au-filter .cnt { font-size: 12px; background: #eef1f4; border-radius: 10px; padding: 0 7px; color: #444; font-weight: 400; }
+	.au-link { background: none; border: 0; padding: 0; color: #0b6e8a; text-decoration: underline; }
+	.au-who { font-size: 12px; white-space: nowrap; }
 	@media (max-width: 768px) { .au-layout { grid-template-columns: 1fr; } }
 </style>
 
@@ -49,15 +55,20 @@
 										<button type="button" class="btn btn-outline-secondary" data-view="person" aria-pressed="true">사람별</button>
 										<button type="button" class="btn btn-outline-secondary" data-view="equipment" aria-pressed="false">장비별</button>
 									</span>
-									<button type="button" class="btn btn-sm btn-outline-secondary" id="btnNone" aria-pressed="false" onclick="noneOnly = !noneOnly; render();">미응답만</button>
 									<button type="button" class="btn btn-sm btn-outline-secondary" onclick="downloadCsv();">엑셀 내려받기</button>
 									<button type="button" class="btn btn-sm btn-primary" id="btnClose" onclick="closeRound();" hidden>회차 마감</button>
 								</span>
 							</div>
 							<div class="px-3 pt-2"><div class="au-bar" role="img" id="barWrap" aria-label="진행률"><i id="bar" style="width:0"></i></div><div class="small text-muted my-1" id="summary"></div>
+								<div class="au-filter" role="group" aria-label="응답상태로 거르기">
+									<label><input type="checkbox" class="au-fall" id="fAll" checked> 전체 <span class="cnt" data-cnt="ALL"></span></label>
+									<label><input type="checkbox" class="au-f" value="OK" checked> 확인 <span class="cnt" data-cnt="OK"></span></label>
+									<label><input type="checkbox" class="au-f" value="NONE" checked> 미응답 <span class="cnt" data-cnt="NONE"></span></label>
+									<label><input type="checkbox" class="au-f" value="BAD" checked> 이상 <span class="cnt" data-cnt="BAD"></span></label>
+								</div>
 								<div class="au-bulk" id="bulk" hidden role="group" aria-label="선택한 장비 결과 바꾸기">
 									<b id="bulkCnt"></b>
-									<span>결과를</span>
+									<span>응답상태를</span>
 									<button type="button" class="btn btn-sm btn-outline-primary" data-result="OK">확인</button>
 									<button type="button" class="btn btn-sm btn-outline-danger" data-result="BAD">이상</button>
 									<button type="button" class="btn btn-sm btn-outline-secondary" data-result="NONE">미응답</button>
@@ -67,7 +78,7 @@
 							</div>
 							<div class="table-responsive px-3">
 								<table class="table table-sm cal-table mb-0">
-									<thead><tr><th class="au-chk-col" id="chkHead"><input type="checkbox" id="chkAll" aria-label="보이는 장비 모두 선택"></th><th>사용자·위치</th><th>장비번호</th><th>구분</th><th>모델</th><th>결과</th><th>입력</th><th>메모</th></tr></thead>
+									<thead><tr><th class="au-chk-col" id="chkHead"><input type="checkbox" id="chkAll" aria-label="보이는 장비 모두 선택"></th><th>사용자·위치</th><th>장비번호</th><th>구분</th><th>모델</th><th>응답상태</th><th>확인자</th><th>메모</th></tr></thead>
 									<tbody id="body"></tbody>
 								</table>
 							</div>
@@ -85,7 +96,7 @@
 	<script>
 	var TYPE = hrCodeMap('EQP_TYPE');
 	var RESULT = { NONE: '미응답', OK: '확인', BAD: '이상' };
-	var rounds = [], current = null, rows = [], noneOnly = false, view = 'person', picked = {};
+	var rounds = [], current = null, rows = [], view = 'person', picked = {}, shown = { OK: true, NONE: true, BAD: true };
 	// 전수조사 권한만 있어도 열리는 주소(/admin/equipment/*udit*)로 장비대장과 같은 장비 메모를 쓴다
 	var MEMO_API = hrMemoApi('/admin/equipment/', 'audit');
 
@@ -93,6 +104,9 @@
 		$('#newYm').val(moment().format('YYYY-MM'));
 		$('[data-view]').on('click', function() { view = $(this).data('view'); render(); });
 		$('#q').on('input', render);
+		// 응답상태 탭: 여러 개를 함께 켤 수 있고, 전체는 모두 켜기·끄기
+		$('.au-filter').on('change', '.au-f', function() { shown[this.value] = this.checked; render(); });
+		$('#fAll').on('change', function() { var on = this.checked; $.each(shown, function(k) { shown[k] = on; }); render(); });
 		$('#chkAll').on('change', function() { var on = this.checked; visible().forEach(function(r) { if (on) picked[r.EQP_SQ] = true; else delete picked[r.EQP_SQ]; }); render(); });
 		$('#body').on('change', '.au-chk', function() { if (this.checked) picked[this.value] = true; else delete picked[this.value]; paintBulk(); });
 		$('#bulk [data-result]').on('click', function() { saveMany($(this).data('result')); });
@@ -100,11 +114,11 @@
 		loadRounds();
 	});
 
-	/** 미응답만·검색을 거친 지금 보이는 행 */
+	/** 응답상태 탭·검색을 거친 지금 보이는 행 */
 	function visible() {
 		var q = $.trim($('#q').val()).toLowerCase();
 		return rows.filter(function(r) {
-			return (!noneOnly || r.RESULT_CD === 'NONE') && (!q || [r.HOLDER_NM, r.EQP_NO, r.DEPT_NM, r.MODEL_NM].join(' ').toLowerCase().indexOf(q) >= 0);
+			return shown[r.RESULT_CD] && (!q || [r.HOLDER_NM, r.EQP_NO, r.DEPT_NM, r.MODEL_NM].join(' ').toLowerCase().indexOf(q) >= 0);
 		});
 	}
 
@@ -181,7 +195,10 @@
 		$('#bar').css('width', done + '%');
 		$('#barWrap').attr('aria-label', '진행률 ' + done + '퍼센트');
 		$('#btnClose').prop('hidden', !open);
-		$('#btnNone').attr('aria-pressed', noneOnly).toggleClass('active', noneOnly);
+		$('[data-cnt]').each(function() { var k = $(this).data('cnt'); $(this).text(k === 'ALL' ? rows.length : n[k]); });
+		$('.au-f').each(function() { this.checked = !!shown[this.value]; });
+		var on = $('.au-f:checked').length;
+		$('#fAll').prop('checked', on === 3).prop('indeterminate', on > 0 && on < 3);
 		$('[data-view]').each(function() { $(this).attr('aria-pressed', $(this).data('view') === view); });
 		$('#chkHead').toggle(open);
 		var list = visible(), byPerson = view === 'person';
@@ -191,14 +208,15 @@
 		list.forEach(function(r) {
 			var key = r.HOLDER_NM || '보관 장비', $who = $('<td>');
 			if (!byPerson || key !== last) {
-				$who.append($('<b>').text(key));
+				// 직원이면 이름을 눌러 인사카드를 새 탭에서 연다. 게스트·보관 장비는 글자만
+				$who.append(r.STAFF_SQ ? $('<a target="_blank" rel="noopener" class="au-link font-weight-bold">').attr({ href: '/admin/staff/openStaffList.do?STAFF_SQ=' + r.STAFF_SQ, title: '인사카드 열기' }).text(key) : $('<b>').text(key));
 				if (r.DEPT_NM) $who.append($('<span class="small text-muted">').text(' ' + r.DEPT_NM));
 				if (r.STATUS_CD === 'RENT' && r.GUEST_YN === 'Y') $who.append(' <span class="eq-pill warn">수기 확인</span>');
 			}
 			last = key;
 			var $chk = open ? $('<td class="au-chk-col">').append($('<input type="checkbox" class="au-chk">').val(r.EQP_SQ).prop('checked', !!picked[r.EQP_SQ]).attr('aria-label', r.EQP_NO + ' 선택')) : null;
-			$b.append($('<tr>').append($chk).append($who).append($('<td class="eq-no">').text(r.EQP_NO)).append($('<td>').text(TYPE[r.TYPE_CD] || r.TYPE_CD)).append($('<td>').text(r.MODEL_NM || ''))
-				.append($('<td>').append(resultControl(r, open))).append($('<td class="small text-muted">').text(r.RESPONSE_CD ? (r.RESPONSE_CD === 'SELF' ? '본인' : '담당자') + ' · ' + r.CHECK_DT : ''))
+			$b.append($('<tr>').append($chk).append($who).append($('<td class="eq-no">').append($('<a target="_blank" rel="noopener" class="au-link">').attr({ href: '/admin/equipment/openEquipmentList.do?EQP_SQ=' + r.EQP_SQ, title: '장비카드 열기' }).text(r.EQP_NO))).append($('<td>').text(TYPE[r.TYPE_CD] || r.TYPE_CD)).append($('<td>').text(r.MODEL_NM || ''))
+				.append($('<td>').append(resultControl(r, open))).append($('<td class="au-who">').text(checker(r)))
 				.append($('<td>').append(memoCell(r))));
 		});
 		paintBulk();
@@ -209,6 +227,11 @@
 		var $s = $('<select class="form-control form-control-sm">').attr('aria-label', r.EQP_NO + ' 결과');
 		$.each(RESULT, function(k, v) { $s.append($('<option>').val(k).text(v)); });
 		return $s.val(r.RESULT_CD).on('change', function() { save(r, this.value, r.NOTE || ''); });
+	}
+
+	/** 확인자: 본인 응답이면 대여자명, 담당자 입력이면 담당자명. 뒤에 연월일시 */
+	function checker(r) {
+		return r.RESPONSE_CD ? (r.CHECKER_NM || '') + '(' + (r.CHECK_DT || '') + ')' : '';
 	}
 
 	function save(r, result, note) {
@@ -230,9 +253,9 @@
 
 	function downloadCsv() {
 		if (!current) return;
-		var head = ['사용자·위치', '장비번호', '구분', '모델', '결과', '입력', '응답 메모', '장비 메모 건수'];
+		var head = ['사용자·위치', '장비번호', '구분', '모델', '응답상태', '확인자', '응답 메모', '장비 메모 건수'];
 		var lines = [head.map(csvCell).join(',')].concat(rows.map(function(r) {
-			return [r.HOLDER_NM, r.EQP_NO, TYPE[r.TYPE_CD], r.MODEL_NM, RESULT[r.RESULT_CD], r.RESPONSE_CD === 'SELF' ? '본인' : r.RESPONSE_CD ? '담당자' : '', r.NOTE, r.MEMO_CNT].map(csvCell).join(',');
+			return [r.HOLDER_NM, r.EQP_NO, TYPE[r.TYPE_CD], r.MODEL_NM, RESULT[r.RESULT_CD], checker(r), r.NOTE, r.MEMO_CNT].map(csvCell).join(',');
 		}));
 		var a = document.createElement('a');
 		a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }));

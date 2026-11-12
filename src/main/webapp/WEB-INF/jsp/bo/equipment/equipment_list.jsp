@@ -212,7 +212,11 @@
 		$('#nType').on('change', function() { if (this.value) hrPost('/admin/equipment/suggestNoData.do', { TYPE_CD: this.value }, function(res) { $('#nNo').val(res.result); }); });
 		$('#sealFile').on('change', uploadSeal);
 		$('#cardModal').on('hidden.bs.modal', function() { opened = null; card = null; });
-		load();
+		// 다른 화면의 장비번호 링크(?EQP_SQ=번호)로 오면 그 장비카드를 바로 연다
+		var linked = /[?&]EQP_SQ=(\d+)/.exec(location.search);
+		load(function() {
+			if (linked && rows.some(function(r) { return String(r.EQP_SQ) === linked[1]; })) openCard(Number(linked[1]));
+		});
 	});
 
 	$(document).on('click', '.cate-tab', function() { tab = $(this).data('tab'); $('#checkAll').prop('checked', false); render(); });
