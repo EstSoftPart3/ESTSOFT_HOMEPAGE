@@ -114,6 +114,16 @@ public class PayCalcCheck {
 		same(cur.get(1).get("STATE"), "WAIT", "대기");
 		same(cur.get(2).get("STATE"), "FUTURE", "투입 예정");
 
+		// 급여 형태 기준 건: 정규·수습 건이 외부 건보다 우선
+		List<Map<String, Object>> ov = new ArrayList<>();
+		for (String t : new String[] { "EXTERNAL", "REGULAR", "EXTERNAL" }) {
+			Map<String, Object> m = new HashMap<>();
+			m.put("EMP_TYPE_CD", t);
+			ov.add(m);
+		}
+		same(BoPayrollService.pickPrimary(ov), ov.get(1), "정규 건이 기준");
+		ov.remove(1);
+		same(BoPayrollService.pickPrimary(ov), ov.get(1), "정규 없으면 마지막 건");
 		secret();
 		ledger();
 		license();

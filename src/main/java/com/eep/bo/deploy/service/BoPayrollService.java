@@ -362,7 +362,7 @@ public class BoPayrollService {
 					lastPast = d;
 				}
 			}
-			Map<String, Object> primary = overlap.isEmpty() ? lastPast : overlap.get(overlap.size() - 1);
+			Map<String, Object> primary = overlap.isEmpty() ? lastPast : pickPrimary(overlap);
 			// 투입이 없는 달은 고정급(정규·수습) 재직자만 대기로 넣는다
 			if (primary == null || (overlap.isEmpty() && (!PayCalc.isSalaried(str(primary.get("EMP_TYPE_CD"))) || "LEFT".equals(staff.get("STATUS_CD"))))) {
 				continue;
@@ -376,7 +376,8 @@ public class BoPayrollService {
 			for (Map<String, Object> d : overlap) {
 				int days = (Integer) d.get("WORK_DAYS");
 				long b;
-				if (!PayCalc.isSalaried(type)) {
+				// 건마다 그 건의 형태로 계산한다: 정규 옆의 외부·기타 계약도 엑셀처럼 그 건 계약단가를 일할로 더한다
+				if (!PayCalc.isSalaried(type) || !PayCalc.isSalaried(str(d.get("EMP_TYPE_CD")))) {
 					b = PayCalc.prorate(n(d.get("COST_PRICE")), days, total);
 				} else if (d == primary) {
 					LocalDate end = PayCalc.date(d.get("END_DT"));
@@ -433,6 +434,16 @@ public class BoPayrollService {
 		mapper.deletePayrollDetailsExcept(q);
 		q.put("KEEP", keepStaff);
 		mapper.deleteEmptyPayroll(q);
+	}
+
+	/** 그 달 급여 형태의 기준 건. 정규·수습 건이 있으면 그중 마지막, 없으면 마지막 건(목록은 투입일 순) */
+	static Map<String, Object> pickPrimary(List<Map<String, Object>> overlap) {
+		for (int i = overlap.size() - 1; i >= 0; i--) {
+			if (PayCalc.isSalaried(str(overlap.get(i).get("EMP_TYPE_CD")))) {
+				return overlap.get(i);
+			}
+		}
+		return overlap.get(overlap.size() - 1);
 	}
 
 	/** 합계·손익·확인 사항을 붙인다. details 는 같은 범위의 투입 건별 행 */
@@ -498,8 +509,10 @@ public class BoPayrollService {
 			StringBuilder d = new StringBuilder();
 			for (Map<String, Object> x : (List<Map<String, Object>>) r.get("DETAILS")) {
 				if (n(x.get("WORK_DAYS")) < n(x.get("TOTAL_DAYS"))) {
-					d.append(d.length() > 0 ? "\n" : "").append(label(x)).append(": ").append(x.get("WORK_DAYS")).append("일 ÷ ").append(x.get("TOTAL_DAYS"))
-							.append("일 × 계약단가 ").append(won(n(x.get("COST_PRICE")))).append(" = ").append(won(n(x.get("BASE_AMT"))));
+					long cost = n(x.get("COST_PRICE")), raw = n(x.get("TOTAL_DAYS")) == 0 ? 0 : cost * n(x.get("WORK_DAYS")) / n(x.get("TOTAL_DAYS"));
+					d.append(d.length() > 0 ? "\n" : "").append(label(x)).append(": (계약단가 ").append(won(cost)).append(" ÷ ").append(x.get("TOTAL_DAYS"))
+							.append("일) × ").append(x.get("WORK_DAYS")).append("일 = ").append(won(n(x.get("BASE_AMT"))))
+							.append(raw != n(x.get("BASE_AMT")) && raw / 1000 * 1000 == n(x.get("BASE_AMT")) ? " (천원 미만 버림)" : "");
 				}
 			}
 			flag(f, "일할", d.toString());
