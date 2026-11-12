@@ -55,8 +55,6 @@
 	/* 매출단가 강조(투입현황과 같게)와 일할 표시 */
 	#lHead th.pl-sale, #lBody td.pl-sale { background-color: #e7f6ec; color: #17692f; font-weight: 700; }
 	#lHead th.pl-sale { box-shadow: inset 0 3px 0 #2e9e57; }
-	.pl-pr { color: #5f6b75; font-weight: 400; font-size: 11.5px; cursor: help; }
-	.pl-pr:focus { outline: 2px solid #16d5ff; border-radius: 3px; }
 	#pickCnt { font-size: 12px; font-weight: 700; color: #1d4ed8; }
 	/* 외부 매입: 매입처에 주는 돈(급여 아님) */
 	#lBody td.pl-buy, #lBody tr.pl-other td.dp-num { color: #8a4b00 !important; }
@@ -458,20 +456,11 @@
 			saleCell(d)];
 	}
 
-	// 매출단가: 투입현황과 같게(직접계약이면 원래 금액 취소선 + 차감 금액 + 🤝), 그 달 일부만 근무했으면 일할 금액과 🧮(올리면 계산식). 한 줄로
+	// 매출단가: 투입현황과 같은 모양(dpSaleFill). 급여의 건별 매출단가는 이미 직접계약을 뺀 값이고 일할 금액은 저장된 실매출
 	function saleCell(d) {
-		var $td = $('<td class="dp-num pl-sale">'), net = Number(d.SALE_PRICE || 0), dir = Number(d.CLIENT_DIRECT_AMT || 0), days = Number(d.WORK_DAYS || 0), total = Number(d.TOTAL_DAYS || 0);
-		if (!net && !dir) return $td;
-		if (dir) $td.append($('<span class="dp-was">').text(dpWon(net + dir)));
-		$td.append(document.createTextNode(dpWon(net))).append(dpDirectIcon(d));
-		if (days > 0 && total && days < total) {
-			var $c = $('<span class="pl-pr" tabindex="0">').attr('aria-label', '일할 ' + dpWon(d.REAL_SALE) + ': 매출단가 ' + dpWon(net) + ' ÷ ' + total + '일 × ' + days + '일').text(' → 일할 ' + dpWon(d.REAL_SALE) + ' 🧮');
-			dpHover($c, $c, function() {
-				return '<div class="dp-card sm"><div class="dp-sec"><div><b>일할계산</b></div><div>(매출단가 ' + dpWon(net) + ' ÷ ' + total + '일) × ' + days + '일 = ' + dpWon(d.REAL_SALE) + '</div></div></div>';
-			});
-			$td.append($c);
-		}
-		return $td;
+		var $td = $('<td class="dp-num pl-sale">'), net = Number(d.SALE_PRICE || 0);
+		if (!net && !Number(d.CLIENT_DIRECT_AMT)) return $td;
+		return dpSaleFill($td, d, net, Number(d.WORK_DAYS || 0), Number(d.TOTAL_DAYS || 0), Number(d.REAL_SALE || 0));
 	}
 
 	// 다른 계약: 정규·수습 직원에게 함께 걸린 기타·외부 계약(매입처에 주는 돈). 우리 급여·급여명세서에 들어가지 않는다

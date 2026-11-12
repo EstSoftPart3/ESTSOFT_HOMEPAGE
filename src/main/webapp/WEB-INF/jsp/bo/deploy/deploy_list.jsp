@@ -493,9 +493,14 @@
 			show: function() { return r[c[0]]; }, value: function() { return r[field]; }, saved: function() { load(); },
 			paint: function($c, v) {
 				if (c[0] === 'EMP_TYPE_CD') $c.text(typeLabel(r));
-				else if (c[0] === 'SALE_PRICE' && Number(r.CLIENT_DIRECT_AMT)) $c.append($('<span class="dp-was">').text(dpWon(v))).append(document.createTextNode(dpWon(v - r.CLIENT_DIRECT_AMT)))
-					.append(dpDirectIcon(r, function() { directPopup(r); })).append(dpInfoBtn(r.STAFF_NM + ' 단가·급여 이력', function() { payHistory(r); }));
-				else if (c[2]) $c.text(v ? dpWon(v) : '').append(c[0] === 'SALE_PRICE' ? [dpDirectIcon(r, function() { directPopup(r); }), dpInfoBtn(r.STAFF_NM + ' 단가·급여 이력', function() { payHistory(r); })] : '');
+				else if (c[0] === 'SALE_PRICE') {
+					// 급여관리와 같은 모양: 기준월에 일부만 근무하면 일할(월 금액 취소선 + 일할 금액), 직접계약은 🤝 에만
+					var net = Number(v || 0) - Number(r.CLIENT_DIRECT_AMT || 0), m = moment(ym + '-01'), last = m.clone().endOf('month'), total = last.date();
+					var from = moment.max(moment(r.START_DT), m), to = r.END_DT ? moment.min(moment(r.END_DT), last) : last, days = Math.max(0, to.diff(from, 'days') + 1);
+					// shortcut: 일할 버림 단위를 1,000원으로 본다(급여관리 기준값 기본), 기준값을 바꾸면 이 화면 일할 금액만 천 원 단위로 보인다
+					dpSaleFill($c, r, net, days, total, Math.floor(net * days / total / 1000) * 1000, function() { directPopup(r); }).append(dpInfoBtn(r.STAFF_NM + ' 단가·급여 이력', function() { payHistory(r); }));
+				}
+				else if (c[2]) $c.text(v ? dpWon(v) : '');
 				else if (c[0] === 'WORK_AREA') $c.text(v || '').append(farFrom(r.HOME_ADDR, v) ? $('<span class="dp-far">원거리</span>') : '');
 				else $c.text(v || '');
 			} });
