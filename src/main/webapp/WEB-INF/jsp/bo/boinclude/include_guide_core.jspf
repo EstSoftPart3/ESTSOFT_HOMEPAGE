@@ -50,11 +50,19 @@
 <button type="button" class="eg-fab" id="egOpen" aria-label="화면 가이드" title="화면 가이드">?</button>
 <script>
 (function() {
-	var btn = document.getElementById('egTop');
-	function paint() { var on = window.pageYOffset > 200; btn.classList.toggle('show', on); btn.tabIndex = on ? 0 : -1; }
-	window.addEventListener('scroll', paint, { passive: true });
+	// 화면 전체뿐 아니라 표 스크롤 상자(머리글 고정)처럼 안쪽에서 내린 것도 본다. 팝업 안 스크롤은 뺀다
+	var btn = document.getElementById('egTop'), boxes = [];
+	function down(el) { return el === window ? window.pageYOffset > 100 : el.isConnected && el.scrollTop > 100; }
+	function paint() { var on = down(window) || boxes.some(down); btn.classList.toggle('show', on); btn.tabIndex = on ? 0 : -1; }
+	document.addEventListener('scroll', function(e) {
+		var el = e.target;
+		if (el.nodeType === 1 && boxes.indexOf(el) < 0 && !el.closest('.modal, .eg-tour')) boxes.push(el);
+		paint();
+	}, { capture: true, passive: true });
 	btn.addEventListener('click', function() {
-		window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+		var how = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+		boxes.forEach(function(el) { if (el.isConnected && el.scrollTop) el.scrollTo({ top: 0, behavior: how }); });
+		window.scrollTo({ top: 0, behavior: how });
 		var c = document.querySelector('.content-wrapper');
 		if (c) { c.setAttribute('tabindex', '-1'); c.focus({ preventScroll: true }); }
 	});
