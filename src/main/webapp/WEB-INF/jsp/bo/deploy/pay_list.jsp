@@ -54,7 +54,7 @@
 	.pl-pick-col { width: 28px; text-align: center; }
 	#pickCnt { font-size: 12px; font-weight: 700; color: #1d4ed8; }
 	/* 외부 매입: 매입처에 주는 돈(급여 아님) */
-	.pl-buy-tag { color: #8a4b00; font-size: 11.5px; } .pl-buy-tag b { font-weight: 700; } #lBody td.pl-buy { color: #8a4b00 !important; }
+	#lBody td.pl-buy, #lBody tr.pl-other td.dp-num { color: #8a4b00 !important; }
 	/* 중복계약: 왼쪽 주황 띠 + 펼치는 버튼 */
 	#lBody tr.pl-dup > td:first-child { box-shadow: inset 4px 0 0 #e0a800; }
 	.pl-dup-arrow { border: 0; background: none; padding: 0 4px 0 0; color: #b07d00; font-size: 11px; cursor: pointer; }
@@ -183,7 +183,7 @@
 	var SETTLES = ['NP_SETTLE', 'HI_SETTLE', 'EI_SETTLE', 'LTC_SETTLE', 'IT_SETTLE', 'LIT_SETTLE'];
 	// 자동 계산 칸: 머리글 🧮 에 마우스를 올리면 계산식, 누르면 계산 기준값. [계산식 줄들, 쓰는 기준값]
 	var CALC = {
-		BASE_AMT: [['정규 = 계약단가 − 식대', '수습 = 수습급여 (입사 첫 달·수습해제 달은 일할)', '그 외 = (계약단가 ÷ 월 일수) × 근무일수', '칸을 눌러 고치면 노란 칸(수기)으로 고정'], ['PROBATION_PAY', 'MEAL', 'PRORATE_UNIT']],
+		BASE_AMT: [['계약 단가 = 이 계약으로 이번 달 나가는 금액', '정규 = 계약단가 − 식대', '수습 = 수습급여 (입사 첫 달·수습해제 달은 일할)', '그 외 = (계약단가 ÷ 월 일수) × 근무일수', '다른 계약(정규 직원의 기타·외부 계약) 줄은 매입처에 주는 돈 · 우리 급여·명세서에 안 들어감', '칸을 눌러 고치면 노란 칸(수기)으로 고정'], ['PROBATION_PAY', 'MEAL', 'PRORATE_UNIT']],
 		MEAL_AMT: [['정규 = 식대', '수습 = 0 (수습해제 달은 해제 뒤 날짜만 일할)', '칸을 눌러 고치면 노란 칸(수기)으로 고정'], ['MEAL']],
 		PAY_TOTAL: [['지급계 = 기본 + 수당 칸 합']], DED_TOTAL: [['공제계 = 공제 칸 + 정산 칸 합']], _SETTLE: [['정산 = 국민연금·건강·고용·장기요양·소득세·지방소득세 정산 합', '칸별 정산은 성명을 눌러 상세에서 고칩니다']],
 		NET: [['실지급 = 지급계 − 공제계']], DELTA_PCT: [['전월대비 = (이번 달 실지급 − 전월 실지급) ÷ 전월 실지급']],
@@ -286,7 +286,8 @@
 			var last = sal[sal.length - 1];
 			ds = ds.filter(function(d) { return sal.indexOf(d) < 0; }).concat($.extend({}, last, { START_DT: sal[0].START_DT, WORK_DAYS: sum(sal, 'WORK_DAYS'), BASE_AMT: sum(sal, 'BASE_AMT') }));
 		}
-		function score(d) { var t = typeOf(d) || r.EMP_TYPE_CD; return (checked[chipOf(t)] ? 0 : 2) + (t === 'REGULAR' || t === 'PROBATION' ? 0 : 1); }
+		// 우리 계약이 늘 윗줄, 다른 계약(매입)은 아래 └ 줄
+		function score(d) { var t = typeOf(d) || r.EMP_TYPE_CD; return (isOther(r, d) ? 4 : 0) + (checked[chipOf(t)] ? 0 : 2) + (t === 'REGULAR' || t === 'PROBATION' ? 0 : 1); }
 		return ds.sort(function(a, b) { return score(a) - score(b); });
 	}
 	function period(d) {
@@ -308,7 +309,7 @@
 		$('#btnClose').text(closed ? '마감 해제' : '마감');
 		$('#btnImport').prop('disabled', closed);
 		var list = rows.filter(visible);
-		var kp = [['지급 합계', sum(list, 'PAY_TOTAL')], ['공제 합계', sum(list, 'DED_TOTAL')], ['실지급 합계', sum(list, 'NET')], ['영업이익', sum(list, 'PROFIT')], ['확인 필요', list.filter(function(r) { return r.FLAGS.length; }).length, 'bad']];
+		var kp = [['지급 합계', sum(list, 'PAY_TOTAL')], ['공제 합계', sum(list, 'DED_TOTAL')], ['실지급 합계', sum(list, 'NET')], ['다른 계약(매입) 합계', sum(list, 'BUY')], ['영업이익', sum(list, 'PROFIT')], ['확인 필요', list.filter(function(r) { return r.FLAGS.length; }).length, 'bad']];
 		$('#kpis').empty().append(kp.map(function(k) { return $('<div class="dp-kpi">').addClass(k[2] || '').append($('<span>').text(k[0])).append($('<b>').text(dpWon(k[1]))); }));
 		renderChips();
 		renderLedger(list);
@@ -367,13 +368,13 @@
 
 	function renderLedger(list) {
 		if (pickedYm !== ym) { picked = {}; pickedYm = ym; }
-		var bands = $('<tr class="pl-bands">').append('<th colspan="10"></th>')
+		var bands = $('<tr class="pl-bands">').append('<th colspan="9"></th>')
 			.append(band('show-allow', 'allow', '수당', ALLOW.length)).append(band('show-ded', 'ded', '공제', DED.length)).append('<th colspan="2"></th>')
 			.append(band('show-pl', 'pl', '손익', 4)).append('<th colspan="3"></th>');
 		var $h = $('<tr>').append($('<th class="pl-pick-col">').append($('<input type="checkbox" id="pickAll" aria-label="보이는 사람 모두 체크">')))
 			.append(sortTh('성명', 'STAFF_NM')).append(sortTh('형태', 'TYPE')).append(sortTh('고객사', 'CLIENT')).append(sortTh('프로젝트', 'PRJ'))
 			.append(sortTh('근무기간', 'PERIOD')).append($('<th>').append($('<button type="button" class="pl-prob-btn" id="probToggle">').attr('aria-expanded', probOpen).text(probOpen ? '수습기간 ▾' : '수습 ▸')))
-			.append(sortTh('매출단가', 'SALE_PRICE', 'dp-num')).append($('<th class="dp-num">').text('계약 기본').attr('title', '계약 건마다 들어가는 기본. 계약이 여러 건이면 건별로 나뉘고, 기본 칸은 그 합계입니다')).append(sortTh('기본', 'BASE_AMT', 'dp-num'));
+			.append(sortTh('매출단가', 'SALE_PRICE', 'dp-num')).append(sortTh('계약 단가', 'BASE_AMT', 'dp-num'));
 		ALLOW.forEach(function(a) { $h.append(sortTh(a[1], a[0], 'dp-num x-allow')); });
 		$h.append(sortTh('지급계', 'PAY_TOTAL', 'dp-num c-allow pl-calc-h'));
 		DED.forEach(function(a) { $h.append(a[0] === '_SETTLE' ? $('<th class="dp-num x-ded pl-calc-h">').text(a[1]).prepend(calcBtn('_SETTLE', a[1])) : sortTh(a[1], a[0], 'dp-num x-ded')); });
@@ -388,13 +389,15 @@
 		});
 		if (!list.length) $b.append('<tr><td colspan="40" class="text-center text-muted py-4">해당하는 급여가 없습니다. 체크를 바꾸거나, 투입현황에 투입을 등록하면 자동으로 생깁니다.</td></tr>');
 		list.forEach(function(r) {
-			var cs = contracts(r), dup = cs.length > 1, open = dup && isOpen(r), span = open ? cs.length : 1;
+			// 다른 계약(정규 직원의 기타·외부 계약)은 우리 급여가 아니다: 줄을 따로 두고 지급계·실지급도 그 줄에 따로 보인다
+			var cs = contracts(r), dup = cs.length > 1, open = dup && isOpen(r), own = cs.filter(function(d) { return !isOther(r, d); }), span = open ? Math.max(1, own.length) : 1;
 			function rs($td) { return $td.attr('rowspan', span); }
+			function rsAll($td) { return $td.attr('rowspan', open ? cs.length : 1); }
 			var $tr = $('<tr>').attr('data-sq', r.STAFF_SQ).toggleClass('pl-picked', !!picked[r.STAFF_SQ]).toggleClass('pl-secret', !!r.SECRET).toggleClass('pl-dup', dup)
-				.append(rs($('<td class="pl-pick-col">')).append($('<input type="checkbox" class="pl-pick">').val(r.STAFF_SQ).prop('checked', !!picked[r.STAFF_SQ]).attr('aria-label', r.STAFF_NM + ' 체크')))
-				.append(rs($('<td>')).append(dupArrow(r, cs)).append(r.SECRET ? $('<span title="시크릿">').text('🔒 ') : '').append($('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { openDetail(r); })));
+				.append(rsAll($('<td class="pl-pick-col">')).append($('<input type="checkbox" class="pl-pick">').val(r.STAFF_SQ).prop('checked', !!picked[r.STAFF_SQ]).attr('aria-label', r.STAFF_NM + ' 체크')))
+				.append(rsAll($('<td>')).append(dupArrow(r, cs)).append(r.SECRET ? $('<span title="시크릿">').text('🔒 ') : '').append($('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { openDetail(r); })));
 			contractCells(r, cs[0] || {}, true).forEach(function($td) { $tr.append($td); });
-			$tr.append(rs(cell(r, 'BASE_AMT', '')));
+			$tr.append(own.length > 1 ? $('<td class="dp-num">').text(dpWon((cs[0] || {}).BASE_AMT)).prepend(baseHowBtn(r)) : cell(r, 'BASE_AMT', ''));
 			ALLOW.forEach(function(a) { $tr.append(rs(cell(r, a[0], 'x-allow'))); });
 			$tr.append(rs($('<td class="dp-num c-allow font-weight-bold pl-calc">').text(dpWon(r.PAY_TOTAL))));
 			DED.forEach(function(a) { $tr.append(rs(a[0] === '_SETTLE' ? $('<td class="dp-num x-ded pl-calc">').text(dpWon(SETTLES.reduce(function(s, k) { return s + Number(r[k] || 0); }, 0))).attr('title', '정산 합계 · 칸별 정산은 성명을 눌러 상세에서 고칩니다') : cell(r, a[0], 'x-ded'))); });
@@ -406,7 +409,17 @@
 				.append(rs($('<td>')).append(countBtn('💬', r.MEMO_CNT, r.STAFF_NM + ' 메모', function() { memoPopup(r); })))
 				.append(rs($('<td>')).append(countBtn('✎', r.CHG_CNT, r.STAFF_NM + ' 수정이력', function() { historyPopup(r); })));
 			$b.append($tr);
-			if (open) cs.slice(1).forEach(function(d) { $b.append($('<tr class="pl-child pl-dup">').attr('data-sq', r.STAFF_SQ).toggleClass('pl-picked', !!picked[r.STAFF_SQ]).toggleClass('pl-secret', !!r.SECRET).append(contractCells(r, d, false))); });
+			if (open) cs.slice(1).forEach(function(d) {
+				var $c = $('<tr class="pl-child pl-dup">').attr('data-sq', r.STAFF_SQ).toggleClass('pl-picked', !!picked[r.STAFF_SQ]).toggleClass('pl-secret', !!r.SECRET).append(contractCells(r, d, false));
+				if (!isOther(r, d)) { $b.append($c.append($('<td class="dp-num">').text(dpWon(d.BASE_AMT)))); return; }
+				// 다른 계약 줄: 계약 단가·지급계·실지급만, 수당·공제·손익 칸은 비운다
+				$c.addClass('pl-other').append($('<td class="dp-num">').text(dpWon(d.BASE_AMT)).attr('title', '다른 계약 · 매입처에 주는 돈(우리 급여 아님, 급여명세서 없음)'));
+				ALLOW.forEach(function() { $c.append('<td class="x-allow"></td>'); });
+				$c.append($('<td class="dp-num c-allow font-weight-bold">').text(dpWon(d.BASE_AMT)));
+				DED.forEach(function() { $c.append('<td class="x-ded"></td>'); });
+				$c.append('<td class="c-ded"></td>').append($('<td class="dp-num font-weight-bold">').text(dpWon(d.BASE_AMT))).append('<td></td><td class="pl-stub"></td><td class="x-pl"></td><td class="x-pl"></td><td class="x-pl"></td><td class="x-pl"></td><td></td><td></td><td></td>');
+				$b.append($c);
+			});
 		});
 		applyBands();
 		$('#ledger').toggleClass('show-prob', probOpen);
@@ -423,22 +436,12 @@
 			$('<td>').text(d.PRJ_NM || '').append(d.DEPLOY_SQ ? dpInfoBtn(r.STAFF_NM + ' 투입 정보', function() { deployInfo(r, d); }) : ''),
 			$('<td>').text(d.DEPLOY_SQ ? period(d) : ''),
 			$('<td class="pl-prob">').append(prob && prob.inMonth ? [$('<span class="full">').text(prob.from.format('YY/MM/DD') + '~' + prob.to.format('YY/MM/DD')), $('<span class="dot">').attr('title', '수습 ' + prob.from.format('YY/MM/DD') + '~' + prob.to.format('YY/MM/DD')).text('●')] : ''),
-			$('<td class="dp-num">').text(d.SALE_PRICE ? dpWon(d.SALE_PRICE) : '').append(dpDirectIcon(d)),
-			// 계약이 여러 건인 사람만: 정규 몫과 P4H·외부 계약 몫을 건별로 보인다
-			contractBase(r, d, t)];
+			$('<td class="dp-num">').text(d.SALE_PRICE ? dpWon(d.SALE_PRICE) : '').append(dpDirectIcon(d))];
 	}
 
-	// 계약 기본 칸: 정규 직원에게 함께 걸린 기타·외부 계약은 급여가 아니라 '매입'(매입처에 주는 돈)으로 다른 색에 보인다
-	function contractBase(r, d, t) {
-		var $td = $('<td class="dp-num">');
-		if (!d.DEPLOY_SQ || contracts(r).length < 2) return $td.append($('<span class="dp-mute">').text('—'));
-		var salariedPerson = contracts(r).some(function(x) { var y = typeOf(x) || r.EMP_TYPE_CD; return y === 'REGULAR' || y === 'PROBATION'; });
-		if (salariedPerson && t !== 'REGULAR' && t !== 'PROBATION') {
-			return $td.append($('<span class="pl-buy-tag">').attr('title', '매입처에 주는 돈 · 급여(기본)에 들어가지 않고 영업이익에서 외부 매입으로 빠집니다')
-				.append('매입 ').append($('<b>').text(dpWon(d.BASE_AMT))).append(d.BUY_PARTNER_NM ? ' · ' + d.BUY_PARTNER_NM : ''));
-		}
-		return $td.text(dpWon(d.BASE_AMT));
-	}
+	// 다른 계약: 정규·수습 직원에게 함께 걸린 기타·외부 계약(매입처에 주는 돈). 우리 급여·급여명세서에 들어가지 않는다
+	function isSal(t) { return t === 'REGULAR' || t === 'PROBATION'; }
+	function isOther(r, d) { var t = typeOf(d) || r.EMP_TYPE_CD; return !isSal(t) && r.DETAILS.some(function(x) { return isSal(typeOf(x)); }); }
 
 	// 수습도 정규직이다. 수습 기간 = 입사일부터 3개월(마지막 날은 3개월 되는 날 전날). inMonth: 이 달과 겹침, left: 오늘부터 남은 날
 	function probation(r, t) {
