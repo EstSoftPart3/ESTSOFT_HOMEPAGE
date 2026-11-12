@@ -111,7 +111,9 @@
 						<div class="form-group col-6"><label for="LAST4">카드번호 끝 4자리</label><input id="LAST4" class="form-control form-control-sm" inputmode="numeric" pattern="\d{4}" maxlength="4" required></div>
 					</div>
 					<div class="form-row">
-						<div class="form-group col-6"><label for="STAFF_SQ">사용자 (직원)</label><select id="STAFF_SQ" class="form-control form-control-sm" required aria-describedby="staffHint"></select></div>
+						<div class="form-group col-6"><label for="staffQ">사용자 (직원)</label>
+							<input type="search" id="staffQ" class="form-control form-control-sm mb-1" placeholder="이름·부서 검색" autocomplete="off" aria-controls="STAFF_SQ">
+							<select id="STAFF_SQ" class="form-control form-control-sm" required aria-label="사용자 직원 선택" aria-describedby="staffHint"></select></div>
 						<div class="form-group col-6"><label for="USE_YN">사용 여부</label><select id="USE_YN" class="form-control form-control-sm"><option value="Y">사용</option><option value="N">미사용</option></select></div>
 					</div>
 					<small class="text-muted d-block" id="staffHint">사용자는 직원관리 명단에서 고르며, 그 직원은 로그인하면 본인 카드만 봅니다. 카드번호는 끝 4자리만 저장합니다.</small>
@@ -256,13 +258,21 @@
 	// ── 카드 등록·수정 ──
 	function openCard(c) {
 		$('#cardTitle').text(c ? '카드 수정' : '카드 등록');
-		var $s = $('#STAFF_SQ').empty().append('<option value="">직원 선택</option>');
-		staffs.forEach(function(s) {
-			$s.append($('<option>').val(s.STAFF_SQ).text(s.STAFF_NM + (s.DEPT_NM ? ' · ' + s.DEPT_NM : '') + (s.STATUS_CD === 'LEFT' ? ' (퇴사)' : '') + (s.EMPLY_ID ? '' : ' (BO 계정 없음)')));
-		});
-		['CARD_SQ', 'CARD_NM', 'CARD_CO', 'LAST4', 'STAFF_SQ'].forEach(function(f) { $('#' + f).val(c && c[f] || ''); });
+		['CARD_SQ', 'CARD_NM', 'CARD_CO', 'LAST4'].forEach(function(f) { $('#' + f).val(c && c[f] || ''); });
+		$('#staffQ').val('');
+		staffOptions(c && c.STAFF_SQ || '');
 		$('#USE_YN').val(c ? c.USE_YN : 'Y');
 		$('#cardModal').modal('show');
+	}
+
+	// 검색어에 맞는 직원만 남긴다. 고른 직원은 검색에 안 걸려도 남기고, 한 명만 남으면 바로 고른다
+	function staffOptions(picked) {
+		var q = $('#staffQ').val().trim().toLowerCase(), $s = $('#STAFF_SQ').empty().append('<option value="">직원 선택</option>');
+		var list = staffs.filter(function(s) { return String(s.STAFF_SQ) === String(picked) || !q || ((s.STAFF_NM || '') + ' ' + (s.DEPT_NM || '')).toLowerCase().indexOf(q) >= 0; });
+		list.forEach(function(s) {
+			$s.append($('<option>').val(s.STAFF_SQ).text(s.STAFF_NM + (s.DEPT_NM ? ' · ' + s.DEPT_NM : '') + (s.STATUS_CD === 'LEFT' ? ' (퇴사)' : '') + (s.EMPLY_ID ? '' : ' (BO 계정 없음)')));
+		});
+		$s.val(q && list.length === 1 ? list[0].STAFF_SQ : picked || '');
 	}
 
 	function saveCard() {
@@ -513,6 +523,7 @@
 	}
 
 	$(window).on('hashchange', function() { loadList(showCurrent); });
+	$('#staffQ').on('input', function() { staffOptions($('#STAFF_SQ').val()); }).on('keydown', function(e) { if (e.key === 'Enter') e.preventDefault(); });
 	$('#fName').on('input', drawList);
 	$('#fUse').on('change', drawList);
 	loadList(showCurrent);
