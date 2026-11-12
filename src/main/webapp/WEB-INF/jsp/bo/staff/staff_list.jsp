@@ -11,6 +11,8 @@
 	.st-bn .dp-pill:focus { outline: 2px solid #16d5ff; }
 	.st-bn input { width: 92px; height: 22px; font-size: 11px; padding: 0 4px; text-align: right; }
 	.st-bn select { width: 100px; height: 22px; font-size: 11px; padding: 0 2px; }
+	.st-bn-toggle { background: none; border: 0; padding: 0 4px; color: #888; font-size: 11px; vertical-align: middle; }
+	.st-bn-toggle:hover, .st-bn-toggle:focus { color: #0b6e8a; }
 	.st-name { background: none; border: 0; padding: 0; color: #0b6e8a; font-weight: 600; text-decoration: underline; cursor: pointer; }
 	.st-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 2px 18px; }
 	.st-grid .hr-card-label { flex-basis: 84px; }
@@ -318,10 +320,13 @@
 	}
 	$(document).on('change', '#fBonus', function() { render(); });
 
+	var bnOpen = {}; // STAFF_SQ -> 펼침. 접힌 칸은 켜진 상여만 보인다
 	function bonusCell($td, r) {
-		var pick = $('#fBonus').val();
+		var pick = $('#fBonus').val(), open = !!bnOpen[r.STAFF_SQ], shown = 0;
 		BN.items.filter(function(b) { return b.USE_YN === 'Y' && (!pick || String(b.BONUS_SQ) === pick); }).forEach(function(b) {
 			var a = BN.applies.filter(function(x) { return x.BONUS_SQ === b.BONUS_SQ && x.STAFF_SQ === r.STAFF_SQ; })[0], on = !!a;
+			if (!on && !open) return;
+			shown++;
 			var $chip = $('<span class="dp-pill" role="switch" tabindex="0">').toggleClass('ok', on).attr({ 'aria-checked': on, 'aria-label': r.STAFF_NM + ' ' + b.BONUS_NM + (on ? ' 켜짐' : ' 꺼짐') }).text((on ? '● ' : '○ ') + b.BONUS_NM);
 			function send(extra) { hrPost('/admin/bonus/applyBonusData.do', $.extend({ BONUS_SQ: b.BONUS_SQ, STAFF_SQ: r.STAFF_SQ, ON: 'Y' }, extra), function() { dpHide(); loadBonus(); }); }
 			$chip.on('click keydown', function(e) {
@@ -342,6 +347,10 @@
 			}
 			$td.append($w);
 		});
+		if (!shown) $td.append('<span class="text-muted small mr-1">없음</span>');
+		$td.append($('<button type="button" class="st-bn-toggle">').attr({ 'data-bn-sq': r.STAFF_SQ, 'aria-expanded': open, 'aria-label': r.STAFF_NM + ' 상여 ' + (open ? '접기' : '펼쳐서 수정'), title: open ? '접기' : '펼쳐서 수정' })
+			.html(open ? '<i class="fas fa-chevron-up"></i>' : '<i class="fas fa-pen"></i>')
+			.on('click', function() { bnOpen[r.STAFF_SQ] = !open; render(); $('[data-bn-sq=' + r.STAFF_SQ + ']').focus(); }));
 	}
 
 	// 칩에 마우스를 올리면: 항목 조건 + 이 사람 적용(기준일·달성일·조건 충족·지급 월), 꺼진 칩은 적용 방식
