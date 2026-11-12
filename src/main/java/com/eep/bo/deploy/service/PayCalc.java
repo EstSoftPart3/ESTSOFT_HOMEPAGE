@@ -34,6 +34,16 @@ public final class PayCalc {
 	private PayCalc() {
 	}
 
+	/** 본인과 맺은 계약(급여로 본인에게 준다). 그 밖의 기타계약·외부(수수료·기타)는 업체에 주는 돈이다 */
+	public static boolean isOwn(String type) {
+		return isSalaried(type) || "SPECIAL".equals(type) || "BIZ".equals(type) || "EMP_INS".equals(type);
+	}
+
+	/** 업체에 주는 돈 가운데 수수료(외부수수료 MCS 등). 나머지 업체 몫은 '기타' */
+	public static boolean isFee(String type) {
+		return type != null && type.startsWith("EXTERNAL_MCS");
+	}
+
 	/** 정규·수습만 회사부담금이 사업수익에서 빠지고 고정급으로 계산한다 */
 	public static boolean isSalaried(String type) {
 		return REGULAR.equals(type) || PROBATION.equals(type);

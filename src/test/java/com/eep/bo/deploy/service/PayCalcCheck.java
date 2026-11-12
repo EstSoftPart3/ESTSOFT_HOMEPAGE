@@ -96,6 +96,22 @@ public class PayCalcCheck {
 		same(row.get("COMPANY"), 852450L, "기타 계약 몫에는 퇴직금 적립 없음");
 		same(row.get("BUY"), 600000L, "외부 매입");
 		same(row.get("PROFIT"), 1447550L - 600000L, "영업이익에서 외부 매입을 뺌");
+		// 고용보험알바(본인 계약) + P4H(기타) + MCS(수수료): 업체 몫은 기타·수수료로 따로
+		d.put("DEPLOY_TYPE", "EMP_INS");
+		Map<String, Object> fee = new HashMap<>(split);
+		fee.put("DEPLOY_TYPE", "EXTERNAL_MCS");
+		fee.put("BASE_AMT", 100000L);
+		ds.add(fee);
+		row.put("EMP_TYPE_CD", "EMP_INS");
+		BoPayrollService.derive(rows, ds);
+		same(row.get("BUY") + "/" + row.get("FEE"), "600000/100000", "알바 + 기타 + 수수료");
+		same(row.get("PROFIT"), 7000000L - 4700000L - 600000L - 100000L, "알바는 회사부담 0, 기타·수수료만 뺌");
+		ds.remove(fee);
+		row.put("EMP_TYPE_CD", "REGULAR");
+		// 본인 계약이 없으면(기타계약만) 업체 몫으로 나누지 않는다
+		d.put("DEPLOY_TYPE", "ETC_P4H");
+		BoPayrollService.derive(rows, ds);
+		same(row.get("BUY"), 0L, "기타계약만 있으면 나누지 않음");
 		ds.remove(split);
 		d.remove("DEPLOY_TYPE");
 		row.put("BASE_AMT", 4000000L);
@@ -126,6 +142,9 @@ public class PayCalcCheck {
 		same(BoPayrollService.pickPrimary(ov), ov.get(1), "정규 건이 기준");
 		ov.remove(1);
 		same(BoPayrollService.pickPrimary(ov), ov.get(1), "정규 없으면 마지막 건");
+		ov.get(0).put("EMP_TYPE_CD", "EMP_INS");
+		ov.get(1).put("EMP_TYPE_CD", "ETC_P4H");
+		same(BoPayrollService.pickPrimary(ov), ov.get(0), "정규 없으면 본인 계약(알바) 건이 기준");
 		// 기본 계산 과정 글: 정규·수습 첫 달·프리 일할
 		same(PayCalc.salariedHow("REGULAR", 4200000, "2026-11", LocalDate.parse("2025-10-13"), null, LocalDate.parse("2026-11-30")), "계약단가 4,200,000 − 식대 200,000 = 4,000,000", "정규 계산 글");
 		same(PayCalc.salariedHow("PROBATION", 3000000, "2026-09", LocalDate.parse("2026-09-14"), null, LocalDate.parse("2026-09-30")), "수습급여 2,160,000 × 17/30일 = 1,224,000 (입사 첫 달)", "수습 첫 달 글");

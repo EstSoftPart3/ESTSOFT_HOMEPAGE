@@ -422,6 +422,7 @@ public class BoPayrollService {
 				overlap.add(primary);
 			}
 			String type = str(primary.get("EMP_TYPE_CD"));
+			boolean hasOwn = overlap.stream().anyMatch(x -> PayCalc.isOwn(str(x.get("EMP_TYPE_CD"))));
 			long base = 0, meal = 0;
 			for (Map<String, Object> d : overlap) {
 				int days = (Integer) d.get("WORK_DAYS");
@@ -438,8 +439,8 @@ public class BoPayrollService {
 				} else {
 					b = 0; // 고정급은 한 달에 한 번만
 				}
-				// 정규·수습 직원에게 함께 걸린 기타·외부 계약은 매입처에 주는 돈(외부 매입)이라 급여 기본에 넣지 않는다. 건별 기본(PAYROLL_D)에는 남겨 derive 가 매입으로 센다
-				if (!PayCalc.isSalaried(type) || PayCalc.isSalaried(str(d.get("EMP_TYPE_CD")))) {
+				// 본인 계약이 있는 사람의 기타계약·외부(수수료·기타)는 업체에 주는 돈이라 급여 기본에 넣지 않는다. 건별 기본(PAYROLL_D)에는 남겨 derive 가 기타·수수료로 센다
+				if (!hasOwn || PayCalc.isOwn(str(d.get("EMP_TYPE_CD")))) {
 					base += b;
 				}
 				Map<String, Object> row = new HashMap<>();
@@ -491,11 +492,14 @@ public class BoPayrollService {
 		mapper.deleteEmptyPayroll(q);
 	}
 
-	/** 그 달 급여 형태의 기준 건. 정규·수습 건이 있으면 그중 마지막, 없으면 마지막 건(목록은 투입일 순) */
+	/** 그 달 급여 형태의 기준 건. 정규·수습 건, 없으면 본인 계약 건(특고·사업자·알바), 그것도 없으면 마지막 건(목록은 투입일 순) */
 	static Map<String, Object> pickPrimary(List<Map<String, Object>> overlap) {
-		for (int i = overlap.size() - 1; i >= 0; i--) {
-			if (PayCalc.isSalaried(str(overlap.get(i).get("EMP_TYPE_CD")))) {
-				return overlap.get(i);
+		for (boolean salariedOnly : new boolean[] { true, false }) {
+			for (int i = overlap.size() - 1; i >= 0; i--) {
+				String t = str(overlap.get(i).get("EMP_TYPE_CD"));
+				if (salariedOnly ? PayCalc.isSalaried(t) : PayCalc.isOwn(t)) {
+					return overlap.get(i);
+				}
 			}
 		}
 		return overlap.get(overlap.size() - 1);
@@ -509,13 +513,15 @@ public class BoPayrollService {
 		List<String> out = new ArrayList<>();
 		String ym = str(r.get("PAY_YM"));
 		long auto = 0;
-		boolean salariedPerson = ds.stream().anyMatch(d -> PayCalc.isSalaried(str(d.get("DEPLOY_TYPE"))));
+		boolean ownPerson = ds.stream().anyMatch(d -> PayCalc.isOwn(str(d.get("DEPLOY_TYPE"))));
 		for (Map<String, Object> d : ds) {
 			String t = str(d.get("DEPLOY_TYPE")).isEmpty() ? str(r.get("EMP_TYPE_CD")) : str(d.get("DEPLOY_TYPE"));
 			long b = n(d.get("BASE_AMT")), cost = n(d.get("COST_PRICE"));
 			int days = (int) n(d.get("WORK_DAYS")), total = (int) n(d.get("TOTAL_DAYS"));
-			boolean buy = salariedPerson && !PayCalc.isSalaried(t);
-			auto += buy ? 0 : b;
+			boolean vendor = ownPerson && !PayCalc.isOwn(t);
+			auto += vendor ? 0 : b;
+			// 돈 흐름 카드용: 이 건이 급여·기타·수수료 중 무엇인지
+			d.put("KIND", !vendor ? "PAY" : PayCalc.isFee(t) ? "FEE" : "ETC");
 			String how;
 			if (ym.isEmpty() || total == 0) {
 				how = won(b);
@@ -530,7 +536,8 @@ public class BoPayrollService {
 				String s = PayCalc.salariedHow(t, cost, ym, PayCalc.date(r.get("JOIN_DT")), PayCalc.date(d.get("PROB_END_DT")), lastDay);
 				how = s.contains("= " + won(b)) ? s : won(b) + " (저장된 값)";
 			}
-			out.add((buy ? "[외부 매입 · 기본 아님] " : "") + label(d) + " · " + (days < total ? days + "/" + total + "일" : "만근") + " : " + how);
+			d.put("HOW", how);
+			out.add((vendor ? (PayCalc.isFee(t) ? "[수수료 · 급여 아님] " : "[기타 · 급여 아님] ") : "") + label(d) + " · " + (days < total ? days + "/" + total + "일" : "만근") + " : " + how);
 		}
 		if (manual(r).contains("BASE_AMT")) {
 			out.add("직접 입력 " + won(n(r.get("BASE_AMT"))) + (ds.isEmpty() ? "" : " (자동 계산이면 " + won(auto) + ")"));
@@ -555,16 +562,22 @@ public class BoPayrollService {
 			}
 			String type = str(r.get("EMP_TYPE_CD"));
 			boolean salaried = PayCalc.isSalaried(type);
-			long otherBase = 0; // 정규 직원에게 함께 걸린 기타·외부 계약 몫. 매입처에 주는 돈이라 급여(기본)가 아니고 외부 매입으로 센다
+			// 본인 계약이 있는 사람의 기타계약·외부 몫은 업체에 주는 돈: 급여(기본)가 아니라 기타(BUY)·수수료(FEE)로 영업이익에서만 뺀다
+			boolean hasOwn = ds.stream().anyMatch(d -> PayCalc.isOwn(str(d.get("DEPLOY_TYPE"))));
+			long buy = 0, fee = 0;
 			for (Map<String, Object> d : ds) {
 				sale += n(d.get("REAL_SALE"));
 				days += n(d.get("WORK_DAYS"));
 				totalDays = n(d.get("TOTAL_DAYS"));
-				if (d.get("DEPLOY_TYPE") != null) {
-					if (PayCalc.isSalaried(str(d.get("DEPLOY_TYPE")))) {
-						salaried = true;
+				String dt = str(d.get("DEPLOY_TYPE"));
+				if (PayCalc.isSalaried(dt)) {
+					salaried = true;
+				}
+				if (hasOwn && !dt.isEmpty() && !PayCalc.isOwn(dt)) {
+					if (PayCalc.isFee(dt)) {
+						fee += n(d.get("BASE_AMT"));
 					} else {
-						otherBase += n(d.get("BASE_AMT"));
+						buy += n(d.get("BASE_AMT"));
 					}
 				}
 			}
@@ -572,7 +585,6 @@ public class BoPayrollService {
 					? n(r.get("NP_AMT")) + n(r.get("HI_AMT")) + n(r.get("EI_AMT")) + n(r.get("LTC_AMT")) + n(r.get("ACC_AMT"))
 							+ PayCalc.retire(n(r.get("BASE_AMT")), n(r.get("MEAL_AMT")), n(r.get("RESEARCH_AMT")), n(r.get("FUEL_AMT")), n(r.get("BONUS_AMT")))
 					: 0;
-			long buy = salaried ? otherBase : 0;
 			Map<String, Object> latest = ds.isEmpty() ? null : ds.get(ds.size() - 1);
 			r.put("DETAILS", ds);
 			r.put("PAY_TOTAL", pay);
@@ -581,7 +593,8 @@ public class BoPayrollService {
 			r.put("REAL_SALE", sale);
 			r.put("COMPANY", company);
 			r.put("BUY", buy);
-			r.put("PROFIT", sale - pay - company - buy);
+			r.put("FEE", fee);
+			r.put("PROFIT", sale - pay - company - buy - fee);
 			r.put("WORK_DAYS", Math.min(days, totalDays));
 			r.put("TOTAL_DAYS", totalDays);
 			r.put("SALE_PRICE", latest == null ? 0 : n(latest.get("SALE_PRICE")));

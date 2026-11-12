@@ -55,6 +55,19 @@
 	#pickCnt { font-size: 12px; font-weight: 700; color: #1d4ed8; }
 	/* 외부 매입: 매입처에 주는 돈(급여 아님) */
 	#lBody td.pl-buy, #lBody tr.pl-other td.dp-num { color: #8a4b00 !important; }
+	/* 돈 흐름 카드: 외부(고객사 직접)·급여·기타·수수료 */
+	.pl-flow { width: 470px; max-width: 92vw; background: #fff; border: 1px solid #dfe5ea; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.18); overflow: hidden; font-size: 13px; color: #15191d; }
+	.pl-flow .top { padding: 11px 15px; display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #dfe5ea; } .pl-flow .top b { font-size: 14.5px; } .pl-flow .top span { color: #5f6b75; font-size: 12px; }
+	.pl-flow .sec { padding: 11px 15px; } .pl-flow .sec-t { font-size: 11.5px; font-weight: 700; color: #5f6b75; margin-bottom: 7px; }
+	.pl-flow .bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; margin-bottom: 8px; } .pl-flow .bar i { display: block; }
+	.pl-flow .ln { display: grid; grid-template-columns: 1fr auto; gap: 1px 10px; padding: 6px 0; border-top: 1px dashed #edf0f2; } .pl-flow .ln:first-of-type { border-top: 0; }
+	.pl-flow .ln .w { font-weight: 700; } .pl-flow .ln .a { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; } .pl-flow .ln .h { grid-column: 1 / -1; color: #5f6b75; font-size: 12px; white-space: normal; }
+	.pl-flow .to { color: #5f6b75; font-size: 12px; font-weight: 400; margin-left: 6px; }
+	.pl-flow .tot { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 15px; background: #111; color: #fff; font-weight: 700; } .pl-flow .tot b { font-size: 17px; font-variant-numeric: tabular-nums; }
+	.fl-tag { display: inline-block; border-radius: 10px; padding: 0 7px; font-size: 11px; font-weight: 700; margin-right: 4px; }
+	.fl-DIR { background: #e6f4e3; color: #2f6b2f; } .fl-PAY { background: #e3f4f9; color: #0b6e8a; } .fl-ETC { background: #fdf0dd; color: #8a4b00; } .fl-FEE { background: #f1e9fa; color: #6b3fa0; }
+	.fb-DIR { background: #7cc27a; } .fb-PAY { background: #4fb3cf; } .fb-ETC { background: #e7a24a; } .fb-FEE { background: #a57bd6; }
+	#dpInfoBody .pl-flow { width: 100%; box-shadow: none; }
 	/* 중복계약: 왼쪽 주황 띠 + 펼치는 버튼 */
 	#lBody tr.pl-dup > td:first-child { box-shadow: inset 4px 0 0 #e0a800; }
 	.pl-dup-arrow { border: 0; background: none; padding: 0 4px 0 0; color: #b07d00; font-size: 11px; cursor: pointer; }
@@ -189,8 +202,9 @@
 		NET: [['실지급 = 지급계 − 공제계']], DELTA_PCT: [['전월대비 = (이번 달 실지급 − 전월 실지급) ÷ 전월 실지급']],
 		REAL_SALE: [['실매출 = (매출단가 ÷ 월 일수) × 근무일수'], ['PRORATE_UNIT']],
 		COMPANY: [['회사부담 = 4대보험 회사분 + 퇴직금 적립 (정규·수습만)', '퇴직금 적립 = (기본 + 식대 + 연구비 + 유류비 + 상여) ÷ 10']],
-		BUY: [['외부 매입 = 정규 직원에게 함께 걸린 기타·외부 계약 몫 (매입처에 주는 돈, 급여 아님)', '= (계약단가 ÷ 월 일수) × 근무일수'], ['PRORATE_UNIT']],
-		PROFIT: [['영업이익 = 실매출 − 지급계 − 회사부담 − 외부 매입']]
+		BUY: [['기타 = 본인 계약이 있는 사람에게 함께 걸린 기타계약·외부기타 몫 (업체에 주는 돈, 급여 아님)', '= (계약단가 ÷ 월 일수) × 근무일수'], ['PRORATE_UNIT']],
+		FEE: [['수수료 = 본인 계약이 있는 사람에게 함께 걸린 외부수수료(MCS) 몫 (업체에 주는 돈, 급여 아님)', '= (계약단가 ÷ 월 일수) × 근무일수'], ['PRORATE_UNIT']],
+		PROFIT: [['영업이익 = 실매출 − 지급계 − 회사부담 − 기타 − 수수료']]
 	};
 	var PARAMS = [];
 	var LABEL = { CLOSE: '마감', REOPEN: '마감 해제', MEMO: '메모', BONUS: '상여 적용', BONUS_EXCLUDE: '상여 제외' };
@@ -309,7 +323,7 @@
 		$('#btnClose').text(closed ? '마감 해제' : '마감');
 		$('#btnImport').prop('disabled', closed);
 		var list = rows.filter(visible);
-		var kp = [['지급 합계', sum(list, 'PAY_TOTAL')], ['공제 합계', sum(list, 'DED_TOTAL')], ['실지급 합계', sum(list, 'NET')], ['다른 계약(매입) 합계', sum(list, 'BUY')], ['영업이익', sum(list, 'PROFIT')], ['확인 필요', list.filter(function(r) { return r.FLAGS.length; }).length, 'bad']];
+		var kp = [['지급 합계', sum(list, 'PAY_TOTAL')], ['공제 합계', sum(list, 'DED_TOTAL')], ['실지급 합계', sum(list, 'NET')], ['기타 합계', sum(list, 'BUY')], ['수수료 합계', sum(list, 'FEE')], ['영업이익', sum(list, 'PROFIT')], ['확인 필요', list.filter(function(r) { return r.FLAGS.length; }).length, 'bad']];
 		$('#kpis').empty().append(kp.map(function(k) { return $('<div class="dp-kpi">').addClass(k[2] || '').append($('<span>').text(k[0])).append($('<b>').text(dpWon(k[1]))); }));
 		renderChips();
 		renderLedger(list);
@@ -370,7 +384,7 @@
 		if (pickedYm !== ym) { picked = {}; pickedYm = ym; }
 		var bands = $('<tr class="pl-bands">').append('<th colspan="9"></th>')
 			.append(band('show-allow', 'allow', '수당', ALLOW.length)).append(band('show-ded', 'ded', '공제', DED.length)).append('<th colspan="2"></th>')
-			.append(band('show-pl', 'pl', '손익', 4)).append('<th colspan="3"></th>');
+			.append(band('show-pl', 'pl', '손익', 5)).append('<th colspan="3"></th>');
 		var $h = $('<tr>').append($('<th class="pl-pick-col">').append($('<input type="checkbox" id="pickAll" aria-label="보이는 사람 모두 체크">')))
 			.append(sortTh('성명', 'STAFF_NM')).append(sortTh('형태', 'TYPE')).append(sortTh('고객사', 'CLIENT')).append(sortTh('프로젝트', 'PRJ'))
 			.append(sortTh('근무기간', 'PERIOD')).append($('<th>').append($('<button type="button" class="pl-prob-btn" id="probToggle">').attr('aria-expanded', probOpen).text(probOpen ? '수습기간 ▾' : '수습 ▸')))
@@ -379,7 +393,7 @@
 		$h.append(sortTh('지급계', 'PAY_TOTAL', 'dp-num c-allow pl-calc-h'));
 		DED.forEach(function(a) { $h.append(a[0] === '_SETTLE' ? $('<th class="dp-num x-ded pl-calc-h">').text(a[1]).prepend(calcBtn('_SETTLE', a[1])) : sortTh(a[1], a[0], 'dp-num x-ded')); });
 		$h.append(sortTh('공제계', 'DED_TOTAL', 'dp-num c-ded pl-calc-h')).append(sortTh('실지급', 'NET', 'dp-num pl-calc-h')).append(sortTh('전월대비', 'DELTA_PCT', 'dp-num pl-calc-h')).append('<th class="pl-stub"></th>');
-		[['실매출', 'REAL_SALE'], ['외부 매입', 'BUY'], ['회사부담', 'COMPANY'], ['영업이익', 'PROFIT']].forEach(function(t) { $h.append(sortTh(t[0], t[1], 'dp-num x-pl pl-calc-h')); });
+		[['실매출', 'REAL_SALE'], ['기타', 'BUY'], ['수수료', 'FEE'], ['회사부담', 'COMPANY'], ['영업이익', 'PROFIT']].forEach(function(t) { $h.append(sortTh(t[0], t[1], 'dp-num x-pl pl-calc-h')); });
 		$h.append(sortTh('확인 사항', 'FLAGS')).append('<th>메모</th><th>이력</th>');
 		$('#lHead').empty().append(bands).append($h);
 		var $b = $('#lBody').empty();
@@ -404,7 +418,7 @@
 			$tr.append(rs($('<td class="dp-num c-ded font-weight-bold pl-calc">').text(dpWon(r.DED_TOTAL)))).append(rs($('<td class="dp-num font-weight-bold pl-calc">').text(dpWon(r.NET))))
 				.append(rs($('<td class="dp-num pl-calc">').text(r.DELTA_PCT === undefined ? '' : (r.DELTA_PCT > 0 ? '+' : '') + r.DELTA_PCT + '%').toggleClass('text-danger', Math.abs(r.DELTA_PCT || 0) >= 10)))
 				.append(rs($('<td class="pl-stub">')))
-				.append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.REAL_SALE)))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(Number(r.BUY) ? dpWon(r.BUY) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.COMPANY)))).append(rs($('<td class="dp-num x-pl font-weight-bold pl-calc">').text(dpWon(r.PROFIT))))
+				.append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.REAL_SALE)))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(Number(r.BUY) ? dpWon(r.BUY) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(Number(r.FEE) ? dpWon(r.FEE) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.COMPANY)))).append(rs($('<td class="dp-num x-pl font-weight-bold pl-calc">').text(dpWon(r.PROFIT))))
 				.append(rs($('<td>')).append(r.FLAGS.map(function(f) { return flagChip(r, f); })))
 				.append(rs($('<td>')).append(countBtn('💬', r.MEMO_CNT, r.STAFF_NM + ' 메모', function() { memoPopup(r); })))
 				.append(rs($('<td>')).append(countBtn('✎', r.CHG_CNT, r.STAFF_NM + ' 수정이력', function() { historyPopup(r); })));
@@ -417,7 +431,7 @@
 				ALLOW.forEach(function() { $c.append('<td class="x-allow"></td>'); });
 				$c.append($('<td class="dp-num c-allow font-weight-bold">').text(dpWon(d.BASE_AMT)));
 				DED.forEach(function() { $c.append('<td class="x-ded"></td>'); });
-				$c.append('<td class="c-ded"></td>').append($('<td class="dp-num font-weight-bold">').text(dpWon(d.BASE_AMT))).append('<td></td><td class="pl-stub"></td><td class="x-pl"></td><td class="x-pl"></td><td class="x-pl"></td><td class="x-pl"></td><td></td><td></td><td></td>');
+				$c.append('<td class="c-ded"></td>').append($('<td class="dp-num font-weight-bold">').text(dpWon(d.BASE_AMT))).append('<td></td><td class="pl-stub"></td><td class="x-pl"></td><td class="x-pl"></td><td class="x-pl"></td><td class="x-pl"></td><td class="x-pl"></td><td></td><td></td><td></td>');
 				$b.append($c);
 			});
 		});
@@ -440,8 +454,11 @@
 	}
 
 	// 다른 계약: 정규·수습 직원에게 함께 걸린 기타·외부 계약(매입처에 주는 돈). 우리 급여·급여명세서에 들어가지 않는다
-	function isSal(t) { return t === 'REGULAR' || t === 'PROBATION'; }
-	function isOther(r, d) { var t = typeOf(d) || r.EMP_TYPE_CD; return !isSal(t) && r.DETAILS.some(function(x) { return isSal(typeOf(x)); }); }
+	// 본인 계약(급여로 본인에게): 정규·수습·특고프리·사업자프리·고용보험알바. 그 밖(기타계약·외부)은 업체 몫
+	var OWN = ['REGULAR', 'PROBATION', 'SPECIAL', 'BIZ', 'EMP_INS'];
+	function isOwnT(t) { return OWN.indexOf(t) >= 0; }
+	function isFeeT(t) { return String(t || '').indexOf('EXTERNAL_MCS') === 0; }
+	function isOther(r, d) { var t = typeOf(d) || r.EMP_TYPE_CD; return !isOwnT(t) && r.DETAILS.some(function(x) { return isOwnT(typeOf(x)); }); }
 
 	// 수습도 정규직이다. 수습 기간 = 입사일부터 3개월(마지막 날은 3개월 되는 날 전날). inMonth: 이 달과 겹침, left: 오늘부터 남은 날
 	function probation(r, t) {
@@ -522,16 +539,37 @@
 			show: function() { return dpWon(r[f]); }, value: function() { return r[f]; }, saved: function() { load(function() { if (detailRow) refreshDetail(); }); } });
 	}
 
-	function baseHowBtn(r) {
-		var title = r.STAFF_NM + ' · ' + dpYmLabel(ym) + ' 기본 ' + dpWon(r.BASE_AMT);
-		function lines() { return r.BASE_HOW.map(function(l) { return '<div><span style="white-space:normal">' + dpEsc(l) + '</span></div>'; }).join(''); }
-		var $b = $('<button type="button" class="pl-calc-btn">').attr('aria-label', r.STAFF_NM + ' 기본 계산 과정 보기').text('🧮');
-		dpHover($b, $b, function() { return '<div class="dp-card"><div class="dp-card-top">' + dpEsc(title) + '<span>계산 과정</span></div><div class="dp-sec">' + lines() + '</div></div>'; });
-		return $b.on('click', function(e) {
-			e.stopPropagation(); dpHide();
-			dpInfo(title + ' 계산 과정', $('<div>').append(r.BASE_HOW.map(function(l) { return $('<div class="mb-1">').text(l); }))
-				.append('<div class="small text-muted mt-2">기준값(식대·수습급여·일할 버림 단위)은 기본 머리글 🧮 에서 봅니다. 숫자를 누르면 직접 고칠 수 있고, 고친 값은 노란 칸으로 고정됩니다.</div>'));
+	// 🧮 돈 흐름: 이 사람 몫으로 나가는 돈을 갈래별로(외부=고객사 직접, 급여, 기타, 수수료)와 총액까지
+	var FLOW_NM = { DIR: '외부', PAY: '급여', ETC: '기타', FEE: '수수료' };
+	function flowLines(r) {
+		var out = [], cs = contracts(r), ownBase = 0, first = true;
+		r.DETAILS.forEach(function(d) {
+			if (!Number(d.CLIENT_DIRECT_AMT)) return;
+			var nm = (hrAllCodes('HR_CLIENT_DIRECT').filter(function(c) { return c.CD === d.CLIENT_DIRECT_CD; })[0] || {}).NM || d.CLIENT_DIRECT_CD || '';
+			out.push({ k: 'DIR', name: '고객사 직접계약' + (nm ? '(' + nm + ')' : ''), to: '고객사 → 본인', amt: Number(d.CLIENT_DIRECT_AMT), how: '우리 장부 밖 · 고객사가 본인에게 바로 지급' });
 		});
+		cs.forEach(function(d) { if (!isOther(r, d)) ownBase += Number(d.BASE_AMT || 0); });
+		var extra = Number(r.PAY_TOTAL || 0) - ownBase; // 식대·수당·상여(첫 급여 줄에 붙인다)
+		cs.forEach(function(d) {
+			var t = typeOf(d) || r.EMP_TYPE_CD, k = isOther(r, d) ? (isFeeT(t) ? 'FEE' : 'ETC') : 'PAY', nm = TYPE_NM[t] || t || '', amt = Number(d.BASE_AMT || 0), how = d.HOW || dpWon(amt);
+			var vendor = (/\(([^)]+)\)/.exec(nm) || [])[1] || d.BUY_PARTNER_NM || nm;
+			if (k === 'PAY' && first) { if (extra) { how += ' + 식대·수당 ' + dpWon(extra); amt += extra; } first = false; }
+			out.push({ k: k, name: nm, to: k === 'PAY' ? '이에스티 → 본인' : '이에스티 → ' + vendor, amt: amt, how: how + (k === 'PAY' ? ' · 급여명세서 있음' : ' · 급여명세서 없음') });
+		});
+		return out;
+	}
+	function flowCard(r) {
+		var ls = flowLines(r), tot = ls.reduce(function(s, l) { return s + l.amt; }, 0);
+		return '<div class="pl-flow"><div class="top"><b>' + dpEsc(r.STAFF_NM + ' · ' + dpYmLabel(ym) + ' 돈 흐름') + '</b><span>계약 ' + ls.length + '갈래</span></div>'
+			+ '<div class="sec"><div class="sec-t">이 사람 몫으로 나가는 돈</div><div class="bar">' + ls.map(function(l) { return '<i class="fb-' + l.k + '" style="width:' + (tot ? l.amt * 100 / tot : 0) + '%"></i>'; }).join('') + '</div>'
+			+ ls.map(function(l) {
+				return '<div class="ln"><span class="w"><span class="fl-tag fl-' + l.k + '">' + FLOW_NM[l.k] + '</span>' + dpEsc(l.name) + '<span class="to">' + dpEsc(l.to) + '</span></span><span class="a">' + dpWon(l.amt) + '</span><span class="h">' + dpEsc(l.how) + '</span></div>';
+			}).join('') + '</div><div class="tot"><span>총액 (본인 기준 한 달)</span><b>' + dpWon(tot) + '</b></div></div>';
+	}
+	function baseHowBtn(r) {
+		var $b = $('<button type="button" class="pl-calc-btn">').attr('aria-label', r.STAFF_NM + ' 돈 흐름 보기').text('🧮');
+		dpHover($b, $b, function() { return flowCard(r); });
+		return $b.on('click', function(e) { e.stopPropagation(); dpHide(); dpInfo(r.STAFF_NM + ' 돈 흐름', $(flowCard(r))); });
 	}
 
 	// ── 메모 (쌓기만, 본인 것만 삭제) ──
