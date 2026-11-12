@@ -5,6 +5,15 @@ $(document).ajaxError(function() { bootbox.alert('처리하지 못했습니다. 
 
 // 공통코드관리의 HR_ 그룹. { 그룹: [{CD, NM}] }
 var HR_CODES = null;
+// 화면용 공통코드 전체. 페이지를 그릴 때 서버가 넣는다
+<%@ include file="/WEB-INF/jsp/bo/hr/codes.jspf"%>
+// 코드 그룹으로 셀렉트 선택지를 채운다. first 는 맨 앞에 붙일 [값, 이름](예: ['', '전체'])
+function hrFillSelect(sel, grp, first) {
+	var $s = $(sel).empty();
+	if (first) $s.append($('<option>').val(first[0]).text(first[1]));
+	hrAllCodes(grp).forEach(function(c) { $s.append($('<option>').val(c.CD).text(c.NM)); });
+	return $s;
+}
 
 function hrSetCodes(list) {
 	HR_CODES = {};

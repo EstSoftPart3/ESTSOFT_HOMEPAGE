@@ -90,7 +90,7 @@
 					<div class="form-row">
 						<div class="col-md-4 mb-2"><label for="cId">아이디 *</label><input id="cId" name="EMPLY_ID" class="form-control form-control-sm sys-mono" maxlength="50" required></div>
 						<div class="col-md-4 mb-2"><label for="cName">이름 *</label><input id="cName" name="EMPLY_NM" class="form-control form-control-sm" maxlength="50" required></div>
-						<div class="col-md-4 mb-2"><label for="cSex">성별</label><select id="cSex" name="EMPLY_SEX_TYP_CD" class="form-control form-control-sm"><option value=""></option><option value="M">남</option><option value="F">여</option></select></div>
+						<div class="col-md-4 mb-2"><label for="cSex">성별</label><select id="cSex" name="EMPLY_SEX_TYP_CD" class="form-control form-control-sm"></select></div>
 						<div class="col-md-6 mb-2"><label for="cEmail">회사 메일</label><input id="cEmail" name="EMPLY_EMAIL" type="email" class="form-control form-control-sm" maxlength="200"></div>
 						<div class="col-md-6 mb-2"><label for="cPhone">휴대전화</label><input id="cPhone" name="EMPLY_PH_NUM" class="form-control form-control-sm" maxlength="50"></div>
 						<div class="col-md-8 mb-2"><label for="cAddr">주소</label><input id="cAddr" name="EMPLY_HOME_ADDR" class="form-control form-control-sm" maxlength="500"></div>
@@ -157,6 +157,7 @@
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
 	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
 	<script>
+	hrFillSelect('#cSex', 'MEM_GENDER', ['', '']);
 	var data = { accounts: [], pending: [], roles: [] }, tab = 'staff', leftOnly = false, card = null, pendingPick = null, done = [];
 	var linked = null, staffRows = [], staffActive = -1, staffTimer = null, staffSeq = 0;
 	var TABS = [['staff', '직원 계정'], ['admin', '관리자 계정'], ['pending', '미발급 재직자'], ['inactive', '중지·퇴사'], ['fix', '정리 필요']];

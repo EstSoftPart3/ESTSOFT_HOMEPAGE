@@ -199,16 +199,15 @@
 	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
 
 	<script>
-	var TYPE = { NB: '노트북', MT: '모니터', DT: '데스크탑', MU: '마우스', KB: '키보드' };
+	var TYPE = hrCodeMap('EQP_TYPE');
 	var STATUS = { RENT: '대여중', STOCK: '보관중', DISPOSED: '폐기', LOST: '분실' };
 	// 특이사항·이슈는 메모로 합쳤다. 목록 💬 버튼과 장비카드 메모 칸에서 쌓는다
 	var MEMO_API = hrMemoApi('/admin/equipment/', 'equipment');
 	var rows = [], staff = [], tab = 'HAVE', alertKey = null, holderKey = null, opened = null, card = null, picked = [];
 
 	$(function() {
-		$('#fType').append('<option value="">전체</option>');
-		$('#nType').append('<option value=""></option>');
-		$.each(TYPE, function(k, v) { $('#fType, #nType').append($('<option>').val(k).text(v)); });
+		hrFillSelect('#fType', 'EQP_TYPE', ['', '전체']);
+		hrFillSelect('#nType', 'EQP_TYPE', ['', '']);
 		$('#keyword').on('input', render);
 		$('#fType, #fPurpose').on('change', render);
 		$('#checkAll').on('change', function() { $('#listBody .eq-check').prop('checked', this.checked); });
@@ -418,7 +417,7 @@
 
 	function paintFiles($b, r) {
 		var $input = $('<input type="file" id="eqFile" class="d-none" accept="image/*,application/pdf">').on('change', function() { if (this.files[0]) uploadFile(r, this.files[0]); this.value = ''; });
-		var $doc = $('<select id="eqDoc" class="form-control form-control-sm" style="width:90px" aria-label="첨부 종류"><option value="RECEIPT">영수증</option><option value="ETC">기타</option></select>');
+		var $doc = hrFillSelect('<select id="eqDoc" class="form-control form-control-sm" style="width:90px" aria-label="첨부 종류">', 'EQP_DOC');
 		$b.append($('<div class="hr-section d-flex align-items-center">').css('gap', '6px').text('첨부').append($('<span class="ml-auto">')).append($doc).append($input).append('<label for="eqFile" class="btn btn-sm btn-outline-primary mb-0">파일 추가</label>'));
 		if (!card.files.length) $b.append('<div class="small text-muted">첨부가 없습니다.</div>');
 		card.files.forEach(function(f) {

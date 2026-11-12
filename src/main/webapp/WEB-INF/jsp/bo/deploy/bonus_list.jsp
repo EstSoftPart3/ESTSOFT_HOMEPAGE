@@ -44,9 +44,9 @@
 						<div class="form-row">
 							<div class="form-group col-md-6"><label for="bNm">상여 항목 이름</label><input id="bNm" class="form-control form-control-sm" maxlength="50" required></div>
 							<div class="form-group col-md-6"><label for="bTarget">받는 사람</label>
-								<select id="bTarget" class="form-control form-control-sm"><option value="SELF">본인</option><option value="REFERRER">추천인 (기준일은 추천한 인재 것)</option></select></div>
+								<select id="bTarget" class="form-control form-control-sm"></select></div>
 							<div class="form-group col-md-6"><label for="bBase">기준일</label>
-								<select id="bBase" class="form-control form-control-sm"><option value="JOIN">입사일</option><option value="CONTRACT">계약(투입) 시작일</option><option value="JOIN_OR_CONTRACT">입사일 또는 계약 시작일 (정규·수습은 입사일)</option></select></div>
+								<select id="bBase" class="form-control form-control-sm"></select></div>
 							<div class="form-group col-md-6 d-flex align-items-end" style="gap:16px">
 								<div class="custom-control custom-switch"><input type="checkbox" class="custom-control-input" id="bUse"><label class="custom-control-label" for="bUse">사용</label></div>
 								<div class="form-check"><input type="checkbox" class="form-check-input" id="bPer"><label class="form-check-label" for="bPer">직원관리에서 사람마다 금액을 바꿀 수 있음</label></div>
@@ -77,6 +77,8 @@
 	var items = [], applies = [], editing = null;
 
 	$(function() {
+		hrFillSelect('#bTarget', 'BONUS_TARGET');
+		hrFillSelect('#bBase', 'BONUS_BASE');
 		$('#btnNew').on('click', function() { edit(null); });
 		$('#btnStep').on('click', function() { stepRow({ m: '', c: 'FULL', a: '' }); sum(); });
 		$('#bSteps').on('input change', 'input, select', sum);
@@ -101,7 +103,7 @@
 			$b.append($('<tr>').toggleClass('text-muted', !on).append($('<td>').append($sw)).append($('<td>').append($('<b>').text(b.BONUS_NM)))
 				.append($('<td>').text(dpBaseText(b))).append($('<td>').text(steps.map(dpStepText).join(' · ')))
 				.append($('<td class="dp-num">').text(dpWon(steps.reduce(function(s, x) { return s + x.a; }, 0))))
-				.append($('<td>').append(b.TARGET_CD === 'REFERRER' ? $('<span class="dp-pill warn">').text('추천인') : '본인'))
+				.append($('<td>').append(b.TARGET_CD === 'REFERRER' ? $('<span class="dp-pill warn">').text(hrCodeMap('BONUS_TARGET').REFERRER || '추천인') : hrCodeMap('BONUS_TARGET')[b.TARGET_CD] || b.TARGET_CD))
 				.append($('<td>').append(b.PER_AMT_YN === 'Y' ? $('<span class="dp-pill ok">').text('가능') : $('<span class="dp-mute">').text('—')))
 				.append($('<td class="dp-num">').append($('<button type="button" class="btn btn-sm btn-link p-0">').text(n + '명').prop('disabled', !n).attr('aria-label', b.BONUS_NM + ' 적용 인원 ' + n + '명').on('click', function() { who(b); })))
 				.append($('<td>').append($('<button type="button" class="btn btn-sm btn-outline-secondary">수정</button>').on('click', function() { edit(b); }))));
@@ -132,8 +134,7 @@
 	}
 
 	function stepRow(s) {
-		var $c = $('<select class="form-control form-control-sm" aria-label="조건">');
-		$.each(DP_COND, function(k, v) { $c.append($('<option>').val(k).text(v)); });
+		var $c = hrFillSelect('<select class="form-control form-control-sm" aria-label="조건">', 'BONUS_COND');
 		$('#bSteps').append($('<tr>').append($('<td>').append($('<input type="number" class="form-control form-control-sm" min="0" max="120" required aria-label="개월">').val(s.m)))
 			.append($('<td>').append($c.val(s.c)))
 			.append($('<td>').append($('<input class="form-control form-control-sm text-right" inputmode="numeric" required aria-label="금액">').val(s.a === '' ? '' : Number(s.a).toLocaleString('ko-KR'))))

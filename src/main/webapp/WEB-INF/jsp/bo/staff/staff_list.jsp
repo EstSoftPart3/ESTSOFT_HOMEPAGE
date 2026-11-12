@@ -548,7 +548,7 @@
 		});
 	}
 
-	var EQ_TYPE = { NB: '노트북', MT: '모니터', DT: '데스크탑', MU: '마우스', KB: '키보드' };
+	var EQ_TYPE = hrCodeMap('EQP_TYPE');
 	function loadEquipment(sq, done) {
 		hrPost('/admin/equipment/staffEquipmentData.do', { STAFF_SQ: sq }, function(res) { done(res.result || []); });
 	}

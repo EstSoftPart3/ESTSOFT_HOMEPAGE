@@ -111,7 +111,7 @@
 						</table>
 					</div>
 					<div class="form-row">
-						<div class="form-group col-md-4"><label for="ROLE_CD">역할</label><select id="ROLE_CD" class="form-control form-control-sm"><option value="MEMBER">연구원</option><option value="HEAD">연구소장</option></select></div>
+						<div class="form-group col-md-4"><label for="ROLE_CD">역할</label><select id="ROLE_CD" class="form-control form-control-sm"></select></div>
 						<div class="form-group col-md-4"><label for="START_DT">소속 시작일</label><input type="date" id="START_DT" class="form-control form-control-sm" required></div>
 						<div class="form-group col-md-4"><label for="END_DT">소속 종료일</label><input type="date" id="END_DT" class="form-control form-control-sm"></div>
 					</div>
@@ -132,6 +132,9 @@
 	var TABS = ['기본 정보', '연구원', '소속 현황', '결재라인'];
 	// 비고는 메모로 옮겼다. 목록 💬 버튼과 기본 정보 아래 메모 칸에서 쌓는다
 	var MEMO_API = hrMemoApi('/admin/lab/', 'team');
+	// 연구원 역할(공통코드 LAB_ROLE). HEAD(연구소장)는 마감 권한과 이어져 코드값을 바꾸면 안 된다
+	var ROLE = hrCodeMap('LAB_ROLE');
+	$(function() { hrFillSelect('#ROLE_CD', 'LAB_ROLE'); });
 	var teams = [], staff = [], accounts = [], detail = null, tab = 0, year = new Date().getFullYear(), picked = null, line = [], dragFrom = null;
 
 	function toast(msg) { $('#labToast').text(msg).stop(true).fadeIn(100).delay(1500).fadeOut(300); }
@@ -193,7 +196,7 @@
 		if (!detail.researchers.length) $t.append('<tr><td colspan="6" class="text-center text-muted">등록된 연구원이 없습니다.</td></tr>');
 		detail.researchers.forEach(function(r) {
 			$('<tr>').append($('<td>').append($('<a href="#" class="lab-open">').text(r.STAFF_NM).click(function(e) { e.preventDefault(); openMember(r); })), $('<td>').text(r.DEPT_NM || ''),
-				$('<td>').text(r.ROLE_CD === 'HEAD' ? '연구소장' : '연구원'), $('<td>').text(r.START_DT), $('<td>').text(r.END_DT || '소속 중'), $('<td>').append(cardLink(r.STAFF_SQ))).appendTo($t);
+				$('<td>').text(ROLE[r.ROLE_CD] || r.ROLE_CD), $('<td>').text(r.START_DT), $('<td>').text(r.END_DT || '소속 중'), $('<td>').append(cardLink(r.STAFF_SQ))).appendTo($t);
 		});
 		$b.append($('<div class="table-responsive">').append($('<table class="table table-sm table-hover cal-table mb-0"><thead><tr><th>성명</th><th>부서</th><th>역할</th><th>소속 시작일</th><th>소속 종료일</th><th>직원관리</th></tr></thead></table>').append($t)));
 	}

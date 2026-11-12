@@ -34,7 +34,8 @@
     <%@ include file="/WEB-INF/include/footer.jspf" %>
 
     <script>
-    var TYPE = { NB: '노트북', MT: '모니터', DT: '데스크탑', MU: '마우스', KB: '키보드' };
+    <%@ include file="/WEB-INF/jsp/bo/hr/codes.jspf"%>
+    var TYPE = hrCodeMap('EQP_TYPE');
 
     function load() {
     	$.post('/eep/equipment/myEquipmentData.do', function(res) {

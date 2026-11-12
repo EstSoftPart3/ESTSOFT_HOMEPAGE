@@ -5,12 +5,12 @@
 
 <mapper namespace="com.eep.mapper.BoHrMapper">
 
-	<!-- 셀렉트박스 코드: 공통코드관리 화면에서 HR_ 로 시작하는 그룹 -->
+	<!-- 셀렉트박스 코드: 공통코드관리 화면의 화면용 그룹(HR_·EQP_·LAB_·BONUS_·MEM_, sql/select_codes.sql) -->
 	<select id="selectHrCodeList" resultType="hashMap">
 		SELECT C.COMN_CD AS GRP, D.COMN_DTL_CD AS CD, D.COMN_DTL_CD_NM AS NM
 		FROM TB_EEP_COMN_CD_M C
 		JOIN TB_EEP_COMN_DTL_CD_S D ON D.COMN_CD_SQ = C.COMN_CD_SQ
-		WHERE C.COMN_CD LIKE 'HR\_%'
+		WHERE C.COMN_CD REGEXP '^(HR|EQP|LAB|BONUS|MEM)_'
 		  AND C.DEL_YN = 'N' AND C.USE_YN = 'Y'
 		  AND D.DEL_YN = 'N' AND D.USE_YN = 'Y'
 		ORDER BY C.COMN_CD, D.COMN_DTL_CD_ORD IS NULL, D.COMN_DTL_CD_ORD, D.COMN_DTL_CD_SQ

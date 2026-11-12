@@ -52,11 +52,10 @@ var DP_DED = [['NP_AMT', '국민연금'], ['HI_AMT', '건강보험'], ['LTC_AMT'
 	['NP_SETTLE', '국민연금 정산'], ['HI_SETTLE', '건강보험 정산'], ['EI_SETTLE', '고용보험 정산'], ['LTC_SETTLE', '장기요양 정산'], ['IT_SETTLE', '소득세 정산'], ['LIT_SETTLE', '지방소득세 정산'], ['MUTUAL_AMT', '상조회비'], ['ETC_DED', '기타공제']];
 
 // 상여 조건 글자. STEPS = "개월:조건:금액,..."
-var DP_BASE = { JOIN: '입사일', CONTRACT: '계약 시작일', JOIN_OR_CONTRACT: '입사일 또는 계약 시작일' };
-var DP_COND = { FULL: '만근', TENURE: '근속', NONE: '조건 없음' };
+// 상여 기준일·조건 이름은 공통코드 BONUS_BASE·BONUS_COND (hr_script 의 hrCodeMap)
 function dpSteps(s) { return String(s || '').split(',').filter(Boolean).map(function(x) { var p = x.split(':'); return { m: +p[0], c: p[1], a: +p[2] }; }); }
-function dpStepText(st) { return (st.m ? st.m + '개월' + (st.c !== 'NONE' ? ' ' + DP_COND[st.c] : '') : '계약 시') + ' → ' + dpWon(st.a); }
-function dpBaseText(b) { return (b.TARGET_CD === 'REFERRER' ? '추천한 인재의 ' : '') + (DP_BASE[b.BASE_CD] || b.BASE_CD); }
+function dpStepText(st) { return (st.m ? st.m + '개월' + (st.c !== 'NONE' ? ' ' + (hrCodeMap('BONUS_COND')[st.c] || st.c) : '') : '계약 시') + ' → ' + dpWon(st.a); }
+function dpBaseText(b) { return (b.TARGET_CD === 'REFERRER' ? '추천한 인재의 ' : '') + (hrCodeMap('BONUS_BASE')[b.BASE_CD] || b.BASE_CD); }
 function dpWon(v) { return v === null || v === undefined || v === '' ? '—' : Number(v).toLocaleString('ko-KR'); }
 function dpEsc(s) { return $('<div>').text(s === null || s === undefined ? '' : String(s)).html(); }
 function dpLine(k, v, cls) { return '<div class="' + (cls || '') + '"><span>' + dpEsc(k) + '</span><span>' + dpEsc(v) + '</span></div>'; }

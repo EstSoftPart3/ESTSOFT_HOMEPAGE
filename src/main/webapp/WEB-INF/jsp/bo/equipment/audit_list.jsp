@@ -64,7 +64,7 @@
 	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
 
 	<script>
-	var TYPE = { NB: '노트북', MT: '모니터', DT: '데스크탑', MU: '마우스', KB: '키보드' };
+	var TYPE = hrCodeMap('EQP_TYPE');
 	var RESULT = { NONE: '미응답', OK: '확인', BAD: '이상' };
 	var rounds = [], current = null, rows = [], noneOnly = false;
 
