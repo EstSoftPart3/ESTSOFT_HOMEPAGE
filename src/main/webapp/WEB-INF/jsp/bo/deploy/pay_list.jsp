@@ -364,13 +364,13 @@
 
 	function renderLedger(list) {
 		if (pickedYm !== ym) { picked = {}; pickedYm = ym; }
-		var bands = $('<tr class="pl-bands">').append('<th colspan="9"></th>')
+		var bands = $('<tr class="pl-bands">').append('<th colspan="10"></th>')
 			.append(band('show-allow', 'allow', '수당', ALLOW.length)).append(band('show-ded', 'ded', '공제', DED.length)).append('<th colspan="2"></th>')
 			.append(band('show-pl', 'pl', '손익', 3)).append('<th colspan="3"></th>');
 		var $h = $('<tr>').append($('<th class="pl-pick-col">').append($('<input type="checkbox" id="pickAll" aria-label="보이는 사람 모두 체크">')))
 			.append(sortTh('성명', 'STAFF_NM')).append(sortTh('형태', 'TYPE')).append(sortTh('고객사', 'CLIENT')).append(sortTh('프로젝트', 'PRJ'))
 			.append(sortTh('근무기간', 'PERIOD')).append($('<th>').append($('<button type="button" class="pl-prob-btn" id="probToggle">').attr('aria-expanded', probOpen).text(probOpen ? '수습기간 ▾' : '수습 ▸')))
-			.append(sortTh('매출단가', 'SALE_PRICE', 'dp-num')).append(sortTh('기본', 'BASE_AMT', 'dp-num'));
+			.append(sortTh('매출단가', 'SALE_PRICE', 'dp-num')).append($('<th class="dp-num">').text('계약 기본').attr('title', '계약 건마다 들어가는 기본. 계약이 여러 건이면 건별로 나뉘고, 기본 칸은 그 합계입니다')).append(sortTh('기본', 'BASE_AMT', 'dp-num'));
 		ALLOW.forEach(function(a) { $h.append(sortTh(a[1], a[0], 'dp-num x-allow')); });
 		$h.append(sortTh('지급계', 'PAY_TOTAL', 'dp-num c-allow pl-calc-h'));
 		DED.forEach(function(a) { $h.append(a[0] === '_SETTLE' ? $('<th class="dp-num x-ded pl-calc-h">').text(a[1]).prepend(calcBtn('_SETTLE', a[1])) : sortTh(a[1], a[0], 'dp-num x-ded')); });
@@ -420,7 +420,9 @@
 			$('<td>').text(d.PRJ_NM || '').append(d.DEPLOY_SQ ? dpInfoBtn(r.STAFF_NM + ' 투입 정보', function() { deployInfo(r, d); }) : ''),
 			$('<td>').text(d.DEPLOY_SQ ? period(d) : ''),
 			$('<td class="pl-prob">').append(prob && prob.inMonth ? [$('<span class="full">').text(prob.from.format('YY/MM/DD') + '~' + prob.to.format('YY/MM/DD')), $('<span class="dot">').attr('title', '수습 ' + prob.from.format('YY/MM/DD') + '~' + prob.to.format('YY/MM/DD')).text('●')] : ''),
-			$('<td class="dp-num">').text(d.SALE_PRICE ? dpWon(d.SALE_PRICE) : '')];
+			$('<td class="dp-num">').text(d.SALE_PRICE ? dpWon(d.SALE_PRICE) : ''),
+			// 계약이 여러 건인 사람만: 정규 몫과 P4H·외부 계약 몫을 건별로 보인다
+			$('<td class="dp-num">').append(d.DEPLOY_SQ && contracts(r).length > 1 ? dpWon(d.BASE_AMT) : $('<span class="dp-mute">').text('—'))];
 	}
 
 	// 수습도 정규직이다. 수습 기간 = 입사일부터 3개월(마지막 날은 3개월 되는 날 전날). inMonth: 이 달과 겹침, left: 오늘부터 남은 날

@@ -78,6 +78,7 @@
 	.pl-btn { border: 1px solid #b9dbe6; background: #f3fbfd; color: #0b6e8a; border-radius: 10px; padding: 0 7px; font-size: 11.5px; font-weight: 700; }
 	.pl-btn.zero { opacity: .55; font-weight: 400; }
 	#dpBody tr.dp-sub td { background: #fff8e8; font-size: 12px; }
+	#dpBody tr.dp-sub td[data-c=EMP_TYPE_CD]::before { content: '└ '; color: #8a949c; }
 	/* 같은 달 다른 계약이 있는 사람: 왼쪽 주황 띠 + 성명 앞 작은 화살표 */
 	#dpBody tr.dp-dup > td:first-child { box-shadow: inset 4px 0 0 #e0a800; }
 	.pl-dup-arrow { border: 0; background: none; padding: 0 4px 0 0; color: #b07d00; font-size: 11px; cursor: pointer; }
@@ -416,7 +417,7 @@
 	}
 
 	// 사람 단위 칸(성명·근속·거주지역·이력 등)은 윗줄에만, 계약 단위 칸은 줄마다
-	var PERSON = ['TENURE', 'HOME_AREA', 'PRJ', 'MEMOS', 'HIST'];
+	var PERSON = ['STAFF_NM', 'TENURE', 'HOME_AREA', 'PRJ', 'MEMOS', 'HIST'];
 
 	// 정규·수습은 '정규'로, 입사일부터 3개월(수습 기간) 안이면 '정규(수습 D-n)'
 	function typeLabel(r) {
@@ -428,10 +429,12 @@
 
 	function viewRow(r, g, child) {
 		var $tr = $('<tr>').toggleClass('dp-secret', !!r.SECRET).toggleClass('dp-sub', !!child), rm = remain(r);
+		// 급여관리처럼: 사람 단위 칸은 윗줄 하나로 합치고(rowspan), └ 줄에는 계약 칸만 둔다
+		var span = !child && isOpen(g) ? g.rows.length : 1;
 		visibleCols().forEach(function(c) {
 			var $td = $('<td>').attr('data-c', c[0]), v = r[c[0]];
-			if (child && PERSON.indexOf(c[0]) >= 0) $td.text('');
-			else if (c[0] === 'STAFF_NM' && child) $td.append($('<span class="dp-sub-mark">').text('└ ' + (r.END_DT && moment(r.END_DT).isBefore(today) ? '철수' : '동시'))).append(dpInfoBtn(r.STAFF_NM + ' 투입 상세', function() { openDetail(r); }));
+			if (PERSON.indexOf(c[0]) >= 0) { if (child) return; $td.attr('rowspan', span); }
+			if (c[0] === 'REMAIN' && child) $td.append($('<span class="dp-pill">').addClass(rm.tone).text(rm.text)).append(dpInfoBtn(r.STAFF_NM + ' 투입 상세', function() { openDetail(r); }));
 			else if (c[0] === 'STAFF_NM') $td.append(dupArrow(g)).append(r.SECRET ? $('<span title="시크릿">').text('🔒 ') : '').append($('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { openDetail(r); }));
 			else if (c[0] === 'MEMOS') $td.append(countBtn('💬', counts(data.memoCounts)[r.STAFF_SQ], r.STAFF_NM + ' 메모', function() { memoPopup(r); }));
 			else if (c[0] === 'HIST') $td.append(countBtn('✎', counts(data.chgCounts)[r.STAFF_SQ], r.STAFF_NM + ' 수정이력', function() { historyPopup(r); }));
