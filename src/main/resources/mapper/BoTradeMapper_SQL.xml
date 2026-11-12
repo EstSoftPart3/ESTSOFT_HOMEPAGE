@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 영업 > 업체 - 매출관리·매입관리: 투입에서 나오는 건 + 직접 넣는 일반 건, 세금계산서 묶음 -->
+<mapper namespace="com.eep.mapper.BoTradeMapper">
+
+	<!--
+		운영 DB 스키마 변경 경로가 앱 계정뿐이라 기동 때 맞춘다(법인카드와 같은 방식). 다시 돌려도 이미 있는 것은 건너뛴다.
+		되돌리기: DROP TABLE TB_EEP_TRADE_LINE_R, TB_EEP_TRADE_M;
+		          DELETE FROM TB_EEP_ROLE_MENU_R WHERE MENU_CODE IN ('H00009', 'H00010'); DELETE FROM TB_EEP_MENU WHERE MENU_CODE IN ('H00009', 'H00010');
+	-->
+	<update id="ensureSchema">
+		CREATE TABLE IF NOT EXISTS TB_EEP_TRADE_M (
+			  TRADE_SQ      int NOT NULL AUTO_INCREMENT
+			, KIND_CD       varchar(4) NOT NULL COMMENT 'SALE 매출, BUY 매입'
+			, YM            char(7) NOT NULL
+			, PARTNER_SQ    int NOT NULL
+			, TYPE_NM       varchar(50) NOT NULL COMMENT '구분(임대료·장비·용역 등 자유 입력)'
+			, ITEM_NM       varchar(300) NOT NULL COMMENT '품목'
+			, START_DT      char(10) NULL
+			, END_DT        char(10) NULL
+			, AMT           bigint NOT NULL COMMENT '공급가액'
+			, MEMO          varchar(500) NULL
+			, UPDT_EMPLY_ID varchar(50) NULL
+			, UPDT_DT       datetime NULL
+			, PRIMARY KEY (TRADE_SQ)
+			, KEY IX_TRADE_MONTH (KIND_CD, YM)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='투입 외 매출·매입 건';
+
+		CREATE TABLE IF NOT EXISTS TB_EEP_TRADE_LINE_R (
+			  KIND_CD  varchar(4) NOT NULL
+			, YM       char(7) NOT NULL
+			, SRC_CD   char(1) NOT NULL COMMENT 'D 투입 건(DEPLOY_SQ), M 일반 건(TRADE_SQ)'
+			, SRC_SQ   int NOT NULL
+			, INV_NO   int NULL COMMENT '거래처 안에서 몇 번째 세금계산서'
+			, SORT_NO  int NULL COMMENT '계산서 안 순서'
+			, AMT      bigint NULL COMMENT '투입 건 금액을 손으로 고친 값'
+			, ISSUE_DT char(10) NULL COMMENT '발급 완료로 표시한 날'
+			, PRIMARY KEY (KIND_CD, YM, SRC_CD, SRC_SQ)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='월별 건의 세금계산서 묶음·순서·발급 표시';
+
+		<!-- 메뉴는 매출/매입처 관리(H00006) 옆에, 권한은 그 메뉴를 가진 역할에 처음 한 번만 준다 -->
+		INSERT INTO TB_EEP_MENU (MENU_CODE, MENU_NM, REL_CODE, MENU_DEPTH, MENU_URL, FRST_REG_DT, LAST_UPDT_DT, FRST_REGISTER, SORT_NO, USE_YN, AUTH_PATTERN, NEW_WIN_YN)
+		SELECT 'H00009', '매출관리', REL_CODE, MENU_DEPTH, '/admin/trade/openSaleList.do', NOW(), NOW(), 'system', SORT_NO + 1, 'Y', '/admin/trade/openSaleList.do,/admin/trade/sale/**', 'N'
+		FROM TB_EEP_MENU WHERE MENU_CODE = 'H00006' AND NOT EXISTS (SELECT 1 FROM (SELECT MENU_CODE FROM TB_EEP_MENU) M WHERE M.MENU_CODE = 'H00009');
+		INSERT INTO TB_EEP_MENU (MENU_CODE, MENU_NM, REL_CODE, MENU_DEPTH, MENU_URL, FRST_REG_DT, LAST_UPDT_DT, FRST_REGISTER, SORT_NO, USE_YN, AUTH_PATTERN, NEW_WIN_YN)
+		SELECT 'H00010', '매입관리', REL_CODE, MENU_DEPTH, '/admin/trade/openBuyList.do', NOW(), NOW(), 'system', SORT_NO + 2, 'Y', '/admin/trade/openBuyList.do,/admin/trade/buy/**', 'N'
+		FROM TB_EEP_MENU WHERE MENU_CODE = 'H00006' AND NOT EXISTS (SELECT 1 FROM (SELECT MENU_CODE FROM TB_EEP_MENU) M WHERE M.MENU_CODE = 'H00010');
+		INSERT IGNORE INTO TB_EEP_ROLE_MENU_R (ROLE_SQ, MENU_CODE)
+		SELECT ROLE_SQ, 'H00009' FROM TB_EEP_ROLE_MENU_R WHERE MENU_CODE = 'H00006'
+		  AND NOT EXISTS (SELECT 1 FROM (SELECT MENU_CODE FROM TB_EEP_ROLE_MENU_R) R WHERE R.MENU_CODE = 'H00009');
+		INSERT IGNORE INTO TB_EEP_ROLE_MENU_R (ROLE_SQ, MENU_CODE)
+		SELECT ROLE_SQ, 'H00010' FROM TB_EEP_ROLE_MENU_R WHERE MENU_CODE = 'H00006'
+		  AND NOT EXISTS (SELECT 1 FROM (SELECT MENU_CODE FROM TB_EEP_ROLE_MENU_R) R WHERE R.MENU_CODE = 'H00010');
+	</update>
+
+	<select id="selectPartners" resultType="hashMap">
+		SELECT PARTNER_SQ, PARTNER_NM, SALE_YN, BUY_YN, USE_YN FROM TB_EEP_PARTNER_M ORDER BY PARTNER_NM
+	</select>
+
+	<select id="selectTypes" parameterType="hashMap" resultType="string">
+		SELECT DISTINCT TYPE_NM FROM TB_EEP_TRADE_M WHERE KIND_CD = #{KIND_CD} ORDER BY TYPE_NM
+	</select>
+
+	<!-- 그 달에 하루라도 걸친 투입 건. 매출은 매출처가 있는 건, 매입은 업체·사업자에게 주는 계약(사업자·외부·기타)만 -->
+	<select id="selectDeployLines" parameterType="hashMap" resultType="hashMap">
+		SELECT D.DEPLOY_SQ, D.STAFF_SQ, S.STAFF_NM, D.EMP_TYPE_CD, D.PRJ_NM, D.START_DT, D.END_DT, D.SALE_PRICE, D.COST_PRICE, IFNULL(D.CLIENT_DIRECT_AMT, 0) AS DIRECT_AMT
+			, P.PARTNER_SQ, P.PARTNER_NM, PD.REAL_SALE, PD.BASE_AMT, IFNULL(C.CLOSED_YN, 'N') AS CLOSED_YN
+		FROM TB_EEP_DEPLOY_R D
+		JOIN TB_EEP_HR_STAFF_M S ON S.STAFF_SQ = D.STAFF_SQ
+		LEFT JOIN TB_EEP_PARTNER_M P ON P.PARTNER_SQ = <if test="KIND_CD == 'SALE'">D.SALE_PARTNER_SQ</if><if test="KIND_CD != 'SALE'">D.BUY_PARTNER_SQ</if>
+		LEFT JOIN TB_EEP_PAYROLL_D PD ON PD.PAY_YM = #{YM} AND PD.DEPLOY_SQ = D.DEPLOY_SQ
+		LEFT JOIN TB_EEP_PAYROLL_CLOSE_M C ON C.PAY_YM = #{YM}
+		WHERE D.START_DT &lt;= #{TO_DT} AND (D.END_DT IS NULL OR D.END_DT &gt;= #{FROM_DT})
+		<if test="KIND_CD == 'SALE'">AND D.SALE_PARTNER_SQ IS NOT NULL</if>
+		<if test="KIND_CD != 'SALE'">AND (D.EMP_TYPE_CD = 'BIZ' OR D.EMP_TYPE_CD LIKE 'EXTERNAL%' OR D.EMP_TYPE_CD LIKE 'ETC%')</if>
+		ORDER BY P.PARTNER_NM, D.PRJ_NM, S.STAFF_NM
+	</select>
+
+	<select id="selectTrades" parameterType="hashMap" resultType="hashMap">
+		SELECT T.TRADE_SQ, T.PARTNER_SQ, P.PARTNER_NM, T.TYPE_NM, T.ITEM_NM, T.START_DT, T.END_DT, T.AMT, T.MEMO
+		FROM TB_EEP_TRADE_M T
+		LEFT JOIN TB_EEP_PARTNER_M P ON P.PARTNER_SQ = T.PARTNER_SQ
+		WHERE T.KIND_CD = #{KIND_CD} AND T.YM = #{YM}
+		ORDER BY P.PARTNER_NM, T.ITEM_NM
+	</select>
+
+	<select id="selectLines" parameterType="hashMap" resultType="hashMap">
+		SELECT SRC_CD, SRC_SQ, INV_NO, SORT_NO, AMT, ISSUE_DT FROM TB_EEP_TRADE_LINE_R WHERE KIND_CD = #{KIND_CD} AND YM = #{YM}
+	</select>
+
+	<select id="selectIssueDt" parameterType="hashMap" resultType="string">
+		SELECT ISSUE_DT FROM TB_EEP_TRADE_LINE_R WHERE KIND_CD = #{KIND_CD} AND YM = #{YM} AND SRC_CD = #{SRC_CD} AND SRC_SQ = #{SRC_SQ}
+	</select>
+
+	<select id="selectTradeYm" parameterType="hashMap" resultType="string">
+		SELECT YM FROM TB_EEP_TRADE_M WHERE TRADE_SQ = #{TRADE_SQ} AND KIND_CD = #{KIND_CD}
+	</select>
+
+	<insert id="insertTrade" parameterType="hashMap">
+		INSERT INTO TB_EEP_TRADE_M (KIND_CD, YM, PARTNER_SQ, TYPE_NM, ITEM_NM, START_DT, END_DT, AMT, MEMO, UPDT_EMPLY_ID, UPDT_DT)
+		VALUES (#{KIND_CD}, #{YM}, #{PARTNER_SQ}, #{TYPE_NM}, #{ITEM_NM}, NULLIF(#{START_DT}, ''), NULLIF(#{END_DT}, ''), #{AMT}, NULLIF(#{MEMO}, ''), #{UPDT_EMPLY_ID}, NOW())
+	</insert>
+
+	<update id="updateTrade" parameterType="hashMap">
+		UPDATE TB_EEP_TRADE_M
+		SET PARTNER_SQ = #{PARTNER_SQ}, TYPE_NM = #{TYPE_NM}, ITEM_NM = #{ITEM_NM}, START_DT = NULLIF(#{START_DT}, ''), END_DT = NULLIF(#{END_DT}, ''), AMT = #{AMT}, MEMO = NULLIF(#{MEMO}, '')
+			, UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE TRADE_SQ = #{TRADE_SQ} AND KIND_CD = #{KIND_CD}
+	</update>
+
+	<delete id="deleteTrade" parameterType="hashMap">
+		DELETE FROM TB_EEP_TRADE_M WHERE TRADE_SQ = #{TRADE_SQ} AND KIND_CD = #{KIND_CD}
+	</delete>
+
+	<delete id="deleteLine" parameterType="hashMap">
+		DELETE FROM TB_EEP_TRADE_LINE_R WHERE KIND_CD = #{KIND_CD} AND YM = #{YM} AND SRC_CD = #{SRC_CD} AND SRC_SQ = #{SRC_SQ}
+	</delete>
+
+	<!-- 묶음·순서만 바꾼다. 고친 금액과 발급 표시는 그대로 둔다 -->
+	<insert id="upsertLayout" parameterType="hashMap">
+		INSERT INTO TB_EEP_TRADE_LINE_R (KIND_CD, YM, SRC_CD, SRC_SQ, INV_NO, SORT_NO) VALUES (#{KIND_CD}, #{YM}, #{SRC_CD}, #{SRC_SQ}, #{INV_NO}, #{SORT_NO})
+		ON DUPLICATE KEY UPDATE INV_NO = VALUES(INV_NO), SORT_NO = VALUES(SORT_NO)
+	</insert>
+
+	<insert id="upsertAmt" parameterType="hashMap">
+		INSERT INTO TB_EEP_TRADE_LINE_R (KIND_CD, YM, SRC_CD, SRC_SQ, AMT) VALUES (#{KIND_CD}, #{YM}, #{SRC_CD}, #{SRC_SQ}, #{AMT,jdbcType=BIGINT})
+		ON DUPLICATE KEY UPDATE AMT = VALUES(AMT)
+	</insert>
+
+	<update id="updateIssue" parameterType="hashMap">
+		UPDATE TB_EEP_TRADE_LINE_R SET ISSUE_DT = #{ISSUE_DT,jdbcType=VARCHAR}
+		WHERE KIND_CD = #{KIND_CD} AND YM = #{YM} AND SRC_CD = #{SRC_CD} AND SRC_SQ = #{SRC_SQ} AND INV_NO IS NOT NULL
+	</update>
+</mapper>
