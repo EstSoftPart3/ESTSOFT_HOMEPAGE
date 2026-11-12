@@ -77,6 +77,7 @@ public class CardCheck {
 		Map<String, Object> cardRow = new HashMap<>();
 		cardRow.put("HOLDER_NM", "홍길동");
 		cardRow.put("CARD_CO", "롯데카드");
+		cardRow.put("LAST4", "1234");
 		Map<String, Object> a = use(1, "2025-12-30", 12000), b = use(2, "2026-04-16", 11000), c = use(3, "2026-04-24", 5000);
 		a.put("MERCHANT", "돈오"); a.put("DETAIL", "점심식사"); a.put("TARGET_NM", "홍길동, 대표님");
 		b.put("USE_CD", "MEAL");
@@ -88,14 +89,16 @@ public class CardCheck {
 		Sheet o = out.getSheetAt(1);
 		same(o.getRow(1).getCell(1).getStringCellValue(), "법인카드 사용내역", "B2 제목");
 		same(o.getRow(3).getCell(5).getStringCellValue(), "사용처", "머리글");
-		same(o.getRow(4).getCell(2).getStringCellValue(), "롯데카드", "첫 줄 카드");
-		same(o.getRow(5).getCell(2).getStringCellValue(), "", "둘째 줄 카드 빈칸");
+		same(o.getRow(4).getCell(2).getStringCellValue(), "롯데카드(1234)", "카드이름(끝4자리)");
+		same(o.getRow(5).getCell(2).getStringCellValue(), "롯데카드(1234)", "카드는 줄마다");
 		same(o.getRow(4).getCell(3).getNumericCellValue(), 4.0, "월");
 		same(o.getRow(4).getCell(4).getNumericCellValue(), 16.0, "일");
-		same(o.getRow(4).getCell(5).getStringCellValue(), "식대", "사용처 없으면 코드 이름");
+		same(o.getRow(4).getCell(5).getStringCellValue(), "", "사용처 없으면 빈칸");
 		same(o.getRow(4).getCell(6).getNumericCellValue(), 11000.0, "금액");
-		same(o.getRow(4).getCell(8).getStringCellValue(), "홍길동", "대상 없으면 담당");
-		same(out.getSheetAt(0).getRow(4).getCell(8).getStringCellValue(), "홍길동, 대표님", "대상");
+		same(o.getRow(4).getCell(7).getStringCellValue(), "식대", "내용은 사용처 코드 이름");
+		same(o.getRow(4).getCell(8).getStringCellValue(), "홍길동", "내용·대상 없으면 담당");
+		same(out.getSheetAt(0).getRow(4).getCell(5).getStringCellValue(), "돈오", "사용처");
+		same(out.getSheetAt(0).getRow(4).getCell(8).getStringCellValue(), "점심식사", "대상은 화면의 내용");
 		out.close();
 
 		// 머리글이 없는 엑셀은 거부

@@ -14,7 +14,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 /**
  * 경영지원이 쓰던 '법인카드사용내역' 양식 그대로 만든다: 시트 이름은 연도, B2 제목, 4행 머리글 B~I
- * (담당 | 카드 | 월 | 일 | 사용처 | 금액 | 내용 | 대상), 5행부터 자료, 카드는 시트 첫 자료 줄에만 쓴다.
+ * (담당 | 카드 | 월 | 일 | 사용처 | 금액 | 내용 | 대상), 5행부터 자료. 카드는 줄마다 '카드이름(끝4자리)'.
  */
 public final class CardLedgerExcel {
 
@@ -26,7 +26,8 @@ public final class CardLedgerExcel {
 
 	/** @param uses 날짜순 [{USE_DT yyyy-MM-dd, AMT, USE_CD, DETAIL, MERCHANT, TARGET_NM}] */
 	public static byte[] build(Map<String, Object> card, List<Map<String, Object>> uses, Map<String, String> codeNm) {
-		String holder = str(card.get("HOLDER_NM")), cardNm = str(card.get("CARD_CO")).isEmpty() ? str(card.get("CARD_NM")) : str(card.get("CARD_CO"));
+		String holder = str(card.get("HOLDER_NM"));
+		String cardNm = (str(card.get("CARD_CO")).isEmpty() ? str(card.get("CARD_NM")) : str(card.get("CARD_CO"))) + "(" + str(card.get("LAST4")) + ")";
 		try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream bo = new ByteArrayOutputStream()) {
 			CellStyle center = style(wb, HorizontalAlignment.CENTER, null), left = style(wb, HorizontalAlignment.LEFT, null);
 			CellStyle money = style(wb, HorizontalAlignment.GENERAL, wb.createDataFormat().getFormat("_-* #,##0_-;\\-* #,##0_-;_-* \"-\"_-;_-@"));
@@ -43,15 +44,15 @@ public final class CardLedgerExcel {
 				Row r = sh.createRow(row);
 				r.setHeightInPoints(17.25f);
 				text(r, 1, holder, center);
-				text(r, 2, row == 4 ? cardNm : "", center);
+				text(r, 2, cardNm, center);
 				num(r, 3, Integer.parseInt(d.substring(5, 7)), center);
 				num(r, 4, Integer.parseInt(d.substring(8, 10)), center);
-				// 사용처는 카드사 가맹점, 대조 전이면 사용처 코드 이름
-				String place = str(u.get("MERCHANT")).isEmpty() ? str(codeNm.get(str(u.get("USE_CD")))) : str(u.get("MERCHANT"));
-				text(r, 5, place, left);
+				text(r, 5, str(u.get("MERCHANT")), left);
 				num(r, 6, Long.parseLong(str(u.get("AMT"))), money);
-				text(r, 7, str(u.get("DETAIL")), center);
-				text(r, 8, str(u.get("TARGET_NM")).isEmpty() ? holder : str(u.get("TARGET_NM")), center);
+				// 내용은 사용처 코드 이름(식대, 소프트웨어·구독 …), 대상은 화면에서 적은 내용. 내용이 비면 대상 칸 → 카드 사용자
+				text(r, 7, str(codeNm.get(str(u.get("USE_CD")))), center);
+				String target = !str(u.get("DETAIL")).isEmpty() ? str(u.get("DETAIL")) : !str(u.get("TARGET_NM")).isEmpty() ? str(u.get("TARGET_NM")) : holder;
+				text(r, 8, target, center);
 				row++;
 			}
 			if (sh == null) sheet(wb, "마감 없음", center, left);
