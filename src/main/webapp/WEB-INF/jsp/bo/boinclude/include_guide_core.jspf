@@ -9,6 +9,13 @@
 	.eg-fab:hover, .eg-fab:focus-visible { background: rgba(37, 99, 235, .95); transform: translateY(-2px); outline: none; }
 	.eg-fab::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid rgba(37, 99, 235, .45); animation: eg-ping 2.2s infinite; pointer-events: none; }
 	@keyframes eg-ping { 0% { transform: scale(.9); opacity: 1 } 100% { transform: scale(1.35); opacity: 0 } }
+	/* 맨 위로: 가이드 버튼 바로 위, 내렸을 때만 보인다 */
+	.eg-top { position: fixed; right: 26px; bottom: 90px; z-index: 1070; width: 44px; height: 44px; border: 0; border-radius: 50%; background: rgba(17, 24, 39, .55); color: #fff;
+		font-size: 20px; cursor: pointer; box-shadow: 0 4px 14px rgba(0, 0, 0, .25); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+		opacity: 0; visibility: hidden; transform: translateY(8px); transition: opacity .2s, transform .2s, visibility .2s, background .2s; }
+	.eg-top.show { opacity: 1; visibility: visible; transform: none; }
+	.eg-top:hover, .eg-top:focus-visible { background: rgba(17, 24, 39, .9); outline: none; }
+	body.bo-in-frame .eg-top { display: none; }
 	.eg-tour { position: fixed; inset: 0; z-index: 1080; }
 	.eg-tour[hidden] { display: none; }
 	.eg-hole { position: fixed; border-radius: 10px; box-shadow: 0 0 0 9999px rgba(15, 23, 42, .62); transition: all .45s cubic-bezier(.65, 0, .35, 1); pointer-events: none; }
@@ -39,7 +46,21 @@
 	@media (prefers-reduced-motion: reduce) { .eg-hole, .eg-fab::after { transition: none; animation: none; } .eg-arrow path.draw, .eg-bubble.show { animation-duration: .01s; animation-delay: 0s; } }
 </style>
 
+<button type="button" class="eg-top" id="egTop" aria-label="맨 위로" title="맨 위로" tabindex="-1">↑</button>
 <button type="button" class="eg-fab" id="egOpen" aria-label="화면 가이드" title="화면 가이드">?</button>
+<script>
+(function() {
+	var btn = document.getElementById('egTop');
+	function paint() { var on = window.pageYOffset > 200; btn.classList.toggle('show', on); btn.tabIndex = on ? 0 : -1; }
+	window.addEventListener('scroll', paint, { passive: true });
+	btn.addEventListener('click', function() {
+		window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+		var c = document.querySelector('.content-wrapper');
+		if (c) { c.setAttribute('tabindex', '-1'); c.focus({ preventScroll: true }); }
+	});
+	paint();
+})();
+</script>
 
 <div class="eg-tour" id="egTour" role="dialog" aria-modal="true" aria-label="화면 가이드" hidden>
 	<div class="eg-hole" id="egHole"></div>
