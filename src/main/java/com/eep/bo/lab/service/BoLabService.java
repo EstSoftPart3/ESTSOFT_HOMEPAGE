@@ -250,7 +250,8 @@ public class BoLabService {
 		Map<String, Object> head = mapper.selectTeamHead(one("TEAM_SQ", j.get("TEAM_SQ")));
 		out.put("headNm", head == null ? null : head.get("STAFF_NM"));
 		out.put("canClose", APPROVED.equals(st) && head != null && me.equals(str(head.get("EMPLY_ID"))));
-		if (APPROVED.equals(st) || CLOSED.equals(st)) out.put("recipients", recipients(j));
+		// 연구원별 업무요약 탭과 마감 메일 미리보기가 함께 쓴다
+		out.put("recipients", recipients(j));
 		return out;
 	}
 
@@ -266,6 +267,7 @@ public class BoLabService {
 			Map<String, Object> x = new HashMap<>();
 			String company = str(r.get("COMPANY_EMAIL")).trim(), personal = str(r.get("EMAIL")).trim(), nm = str(r.get("STAFF_NM"));
 			x.put("STAFF_NM", nm);
+			x.put("ROLE_CD", r.get("ROLE_CD"));
 			x.put("ADDR", hasText(company) ? company : personal);
 			x.put("KIND", hasText(company) ? "COMPANY" : hasText(personal) ? "PERSONAL" : "NONE");
 			x.put("ITEMS", workItems(str(j.get("CONTENT")), nm));
