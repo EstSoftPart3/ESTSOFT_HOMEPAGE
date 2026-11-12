@@ -94,7 +94,7 @@
 		if (!backBtn) return;
 		var b = backTarget();
 		backBtn.disabled = !b;
-		backBtn.title = b ? '뒤로: ' + b.title + (b.inTab ? ' (이 탭 안)' : '') : '뒤로 갈 화면이 없습니다';
+		backBtn.title = b ? '뒤로가기: ' + b.title + (b.inTab ? ' (이 탭 안)' : '') : '뒤로 갈 화면이 없습니다';
 		backBtn.setAttribute('aria-label', backBtn.title);
 	}
 
