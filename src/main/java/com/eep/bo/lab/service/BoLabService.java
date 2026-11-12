@@ -497,11 +497,37 @@ public class BoLabService {
 		Pattern inline = Pattern.compile("^[-•*]\\s*(.+?)\\s*\\(" + Pattern.quote(name) + "(?![가-힣]).*");
 		for (int i = 0; i < lines.size() && out.size() < 30; i++) {
 			String l = lines.get(i);
-			if (l.matches("^담당자\\s*[:：].*") && l.matches(".*[:：,\\s]" + Pattern.quote(name) + "(?![가-힣]).*") && i > 0) out.add(lines.get(i - 1));
+			if (l.matches("^담당자\\s*[:：].*") && l.matches(".*[:：,\\s]" + Pattern.quote(name) + "(?![가-힣]).*") && i > 0) {
+				String content = "";
+				for (int k = i + 1; k < Math.min(i + 4, lines.size()); k++) {
+					if (lines.get(k).matches("^내용\\s*[:：].*")) { content = lines.get(k).replaceFirst("^내용\\s*[:：]\\s*", ""); break; }
+				}
+				addItem(out, cleanItem(lines.get(i - 1)), content);
+			}
 			Matcher m = inline.matcher(l);
-			if (m.matches()) out.add(m.group(1));
+			if (m.matches()) addItem(out, cleanItem(m.group(1)), "");
 		}
 		return new ArrayList<>(out);
+	}
+
+	private static void addItem(Set<String> out, String item, String fallback) {
+		String v = item.isEmpty() ? fallback.trim() : item;
+		if (!v.isEmpty()) out.add(v);
+	}
+
+	private static final Pattern CODE = Pattern.compile("^[A-Za-z][A-Za-z_]*\\d+[A-Za-z]?$");
+	private static final Pattern FILE = Pattern.compile("^[\\w./-]+\\.[A-Za-z]{2,5}$");
+	private static final Pattern CODE_NOTE = Pattern.compile("\\s*[(（][^()（）]*[{}=?/_][^()（）]*[)）]");
+
+	/** 항목 제목에서 화면 코드(comm_ui001), 파일명(CommonHeader.tsx), 코드가 든 괄호 설명을 빼고 하는 일만 남긴다 */
+	static String cleanItem(String title) {
+		StringBuilder b = new StringBuilder();
+		for (String part : title.split("\\s+-\\s+")) {
+			String p = part.trim();
+			if (p.isEmpty() || CODE.matcher(p).matches() || FILE.matcher(p).matches()) continue;
+			b.append(b.length() > 0 ? " · " : "").append(p);
+		}
+		return CODE_NOTE.matcher(b.toString()).replaceAll("").trim();
 	}
 
 	/** 드라이브 응답 본문(토큰·경로가 섞일 수 있음)은 화면에 내보내지 않는다 */

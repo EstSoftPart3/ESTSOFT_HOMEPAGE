@@ -45,8 +45,14 @@ public class BoLabServiceCheck {
 		String hwp = "<p>[공통]</p><p>comm_ui001 - CommonHeader.tsx - 2단 구성</p><p>담당자: 백바울 연구소장</p><p>기간: 9월</p>"
 				+ "<p>salary001 - 연봉 계산 입력 6종</p><p>담당자: 정영우 연구원</p><p>main_p001 - 배너 축소</p><p>담당자: 백바울 연구소장</p>"
 				+ "<p>- 입사지원 로직 (이정수 연구원, 12월 1일 ~ 12월 31일)</p><p>- 추천 공고 (이정수 연구원)</p><p>- 기타 (이정수라, 12월)</p>";
-		same(BoLabService.workItems(hwp, "백바울"), Arrays.asList("comm_ui001 - CommonHeader.tsx - 2단 구성", "main_p001 - 배너 축소"), "담당자 줄 형식");
-		same(BoLabService.workItems(hwp, "정영우"), Arrays.asList("salary001 - 연봉 계산 입력 6종"), "다른 사람 항목 제외");
+		same(BoLabService.workItems(hwp, "백바울"), Arrays.asList("2단 구성", "배너 축소"), "담당자 줄 형식, 코드·파일명 제거");
+		same(BoLabService.workItems(hwp, "정영우"), Arrays.asList("연봉 계산 입력 6종"), "다른 사람 항목 제외");
+		same(BoLabService.cleanItem("auth_ui001 - LoginForm.tsx - 개인/기업 전용 경로 분리(?loginType=COMPANY), 탭 토글 제거"), "개인/기업 전용 경로 분리, 탭 토글 제거", "코드 괄호 제거");
+		same(BoLabService.cleanItem("comm_ui001 - CommonHeader.tsx - 1단(로고) + 2단(전체 네비) 구성"), "1단(로고) + 2단(전체 네비) 구성", "설명 괄호 유지");
+		same(BoLabService.cleanItem("vote003 - 중복 투표 DB 차단(TBL_VOTE_RECORD_S UNIQUE)"), "중복 투표 DB 차단", "테이블명 괄호 제거");
+		same(BoLabService.cleanItem("vote003 - 중복 투표 DB 차단（TBL_VOTE_RECORD_S UNIQUE）"), "중복 투표 DB 차단", "전각 괄호 제거");
+		same(BoLabService.workItems("<p>tooltip001 - tooltip.tsx</p><p>담당자: 백바울</p><p>기간: 9월</p><p>내용: 툴팁이 열리지 않던 오류를 고쳤습니다.</p>", "백바울"),
+				Arrays.asList("툴팁이 열리지 않던 오류를 고쳤습니다."), "제목이 코드뿐이면 내용 문장");
 		same(BoLabService.workItems(hwp, "이정수"), Arrays.asList("입사지원 로직", "추천 공고"), "괄호 이름 형식, 비슷한 이름 제외");
 		same(BoLabService.workItems(hwp, "이슬이").size(), 0, "담당 없음");
 		String mail = BoLabService.mailHtml("<b>홍</b>", "2026-10", "과제 & A", Arrays.asList("<script>x</script>"));
