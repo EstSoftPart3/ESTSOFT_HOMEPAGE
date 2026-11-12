@@ -1,6 +1,6 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%-- 화면 가이드 투어 공통: 우측 하단 ? → 화면을 어둡게 하고 대상을 하나씩 밝혀 화살표·말풍선으로 설명.
-     이 파일 앞에서 EG 를 정의한다: { page: [단계], modals: { 팝업id: [단계] }, title: '화면 이름', tail: false(마지막 '팝업에서도' 안내 끔) }
+     이 파일 앞에서 EG 를 정의한다: { page: [단계], modals: { 팝업id: [단계] }, common: [화면 단계 뒤에 붙는 공통 단계], title: '화면 이름', tail: false(마지막 '팝업에서도' 안내 끔) }
      단계 = [대상 선택자, 제목, 설명, 시크릿]. 대상이 화면에 없거나 숨어 있으면 건너뛴다 --%>
 <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@700&display=swap" rel="stylesheet">
 <style>
@@ -99,6 +99,7 @@
 		} else {
 			list = (EGX.page && EGX.page.length) ? EGX.page.slice()
 				: [['.main-sidebar', '왼쪽 메뉴', '내 권한에 있는 화면만 보여요.\n메뉴를 누르면 그 화면으로 이동해요.']];
+			list = list.concat(EGX.common || []);
 			if (EGX.tail !== false) list.push(['#egOpen', '팝업에서도 눌러 보세요', '팝업(상세·등록 창)이 열린 상태에서 이 ? 를 누르면\n그 팝업 안을 하나씩 설명해 줘요.']);
 			document.getElementById('egWhat').textContent = (EGX.title || text('.bTitle') || '이 화면') + ' 화면';
 		}
