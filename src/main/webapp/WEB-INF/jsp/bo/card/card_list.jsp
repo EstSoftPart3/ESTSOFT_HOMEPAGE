@@ -167,9 +167,10 @@
 	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
 	<script>
 	var manager = false, staffs = [], cards = [], codes = [], codeNm = {}, codeIx = {}, card = null, uses = [], tab = 0, ym = kstYm(0);
-	// 정산은 지난달, 마감 목록은 올해를 기본 기간으로 연다
-	var pFrom = kstYm(-1) + '-01', pTo = monthEnd(kstYm(-1)), pFile = null, pRes = null;
-	var cFrom = kstToday().slice(0, 4) + '-01-01', cTo = kstToday(), cRes = null;
+	// 정산·마감 기간은 접속한 날이 속한 분기로 연다 (11/12 이면 10/1 ~ 12/31)
+	var QTR = (function() { var t = kstToday(), y = t.slice(0, 4), q = Math.floor((+t.slice(5, 7) - 1) / 3), pad = function(n) { return ('0' + n).slice(-2); }; return [y + '-' + pad(q * 3 + 1) + '-01', monthEnd(y + '-' + pad(q * 3 + 3))]; })();
+	var pFrom = QTR[0], pTo = QTR[1], pFile = null, pRes = null;
+	var cFrom = QTR[0], cTo = QTR[1], cRes = null;
 	var DOW = ['일', '월', '화', '수', '목', '금', '토'];
 
 	function kstYm(add) { var d = new Date(Date.now() + 9 * 3600000); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + add); return d.toISOString().slice(0, 7); }
