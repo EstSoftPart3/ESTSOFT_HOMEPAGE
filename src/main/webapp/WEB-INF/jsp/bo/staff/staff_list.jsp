@@ -224,7 +224,7 @@
 	<script>
 	var STATUS = { WORK: '재직', LEFT: '퇴사', WAIT: '대기' };
 	// 인사카드 탭: [이름, 그 탭에 그릴 SECTIONS 이름]. 영업정보/수행이력과 서류는 따로 그린다
-	var CARD_TABS = [['기초정보', ['기초정보', '일자', '계좌(기업)', '비상연락망', '기타']], ['학력/교육', ['학력', '병역', '교육·자격']], ['영업정보/수행이력', []], ['서류', []]];
+	var CARD_TABS = [['기초정보', ['기초정보', '일자', '계좌(기업)', '비상연락망', '기타']], ['학력/교육', ['학력', '병역', '교육·자격']], ['영업정보/수행이력', []], ['서류', []], ['메모', []], ['보유 장비', []]];
 	var SALES_TERMS = ['GRADE_NM', 'REAL_CAREER', 'WISH_PRICE', 'SCORE', 'GAPIL_YN', 'AUTO_APLY_YN', 'WISH_LOC'];
 	var SALES_SKILLS = ['SK_LANG', 'SK_BE', 'SK_FE', 'SK_FW', 'SK_DB', 'SK_IDE', 'SK_VCS', 'SK_OS'];
 	var SALES_TEXTS = ['WORK_DOMAIN', 'EXPERTISE'], SALES_ETC = ['REPORT', 'ETC1', 'ETC2'];
@@ -296,7 +296,7 @@
 
 	$(document).on('click', '.cate-tab', function() { current = $(this).data('tab'); render(); });
 
-	// 비고는 메모로 옮겼다. 목록 💬 버튼과 인사카드 아래 메모 칸에서 쌓는다
+	// 비고는 메모로 옮겼다. 목록 💬 버튼과 인사카드 메모 탭에서 쌓는다
 	var MEMO_API = hrMemoApi('/admin/staff/');
 
 	function load(then) {
@@ -537,15 +537,18 @@
 			DOCS.forEach(function(d) { $d.append(docRow(r, d)); });
 		}
 		if (!docs || docs.sq !== r.STAFF_SQ) loadDocs(r.STAFF_SQ);
-		$b.append('<div class="hr-section">메모</div>');
-		hrMemoFeed($('<div>').appendTo($b), MEMO_API, r.STAFF_SQ, function() { load(); });
-		$b.append('<div class="hr-section">보유 장비</div>');
-		var $eq = $('<div class="small" id="staffEquipment">').appendTo($b);
-		loadEquipment(r.STAFF_SQ, function(list) {
-			$eq.empty();
-			if (!list.length) $eq.addClass('text-muted').text('대여 중인 장비가 없습니다.');
-			list.forEach(function(e) { $eq.append($('<div>').text(e.EQP_NO + ' · ' + (EQ_TYPE[e.TYPE_CD] || e.TYPE_CD) + ' · ' + (e.MODEL_NM || '') + ' · ' + (e.START_DT || '') + ' ~')); });
-		});
+		if (cardTab === 4) hrMemoFeed($('<div>').appendTo($p), MEMO_API, r.STAFF_SQ, function() { load(); });
+		if (cardTab === 5) {
+			var $eq = $('<div class="small" id="staffEquipment">').appendTo($p);
+			loadEquipment(r.STAFF_SQ, function(list) {
+				$eq.empty();
+				if (!list.length) $eq.addClass('text-muted').text('대여 중인 장비가 없습니다.');
+				list.forEach(function(e) {
+					$eq.append($('<div>').text(e.EQP_NO + ' · ' + (EQ_TYPE[e.TYPE_CD] || e.TYPE_CD) + ' · ' + (e.MODEL_NM || '') + ' · ' + (e.START_DT || '') + ' ~')
+						.append(e.BY_NAME_YN === 'Y' ? $('<span class="text-muted">').text(' (대여 기록에 이름만 있어 이름으로 찾음)') : ''));
+				});
+			});
+		}
 	}
 
 	var EQ_TYPE = hrCodeMap('EQP_TYPE');

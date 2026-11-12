@@ -115,9 +115,13 @@
 	</delete>
 
 	<select id="selectStaffEquipment" parameterType="hashMap" resultType="hashMap">
-		SELECT e.EQP_NO, e.TYPE_CD, e.MODEL_NM, DATE_FORMAT(r.START_DT, '%Y-%m-%d') AS START_DT
+		SELECT e.EQP_NO, e.TYPE_CD, e.MODEL_NM, DATE_FORMAT(r.START_DT, '%Y-%m-%d') AS START_DT, IF(r.STAFF_SQ IS NULL, 'Y', 'N') AS BY_NAME_YN
 		FROM TB_EEP_EQP_RENT_H r JOIN TB_EEP_EQP_M e ON e.EQP_SQ = r.EQP_SQ
-		WHERE r.STAFF_SQ = #{STAFF_SQ} AND r.OPEN_YN = 'Y' ORDER BY e.TYPE_CD, e.EQP_NO
+		WHERE r.OPEN_YN = 'Y'
+		  <!-- 엑셀에서 옮긴 대여는 사람 번호 없이 이름만 있어, 재직·대기 중인 같은 이름으로도 찾는다 -->
+		  AND (r.STAFF_SQ = #{STAFF_SQ}
+		       OR (r.STAFF_SQ IS NULL AND r.HOLDER_NM = (SELECT STAFF_NM FROM TB_EEP_HR_STAFF_M WHERE STAFF_SQ = #{STAFF_SQ} AND STATUS_CD &lt;&gt; 'LEFT')))
+		ORDER BY e.TYPE_CD, e.EQP_NO
 	</select>
 
 	<select id="selectOpenAudit" resultType="hashMap">
