@@ -40,6 +40,10 @@
   	
   	.bTitle{ font-size:15px; }
   	.sTitle{ font-size:12px; height:30px; }
+  	/* 모든 표 머리글 틀고정. :where 로 우선순위 0 이라 화면별 머리글 색·고정이 그대로 이긴다 */
+  	:where(.table) > :where(thead) > :where(tr) > :where(th) { position: sticky; top: 0; z-index: 2; background-color: #fff; box-shadow: inset 0 -1px 0 #dee2e6; }
+  	/* 가로 스크롤 상자 안에서도 고정되게 세로 스크롤을 상자 안으로 넣는다 */
+  	:where(.table-responsive) { max-height: 80vh; overflow-y: auto; }
 
   </style>
   

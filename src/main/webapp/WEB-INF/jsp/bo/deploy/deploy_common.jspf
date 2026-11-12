@@ -58,6 +58,10 @@ function dpBaseText(b) { return (b.TARGET_CD === 'REFERRER' ? '추천한 인재�
 function dpWon(v) { return v === null || v === undefined || v === '' ? '—' : Number(v).toLocaleString('ko-KR'); }
 function dpEsc(s) { return $('<div>').text(s === null || s === undefined ? '' : String(s)).html(); }
 function dpLine(k, v, cls) { return '<div class="' + (cls || '') + '"><span>' + dpEsc(k) + '</span><span>' + dpEsc(v) + '</span></div>'; }
+// 수습은 수습해제일까지 남은 날을 붙인다: 수습(D-57)
+function dpProbLeft(type, end) { var d = type === 'PROBATION' && end ? moment(end).diff(moment().startOf('day'), 'days') : -1; return d >= 0 ? '(D-' + d + ')' : ''; }
+// 수습→정규 전환은 한 계약이다. 같은 달 수습·정규 건이 함께 있으면 둘을 한 건으로 센다
+function dpProbReg(types) { return types.indexOf('PROBATION') >= 0 && types.indexOf('REGULAR') >= 0; }
 function dpYmLabel(ym) { return ym ? ym.substring(0, 4) + '년 ' + Number(ym.substring(5)) + '월' : ''; }
 // 확인 사항 키워드 칩. 마우스를 올리거나 Tab 으로 고르면 계산·근거가 뜬다. flag: { K, D }
 function dpFlag(flag) {

@@ -75,7 +75,8 @@ function hrEditable($td, opts) {
 		$c.on('blur', function() { finish(true); });
 		$c.on('keydown', function(e) {
 			if (e.key === 'Escape') { finish(false); $td.focus(); }
-			else if (e.key === 'Enter' && opts.type !== 'textarea') { e.preventDefault(); finish(true); $td.focus(); }
+			// 여러 줄 칸(특이사항 등)은 Shift+Enter 로 줄바꿈
+			else if (e.key === 'Enter' && !e.originalEvent.isComposing && !(opts.type === 'textarea' && e.shiftKey)) { e.preventDefault(); finish(true); $td.focus(); }
 		});
 		if ($c.is('select')) $c.on('change', function() { finish(true); });
 		$c.focus();

@@ -77,7 +77,14 @@
 	.pl-sort.on { color: #0b6e8a; }
 	.pl-btn { border: 1px solid #b9dbe6; background: #f3fbfd; color: #0b6e8a; border-radius: 10px; padding: 0 7px; font-size: 11.5px; font-weight: 700; }
 	.pl-btn.zero { opacity: .55; font-weight: 400; }
-	#dpBody tr.dp-sub td { background: #fbfcfd; font-size: 12px; }
+	#dpBody tr.dp-sub td { background: #fff8e8; font-size: 12px; }
+	/* 중복계약: 왼쪽 주황 띠 + 펼치는 버튼. 수습→정규는 옅게 */
+	#dpBody tr.dp-dup > td:first-child { box-shadow: inset 4px 0 0 #e0a800; }
+	.pl-dup-pill { border: 1px solid #e0a800; background: #fff3d6; color: #7a5600; font-weight: 700; cursor: pointer; }
+	.pl-dup-pill[aria-expanded=true] { background: #e0a800; color: #fff; }
+	.pl-dup-pill.soft { border-color: #d5dbe0; background: #f6f8fa; color: #5f6b75; font-weight: 400; }
+	.pl-dup-pill.soft[aria-expanded=true] { background: #5f6b75; color: #fff; }
+	.pl-dup-all { display: block; border: 0; background: none; padding: 0; color: #7a5600; font-size: 11px; font-weight: 700; cursor: pointer; }
 	.dp-sub-mark { color: #8a949c; }
 	.pl-feed .it { border: 1px solid rgba(17,17,17,.1); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; white-space: pre-wrap; }
 	.pl-feed .who { font-size: 11.5px; color: #5f6b75; display: flex; gap: 8px; align-items: center; white-space: normal; }
@@ -297,7 +304,7 @@
 	function counts(list) { var m = {}; (list || []).forEach(function(c) { m[c.STAFF_SQ] = Number(c.CNT); }); return m; }
 
 	var SORT = {
-		DUP: function(g) { return g.rows.length; }, REMAIN: function(g) { return remain(g.top).days; }, TENURE: function(g) { return g.top.JOIN_DT || ''; },
+		DUP: function(g) { return dupCount(g.rows); }, REMAIN: function(g) { return remain(g.top).days; }, TENURE: function(g) { return g.top.JOIN_DT || ''; },
 		HOME_AREA: function(g) { return area(g.top.HOME_ADDR); }, EMP_TYPE_CD: function(g) { return typeName(g.top.EMP_TYPE_CD); },
 		MEMOS: function(g) { return counts(data.memoCounts)[g.top.STAFF_SQ] || 0; }, HIST: function(g) { return counts(data.chgCounts)[g.top.STAFF_SQ] || 0; },
 		PRJ: function(g) { return staffOf(g.top.STAFF_SQ).PRJ_CNT || 0; }
@@ -391,16 +398,19 @@
 		var $h = $('<tr>');
 		visibleCols().forEach(function(c) {
 			var on = sortKey === c[0];
-			$h.append($('<th>').attr('data-c', c[0]).toggleClass('dp-num', !!c[2]).text(colLabel(c[0]))
+			var $th = $('<th>').attr('data-c', c[0]).toggleClass('dp-num', !!c[2]).text(colLabel(c[0]))
 				.append($('<button type="button" class="pl-sort">').toggleClass('on', on).attr('aria-label', c[1] + ' 정렬').text(on ? (sortDir > 0 ? '▲' : '▼') : '↕')
-					.on('click', function(e) { e.stopPropagation(); if (sortKey === c[0]) sortDir = -sortDir; else { sortKey = c[0]; sortDir = 1; } render(); })));
+					.on('click', function(e) { e.stopPropagation(); if (sortKey === c[0]) sortDir = -sortDir; else { sortKey = c[0]; sortDir = 1; } render(); }));
+			if (c[0] === 'DUP') $th.append($('<button type="button" class="pl-dup-all">').attr('aria-expanded', dupAll).text(dupAll ? '▾ 모두 접기' : '▸ 모두 펼치기')
+				.on('click', function(e) { e.stopPropagation(); dupAll = !dupAll; openDup = {}; render(); }));
+			$h.append($th);
 		});
 		$h.append($('<th data-c="_ACT">').append('<span class="sr-only">작업</span>'));
 		$('#dpHead').empty().append($h);
 		bindDrag();
 		var $b = $('#dpBody').empty();
 		if (!groups.length) $b.append($('<tr>').append($('<td class="text-center text-muted py-4">').attr('colspan', order.length + 1).text(moment(ym + '-01').format('YYYY년 M월') + '에 걸친 투입이 없습니다. 체크나 기준월을 바꿔 보세요.')));
-		groups.forEach(function(g) { g.rows.forEach(function(r, i) { $b.append(viewRow(r, g, i > 0)); }); });
+		groups.forEach(function(g) { var open = isOpen(g); g.rows.forEach(function(r, i) { if (!i || open) $b.append(viewRow(r, g, i > 0).toggleClass('dp-dup', g.rows.length > 1)); }); });
 		arrangeAll();
 		$('#topScroll div').width($('#mainScroll table').outerWidth());
 		$('#topScroll').toggle($('#mainScroll table').outerWidth() > $('#mainScroll').innerWidth());
@@ -442,17 +452,25 @@
 		hrEditable($td, { url: '/admin/deploy/saveFieldData.do', key: { DEPLOY_SQ: r.DEPLOY_SQ }, field: field, type: type, label: r.STAFF_NM + ' ' + c[1],
 			show: function() { return r[c[0]]; }, value: function() { return r[field]; }, saved: function() { load(); },
 			paint: function($c, v) {
-				if (c[0] === 'EMP_TYPE_CD') $c.text(typeName(v));
+				if (c[0] === 'EMP_TYPE_CD') $c.text(typeName(v) + dpProbLeft(v, r.PROB_END_DT));
 				else if (c[2]) $c.text(v ? dpWon(v) : '').append(c[0] === 'SALE_PRICE' ? dpInfoBtn(r.STAFF_NM + ' 단가·급여 이력', function() { payHistory(r); }) : '');
 				else if (c[0] === 'WORK_AREA') $c.text(v || '').append(farFrom(r.HOME_ADDR, v) ? $('<span class="dp-far">원거리</span>') : '');
 				else $c.text(v || '');
 			} });
 	}
 
-	// 그 달 투입이 두 건 이상이면 n건. 마우스를 올리면 건별 기간과 사이 공백일
+	// 중복계약 줄은 기본으로 접는다. 사람별로 누른 상태가 '모두 접기/펼치기'보다 우선
+	var openDup = {}, dupAll = false;
+	function isOpen(g) { return g.top.STAFF_SQ in openDup ? openDup[g.top.STAFF_SQ] : dupAll; }
+	// 수습→정규 두 줄은 한 계약으로 센다
+	function dupCount(rows) { var t = rows.map(function(x) { return x.EMP_TYPE_CD; }); return dpProbReg(t) ? rows.length - t.filter(function(x) { return x === 'REGULAR' || x === 'PROBATION'; }).length + 1 : rows.length; }
+
+	// 그 달 투입이 두 건 이상이면 n건(눌러서 펼치기). 마우스를 올리면 건별 기간과 사이 공백일
 	function dupPill(g) {
 		if (g.rows.length < 2) return $('<span class="dp-mute">').text('—');
-		var $p = $('<span class="dp-pill rent" tabindex="0">').text(g.rows.length + '건');
+		var open = isOpen(g), n = dupCount(g.rows), label = n > 1 ? n + '건' : '수습→정규';
+		var $p = $('<button type="button" class="dp-pill pl-dup-pill">').toggleClass('soft', n < 2).attr({ 'aria-expanded': open, 'aria-label': g.top.STAFF_NM + ' ' + label + ' ' + (open ? '접기' : '펼치기') }).text((open ? '▾ ' : '▸ ') + label)
+			.on('click', function() { openDup[g.top.STAFF_SQ] = !open; dpHide(); render(); });
 		dpHover($p, $p, function() {
 			var asc = g.rows.slice().reverse(), lines = [];
 			asc.forEach(function(x, i) {
@@ -488,13 +506,15 @@
 					$f.append($('<div class="it">').append($who).append($('<div>').text(m.CONTENT)));
 				});
 				if (!res.result.list.length) $f.append('<div class="text-muted small mb-2">메모가 없습니다.</div>');
-				var $ta = $('<textarea class="form-control form-control-sm" rows="2" maxlength="1000" aria-label="메모 입력" placeholder="메모 입력 (작성자·일시는 자동)">');
+				var $ta = $('<textarea class="form-control form-control-sm enter-send" rows="2" maxlength="1000" aria-label="메모 입력" placeholder="메모 입력 · Enter 등록, Shift+Enter 줄바꿈 (작성자·일시는 자동)">');
 				var $add = $('<button type="button" class="btn btn-sm btn-primary mt-1">남기기</button>').on('click', function() {
 					if (!$.trim($ta.val())) { $ta.focus(); return; }
-					hrPost('/admin/deploy/saveMemoData.do', { STAFF_SQ: r.STAFF_SQ, CONTENT: $ta.val() }, function() { draw(); load(); });
+					$add.prop('disabled', true);
+					hrPost('/admin/deploy/saveMemoData.do', { STAFF_SQ: r.STAFF_SQ, CONTENT: $ta.val() }, function() { draw(); load(); }, function() { $add.prop('disabled', false); });
 				});
+				$ta.on('enter-send', function() { if (!$add.prop('disabled')) $add.click(); });
 				$box.empty().append($f).append($ta).append($('<div class="text-right">').append($add));
-				if (first) dpInfo(r.STAFF_NM + ' 투입 메모', $box);
+				if (first) dpInfo(r.STAFF_NM + ' 투입 메모', $box); else $ta.focus();
 			});
 		}
 		draw(true);
@@ -825,6 +845,7 @@
 			$td.append($sale).append($cost);
 		}
 		$td.append($memo);
+		$memo.on('keydown', function(e) { if (e.key === 'Enter' && !e.originalEvent.isComposing) { e.preventDefault(); save(); } });
 		var $tr = $('<tr class="dp-form">');
 		function save() {
 			if (!$end.val() || $end.val() <= x.END_DT) { $end.focus(); bootbox.alert('새 철수일은 지금 철수일(' + x.END_DT + ') 뒤여야 합니다.'); return; }
