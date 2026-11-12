@@ -22,6 +22,11 @@
 	.btn.t-ded { border-color: #b4531a; color: #b4531a; font-weight: 700; } .show-ded .btn.t-ded { background: #b4531a; color: #fff; }
 	.btn.t-pl { border-color: #6b3fa0; color: #6b3fa0; font-weight: 700; } .show-pl .btn.t-pl { background: #6b3fa0; color: #fff; }
 	.pl-manual { background: #fff8e3 !important; }
+	/* 고칠 수 있는 칸(점선 밑줄, 올리면 ✎)과 자동 계산 칸(회색)을 구분한다 */
+	#lBody td.hr-cell, .pl-key-edit { text-decoration: underline dotted rgba(11,110,138,.6); text-underline-offset: 3px; cursor: text; }
+	#lBody td.hr-cell:hover, #lBody td.hr-cell:focus { outline: 1px solid #0b6e8a; outline-offset: -2px; }
+	#lBody td.hr-cell:hover::before { content: '✎ '; color: #0b6e8a; font-size: 10px; }
+	#lBody td.pl-calc, .pl-key-calc { color: #6b7780 !important; cursor: default; }
 	/* 시크릿 행: 시크릿 계정에게만 보이고 맨 위에 옅은 보라 */
 	#lBody tr.pl-secret td { background-color: #f4effc; }
 	.pl-chip.secret.on { border-color: #6b3fa0; background: #f4effc; color: #6b3fa0; }
@@ -95,7 +100,7 @@
 								<tbody id="lBody"></tbody>
 							</table>
 						</div>
-						<div class="small text-muted px-3 py-2">칸을 누르면 바로 고치고 수정이력에 남습니다(되돌리기는 ✎ 이력에서). 노란 칸은 자동계산을 사람이 고친 값입니다. 색 띠나 같은 색 버튼으로 칸을 펼칩니다. 확인 사항 ✕ 는 확인 완료로 숨깁니다.</div>
+						<div class="small text-muted px-3 py-2"><span class="pl-key-edit">점선 밑줄 칸</span>은 눌러서 고칠 수 있고, <span class="pl-key-calc">회색 칸</span>은 자동 계산이라 고칠 수 없습니다(형태·고객사·프로젝트·근무기간·매출단가는 투입현황에서 고칩니다). 칸을 누르면 바로 고치고 수정이력에 남습니다(되돌리기는 ✎ 이력에서). 노란 칸은 자동계산을 사람이 고친 값입니다. 색 띠나 같은 색 버튼으로 칸을 펼칩니다. 확인 사항 ✕ 는 확인 완료로 숨깁니다.</div>
 					</div>
 				</div>
 			</section>
@@ -284,12 +289,12 @@
 			contractCells(r, cs[0] || {}, true).forEach(function($td) { $tr.append($td); });
 			$tr.append(rs(cell(r, 'BASE_AMT', '')));
 			ALLOW.forEach(function(a) { $tr.append(rs(cell(r, a[0], 'x-allow'))); });
-			$tr.append(rs($('<td class="dp-num c-allow font-weight-bold">').text(dpWon(r.PAY_TOTAL))));
-			DED.forEach(function(a) { $tr.append(rs(a[0] === '_SETTLE' ? $('<td class="dp-num x-ded">').text(dpWon(SETTLES.reduce(function(s, k) { return s + Number(r[k] || 0); }, 0))).attr('title', '정산 칸은 상세에서 고칩니다') : cell(r, a[0], 'x-ded'))); });
-			$tr.append(rs($('<td class="dp-num c-ded font-weight-bold">').text(dpWon(r.DED_TOTAL)))).append(rs($('<td class="dp-num font-weight-bold">').text(dpWon(r.NET))))
-				.append(rs($('<td class="dp-num">').text(r.DELTA_PCT === undefined ? '' : (r.DELTA_PCT > 0 ? '+' : '') + r.DELTA_PCT + '%').toggleClass('text-danger', Math.abs(r.DELTA_PCT || 0) >= 10)))
+			$tr.append(rs($('<td class="dp-num c-allow font-weight-bold pl-calc">').text(dpWon(r.PAY_TOTAL))));
+			DED.forEach(function(a) { $tr.append(rs(a[0] === '_SETTLE' ? $('<td class="dp-num x-ded pl-calc">').text(dpWon(SETTLES.reduce(function(s, k) { return s + Number(r[k] || 0); }, 0))).attr('title', '정산 합계 · 칸별 정산은 성명을 눌러 상세에서 고칩니다') : cell(r, a[0], 'x-ded'))); });
+			$tr.append(rs($('<td class="dp-num c-ded font-weight-bold pl-calc">').text(dpWon(r.DED_TOTAL)))).append(rs($('<td class="dp-num font-weight-bold pl-calc">').text(dpWon(r.NET))))
+				.append(rs($('<td class="dp-num pl-calc">').text(r.DELTA_PCT === undefined ? '' : (r.DELTA_PCT > 0 ? '+' : '') + r.DELTA_PCT + '%').toggleClass('text-danger', Math.abs(r.DELTA_PCT || 0) >= 10)))
 				.append(rs($('<td class="pl-stub">')))
-				.append(rs($('<td class="dp-num x-pl">').text(dpWon(r.REAL_SALE)))).append(rs($('<td class="dp-num x-pl">').text(dpWon(r.COMPANY)))).append(rs($('<td class="dp-num x-pl font-weight-bold">').text(dpWon(r.PROFIT))))
+				.append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.REAL_SALE)))).append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.COMPANY)))).append(rs($('<td class="dp-num x-pl font-weight-bold pl-calc">').text(dpWon(r.PROFIT))))
 				.append(rs($('<td>')).append(r.FLAGS.map(function(f) { return flagChip(r, f); })))
 				.append(rs($('<td>')).append(countBtn('💬', r.MEMO_CNT, r.STAFF_NM + ' 메모', function() { memoPopup(r); })))
 				.append(rs($('<td>')).append(countBtn('✎', r.CHG_CNT, r.STAFF_NM + ' 수정이력', function() { historyPopup(r); })));
@@ -297,6 +302,7 @@
 			cs.slice(1).forEach(function(d) { $b.append($('<tr class="pl-child">').toggleClass('pl-secret', !!r.SECRET).append(contractCells(r, d, false))); });
 		});
 		applyBands();
+		$('#lBody td.pl-calc:not([title])').attr('title', '자동 계산 · 고칠 수 없습니다');
 		// 두 번째 머리글 줄은 색 띠 아래에 붙고, 위 스크롤 막대 길이는 표 너비에 맞춘다
 		$('#lHead tr').eq(1).children().css('top', $('#lHead tr').eq(0).outerHeight());
 		$('#topScroll div').width($('#mainScroll table').outerWidth());
