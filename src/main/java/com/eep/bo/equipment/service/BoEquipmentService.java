@@ -140,15 +140,13 @@ public class BoEquipmentService {
 		List<String> eqps = ids(str(param, "EQP_SQS"));
 		if (eqps.isEmpty()) throw new IllegalArgumentException("대여할 장비를 골라 주세요.");
 		date(str(param, "START_DT"), "대여일");
-		boolean guest = true;
-		if (!str(param, "STAFF_SQ").isEmpty()) {
-			Map<String, Object> staff = staffMapper.selectStaffOne(one("STAFF_SQ", param.get("STAFF_SQ")));
-			if (staff == null) throw new IllegalArgumentException("직원을 찾지 못했습니다.");
-			param.put("HOLDER_NM", staff.get("STAFF_NM"));
-			guest = staff.get("EMPLY_ID") == null;
-		} else if (str(param, "HOLDER_NM").trim().isEmpty()) {
-			throw new IllegalArgumentException("사용자를 입력해 주세요.");
-		}
+		// 대여는 직원(재직·대기)에게만 한다. 교육실·서버용처럼 사람이 아닌 곳은 보관 위치로 둔다
+		if (str(param, "STAFF_SQ").isEmpty()) throw new IllegalArgumentException("직원을 골라 주세요.");
+		Map<String, Object> staff = staffMapper.selectStaffOne(one("STAFF_SQ", param.get("STAFF_SQ")));
+		if (staff == null) throw new IllegalArgumentException("직원을 찾지 못했습니다.");
+		if ("LEFT".equals(staff.get("STATUS_CD"))) throw new IllegalArgumentException("퇴사한 직원에게는 대여할 수 없습니다.");
+		param.put("HOLDER_NM", staff.get("STAFF_NM"));
+		boolean guest = staff.get("EMPLY_ID") == null;
 		String group = UUID.randomUUID().toString();
 		param.put("RENT_GROUP", group);
 		tx.execute(status -> {

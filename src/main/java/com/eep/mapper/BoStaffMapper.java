@@ -37,4 +37,7 @@ public interface BoStaffMapper {
 	public int updateStaffItem(Map<String, Object> param);						//추가 건 수정 (ITEM_SQ, STAFF_SQ, ITEM_CD)
 	public int deleteStaffItem(Map<String, Object> param);						//추가 건 삭제 (ITEM_SQ, STAFF_SQ)
 	public int deleteStaffItemAll(Map<String, Object> param);					//STAFF_SQ 의 추가 건 전부
+
+	public Map<String, Object> selectStaffByTrainee(Map<String, Object> param);	//TRN_SQ 로 만든 대기 카드 (STAFF_SQ, STATUS_CD). 없으면 null
+	public int insertWaitFromTrainee(Map<String, Object> param);				//TRN_SQ 또는 INTV_SQ 교육생의 대기 카드. 이미 있으면 넣지 않는다
 }

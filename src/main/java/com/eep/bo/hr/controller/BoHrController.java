@@ -83,6 +83,8 @@ public class BoHrController {
 			param.put("UPDT_EMPLY_ID", loginId(session));
 			BoHrService.TraineeSave(param);
 			return json("result", "OK");
+		} catch (BoHrService.NeedReturn e) {
+			return json("needReturn", e.rents);
 		} catch (IllegalArgumentException e) {
 			return json("error", e.getMessage());
 		}
@@ -94,6 +96,8 @@ public class BoHrController {
 			param.put("UPDT_EMPLY_ID", loginId(session));
 			BoHrService.TraineeFieldSave(param);
 			return json("result", "OK");
+		} catch (BoHrService.NeedReturn e) {
+			return json("needReturn", e.rents);
 		} catch (IllegalArgumentException e) {
 			return json("error", e.getMessage());
 		}
@@ -122,9 +126,14 @@ public class BoHrController {
 	}
 
 	@RequestMapping(value = "/admin/hr/deleteTraineeData.do", method = RequestMethod.POST)
-	public ModelAndView deleteTraineeData(@RequestParam Map<String, Object> param) {
-		BoHrService.TraineeDelete(param);
-		return json("result", "OK");
+	public ModelAndView deleteTraineeData(@RequestParam Map<String, Object> param, HttpSession session) {
+		try {
+			param.put("UPDT_EMPLY_ID", loginId(session));
+			BoHrService.TraineeDelete(param);
+			return json("result", "OK");
+		} catch (BoHrService.NeedReturn e) {
+			return json("needReturn", e.rents);
+		}
 	}
 
 	@SuppressWarnings("unchecked")

@@ -73,8 +73,27 @@ function hrMemoBtn(api, sq, cnt, title, changed) {
 function hrPost(url, data, done, failed) {
 	$.post(url, data, function(res) {
 		if (res.error) { bootbox.alert(res.error); if (failed) failed(); return; }
+		// 교육종료·중도이탈 전에 반납할 장비가 있으면 목록으로 확인받고 반납 승인(RETURN_YN=Y)을 붙여 다시 보낸다
+		if (res.needReturn) {
+			hrConfirmReturn(res.needReturn, function() {
+				hrPost(url, $.isArray(data) ? data.concat([{ name: 'RETURN_YN', value: 'Y' }]) : typeof data === 'string' ? data + '&RETURN_YN=Y' : $.extend({}, data, { RETURN_YN: 'Y' }), done, failed);
+			}, failed);
+			return;
+		}
 		done(res);
 	}).fail(function() { if (failed) failed(); });
+}
+
+function hrConfirmReturn(rents, ok, cancel) {
+	var type = hrCodeMap('EQP_TYPE'), $b = $('<tbody>');
+	rents.forEach(function(e) { $b.append($('<tr>').append($('<td>').text(e.EQP_NO), $('<td>').text(type[e.TYPE_CD] || e.TYPE_CD), $('<td>').text(e.MODEL_NM || '-'), $('<td>').text(e.START_DT || '-'))); });
+	bootbox.confirm({
+		title: '장비 반납을 확인하세요',
+		message: $('<div>').append($('<p class="mb-2">').text('대여 중인 장비가 ' + rents.length + '대 있습니다. 확인을 누르면 오늘 날짜로 반납 처리하고 상태를 옮깁니다.'))
+			.append($('<table class="table table-sm mb-0">').append('<thead><tr><th>장비번호</th><th>구분</th><th>모델</th><th>대여일</th></tr></thead>').append($b)),
+		buttons: { confirm: { label: '반납하고 옮기기', className: 'btn-primary btn-sm' }, cancel: { label: '취소', className: 'btn-outline-secondary btn-sm' } },
+		callback: function(yes) { if (yes) ok(); else if (cancel) cancel(); }
+	});
 }
 
 // 날짜 입력칸은 날짜가 아닌 값을 빈칸으로 만들어 저장 때 지운다. 그런 값은 글자 입력으로 둔다

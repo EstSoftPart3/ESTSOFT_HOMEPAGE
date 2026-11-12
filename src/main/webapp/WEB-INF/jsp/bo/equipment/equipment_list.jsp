@@ -122,12 +122,8 @@
 				<div class="modal-header"><h5 class="modal-title" id="rentTitle">대여 등록</h5><button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button></div>
 				<form id="rentForm" onsubmit="saveRent(); return false;">
 					<div class="modal-body"><div class="form-row">
-						<div class="col-12 mb-2" role="radiogroup" aria-label="사용자 구분">
-							<div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="kind" id="kStaff" value="staff" checked><label class="form-check-label" for="kStaff">직원</label></div>
-							<div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="kind" id="kOther" value="other"><label class="form-check-label" for="kOther">직원 외 (교육실·서버용·외부 인원)</label></div>
-						</div>
-						<div class="col-12 mb-2" id="staffBox"><label for="rStaff">직원 *</label><input id="rStaff" class="form-control form-control-sm" list="staffList" autocomplete="off"><div class="small text-muted" id="staffHint"></div></div>
-						<div class="col-12 mb-2" id="otherBox" hidden><label for="rHolder">사용자 또는 사용처 *</label><input id="rHolder" class="form-control form-control-sm"></div>
+						<div class="col-12 mb-2" id="staffBox"><label for="rStaff">직원 *</label><input id="rStaff" class="form-control form-control-sm" list="staffList" autocomplete="off"><div class="small text-muted" id="staffHint"></div>
+							<div class="small text-muted">대여는 직원(교육생은 직원관리 대기)에게만 합니다. 교육실·서버용처럼 사람이 아닌 곳은 대여하지 말고 보관 위치로 적어 주세요.</div></div>
 						<div class="col-md-6 mb-2"><label for="rStart">대여일 *</label><input type="date" id="rStart" class="form-control form-control-sm" required></div>
 						<div class="col-md-6 mb-2"><label for="rPurpose">용도</label><input id="rPurpose" class="form-control form-control-sm" list="purposes"></div>
 						<div class="col-md-6 mb-2"><label for="rProject">프로젝트·현장</label><input id="rProject" class="form-control form-control-sm"></div>
@@ -211,7 +207,6 @@
 		$('#keyword').on('input', render);
 		$('#fType, #fPurpose').on('change', render);
 		$('#checkAll').on('change', function() { $('#listBody .eq-check').prop('checked', this.checked); });
-		$('input[name=kind]').on('change', function() { var other = $('#kOther').prop('checked'); $('#staffBox').prop('hidden', other); $('#otherBox').prop('hidden', !other); });
 		$('#rStaff').on('input', function() { var s = staffPicked(); $('#staffHint').text(s && !s.EMPLY_ID ? '홈페이지 계정과 연결되지 않아 게스트로 처리합니다. 담당자 화면에서 서명하거나 서명본을 올립니다.' : ''); });
 		$('#rAdd').on('keydown change', function(e) { if (e.type === 'keydown' && e.key !== 'Enter') return; e.preventDefault(); addPicked(); });
 		$('#nType').on('change', function() { if (this.value) hrPost('/admin/equipment/suggestNoData.do', { TYPE_CD: this.value }, function(res) { $('#nNo').val(res.result); }); });
@@ -465,7 +460,7 @@
 	function openRent(list) {
 		$('#rentForm')[0].reset();
 		$('#rStart').val(today());
-		$('#staffBox').prop('hidden', false); $('#otherBox').prop('hidden', true); $('#staffHint').text('');
+		$('#staffHint').text('');
 		$('#stockList').empty();
 		rows.filter(function(r) { return r.STATUS_CD === 'STOCK'; }).forEach(function(r) { $('#stockList').append($('<option>').val(stockLabel(r))); });
 		picked = (list || selected()).filter(function(r) { return r.STATUS_CD === 'STOCK'; });
@@ -490,10 +485,10 @@
 	}
 
 	function saveRent() {
-		var other = $('#kOther').prop('checked'), s = staffPicked();
-		if (!other && !s) { bootbox.alert('직원을 목록에서 골라 주세요.'); return; }
+		var s = staffPicked();
+		if (!s) { bootbox.alert('직원을 목록에서 골라 주세요.'); return; }
 		if (!picked.length) { bootbox.alert('대여할 장비를 골라 주세요.'); return; }
-		hrPost('/admin/equipment/rentEquipmentData.do', { EQP_SQS: picked.map(function(r) { return r.EQP_SQ; }).join(','), STAFF_SQ: other ? '' : s.STAFF_SQ, HOLDER_NM: other ? $('#rHolder').val() : '',
+		hrPost('/admin/equipment/rentEquipmentData.do', { EQP_SQS: picked.map(function(r) { return r.EQP_SQ; }).join(','), STAFF_SQ: s.STAFF_SQ,
 			START_DT: $('#rStart').val(), PURPOSE_NM: $('#rPurpose').val(), PROJECT_NM: $('#rProject').val(), HANDOVER_NM: $('#rHandover').val() }, function(res) {
 			$('#rentModal').modal('hide');
 			load();

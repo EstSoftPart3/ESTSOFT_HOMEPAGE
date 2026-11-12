@@ -24,4 +24,14 @@ public interface BoHrService {
 	void TraineeSkillSave(Map<String, Object> param);							//기술 평가 한 칸 수정
 	void TraineeDelete(Map<String, Object> param);								//교육생 삭제
 
+	/** 교육종료·중도이탈 전에 반납할 대여 장비가 있을 때. 화면에서 목록으로 확인받고 RETURN_YN=Y 로 다시 보낸다 */
+	class NeedReturn extends RuntimeException {
+		private static final long serialVersionUID = 1L;
+		public final List<Map<String, Object>> rents;
+
+		public NeedReturn(List<Map<String, Object>> rents) {
+			super("반납하지 않은 대여 장비가 있습니다.");
+			this.rents = rents;
+		}
+	}
 }

@@ -539,14 +539,14 @@
 		if (!docs || docs.sq !== r.STAFF_SQ) loadDocs(r.STAFF_SQ);
 		if (cardTab === 4) hrMemoFeed($('<div>').appendTo($p), MEMO_API, r.STAFF_SQ, function() { load(); });
 		if (cardTab === 5) {
-			var $eq = $('<div class="small" id="staffEquipment">').appendTo($p);
+			var $eq = $('<div id="staffEquipment">').appendTo($p);
 			loadEquipment(r.STAFF_SQ, function(list) {
-				$eq.empty();
-				if (!list.length) $eq.addClass('text-muted').text('대여 중인 장비가 없습니다.');
-				list.forEach(function(e) {
-					$eq.append($('<div>').text(e.EQP_NO + ' · ' + (EQ_TYPE[e.TYPE_CD] || e.TYPE_CD) + ' · ' + (e.MODEL_NM || '') + ' · ' + (e.START_DT || '') + ' ~')
-						.append(e.BY_NAME_YN === 'Y' ? $('<span class="text-muted">').text(' (대여 기록에 이름만 있어 이름으로 찾음)') : ''));
-				});
+				$eq.empty().append($('<div class="hr-section">').text('대여 중인 장비 ' + list.length + '대'));
+				if (!list.length) { $eq.append('<div class="small text-muted">대여 중인 장비가 없습니다.</div>'); return; }
+				var $b = $('<tbody>');
+				list.forEach(function(e) { $b.append($('<tr>').append($('<td>').text(e.EQP_NO), $('<td>').text(EQ_TYPE[e.TYPE_CD] || e.TYPE_CD), $('<td>').text(e.MODEL_NM || '-'), $('<td>').text(e.START_DT || '-'), $('<td>').text(e.PURPOSE_NM || '-'))); });
+				$eq.append($('<div class="table-responsive">').append($('<table class="table table-sm cal-table st-prj mb-0">')
+					.append('<thead><tr><th>장비번호</th><th>구분</th><th>모델</th><th>대여일</th><th>용도</th></tr></thead>').append($b)));
 			});
 		}
 	}

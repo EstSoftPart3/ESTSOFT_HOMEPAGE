@@ -33,6 +33,9 @@ public interface BoEquipmentMapper {
 	public int deleteFile(Map<String, Object> param);
 
 	public List<Map<String, Object>> selectStaffEquipment(Map<String, Object> param);
+	public int insertReturnMemoByStaff(Map<String, Object> param);			//STAFF_SQ 의 대여 중 장비마다 반납 메모 (END_DT, CONTENT)
+	public int updateEquipmentReturnedByStaff(Map<String, Object> param);	//STAFF_SQ 의 대여 중 장비 -> 보관중
+	public int closeRentsByStaff(Map<String, Object> param);				//STAFF_SQ 의 대여 중 기록 반납 (END_DT)
 
 	public Map<String, Object> selectOpenAudit();
 	public List<Map<String, Object>> selectAuditList();

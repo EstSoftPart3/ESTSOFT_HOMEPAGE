@@ -28,5 +28,6 @@ public interface BoHrMapper {
 	public int clearIntvReferrer(Map<String, Object> param);					//면접자 추천자명 지우기
 	public int updateTraineeSkill(Map<String, Object> param);					//교육생 기술 평가 한 칸 수정
 	public int deleteTrainee(Map<String, Object> param);						//교육생 삭제
+	public String selectTraineeStatus(Map<String, Object> param);				//TRN_SQ 의 지금 상태. 없으면 null
 
 }

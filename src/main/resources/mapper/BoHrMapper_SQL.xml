@@ -101,7 +101,7 @@
 		ORDER BY EDU_START_DT DESC, TRN_SQ DESC
 	</select>
 
-	<insert id="insertTrainee" parameterType="hashMap">
+	<insert id="insertTrainee" parameterType="hashMap" useGeneratedKeys="true" keyProperty="TRN_SQ">
 		INSERT INTO TB_EEP_HR_TRAINEE_M
 		(
 			  SEQ_NO, STATUS_CD, LEAVE_NOTE, TRN_NM, GENDER, EDU, AGE, ADDR, STATION, CAREER, LANG, LANG_NOTE, LOCAL_YN, EARLY_YN, SPECIAL_YN, MEMO
@@ -150,5 +150,9 @@
 	<delete id="deleteTrainee" parameterType="hashMap">
 		DELETE FROM TB_EEP_HR_TRAINEE_M WHERE TRN_SQ = #{TRN_SQ}
 	</delete>
+
+	<select id="selectTraineeStatus" parameterType="hashMap" resultType="string">
+		SELECT STATUS_CD FROM TB_EEP_HR_TRAINEE_M WHERE TRN_SQ = #{TRN_SQ}
+	</select>
 
 </mapper>
