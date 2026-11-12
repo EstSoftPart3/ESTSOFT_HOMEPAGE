@@ -231,7 +231,8 @@
 	var STATUS = hrCodeMap('HR_STAFF_STATUS');
 	if ($.isEmptyObject(STATUS)) STATUS = { WORK: '재직', LEFT: '퇴사', WAIT: '대기' };
 	// 인사카드 탭: [이름, 그 탭에 그릴 SECTIONS 이름]. 영업정보/수행이력과 서류는 따로 그린다
-	var CARD_TABS = [['기초정보', ['기초정보', '일자', '계좌(기업)', '비상연락망', '기타']], ['학력/교육', ['학력', '병역', '교육·자격']], ['영업정보/수행이력', []], ['서류', []], ['메모', []], ['보유 장비', []]];
+	var CARD_TABS = [['기초정보', ['기초정보', '일자', '계좌(기업)', '비상연락망', '기타']], ['학력/교육', ['학력', '병역', '교육·자격']], ['영업정보/수행이력', []], ['서류', []], ['메모', []], ['보유 장비', []], ['🔒 시크릿', []]];
+	var CAN_SECRET = false; // 슈퍼관리자만. 아니면 시크릿 탭을 그리지 않는다(서버도 같은 검사)
 	var SALES_TERMS = ['GRADE_NM', 'REAL_CAREER', 'WISH_PRICE', 'SCORE', 'GAPIL_YN', 'AUTO_APLY_YN', 'WISH_LOC'];
 	var SALES_SKILLS = ['SK_LANG', 'SK_BE', 'SK_FE', 'SK_FW', 'SK_DB', 'SK_IDE', 'SK_VCS', 'SK_OS'];
 	var SALES_TEXTS = ['WORK_DOMAIN', 'EXPERTISE'], SALES_ETC = ['REPORT', 'ETC1', 'ETC2'];
@@ -325,6 +326,7 @@
 	function load(then) {
 		$.post('/admin/staff/staffListData.do', function(res) {
 			rows = res.list || [];
+			CAN_SECRET = !!res.canSecret;
 			fillFilters();
 			render();
 			if (then) then();
@@ -549,6 +551,7 @@
 		var $b = $('#cardBody').empty();
 		var $tabs = $('<ul class="nav nav-tabs mb-3" role="tablist">').appendTo($b), $p = $('<div role="tabpanel">').appendTo($b);
 		CARD_TABS.forEach(function(t, i) {
+			if (i === 6 && !CAN_SECRET) return;
 			$('<li class="nav-item">').append($('<button type="button" class="nav-link" role="tab">').toggleClass('active', i === cardTab).attr('aria-selected', i === cardTab)
 				.text(cardTabLabel(r, i))
 				.on('click', function() { cardTab = i; paintCard(); $('#cardBody .nav-link.active').focus(); })).appendTo($tabs);
@@ -574,6 +577,7 @@
 		}
 		if (!docs || docs.sq !== r.STAFF_SQ) loadDocs(r.STAFF_SQ);
 		if (cardTab === 4) hrMemoFeed($('<div>').appendTo($p), MEMO_API, r.STAFF_SQ, function() { load(refreshCardTabs); });
+		if (cardTab === 6 && CAN_SECRET) secretTab($p, r);
 		if (cardTab === 5) {
 			var $eq = $('<div id="staffEquipment">').appendTo($p);
 			loadEquipment(r.STAFF_SQ, function(list) {
@@ -585,6 +589,23 @@
 					.append('<thead><tr><th>장비번호</th><th>구분</th><th>모델</th><th>대여일</th><th>용도</th></tr></thead>').append($b)));
 			});
 		}
+	}
+
+	// 계정관리 계정 카드의 시크릿 탭과 같은 스위치·설명. 바로 저장된다
+	function secretTab($p, r) {
+		var $box = $('<div>').appendTo($p).append('<div class="small text-muted">불러오는 중…</div>');
+		hrPost('/admin/staff/staffSecretData.do', { STAFF_SQ: r.STAFF_SQ }, function(res) {
+			var s = res.result || {};
+			$box.empty().append($('<div class="hr-section">').text('🔒 시크릿'));
+			if (!s.linked) { $box.append('<div class="small text-muted">로그인 계정이 연결되지 않아 켤 수 없습니다. 기초정보의 로그인 계정을 먼저 연결해 주세요.</div>'); return; }
+			var $chk = $('<input type="checkbox" class="custom-control-input" id="stSecret">').prop('checked', s.SECRET_YN === 'Y');
+			$box.append($('<div class="custom-control custom-switch mb-2">').append($chk).append($('<label class="custom-control-label font-weight-bold" for="stSecret">').text('🔒 시크릿 계정 (' + s.EMPLY_ID + ')')))
+				.append('<div class="small text-muted">켜면 이 직원의 투입현황·급여관리 행과 합계·건수·엑셀이 시크릿이 아닌 사람에게 모두 빠집니다. 시크릿 계정끼리는 서로 보입니다. 계정관리의 시크릿 탭과 같은 설정이며, 이 탭은 슈퍼관리자에게만 보이고 바로 저장됩니다.</div>');
+			$chk.on('change', function() {
+				var box = this;
+				hrPost('/admin/staff/setStaffSecretData.do', { STAFF_SQ: r.STAFF_SQ, SECRET_YN: box.checked ? 'Y' : 'N' }, function() { toast('시크릿을 ' + (box.checked ? '켰습니다' : '껐습니다')); }, function() { box.checked = !box.checked; });
+			});
+		});
 	}
 
 	var EQ_TYPE = hrCodeMap('EQP_TYPE');

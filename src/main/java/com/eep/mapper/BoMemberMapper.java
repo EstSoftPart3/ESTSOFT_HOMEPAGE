@@ -67,4 +67,6 @@ public interface BoMemberMapper {
 	String selectSecretYn(int sq);
 
 	int updateSecretYn(Map<String, Object> param);
+
+	Integer selectEmplySqById(String emplyId);			//직원관리 인사카드의 연결 계정 번호. 없으면 null
 }

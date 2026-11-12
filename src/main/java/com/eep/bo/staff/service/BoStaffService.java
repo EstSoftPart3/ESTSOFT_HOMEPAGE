@@ -135,6 +135,15 @@ public class BoStaffService {
 		BoStaffMapper.deleteStaff(param);
 	}
 
+	/** 직원에 연결된 로그인 계정 아이디. 없으면 null */
+	public String emplyIdOf(Object staffSq) {
+		Map<String, Object> p = new HashMap<>();
+		p.put("STAFF_SQ", staffSq);
+		Map<String, Object> s = BoStaffMapper.selectStaffOne(p);
+		if (s == null) throw new IllegalArgumentException("직원을 찾을 수 없습니다.");
+		return (String) s.get("EMPLY_ID");
+	}
+
 	public List<Map<String, Object>> itemList(Map<String, Object> param) {
 		return BoStaffMapper.selectStaffItemList(param);
 	}

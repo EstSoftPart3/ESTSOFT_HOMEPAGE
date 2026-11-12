@@ -19,8 +19,11 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.eep.bo.batch.controller.BoBatchController;
+import com.eep.bo.member.service.BoMemberService;
+import com.eep.bo.member.service.BoMemberService.Actor;
 import com.eep.bo.staff.service.BoStaffService;
 import com.eep.bo.staff.service.StaffDriveService;
+import com.eep.bo.system.service.BoSystemService;
 
 /**
  * 직원 - 직원관리(인사카드) Controller
@@ -35,14 +38,48 @@ public class BoStaffController {
 	@Autowired
 	private StaffDriveService StaffDriveService;
 
+	@Autowired
+	private BoMemberService memberService;
+
+	@Autowired
+	private BoSystemService system;
+
 	@RequestMapping("/admin/staff/openStaffList.do")
 	public ModelAndView openStaffList() {
 		return new ModelAndView("bo/staff/staff_list");
 	}
 
 	@RequestMapping(value = "/admin/staff/staffListData.do", method = RequestMethod.POST)
-	public ModelAndView staffListData() {
-		return json("list", BoStaffService.list());
+	public ModelAndView staffListData(HttpSession session) {
+		ModelAndView mv = json("list", BoStaffService.list());
+		mv.addObject("canSecret", memberService.canSecret(actor(session))); // 시크릿 탭은 계정관리와 같이 슈퍼관리자에게만 그린다
+		return mv;
+	}
+
+	// ── 시크릿 (계정관리와 같은 정책·저장. 직원에 연결된 로그인 계정에 켠다) ──
+
+	@RequestMapping(value = "/admin/staff/staffSecretData.do", method = RequestMethod.POST)
+	public ModelAndView staffSecretData(@RequestParam("STAFF_SQ") int staffSq, HttpSession session) {
+		try {
+			return json("result", memberService.staffSecret(BoStaffService.emplyIdOf(staffSq), actor(session)));
+		} catch (IllegalArgumentException e) {
+			return json("error", e.getMessage());
+		}
+	}
+
+	@RequestMapping(value = "/admin/staff/setStaffSecretData.do", method = RequestMethod.POST)
+	public ModelAndView setStaffSecretData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("SECRET_YN") String on, HttpSession session) {
+		try {
+			memberService.setStaffSecret(BoStaffService.emplyIdOf(staffSq), "Y".equals(on), actor(session));
+			return json("result", "OK");
+		} catch (IllegalArgumentException e) {
+			return json("error", e.getMessage());
+		}
+	}
+
+	private Actor actor(HttpSession session) {
+		String id = loginId(session);
+		return new Actor(id, system.access(id).superUser);
 	}
 
 	@RequestMapping(value = "/admin/staff/revealStaffData.do", method = RequestMethod.POST)

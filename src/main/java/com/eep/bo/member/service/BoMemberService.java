@@ -72,8 +72,28 @@ public class BoMemberService {
 	}
 
 	/** 시크릿은 슈퍼관리자만 보고 바꾼다(내 계정 포함). 그 밖의 사람에게는 있다는 것도 알리지 않는다 */
-	private boolean canSecret(Actor actor) {
+	public boolean canSecret(Actor actor) {
 		return actor.superUser;
+	}
+
+	/** 직원관리 인사카드의 시크릿 탭. 계정관리와 같은 정책(슈퍼관리자만)이고, 시크릿은 직원에 연결된 로그인 계정에 저장된다 */
+	public Map<String, Object> staffSecret(String emplyId, Actor actor) {
+		require(canSecret(actor), "직원을 찾을 수 없습니다.");
+		Integer sq = emplyId == null || emplyId.isEmpty() ? null : mapper.selectEmplySqById(emplyId);
+		Map<String, Object> out = new HashMap<>();
+		out.put("linked", sq != null);
+		if (sq != null) {
+			out.put("EMPLY_ID", emplyId);
+			out.put("SECRET_YN", mapper.selectSecretYn(sq));
+		}
+		return out;
+	}
+
+	public void setStaffSecret(String emplyId, boolean on, Actor actor) {
+		require(canSecret(actor), "직원을 찾을 수 없습니다.");
+		Integer sq = emplyId == null || emplyId.isEmpty() ? null : mapper.selectEmplySqById(emplyId);
+		require(sq != null, "로그인 계정이 연결된 직원만 시크릿을 켤 수 있습니다.");
+		setSecret(sq, on, actor);
 	}
 
 	public void setSecret(int sq, boolean on, Actor actor) {

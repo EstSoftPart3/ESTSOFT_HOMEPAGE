@@ -170,6 +170,10 @@
 		UPDATE TB_EEP_EMPLY_M SET SECRET_YN = #{SECRET_YN} WHERE EMPLY_SQ = #{EMPLY_SQ}
 	</update>
 
+	<select id="selectEmplySqById" parameterType="string" resultType="int">
+		SELECT EMPLY_SQ FROM TB_EEP_EMPLY_M WHERE EMPLY_ID = #{emplyId}
+	</select>
+
 	<update id="changePassword" parameterType="hashmap">
 		UPDATE TB_EEP_EMPLY_M SET EMPLY_PW = #{EMPLY_PW}, PW_INIT_YN = 'N', EMPLY_UPDT_DT = NOW() WHERE EMPLY_ID = #{EMPLY_ID}
 	</update>
