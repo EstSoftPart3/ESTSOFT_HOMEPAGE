@@ -436,7 +436,7 @@
 			$('.st-filter').each(function() { if ($(this).val() && r[$(this).data('field')] !== $(this).val()) ok = false; });
 			if (!ok) return false;
 			return !kw || [r.STAFF_NM, r.PHONE, r.EMAIL, r.COMPANY_EMAIL, r.DEPT_NM, r.ORG_NM, r.MEMO].some(function(v) { return v && String(v).toLowerCase().indexOf(kw) >= 0; });
-		}).sort(sorter($('#sortSel').val()));
+		}).sort(function(a, b) { return (b.SECRET ? 1 : 0) - (a.SECRET ? 1 : 0) || sorter($('#sortSel').val())(a, b); }); // 시크릿은 맨 위 고정
 	}
 
 	function sorter(key) {
