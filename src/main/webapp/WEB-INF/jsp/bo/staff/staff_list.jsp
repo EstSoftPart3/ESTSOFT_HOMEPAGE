@@ -18,6 +18,8 @@
 	.pl-chip input { margin: 0; cursor: pointer; }
 	.pl-chip .cnt { background: rgba(17,17,17,.08); border-radius: 999px; padding: 0 7px; font-size: 11px; }
 	.pl-chip.on { border-color: #0b6e8a; background: #eef9fc; color: #0b6e8a; }
+	.pl-chip.secret.on { border-color: #6b3fa0; background: #f4effc; color: #6b3fa0; }
+	#listBody tr.st-secret-row td { background-color: #f4effc; }
 	.st-name { background: none; border: 0; padding: 0; color: #0b6e8a; font-weight: 600; text-decoration: underline; cursor: pointer; }
 	.st-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 2px 18px; }
 	.st-grid .hr-card-label { flex-basis: 84px; }
@@ -304,17 +306,22 @@
 
 	$(document).on('change', '#stChks input.pl-chk', function() { shownSt[this.value] = this.checked; render(); });
 	$(document).on('click', '#stChks #stAll', function() {
-		var all = Object.keys(STATUS).every(function(k) { return shownSt[k]; });
-		Object.keys(STATUS).forEach(function(k) { shownSt[k] = !all; });
+		var keys = chipKeys(), all = keys.every(function(k) { return shownSt[k]; });
+		keys.forEach(function(k) { shownSt[k] = !all; });
 		render();
 	});
 
+	// 시크릿 계정에게만 서버가 secretViewer 와 시크릿 행(SECRET)을 준다. 투입현황·급여관리처럼 맨 앞에 🔒 시크릿 칩
+	var SECRET_VIEW = false;
+	function chipKeys() { return (SECRET_VIEW ? ['_SECRET'] : []).concat(Object.keys(STATUS)); }
+
 	function renderStatusChips() {
-		var keys = Object.keys(STATUS), all = keys.every(function(k) { return shownSt[k]; });
+		var keys = chipKeys(), all = keys.every(function(k) { return shownSt[k]; });
 		var $c = $('#stChks').empty().append($('<button type="button" class="btn btn-sm btn-outline-secondary" id="stAll">').text(all ? '☑ 전체 해제' : '☐ 전체 선택'));
 		keys.forEach(function(k) {
-			$c.append($('<label class="pl-chip">').toggleClass('on', !!shownSt[k]).append($('<input type="checkbox" class="pl-chk">').val(k).prop('checked', !!shownSt[k]))
-				.append($('<span>').text(STATUS[k])).append($('<span class="cnt">').text(rows.filter(function(r) { return r.STATUS_CD === k; }).length)));
+			var n = k === '_SECRET' ? rows.filter(function(r) { return r.SECRET; }).length : rows.filter(function(r) { return r.STATUS_CD === k; }).length;
+			$c.append($('<label class="pl-chip">').toggleClass('on', !!shownSt[k]).toggleClass('secret', k === '_SECRET').append($('<input type="checkbox" class="pl-chk">').val(k).prop('checked', !!shownSt[k]))
+				.append($('<span>').text(k === '_SECRET' ? '🔒 시크릿' : STATUS[k])).append($('<span class="cnt">').text(n)));
 		});
 	}
 
@@ -327,6 +334,8 @@
 		$.post('/admin/staff/staffListData.do', function(res) {
 			rows = res.list || [];
 			CAN_SECRET = !!res.canSecret;
+			if (res.secretViewer && !SECRET_VIEW) shownSt._SECRET = true;
+			SECRET_VIEW = !!res.secretViewer;
 			fillFilters();
 			render();
 			if (then) then();
@@ -422,7 +431,7 @@
 	function filtered() {
 		var kw = $.trim($('#keyword').val()).toLowerCase();
 		return rows.filter(function(r) {
-			if (!shownSt[r.STATUS_CD]) return false;
+			if (!shownSt[r.STATUS_CD] || (r.SECRET && !shownSt._SECRET)) return false;
 			var ok = true;
 			$('.st-filter').each(function() { if ($(this).val() && r[$(this).data('field')] !== $(this).val()) ok = false; });
 			if (!ok) return false;
@@ -464,11 +473,11 @@
 		var $body = $('#listBody').empty();
 		if (!list.length) { $body.append($('<tr>').append($('<td class="text-center text-muted py-4">').attr('colspan', cols.length).text('해당하는 직원이 없습니다.'))); return; }
 		list.forEach(function(r) {
-			var $tr = $('<tr>');
+			var $tr = $('<tr>').toggleClass('st-secret-row', !!r.SECRET);
 			cols.forEach(function(c) {
 				var $td = $('<td>');
 				if (c[0] === 'STAFF_NM') {
-					$td.append($('<button type="button" class="st-name">').text(r.STAFF_NM).on('click', function() { openCard(r.STAFF_SQ); }));
+					$td.append(r.SECRET ? $('<span title="시크릿">').text('🔒 ') : '').append($('<button type="button" class="st-name">').text(r.STAFF_NM).on('click', function() { openCard(r.STAFF_SQ); }));
 					copyable($td, r, 'STAFF_NM');
 				} else if (c[0] === '_TENURE') {
 					$td.text(tenure(r));
@@ -493,7 +502,7 @@
 
 	// 소속 드롭다운의 빠른 선택. 인원은 지금 탭 기준
 	function renderOrgSeg() {
-		var inTab = rows.filter(function(r) { return shownSt[r.STATUS_CD]; }), org = $('#fOrg').val() || '', $s = $('#orgSeg').empty();
+		var inTab = rows.filter(function(r) { return shownSt[r.STATUS_CD] && (!r.SECRET || shownSt._SECRET); }), org = $('#fOrg').val() || '', $s = $('#orgSeg').empty();
 		[['', '전체'], ['정규직', '정규직'], ['프리', '프리']].forEach(function(o) {
 			var n = o[0] ? inTab.filter(function(r) { return r.ORG_NM === o[0]; }).length : inTab.length;
 			$s.append($('<button type="button" class="btn btn-outline-secondary">').toggleClass('active', org === o[0]).attr('aria-pressed', org === o[0]).text(o[1] + ' ' + n)
@@ -545,7 +554,7 @@
 	function paintCard() {
 		var r = find(opened);
 		if (!r) return;
-		$('#cardTitle').text(r.STAFF_NM + ' 인사카드 (' + STATUS[r.STATUS_CD] + ')');
+		$('#cardTitle').text((r.SECRET ? '🔒 ' : '') + r.STAFF_NM + ' 인사카드 (' + STATUS[r.STATUS_CD] + ')');
 		$('#btnStatus').text(r.STATUS_CD === 'WORK' ? '퇴사로 옮기기' : '재직으로 되돌리기');
 		$('#btnWait').text(r.STATUS_CD === 'WAIT' ? '퇴사로 옮기기' : '대기로 옮기기');
 		var $b = $('#cardBody').empty();

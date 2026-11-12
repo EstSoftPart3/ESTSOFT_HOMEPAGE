@@ -11,6 +11,8 @@ import javax.servlet.http.HttpSession;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.eep.bo.batch.controller.BoBatchController;
+import com.eep.bo.deploy.service.SecretFilter;
 import com.eep.bo.member.service.BoMemberService;
 import com.eep.bo.member.service.BoMemberService.Actor;
 import com.eep.bo.staff.service.BoStaffService;
@@ -44,6 +47,9 @@ public class BoStaffController {
 	@Autowired
 	private BoSystemService system;
 
+	@Autowired
+	private SecretFilter secretFilter;
+
 	@RequestMapping("/admin/staff/openStaffList.do")
 	public ModelAndView openStaffList() {
 		return new ModelAndView("bo/staff/staff_list");
@@ -51,9 +57,25 @@ public class BoStaffController {
 
 	@RequestMapping(value = "/admin/staff/staffListData.do", method = RequestMethod.POST)
 	public ModelAndView staffListData(HttpSession session) {
-		ModelAndView mv = json("list", BoStaffService.list());
+		SecretFilter.View v = secretFilter.view(loginId(session));
+		ModelAndView mv = json("list", v.filter(BoStaffService.list())); // 투입현황·급여관리와 같이 시크릿 직원은 시크릿 계정에게만
+		mv.addObject("secretViewer", v.secret);
 		mv.addObject("canSecret", memberService.canSecret(actor(session))); // 시크릿 탭은 계정관리와 같이 슈퍼관리자에게만 그린다
 		return mv;
+	}
+
+	/** 잡지 않은 입력 오류(시크릿 검사 포함)는 화면이 알림으로 보이도록 JSON 오류로 돌려준다. 공통 처리기는 빈 응답을 준다 */
+	@ExceptionHandler(IllegalArgumentException.class)
+	public ModelAndView inputError(IllegalArgumentException e) {
+		return json("error", e.getMessage());
+	}
+
+	/** 숨긴 시크릿 직원을 번호로 직접 요청해도 없는 것처럼 막는다. 이 컨트롤러의 모든 요청 전에 돈다 */
+	@ModelAttribute
+	public void secretGuard(@RequestParam(value = "STAFF_SQ", required = false) String staffSq, HttpSession session) {
+		if (staffSq != null && !staffSq.isEmpty()) {
+			secretFilter.view(loginId(session)).guard(staffSq);
+		}
 	}
 
 	// ── 시크릿 (계정관리와 같은 정책·저장. 직원에 연결된 로그인 계정에 켠다) ──
