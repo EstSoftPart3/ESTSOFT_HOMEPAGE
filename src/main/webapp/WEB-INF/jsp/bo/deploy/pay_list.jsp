@@ -214,7 +214,7 @@
 	var PARAMS = [];
 	var LABEL = { CLOSE: '마감', REOPEN: '마감 해제', MEMO: '메모', BONUS: '상여 적용', BONUS_EXCLUDE: '상여 제외' };
 	DP_PAY.concat(DP_DED).forEach(function(d) { LABEL[d[0]] = d[1]; });
-	var ym = moment().format('YYYY-MM'), rows = [], closed = false, shown = {}, checked = {}, sortKey = 'STAFF_NM', sortDir = 1, detailTab = 0, detailRow = null;
+	var ym = moment().format('YYYY-MM'), rows = [], monthClosed = false, shown = {}, checked = {}, sortKey = 'STAFF_NM', sortDir = 1, detailTab = 0, detailRow = null;
 	CHIPS.forEach(function(c) { checked[c[0]] = true; });
 	// 행 체크: 보기용 표시. 서버에 저장하지 않고 달을 바꾸면 풀린다
 	var picked = {}, pickedYm = ym;
@@ -236,7 +236,7 @@
 		$('#nextYm').on('click', function() { step(1); });
 		$('#payDt').on('change', function() { if (this.value) hrPost('/admin/pay/payDateData.do', { YM: ym, PAY_DT: this.value }, function() {}); });
 		$('#btnClose').on('click', function() {
-			if (closed) { $('#reopenReason').val(''); $('#reopenModal').modal('show'); return; }
+			if (monthClosed) { $('#reopenReason').val(''); $('#reopenModal').modal('show'); return; }
 			bootbox.confirm(dpYmLabel(ym) + ' 급여를 마감할까요? 마감하면 금액을 고칠 수 없습니다.', function(ok) {
 				if (ok) hrPost('/admin/pay/closeData.do', { YM: ym, CLOSE: true }, load);
 			});
@@ -269,7 +269,7 @@
 	function load(after) {
 		hrPost('/admin/pay/monthData.do', { YM: ym }, function(res) {
 			rows = res.result.rows;
-			closed = res.result.closed;
+			monthClosed = res.result.closed;
 			// 시크릿 계정에게만 서버가 secretViewer 와 시크릿 행(SECRET)을 준다
 			if (res.result.secretViewer && CHIPS[0][0] !== '_SECRET') { CHIPS.unshift(['_SECRET', '🔒 시크릿']); checked._SECRET = true; }
 			$('#payDt').val(res.result.PAY_DT || '');
@@ -324,9 +324,9 @@
 	function sortVal(r) { var f = SORT[sortKey]; var v = f ? f(r) : r[sortKey]; return v === undefined || v === null ? '' : v; }
 
 	function render() {
-		$('#status').text(closed ? '마감' : '작성중').attr('class', 'dp-pill ' + (closed ? 'ok' : 'warn'));
-		$('#btnClose').text(closed ? '마감 해제' : '마감');
-		$('#btnImport').prop('disabled', closed);
+		$('#status').text(monthClosed ? '마감' : '작성중').attr('class', 'dp-pill ' + (monthClosed ? 'ok' : 'warn'));
+		$('#btnClose').text(monthClosed ? '마감 해제' : '마감');
+		$('#btnImport').prop('disabled', monthClosed);
 		var list = rows.filter(visible);
 		var kp = [['지급 합계', sum(list, 'PAY_TOTAL')], ['공제 합계', sum(list, 'DED_TOTAL')], ['실지급 합계', sum(list, 'NET')], ['기타 합계', sum(list, 'BUY')], ['수수료 합계', sum(list, 'FEE')], ['영업이익', sum(list, 'PROFIT')], ['확인 필요', list.filter(function(r) { return r.FLAGS.length; }).length, 'bad']];
 		$('#kpis').empty().append(kp.map(function(k) { return $('<div class="dp-kpi">').addClass(k[2] || '').append($('<span>').text(k[0])).append($('<b>').text(dpWon(k[1]))); }));
@@ -513,7 +513,7 @@
 		var $p = dpFlag(f);
 		// 상여 칩의 ✕ 는 이번 달 상여 제외, 그 밖의 칩은 확인 완료(숨김)
 		var bonus = f.K === '상여', what = bonus ? '이번 달 상여 제외' : '확인 완료(숨김)';
-		if (!closed) $p.append($('<button type="button" class="pl-x">').attr({ title: what, 'aria-label': r.STAFF_NM + ' ' + f.K + ' ' + what }).text('✕').on('click', function(e) {
+		if (!monthClosed) $p.append($('<button type="button" class="pl-x">').attr({ title: what, 'aria-label': r.STAFF_NM + ' ' + f.K + ' ' + what }).text('✕').on('click', function(e) {
 			e.stopPropagation(); dpHide();
 			function send() { hrPost('/admin/pay/ackData.do', { YM: ym, STAFF_SQ: r.STAFF_SQ, FLAG_K: f.K }, function() { load(); }); }
 			if (!bonus) return send();
@@ -555,7 +555,7 @@
 		var $td = $('<td class="dp-num">').addClass(cls).toggleClass('pl-manual', isManual(r, f));
 		// 기본 칸은 앞에 🧮: 올리면 이 사람의 계산 과정, 누르면 같은 내용을 창으로(칸 수정은 숫자를 누를 때)
 		function paint($c, v) { $c.text(v || ''); if (f === 'BASE_AMT' && (r.BASE_HOW || []).length) $c.prepend(baseHowBtn(r)); }
-		if (closed) { paint($td, dpWon(r[f])); return $td; }
+		if (monthClosed) { paint($td, dpWon(r[f])); return $td; }
 		return hrEditable($td, { url: '/admin/pay/saveFieldData.do', key: { YM: ym, STAFF_SQ: r.STAFF_SQ }, field: f, label: r.STAFF_NM + ' ' + (LABEL[f] || f), paint: paint,
 			show: function() { return dpWon(r[f]); }, value: function() { return r[f]; }, saved: function() { load(function() { if (detailRow) refreshDetail(); }); } });
 	}
@@ -629,7 +629,7 @@
 				var amount = !!(DP_PAY.concat(DP_DED).some(function(d) { return d[0] === h.FIELD_NM; }));
 				var $act = $('<td>');
 				if (h.REVERTED_YN === 'Y') $act.append('<span class="dp-pill">되돌림됨</span>');
-				else if (amount && !closed) $act.append($('<button type="button" class="btn btn-sm btn-outline-secondary">↶ 되돌리기</button>').on('click', function() {
+				else if (amount && !monthClosed) $act.append($('<button type="button" class="btn btn-sm btn-outline-secondary">↶ 되돌리기</button>').on('click', function() {
 					bootbox.confirm((LABEL[h.FIELD_NM] || h.FIELD_NM) + ' 을(를) ' + dpWon(h.BEFORE_VAL) + ' 으로 되돌릴까요?', function(ok) {
 						if (ok) hrPost('/admin/pay/revertData.do', { CHG_SQ: h.CHG_SQ }, function() { load(); historyView($box, r); });
 					});
@@ -640,7 +640,7 @@
 			});
 			if (!res.result.length) $b.append('<tr><td colspan="6" class="text-center text-muted py-3">이 달 수정이력이 없습니다.</td></tr>');
 			$box.empty().append($('<div class="table-responsive">').append($t));
-			if (closed) $box.append('<div class="small text-muted mt-2">마감된 달은 되돌릴 수 없습니다.</div>');
+			if (monthClosed) $box.append('<div class="small text-muted mt-2">마감된 달은 되돌릴 수 없습니다.</div>');
 			if (done) done();
 		});
 	}
@@ -655,7 +655,7 @@
 
 	function renderDetail() {
 		var r = detailRow;
-		$('#detailTitle').text(r.STAFF_NM + ' · ' + dpYmLabel(ym) + (closed ? ' 마감' : ' 작성중'));
+		$('#detailTitle').text(r.STAFF_NM + ' · ' + dpYmLabel(ym) + (monthClosed ? ' 마감' : ' 작성중'));
 		$('#detailTabs').empty().append(DETAIL_TABS.map(function(t, i) { return hrTab(i, t, i === 3 ? Number(r.MEMO_CNT || 0) : i === 4 ? Number(r.CHG_CNT || 0) : '', detailTab === i); }));
 		var $body = $('#detailBody').empty();
 		if (detailTab === 3) return memoView($body, r);
@@ -675,7 +675,7 @@
 			.append($('<tr>').append('<th>지급일자</th>').append($('<td>').text($('#payDt').val() || '')).append('<th>부서</th>').append($('<td>').text(c.DEPT_NM || c.ORG_NM || ''))));
 		function line(f, label) {
 			var $v = $('<span>').toggleClass('pl-manual', isManual(r, f));
-			if (closed) $v.text(dpWon(r[f])); else hrEditable($v, { url: '/admin/pay/saveFieldData.do', key: { YM: ym, STAFF_SQ: r.STAFF_SQ }, field: f, label: label,
+			if (monthClosed) $v.text(dpWon(r[f])); else hrEditable($v, { url: '/admin/pay/saveFieldData.do', key: { YM: ym, STAFF_SQ: r.STAFF_SQ }, field: f, label: label,
 				show: function() { return dpWon(r[f]); }, value: function() { return r[f]; }, saved: function() { load(refreshDetail); } });
 			return $('<div class="pl-line">').append($('<span>').text(label)).append($v);
 		}

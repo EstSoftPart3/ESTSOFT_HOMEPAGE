@@ -164,6 +164,7 @@ public class PayCalcCheck {
 		same(how.get(0), "개발2 · 6/30일 : (계약단가 4,700,000 ÷ 30일) × 6일 = 940,000", "건별 계산 글");
 		same(how.get(1), "직접 입력 900,000 (자동 계산이면 940,000)", "수기 글");
 		secret();
+		payslip();
 		ledger();
 		license();
 		System.out.println("PayCalcCheck OK");
@@ -258,6 +259,47 @@ public class PayCalcCheck {
 		same(BizLicenseParser.kindByText("안녕하세요"), "null", "글자-모름");
 		Map<String, String> b = BizLicenseParser.bank(bank);
 		same(b.get("BANK_NM") + "/" + b.get("ACCOUNT_NO") + "/" + b.get("ACCOUNT_HOLDER"), "신한/140-012-345678/(주)가나시스템", "통장 칸");
+	}
+
+	/** 급여명세서 PDF: 한글이 들어가고, 암호 없이는 안 열리고, 생년월일로 열린다. 글꼴에 없는 글자가 있어도 만들어진다 */
+	private static void payslip() throws Exception {
+		Map<String, Object> slip = new HashMap<>();
+		slip.put("TITLE", "9월분 급여명세서");
+		slip.put("NAME", "김예시😀");
+		slip.put("BIRTH", "1990-01-01");
+		slip.put("POSITION", "선임");
+		slip.put("JOIN_DT", "2025-03-02");
+		slip.put("PAY_DT", "2026-10-15");
+		slip.put("DEPT", "개발팀");
+		slip.put("PAY", java.util.Arrays.asList(new Object[] { "기본급", 4000000L }, new Object[] { "식대", 200000L }));
+		slip.put("DED", java.util.Arrays.asList(new Object[] { "고용보험", 36000L }, new Object[] { "소득세", 120000L }, new Object[] { "지방소득세", 12000L }));
+		slip.put("PAY_TOTAL", 4200000L);
+		slip.put("DED_TOTAL", 168000L);
+		slip.put("NET", 4032000L);
+		byte[] locked = PayslipPdf.build(slip, null, "19900101");
+		try {
+			org.apache.pdfbox.pdmodel.PDDocument.load(locked).close();
+			throw new AssertionError("암호 없이 명세서가 열렸다");
+		} catch (org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException expected) {
+			// 생년월일을 넣어야 열린다
+		}
+		try (org.apache.pdfbox.pdmodel.PDDocument d = org.apache.pdfbox.pdmodel.PDDocument.load(locked, "19900101")) {
+			String text = new org.apache.pdfbox.text.PDFTextStripper().getText(d);
+			same(text.contains("9월분 급여명세서") && text.contains("4,032,000 원") && text.contains("지방소득세"), true, "명세서 글자");
+		}
+		try (org.apache.pdfbox.pdmodel.PDDocument d = org.apache.pdfbox.pdmodel.PDDocument.load(PayslipPdf.build(slip, null, null))) {
+			same(d.isEncrypted(), false, "미리보기는 암호 없음");
+		}
+		// 메일 문구: 값은 HTML 로 풀리지 않게 넣고, 스크립트·이벤트 속성은 걸러 낸다
+		Map<String, String> vars = new HashMap<>();
+		vars.put("성명", "<b>김</b>");
+		same(PayslipService.fill("<p>{성명} 님</p>", vars, true), "<p>&lt;b&gt;김&lt;/b&gt; 님</p>", "본문 값 이스케이프");
+		same(PayslipService.fill("{성명} 명세서", vars, false), "<b>김</b> 명세서", "제목은 글자 그대로");
+		same(PayslipService.clean("<p onclick=\"x()\">a</p><script>alert(1)</script><a href=\"javascript:x\">b</a>"), "<p>a</p><a href=\"x\">b</a>", "위험한 HTML 제거");
+		String out = System.getProperty("payslip.out");
+		if (out != null) {
+			java.nio.file.Files.write(java.nio.file.Paths.get(out), PayslipPdf.build(slip, java.nio.file.Files.readAllBytes(java.nio.file.Paths.get("src/main/webapp/resources/img/logo.png")), null));
+		}
 	}
 
 	/** 시크릿: 시크릿 아닌 사람에게는 행을 빼고 요청을 거부, 시크릿 계정에게는 SECRET 표시 */

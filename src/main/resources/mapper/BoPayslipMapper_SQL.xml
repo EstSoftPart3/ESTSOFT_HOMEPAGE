@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 급여명세서. 표는 sql/payslip.sql -->
+<mapper namespace="com.eep.mapper.BoPayslipMapper">
+
+	<select id="selectStaffInfo" resultType="hashMap">
+		SELECT STAFF_SQ, STAFF_NM, RRN_ENC, POSITION_NM, DEPT_NM, ORG_NM, JOIN_DT, EMAIL FROM TB_EEP_HR_STAFF_M
+	</select>
+
+	<select id="selectEmplyEmail" parameterType="hashMap" resultType="string">
+		SELECT EMPLY_EMAIL FROM TB_EEP_EMPLY_M WHERE EMPLY_ID = #{EMPLY_ID}
+	</select>
+
+	<select id="selectConf" resultType="hashMap">
+		SELECT C.FROM_NM, C.FROM_ADDR, C.APP_PW_ENC, C.REPLY_TO, C.BCC, C.CONTACT, C.SUBJECT, C.BODY, C.VERIFIED_YN
+			, DATE_FORMAT(C.VERIFIED_DT, '%Y-%m-%d %H:%i') AS VERIFIED_DT
+		FROM TB_EEP_PAYSLIP_MAIL_M C WHERE C.CONF_SQ = 1
+	</select>
+
+	<update id="updateConfAccount" parameterType="hashMap">
+		UPDATE TB_EEP_PAYSLIP_MAIL_M SET FROM_NM = #{FROM_NM}, FROM_ADDR = #{FROM_ADDR}, REPLY_TO = NULLIF(#{REPLY_TO}, ''), BCC = NULLIF(#{BCC}, ''), CONTACT = NULLIF(#{CONTACT}, '')
+			<if test="APP_PW_ENC != null">, APP_PW_ENC = #{APP_PW_ENC}</if>
+			<if test="RESET_VERIFIED">, VERIFIED_YN = 'N', VERIFIED_DT = NULL</if>
+			, UPDT_EMPLY_ID = #{EMPLY_ID}
+		WHERE CONF_SQ = 1
+	</update>
+
+	<update id="updateConfBody" parameterType="hashMap">
+		UPDATE TB_EEP_PAYSLIP_MAIL_M SET SUBJECT = #{SUBJECT}, BODY = #{BODY}, UPDT_EMPLY_ID = #{EMPLY_ID} WHERE CONF_SQ = 1
+	</update>
+
+	<update id="updateConfVerified" parameterType="hashMap">
+		UPDATE TB_EEP_PAYSLIP_MAIL_M SET VERIFIED_YN = #{VERIFIED_YN}, VERIFIED_DT = IF(#{VERIFIED_YN} = 'Y', NOW(), NULL) WHERE CONF_SQ = 1
+	</update>
+
+	<insert id="insertConfHist" parameterType="hashMap">
+		INSERT INTO TB_EEP_PAYSLIP_CONF_H (KIND_CD, SUMMARY, SUBJECT, BODY, EMPLY_ID) VALUES (#{KIND_CD}, #{SUMMARY}, #{SUBJECT}, #{BODY}, #{EMPLY_ID})
+	</insert>
+
+	<select id="selectConfHist" resultType="hashMap">
+		SELECT H.HIST_SQ, H.KIND_CD, H.SUMMARY, DATE_FORMAT(H.REG_DT, '%Y-%m-%d %H:%i') AS REG_DT, H.EMPLY_ID
+			, (SELECT E.EMPLY_NM FROM TB_EEP_EMPLY_M E WHERE E.EMPLY_ID = H.EMPLY_ID LIMIT 1) AS EMPLY_NM
+		FROM TB_EEP_PAYSLIP_CONF_H H ORDER BY H.HIST_SQ DESC LIMIT 50
+	</select>
+
+	<select id="selectConfHistOne" parameterType="hashMap" resultType="hashMap">
+		SELECT SUBJECT, BODY FROM TB_EEP_PAYSLIP_CONF_H WHERE HIST_SQ = #{HIST_SQ} AND KIND_CD = 'BODY'
+	</select>
+
+	<insert id="insertLog" parameterType="hashMap">
+		INSERT INTO TB_EEP_PAYSLIP_LOG_H (PAY_YM, STAFF_SQ, CHANNEL, TO_ADDR, RESULT, ERROR_MSG, EMPLY_ID) VALUES (#{YM}, #{STAFF_SQ}, #{CHANNEL}, #{TO_ADDR}, #{RESULT}, #{ERROR_MSG}, #{EMPLY_ID})
+	</insert>
+
+	<select id="selectLastLogs" parameterType="hashMap" resultType="hashMap">
+		SELECT L.STAFF_SQ, L.CHANNEL, L.RESULT, DATE_FORMAT(L.REG_DT, '%m-%d %H:%i') AS REG_DT
+		FROM TB_EEP_PAYSLIP_LOG_H L
+		WHERE L.PAY_YM = #{YM} AND L.LOG_SQ = (SELECT MAX(X.LOG_SQ) FROM TB_EEP_PAYSLIP_LOG_H X WHERE X.PAY_YM = L.PAY_YM AND X.STAFF_SQ = L.STAFF_SQ)
+	</select>
+
+	<select id="selectLogs" parameterType="hashMap" resultType="hashMap">
+		SELECT L.CHANNEL, L.TO_ADDR, L.RESULT, L.ERROR_MSG, DATE_FORMAT(L.REG_DT, '%Y-%m-%d %H:%i') AS REG_DT
+			, (SELECT E.EMPLY_NM FROM TB_EEP_EMPLY_M E WHERE E.EMPLY_ID = L.EMPLY_ID LIMIT 1) AS EMPLY_NM
+		FROM TB_EEP_PAYSLIP_LOG_H L WHERE L.PAY_YM = #{YM} AND L.STAFF_SQ = #{STAFF_SQ} ORDER BY L.LOG_SQ DESC
+	</select>
+</mapper>
