@@ -47,6 +47,8 @@ public class SignupService {
 	private BoMemberService memberService;
 	@Autowired
 	private JavaMailSender mailSender;
+	@Autowired
+	private com.eep.bo.member.service.AccountMail accountMail;
 	@Value("${mail.username}")
 	private String mailFrom;
 
@@ -138,6 +140,7 @@ public class SignupService {
 			}
 			Map<String, Object> created = memberService.issueBySignup(state.staffSq, state.email);
 			session.removeAttribute(STATE);
+			accountMail.signedUp((String) created.get("EMPLY_ID"), (String) created.get("EMPLY_NM"));
 			return created;
 		}
 	}

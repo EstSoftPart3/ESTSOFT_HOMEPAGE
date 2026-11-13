@@ -33,6 +33,9 @@ public class BoLoginController {
 	@Autowired
 	private BoMemberService memberService;
 
+	@Autowired
+	private com.eep.fo.login.service.FoLoginService foLoginService;
+
 	@RequestMapping(value = "/admin/login/loginPage.do")
 	public String openLoginPage(HttpServletRequest request, HttpServletResponse response) {
 		if(BoLoginRememberService.restoreAdmin(request, response)) {
@@ -75,8 +78,12 @@ public class BoLoginController {
 			session.setAttribute("pwInitLogin", !"N".equals(AuthCheck.get(0).get("pwInitYn")));
 			memberService.touchLogin(emplyId);
 
-			BoLoginRememberService.afterLogin(emplyId, param, request, response);	
-		} 
+			BoLoginRememberService.afterLogin(emplyId, param, request, response);
+		} else {
+			// 아이디·비밀번호는 맞는데 아직 권한 없는 직원 계정이면 따로 알린다(로그인 화면이 일반 직원으로 안내)
+			List<?> staff = (List<?>) foLoginService.loginAdminData(new HashMap<>(param)).get("loginInfo");
+			mv.addObject("staffOnly", staff != null && staff.size() == 1);
+		}
 
 		return mv;
 

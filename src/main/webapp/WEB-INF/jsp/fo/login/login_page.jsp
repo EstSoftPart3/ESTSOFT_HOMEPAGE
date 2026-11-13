@@ -163,6 +163,15 @@
       				locale: 'kr',
       				callback: goAfterLogin });
 
+      	 	} else if (data.staffOnly) {
+      	 		// 비밀번호는 맞지만 아직 관리자 권한이 없는 직원 계정: 일반 직원 탭으로 바꿔 둔다
+      	 		bootbox.alert({
+      				message: "아직 관리자 권한이 없는 계정입니다.<br>「일반 직원」으로 로그인해 주세요.<br>관리자 화면이 필요하면 관리자에게 권한 발급을 문의해 주세요.",
+      				locale: 'kr',
+      				callback: function() {
+      					$('input[name="loginType"][value="staff"]').prop('checked', true).trigger('change');
+      					$("#emplyPw").val('').focus();
+      				} });
       	 	} else {
       	 		bootbox.alert({
       				message: isAdmin() ? "관리자 계정이 아니거나 아이디·비밀번호가 올바르지 않습니다." : "아이디 또는 비밀번호가 올바르지 않습니다.",

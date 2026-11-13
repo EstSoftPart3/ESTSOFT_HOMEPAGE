@@ -44,6 +44,8 @@ public class BoMemberService {
 	private BoMemberMapper mapper;
 	@Autowired
 	private BoSystemService system;
+	@Autowired
+	private AccountMail accountMail;
 
 	private TransactionTemplate tx;
 
@@ -114,7 +116,7 @@ public class BoMemberService {
 		require(staffSqs != null && ids != null && !staffSqs.isEmpty() && staffSqs.size() == ids.size(), "발급할 직원을 선택해 주세요.");
 		requireType(type);
 		require(ADMIN.equals(type) == (roleSq != null), "관리자 계정은 권한을 하나 골라야 합니다.");
-		return tx.execute(s -> {
+		List<Map<String, Object>> done = tx.execute(s -> {
 			List<Map<String, Object>> issued = new ArrayList<>();
 			for (int i = 0; i < staffSqs.size(); i++) {
 				Map<String, Object> staff = mapper.selectStaffForIssue(staffSqs.get(i));
@@ -144,6 +146,10 @@ public class BoMemberService {
 			}
 			return issued;
 		});
+		if (roleSq != null) {
+			done.forEach(c -> accountMail.granted((String) c.get("EMPLY_ID"), true));
+		}
+		return done;
 	}
 
 	/** 직원이 아닌 담당자용 관리자 계정 */
@@ -151,13 +157,15 @@ public class BoMemberService {
 		require(roleSq != null, "관리자 계정은 권한을 하나 골라야 합니다.");
 		require(text(name) != null && name.trim().length() <= 50, "이름을 입력해 주세요.");
 		validateEmail(text(email));
-		return tx.execute(s -> {
+		List<Map<String, Object>> done = tx.execute(s -> {
 			Map<String, Object> created = create(text(id), name.trim(), text(email), null, ADMIN, PW_FORCE);
 			system.addRoleUser(roleSq, text(id), actor.id);
 			List<Map<String, Object>> issued = new ArrayList<>();
 			issued.add(created);
 			return issued;
 		});
+		accountMail.granted(text(id), true);
+		return done;
 	}
 
 	// ── 직원 본인 가입 ──
@@ -286,6 +294,10 @@ public class BoMemberService {
 			}
 			return null;
 		});
+		// 권한이 없던 계정에 처음 권한이 생겼을 때만 본인에게 안내한다(권한을 더하거나 빼는 것은 안내하지 않는다)
+		if (current.isEmpty() && !next.isEmpty()) {
+			accountMail.granted(id, false);
+		}
 	}
 
 	private static String stored(String rrn) {

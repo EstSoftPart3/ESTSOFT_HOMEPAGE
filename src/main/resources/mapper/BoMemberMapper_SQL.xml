@@ -183,4 +183,19 @@
 		UPDATE TB_EEP_EMPLY_M SET LAST_LOGIN_DT = NOW() WHERE EMPLY_ID = #{emplyId}
 	</update>
 
+	<!-- 계정 안내 메일 (AccountMail) -->
+	<select id="selectSuperEmails" resultType="string">
+		SELECT DISTINCT E.EMPLY_EMAIL
+		FROM TB_EEP_USER_ROLE_R U
+		JOIN TB_EEP_ROLE_M R ON R.ROLE_SQ = U.ROLE_SQ AND R.ROLE_CD = 'SUPER'
+		JOIN TB_EEP_EMPLY_M E ON E.EMPLY_ID = U.EMPLY_ID
+		WHERE IFNULL(E.USE_YN, 'Y') = 'Y' AND IFNULL(E.DEL_YN, 'N') = 'N' AND E.EMPLY_EMAIL LIKE '%_@_%'
+	</select>
+
+	<select id="selectGrantMail" parameterType="string" resultType="hashmap">
+		SELECT E.EMPLY_NM, E.EMPLY_EMAIL
+			, (SELECT GROUP_CONCAT(R.ROLE_NM ORDER BY R.SORT_NO, R.ROLE_SQ SEPARATOR ', ') FROM TB_EEP_USER_ROLE_R U JOIN TB_EEP_ROLE_M R ON R.ROLE_SQ = U.ROLE_SQ WHERE U.EMPLY_ID = E.EMPLY_ID) AS ROLE_NMS
+		FROM TB_EEP_EMPLY_M E WHERE E.EMPLY_ID = #{emplyId}
+	</select>
+
 </mapper>

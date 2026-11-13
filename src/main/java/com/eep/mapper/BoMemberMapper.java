@@ -69,4 +69,10 @@ public interface BoMemberMapper {
 	int updateSecretYn(Map<String, Object> param);
 
 	Integer selectEmplySqById(String emplyId);			//직원관리 인사카드의 연결 계정 번호. 없으면 null
+
+	/** 계정 안내 메일 (AccountMail) */
+
+	List<String> selectSuperEmails();					//사용 중인 슈퍼관리자 계정의 메일
+
+	Map<String, Object> selectGrantMail(String emplyId);	//EMPLY_NM, EMPLY_EMAIL, ROLE_NMS(권한 이름들)
 }

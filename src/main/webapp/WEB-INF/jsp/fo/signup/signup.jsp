@@ -101,7 +101,8 @@
 			<input type="text" id="donePw" class="su-secret form-control" readonly style="height:auto">
 			<button type="button" class="btn btn-default btn-block mt-2" id="copyBtn">복사</button>
 			<div class="su-warn">이 화면을 벗어나면 다시 볼 수 없습니다.</div>
-			<a class="btn btn-ink btn-block" href="/eep/login/loginPage.do">로그인하러 가기</a>
+			<div class="su-sub mb-2">지금은 <b>일반 직원</b> 계정입니다. 로그인 화면에서 「일반 직원」을 골라 로그인해 주세요.<br>관리자 화면이 필요하면 관리자에게 권한 발급을 문의해 주세요. 권한이 발급되면 회사 메일로 안내해 드립니다.</div>
+			<a class="btn btn-ink btn-block" href="/eep/login/loginPage.do?type=staff">일반 직원으로 로그인하러 가기</a>
 		</div>
 	</div></div>
 </div>
