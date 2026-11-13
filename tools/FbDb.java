@@ -14,7 +14,7 @@ import java.util.Properties;
  * 실행(프로젝트 폴더에서): java -cp "tools;<mariadb-java-client.jar>" FbDb <명령>
  *   new                         접수(NEW) 피드백을 줄마다 출력: FB_SQ | 화면 | 종류 | 요청자 | 내용
  *   ing                         진행(ING) 피드백: FB_SQ | 화면 | 요청자 | 내용 | 개발 반영 내용
- *   spec FB_SQ 파일              파일의 @@PLAN·@@EST·@@HTML 을 기획서로 넣고 검토 대기(REVIEW)로. 접수 상태일 때만
+ *   spec FB_SQ 파일              파일의 @@PLAN·@@EST·@@HTML 을 기획서로 넣는다. 접수(NEW)면 검토 대기로, 검토 대기·보류·진행 중이면 기획서만 바꿈
  *   update 파일                  업데이트 내역 1건 등록(@@TITLE @@SCREENS @@COMMIT @@FB_SQ @@CHANGED @@TESTS @@CAUTIONS @@HTML).
  *                               @@FB_SQ 가 있으면 그 피드백을 반영(DONE)으로 바꾸고 요청자 버튼에 숫자가 뜨게 한다
  * 파일은 UTF-8, '@@키' 줄 다음부터 다음 '@@' 줄 전까지가 값이다.
@@ -46,7 +46,8 @@ public class FbDb {
 	}
 
 	static void spec(Connection c, int fbSq, Map<String, String> f) throws SQLException {
-		try (PreparedStatement s = c.prepareStatement("UPDATE TB_EEP_FEEDBACK_M SET PLAN_TXT = ?, EST_TXT = ?, SPEC_HTML = ?, STATUS_CD = 'REVIEW' WHERE FB_SQ = ? AND STATUS_CD = 'NEW'")) {
+		// 접수 건은 검토 대기로. 검토 대기·보류·진행 중 건은 상태를 두고 기획서만 바꾼다(피드백 화면의 '다시 만들기')
+		try (PreparedStatement s = c.prepareStatement("UPDATE TB_EEP_FEEDBACK_M SET PLAN_TXT = ?, EST_TXT = ?, SPEC_HTML = ?, STATUS_CD = IF(STATUS_CD = 'NEW', 'REVIEW', STATUS_CD) WHERE FB_SQ = ? AND STATUS_CD IN ('NEW', 'REVIEW', 'HOLD', 'ING')")) {
 			s.setString(1, f.get("PLAN")); s.setString(2, f.get("EST")); s.setString(3, f.get("HTML")); s.setInt(4, fbSq);
 			System.out.println("spec " + fbSq + " → " + s.executeUpdate());
 		}
