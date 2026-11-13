@@ -24,6 +24,8 @@
   
   <!-- Google Font: Source Sans Pro -->
   <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700" rel="stylesheet">
+  <%-- 한글 글꼴: Pretendard(받지 못하면 맑은 고딕) --%>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 
   <!-- CK에디터 -->
   <!-- <script src="https://cdn.ckeditor.com/ckeditor5/29.1.0/classic/ckeditor.js"></script> -->
@@ -98,6 +100,46 @@
   	.fb-three > div { border: 1px solid rgba(17,17,17,.12); border-radius: 8px; padding: 8px 10px; } .fb-three b { display: block; margin-bottom: 4px; } .fb-three ul { margin: 0; padding-left: 18px; }
   	.fb-new { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 999px; background: #e0a800; color: #111; font-size: 10px; font-weight: 700; line-height: 15px; }
   	@media (max-width: 767px) { .fb-three { grid-template-columns: 1fr; } .main-header .bo-fb { padding: 6px 9px; } }
+
+  	/* ── 전체 모양 다듬기(2026-11-13): 글꼴·주요 색(청록 #0b6e8a) 한 벌, 화면 제목, 표, 입력칸, 팝업, 바닥글 ── */
+  	body, .tooltip, .popover, .bootbox, button, input, select, textarea { font-family: "Pretendard Variable", Pretendard, "Source Sans Pro", "Malgun Gothic", sans-serif; }
+  	body { -webkit-font-smoothing: antialiased; letter-spacing: -.1px; }
+  	.content-wrapper { background: #f4f6f9; }
+  	/* 화면 제목 줄: 밑줄 대신 여백, 제목은 조금 크게 */
+  	.content-wrapper > .content > .card-header { border-bottom: 0; background: transparent; padding: .9rem 1.25rem .2rem; }
+  	.content-wrapper > .content > .card-header .card-title, .content-wrapper > .content > .card-header .bTitle { font-size: 18px; color: #111; letter-spacing: -.3px; }
+  	/* 주 버튼: 부트스트랩 파랑 → 청록으로 통일 */
+  	.btn-primary { background-color: #0b6e8a; border-color: #0b6e8a; }
+  	.btn-primary:hover, .btn-primary:focus, .btn-primary:not(:disabled):not(.disabled):active { background-color: #095a71; border-color: #095a71; }
+  	.btn-primary:focus, .btn-outline-primary:focus { box-shadow: 0 0 0 .2rem rgba(11,110,138,.25); }
+  	.btn-outline-primary { color: #0b6e8a; border-color: #0b6e8a; }
+  	.btn-outline-primary:hover, .btn-outline-primary:not(:disabled):not(.disabled):active { background-color: #0b6e8a; border-color: #0b6e8a; color: #fff; }
+  	.btn-outline-secondary { color: #4a545c; border-color: #ced4da; background: #fff; }
+  	.btn-outline-secondary:hover { background: #f1f3f5; border-color: #adb5bd; color: #111; }
+  	.btn { border-radius: 6px; transition: background-color .15s, border-color .15s, color .15s, box-shadow .15s; }
+  	.btn-sm { border-radius: 6px; }
+  	/* 입력칸: 둥글게, 초점은 청록 */
+  	.form-control { border-color: #d5dbe0; border-radius: 6px; }
+  	.form-control:focus { border-color: #0b6e8a; box-shadow: 0 0 0 .2rem rgba(11,110,138,.15); }
+  	.form-control::placeholder { color: #a3acb4; }
+  	.custom-control-input:checked ~ .custom-control-label::before { background-color: #0b6e8a; border-color: #0b6e8a; }
+  	input[type=checkbox], input[type=radio] { accent-color: #0b6e8a; }
+  	/* 표: 머리글은 옅은 회색 바탕·작은 진회색 글씨, 줄 경계는 옅게, 올리면 청록 바탕 */
+  	.table { color: #222; }
+  	.table thead th { font-size: 12.5px; font-weight: 600; color: #4a545c; border-bottom-width: 1px; }
+  	:where(.table) > :where(thead) > :where(tr) > :where(th) { background-color: #f7f9fa; box-shadow: inset 0 -1px 0 #e3e7ea; }
+  	.table td, .table th { border-top-color: #edf0f2; }
+  	.table-hover tbody tr:hover { background-color: #f1f9fb; }
+  	/* 팝업: 둥글고 그림자 */
+  	.modal-content { border: 0; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.18); }
+  	.modal-header { border-bottom-color: #edf0f2; padding: .85rem 1.1rem; }
+  	.modal-header .modal-title { font-size: 16px; font-weight: 700; }
+  	.modal-footer { border-top-color: #edf0f2; background: #fafbfc; border-radius: 0 0 12px 12px; }
+  	/* 바닥글: 작고 옅게 */
+  	.main-footer { padding: .55rem 1rem; font-size: 12px; color: #8a949c; background: #fff; border-top-color: #e9ecef; }
+  	.main-footer strong { font-weight: 600; } .main-footer a { color: #5f6b75 !important; }
+  	/* 얇은 스크롤바 */
+  	.tbl-scroll, .table-responsive, .modal-body { scrollbar-width: thin; scrollbar-color: #c5cdd3 transparent; }
 
   </style>
   
