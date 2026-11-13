@@ -75,29 +75,54 @@
 		if (foot.hidden !== !t.offsetParent) foot.hidden = !t.offsetParent;
 	}
 
-	// 화면을 잠그고 로딩 표시를 띄운다
-	function lock(on) {
+	// 화면을 잠그고 로딩 표시를 띄운다. 더 보이기(busy) 중이거나 서버 호출이 0.3초 넘게 걸리는(netOn) 동안 켜 둔다
+	var netN = 0, netOn = false, netTimer = null;
+	function lock() {
+		var on = busy || netOn;
 		if (!loadEl) {
+			if (!on) return;
 			loadEl = document.createElement('div');
 			loadEl.className = 'bo-load';
 			loadEl.setAttribute('role', 'status');
-			loadEl.innerHTML = '<div class="bo-load-card"><div class="bo-load-ring"></div><div>불러오는 중…</div><div class="bo-load-bar"></div></div>';
+			loadEl.innerHTML = '<div class="bo-load-card"><div class="bo-load-ring"></div><div class="bo-load-txt"></div><div class="bo-load-bar"></div></div>';
 			document.body.appendChild(loadEl);
 			loadEl.offsetWidth; // 처음 띄울 때도 서서히 나타나게
 		}
+		if (on) loadEl.querySelector('.bo-load-txt').textContent = netOn ? '처리 중…' : '불러오는 중…';
 		loadEl.classList.toggle('on', on);
+	}
+
+	// ── 서버 호출 중 로딩 (BO·FO) ──
+	// 저장·조회·업로드가 0.3초 넘게 걸리면 화면을 잠그고, 진행 중인 호출이 모두 끝나면 푼다. 바로 끝나는 호출에는 띄우지 않는다.
+	// jQuery 호출(global:false 제외)과 fetch 를 센다. shortcut: XMLHttpRequest 를 직접 쓰는 곳(파일 줄이기 도구)은 자체 진행 표시가 있어 뺐다
+	function net(d) {
+		netN = Math.max(0, netN + d);
+		if (netN && !netOn && !netTimer) netTimer = setTimeout(function () { netTimer = null; if (netN) { netOn = true; lock(); } }, 300);
+		if (!netN) { clearTimeout(netTimer); netTimer = null; if (netOn) { netOn = false; lock(); } }
+	}
+	function watchNet() {
+		if (window.jQuery) window.jQuery(document).on('ajaxSend', function () { net(1); }).on('ajaxComplete', function () { net(-1); });
+		if (window.fetch) {
+			var raw = window.fetch;
+			window.fetch = function () {
+				net(1);
+				var p = raw.apply(this, arguments);
+				p.then(function () { net(-1); }, function () { net(-1); });
+				return p;
+			};
+		}
 	}
 
 	function loadMore(foot) {
 		var t = foot.previousElementSibling, st = t && more.get(t);
 		if (!st || st.show >= st.n || busy) return;
 		busy = true;
-		lock(true);
+		lock();
 		setTimeout(function () {
 			st.show += STEP;
 			applyMore(t);
-			lock(false);
 			busy = false;
+			lock();
 			// 더 보인 뒤에도 표 끝이 화면 안이면 이어서 불러온다
 			setTimeout(checkMore, 0);
 		}, 450);
@@ -493,14 +518,6 @@
 		css.textContent = '.tp-pick{width:30px;text-align:center;padding-left:8px!important;padding-right:4px!important}'
 			+ 'tr.tp-on{outline:2px solid #2563eb;outline-offset:-2px}tr.tp-on>td{background-color:#eef4ff}'
 			+ 'tr.more-hide{display:none}.tbl-more{padding:9px 12px;text-align:center;font-size:12px;color:#5f6b75}'
-			+ '.bo-load{position:fixed;top:0;right:0;bottom:0;left:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.32);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);opacity:0;pointer-events:none;transition:opacity .15s}'
-			+ '.bo-load.on{opacity:1;pointer-events:auto;cursor:progress}'
-			+ '.bo-load-card{display:flex;flex-direction:column;align-items:center;gap:12px;padding:22px 32px 20px;border-radius:16px;background:#fff;box-shadow:0 12px 40px rgba(15,23,42,.25);font-weight:700;font-size:13px;color:#33505c}'
-			+ '.bo-load-ring{width:46px;height:46px;border-radius:50%;background:conic-gradient(#16d5ff,#0b6e8a,#6b3fa0,#16d5ff);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 6px),#000 calc(100% - 5px));mask:radial-gradient(farthest-side,transparent calc(100% - 6px),#000 calc(100% - 5px));animation:bo-spin .8s linear infinite}'
-			+ '.bo-load-bar{width:150px;height:4px;border-radius:4px;background:#e6eef2;overflow:hidden}'
-			+ '.bo-load-bar::after{content:"";display:block;width:40%;height:100%;border-radius:4px;background:linear-gradient(90deg,#16d5ff,#6b3fa0);animation:bo-slide .9s ease-in-out infinite}'
-			+ '@keyframes bo-spin{to{transform:rotate(360deg)}}@keyframes bo-slide{from{transform:translateX(-100%)}to{transform:translateX(250%)}}'
-			+ '@media (prefers-reduced-motion:reduce){.bo-load-ring{animation-duration:2.4s}.bo-load-bar::after{animation-duration:2.7s}}'
 			// 틀고정: 고정 칸 하늘색·파란 세로선, 맨 윗줄 고정 행 노란색, 줄 고정 하늘색·마지막 줄 아래 선. 화면의 줄 색(체크·시크릿 등)이 우선
 			+ '.frz-bar{display:flex;justify-content:flex-end;position:relative;margin:0 0 2px}'
 			+ '.frz-btn{border:1px solid #ccd3d9;background:#fff;border-radius:6px;padding:0 8px;font-size:11.5px;line-height:20px;color:#5f6b75}'
@@ -521,7 +538,16 @@
 	}
 
 	var topCss = document.createElement('style');
-	topCss.textContent = '.tbl-top{overflow-x:auto;overflow-y:hidden;height:13px}.tbl-top>div{height:1px}.tbl-top[hidden]{display:none}';
+	topCss.textContent = '.tbl-top{overflow-x:auto;overflow-y:hidden;height:13px}.tbl-top>div{height:1px}.tbl-top[hidden]{display:none}'
+		// 로딩 화면(더 보이기·서버 호출 중)
+		+ '.bo-load{position:fixed;top:0;right:0;bottom:0;left:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.32);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);opacity:0;pointer-events:none;transition:opacity .15s}'
+		+ '.bo-load.on{opacity:1;pointer-events:auto;cursor:progress}'
+		+ '.bo-load-card{display:flex;flex-direction:column;align-items:center;gap:12px;padding:22px 32px 20px;border-radius:16px;background:#fff;box-shadow:0 12px 40px rgba(15,23,42,.25);font-weight:700;font-size:13px;color:#33505c}'
+		+ '.bo-load-ring{width:46px;height:46px;border-radius:50%;background:conic-gradient(#16d5ff,#0b6e8a,#6b3fa0,#16d5ff);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 6px),#000 calc(100% - 5px));mask:radial-gradient(farthest-side,transparent calc(100% - 6px),#000 calc(100% - 5px));animation:bo-spin .8s linear infinite}'
+		+ '.bo-load-bar{width:150px;height:4px;border-radius:4px;background:#e6eef2;overflow:hidden}'
+		+ '.bo-load-bar::after{content:"";display:block;width:40%;height:100%;border-radius:4px;background:linear-gradient(90deg,#16d5ff,#6b3fa0);animation:bo-slide .9s ease-in-out infinite}'
+		+ '@keyframes bo-spin{to{transform:rotate(360deg)}}@keyframes bo-slide{from{transform:translateX(-100%)}to{transform:translateX(250%)}}'
+		+ '@media (prefers-reduced-motion:reduce){.bo-load-ring{animation-duration:2.4s}.bo-load-bar::after{animation-duration:2.7s}}';
 	document.head.appendChild(topCss);
 
 	var timer = null;
@@ -544,5 +570,7 @@
 		scan();
 		new MutationObserver(later).observe(document.body, { childList: true, subtree: true });
 	}
+	// 화면이 처음 목록을 부르기 전에 걸어 둔다(이 파일은 jQuery 바로 뒤에 읽힌다)
+	watchNet();
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
