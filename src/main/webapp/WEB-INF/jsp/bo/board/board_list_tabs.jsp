@@ -23,7 +23,6 @@
 	.brd-pop b { display: block; margin-bottom: 2px; word-break: break-word; }
 	.brd-pop .m { color: #6c757d; font-size: 11px; margin-bottom: 6px; }
 	.brd-pop .c { color: #333; white-space: pre-line; word-break: break-word; max-height: 240px; overflow: hidden; }
-	.brd-pager { display: flex; justify-content: center; gap: 4px; padding: 10px 0 14px; }
 	@media (max-width: 767px) { .brd-search { margin-left: 0; width: 100%; } .brd-search input { flex: 1; width: auto; } }
 </style>
 
@@ -81,7 +80,6 @@
 								<tbody id="boardBody"></tbody>
 							</table>
 						</div>
-						<div class="brd-pager" id="pager"></div>
 					</div>
 				</div>
 			</section>
@@ -92,9 +90,8 @@
 <%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
 <%@ include file="/WEB-INF/jsp/bo/board/board_common.jspf"%>
 <script>
-	var PAGE_SIZE = 20;
 	var tab = '<c:out value="${tab}"/>' || 'notice';
-	var rows = {}, filter = { use: '', del: 'N', blind: '' }, search = { opt: 'TWC', kw: '' }, page = 1, picked = {};
+	var rows = {}, filter = { use: '', del: 'N', blind: '' }, search = { opt: 'TWC', kw: '' }, picked = {};
 	var board = boardOf, url = boardUrl;
 
 	function load() {
@@ -137,13 +134,12 @@
 		$('#writeLabel').text(board(tab).name);
 
 		var cols = [['brdSq', '번호', 70], ['brdTtl', '제목']].concat(board(tab).extra || [], [['brdRegDt', '작성일'], ['brdWrtr', '작성자']]);
-		var list = visible(tab), pages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
-		page = Math.min(page, pages);
-		var shown = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+		// 줄은 전부 그리고, 50줄씩 더 보이기는 공통 ui-table.js 가 한다
+		var list = visible(tab), shown = list;
 		var allOn = shown.length > 0 && shown.every(function(r) { return picked[r.brdSq]; });
 
 		$('#boardHead').empty()
-			.append($('<th class="chk">').append($('<input type="checkbox" id="chkAll" aria-label="이 페이지 전체 선택">').prop('checked', allOn)))
+			.append($('<th class="chk">').append($('<input type="checkbox" id="chkAll" aria-label="보이는 줄 전체 선택">').prop('checked', allOn)))
 			.append(cols.map(function(c) { return $('<th>').text(c[1]).addClass(c[0] === 'brdTtl' ? '' : 'text-center').css('width', c[0] === 'brdTtl' ? '' : (c[2] || 130) + 'px'); }))
 			.append('<th class="text-center" style="width:80px">블라인드</th><th class="text-center" style="width:64px">삭제</th>');
 
@@ -168,8 +164,6 @@
 			$body.append($tr.append(sw('blind', r)).append(sw('del', r)));
 		});
 
-		var $p = $('#pager').empty();
-		if (pages > 1) for (var i = 1; i <= pages; i++) $p.append($('<button type="button" class="btn btn-sm">').toggleClass('btn-primary', i === page).toggleClass('btn-light', i !== page).attr('data-page', i).text(i));
 		renderBulk();
 	}
 
@@ -189,22 +183,21 @@
 	}
 
 	$('#tabs').on('click', '.cate-tab', function() {
-		tab = $(this).attr('data-tab'); page = 1; picked = {}; render();
+		tab = $(this).attr('data-tab'); picked = {}; render();
 		// 상세 화면의 「목록」이 이 주소로 돌아오므로 보던 탭이 유지된다
 		history.replaceState(null, '', url(tab, 'List'));
 	});
 	$('[data-filter] .btn').on('click', function() {
 		$(this).addClass('active').siblings().removeClass('active');
-		filter[$(this).parent().attr('data-filter')] = $(this).attr('data-val'); page = 1; render();
+		filter[$(this).parent().attr('data-filter')] = $(this).attr('data-val'); render();
 	});
-	$('#searchForm').on('submit', function(e) { e.preventDefault(); search = { opt: $('#searchOption').val(), kw: $.trim($('#searchKeyword').val()) }; page = 1; render(); });
-	$('#pager').on('click', 'button', function() { page = Number($(this).attr('data-page')); render(); window.scrollTo(0, 0); });
+	$('#searchForm').on('submit', function(e) { e.preventDefault(); search = { opt: $('#searchOption').val(), kw: $.trim($('#searchKeyword').val()) }; render(); });
 	$('#btnWrite').on('click', function() { location.href = url(tab, 'Insert'); });
 
 	$('#boardBody').on('change', '.pick', function() { picked[$(this).attr('data-sq')] = this.checked; render(); });
 	$('#boardHead').on('change', '#chkAll', function() {
 		var on = this.checked;
-		$('#boardBody .pick').each(function() { picked[$(this).attr('data-sq')] = on; });
+		$('#boardBody tr:not(.more-hide) .pick').each(function() { picked[$(this).attr('data-sq')] = on; });
 		render();
 	});
 	$('#bulkClear').on('click', function() { picked = {}; render(); });
