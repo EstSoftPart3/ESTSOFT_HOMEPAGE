@@ -114,10 +114,20 @@
 
 	function markMenu(url) {
 		var k = keyOf(url);
+		var path = [];
 		menuLinks().forEach(function (a) {
 			var on = a.pathname === k;
 			a.classList.toggle('bo-current', on);
 			if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+			if (on) for (var li = a.closest('.has-treeview'); li; li = li.parentElement.closest('.has-treeview')) path.push(li);
+		});
+		// 탭을 바꾸면 페이지를 새로 그리지 않으므로, 그 화면이 든 그룹만 펼치고 나머지는 접는다(include_left 의 첫 화면 처리와 같다)
+		if (!path.length) return;
+		[].forEach.call(document.querySelectorAll('aside .has-treeview'), function (li) {
+			var open = path.indexOf(li) >= 0, sub = li.querySelector(':scope > .nav-treeview');
+			li.classList.toggle('menu-open', open);
+			li.children[0].classList.toggle('bo-parent', open);
+			if (sub) sub.style.display = open ? 'block' : 'none';
 		});
 	}
 

@@ -132,7 +132,7 @@
 
       <!-- Sidebar Menu -->
       <nav class="mt-2">
-        <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+        <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="true">
          
           <li class="nav-header"></li>
           <%-- 관리자 홈 대시보드. 모든 관리자에게 열리고 메뉴 관리 대상이 아니다 --%>
