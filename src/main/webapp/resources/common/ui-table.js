@@ -17,7 +17,9 @@
 
 	function sortable(t) {
 		if (!t || t.hasAttribute('data-nosort') || t.classList.contains('dataTable') || !t.tHead || t.tHead.rows.length !== 1 || t.tBodies.length !== 1) return false;
-		if (t.tHead.querySelector('.pl-sort, [colspan], [rowspan], [draggable]') || t.tBodies[0].querySelector('[rowspan]')) return false;
+		// 체크 칸 머리글의 rowspan="1" 같은 1 짜리는 합친 칸이 아니다
+		function span(c) { return c.rowSpan > 1 || c.colSpan > 1; }
+		if (t.tHead.querySelector('.pl-sort, [draggable]') || [].some.call(t.tHead.querySelectorAll('[colspan], [rowspan]'), span) || [].some.call(t.tBodies[0].querySelectorAll('[rowspan]'), span)) return false;
 		var rows = t.tBodies[0].rows;
 		for (var i = 0; i < rows.length; i++) if (/child|sub|form|detail/.test(rows[i].className)) return false;
 		return true;
@@ -123,7 +125,7 @@
 		[].forEach.call(document.querySelectorAll('table.table'), function (t) {
 			if (BO && pickable(t)) addPicks(t);
 			if (sortable(t)) [].forEach.call(t.tHead.rows[0].cells, function (th) {
-				if (th.classList.contains('th-sort') || th.querySelector('input, select, button') || !text(th)) return;
+				if (th.classList.contains('th-sort') || th.querySelector('input, select, button:not(.frz-pin)') || !text(th)) return;
 				th.classList.add('th-sort');
 				th.tabIndex = 0;
 				if (!th.title) th.title = '눌러서 정렬';
@@ -139,8 +141,180 @@
 				d.appendChild(t);
 			}
 			if (BO && moreable(t)) applyMore(t);
+			if (BO && freezable(t)) freeze(t);
 		});
 		if (BO) { filters(); actionsTop(); checkMore(); }
+	}
+
+	// ── 틀고정 (BO 목록 표, plans/table-freeze-pick-spec.html) ──
+	// 머리글은 CSS 로 늘 고정. 칸: 맨 앞부터 fc 칸(기본 체크박스+옆 1칸). 줄: 체크해서 맨 윗줄로 올린 행(top) + 그 아래 fr 줄.
+	// 표 위 '📌 틀고정' 메뉴와 머리글·행 앞 📌 로 바꾸고, 화면·표마다 기억한다. 머리글이 두 줄이거나 줄 합친 표, 이미 앞 칸을 고정한 표는 칸 고정을 하지 않는다
+	function freezable(t) { return pickable(t) && !t.hasAttribute('data-nofrz') && !!t.offsetParent; }
+	function fKey(t) { return 'frz:' + location.pathname + ':' + (t.id || [].indexOf.call(document.querySelectorAll('table.table'), t)); }
+	function fState(t) {
+		if (t._frz) return t._frz;
+		var s = null;
+		try { s = JSON.parse(localStorage.getItem(fKey(t))); } catch (e) { s = null; }
+		return (t._frz = s || { fc: -1, fr: 0, top: [], pick: false, rpick: false });
+	}
+	function fSave(t) { try { localStorage.setItem(fKey(t), JSON.stringify(t._frz)); } catch (e) { /* 저장 못 해도 지금 화면엔 적용 */ } }
+	function fBase(t) { var h = t.tHead.rows[0].cells[0]; return h && h.querySelector('input[type=checkbox]') ? 2 : 1; }
+	// 칸 고정이 맞지 않는 표: 머리글 두 줄·칸 합침, 몸통 줄 합침, 화면이 이미 앞 칸을 고정
+	// 줄 합친(rowspan) 표는 행을 옮기거나 줄로 고정하면 칸이 어긋나 칸·줄 고정을 모두 끈다(머리글 고정만)
+	function rowsOk(t) { return ![].some.call(t.tBodies[0].querySelectorAll('[rowspan]'), function (c) { return c.rowSpan > 1; }); }
+	function colsOk(t) {
+		var h = t.tHead.rows[0].cells[0];
+		return rowsOk(t) && t.tHead.rows.length === 1 && !t.tHead.querySelector('[colspan]') && !(h && !h.classList.contains('frz-c') && getComputedStyle(h).left !== 'auto');
+	}
+	// 50줄씩 보이기로 숨은 줄도 포함(고정 행은 숨어 있어도 맨 위로 올린다)
+	function fAll(t) { return [].filter.call(t.tBodies[0].rows, function (r) { return r.cells.length > 1; }); }
+	function fRows(t) { return fAll(t).filter(function (r) { return !r.classList.contains('more-hide'); }); }
+	function fRowKey(tr) { var b = firstBox(tr); return (b && b.getAttribute('data-key')) || rowKey(tr); }
+
+	function freeze(t) {
+		var s = fState(t), body = t.tBodies[0], head = t.tHead.rows[0], cols = colsOk(t), rok = rowsOk(t);
+		if (s.fc < 0) s.fc = fBase(t);
+		fBar(t);
+		// 맨 윗줄 고정 행을 원래 순서대로 맨 위로(이미 그 자리면 건드리지 않아 다시 그리기가 돌지 않는다)
+		var top = rok ? fAll(t).filter(function (r) { return s.top.indexOf(fRowKey(r)) >= 0; }) : [];
+		top.forEach(function (r, i) { if (body.rows[i] !== r) body.insertBefore(r, body.rows[i]); });
+		top.forEach(function (r) { r.classList.remove('more-hide'); });
+		var rows = fRows(t);
+		var x = [], y = t.tHead.offsetHeight, fc = cols ? s.fc : 0;
+		for (var i = 0; i < head.cells.length; i++) x.push(i ? x[i - 1] + head.cells[i - 1].offsetWidth : 0);
+		[].forEach.call(t.rows, function (tr) {
+			[].forEach.call(tr.cells, function (c, ci) {
+				var on = ci < fc;
+				c.classList.toggle('frz-c', on);
+				c.classList.toggle('frz-edge', on && ci === fc - 1);
+				c.style.left = on ? x[ci] + 'px' : '';
+			});
+		});
+		var nTop = top.length, last = rok ? nTop + Math.min(s.fr, rows.length - nTop) : 0;
+		rows.forEach(function (tr, i) {
+			var pin = i < nTop, upto = !pin && i < last, on = pin || upto;
+			tr.classList.toggle('frz-top', pin);
+			tr.classList.toggle('frz-r', upto);
+			tr.classList.toggle('frz-last', on && i === last - 1);
+			[].forEach.call(tr.cells, function (c) { c.style.top = on ? y + 'px' : ''; });
+			if (on) y += tr.offsetHeight;
+			fRowPin(t, tr, rok ? s : {}, i - nTop + 1);
+		});
+		[].forEach.call(head.cells, function (th, ci) {
+			var p = th.querySelector('.frz-pin');
+			if (!cols) { if (p) p.remove(); return; }
+			if (!p) {
+				p = document.createElement('button');
+				p.type = 'button';
+				p.className = 'frz-pin';
+				th.appendChild(p);
+			}
+			p.setAttribute('data-c', ci + 1);
+			p.setAttribute('aria-label', '맨 앞부터 ' + (text(th) || (ci + 1) + '번째') + ' 칸까지 고정');
+			p.classList.toggle('on', ci + 1 === s.fc);
+		});
+		t.classList.toggle('frz-show-c', !!s.pick);
+		fPaintBar(t);
+	}
+	// 줄 📌 는 '줄 직접 고르기'를 켰을 때만 넣는다(행 키 글자에 섞이지 않게 글자 없는 버튼)
+	function fRowPin(t, tr, s, n) {
+		var c = tr.cells[0], p = c && c.querySelector('.frz-rpin');
+		if (!s.rpick || n < 1) { if (p) p.remove(); return; }
+		if (!p) {
+			p = document.createElement('button');
+			p.type = 'button';
+			p.className = 'frz-pin frz-rpin';
+			c.appendChild(p);
+		}
+		p.setAttribute('data-r', n);
+		p.setAttribute('aria-label', '맨 위부터 이 줄까지 고정');
+		p.classList.toggle('on', n === s.fr);
+	}
+
+	// 표 위 오른쪽 '📌 틀고정' 버튼과 메뉴
+	function fBar(t) {
+		var box = t.closest('.tbl-scroll, .table-responsive, .pl-scroll') || t, bar = box.previousElementSibling;
+		if (bar && bar.classList.contains('frz-bar') && bar._t === t) return;
+		bar = document.createElement('div');
+		bar.className = 'frz-bar';
+		bar._t = t;
+		bar.innerHTML = '<button type="button" class="frz-btn" aria-haspopup="true" aria-expanded="false"></button>'
+			+ '<div class="frz-menu" role="menu" hidden>'
+			+ '<button type="button" role="menuitem" data-a="top"></button>'
+			+ '<button type="button" role="menuitem" data-a="untop">맨 윗줄 고정 풀기</button><hr>'
+			+ '<button type="button" role="menuitemcheckbox" data-a="base">기본 틀고정 <small>체크박스+옆 1칸</small></button>'
+			+ '<button type="button" role="menuitemcheckbox" data-a="pick">칸 직접 고르기 <small>머리글 📌</small></button>'
+			+ '<button type="button" role="menuitemcheckbox" data-a="rpick">줄 직접 고르기 <small>행 앞 📌</small></button><hr>'
+			+ '<button type="button" role="menuitem" data-a="off">모두 풀기</button></div>';
+		box.parentNode.insertBefore(bar, box);
+	}
+	function fPaintBar(t) {
+		var box = t.closest('.tbl-scroll, .table-responsive, .pl-scroll') || t, bar = box.previousElementSibling;
+		if (!bar || bar._t !== t) return;
+		var s = fState(t), cols = colsOk(t), rok = rowsOk(t), checked = fRows(t).filter(function (r) { var b = firstBox(r); return b && b.checked; }).length;
+		var nRows = rok ? t.tBodies[0].querySelectorAll('tr.frz-top, tr.frz-r').length : 0, fc = cols ? s.fc : 0;
+		var b = bar.querySelector('.frz-btn'), txt = '📌 틀고정' + (fc || nRows ? ' · ' + [fc && fc + '칸', nRows && nRows + '줄'].filter(Boolean).join('·') : '');
+		if (b.textContent !== txt) b.textContent = txt;
+		b.classList.toggle('on', !!(fc || nRows));
+		function item(a) { return bar.querySelector('[data-a=' + a + ']'); }
+		item('top').textContent = '⬆ 체크한 행 맨 윗줄 고정' + (checked ? ' (' + checked + ')' : '');
+		item('top').disabled = !checked || !rok;
+		item('untop').disabled = !s.top.length;
+		[['base', s.fc === fBase(t)], ['pick', s.pick], ['rpick', s.rpick]].forEach(function (x) { item(x[0]).setAttribute('aria-checked', !!x[1]); item(x[0]).classList.toggle('ck', !!x[1]); });
+		item('base').disabled = item('pick').disabled = !cols;
+		item('rpick').disabled = !rok;
+	}
+	function fMenu(bar, open) {
+		var m = bar.querySelector('.frz-menu');
+		m.hidden = !open;
+		bar.querySelector('.frz-btn').setAttribute('aria-expanded', open);
+		if (open) fPaintBar(bar._t);
+	}
+	function fDo(t, a) {
+		var s = fState(t);
+		if (a === 'top') {
+			// 체크한 행: 고정 안 된 건 덧붙이고, 이미 고정된 건 푼다. 고정한 뒤 체크는 푼다
+			fRows(t).forEach(function (r) {
+				var b = firstBox(r);
+				if (!b || !b.checked) return;
+				var k = fRowKey(r), i = s.top.indexOf(k);
+				if (i >= 0) s.top.splice(i, 1); else s.top.push(k);
+				b.checked = false;
+				b.dispatchEvent(new Event('change', { bubbles: true }));
+			});
+		}
+		if (a === 'untop') s.top = [];
+		if (a === 'base') s.fc = s.fc === fBase(t) ? 0 : fBase(t);
+		if (a === 'pick') s.pick = !s.pick;
+		if (a === 'rpick') s.rpick = !s.rpick;
+		if (a === 'off') { s.fc = 0; s.fr = 0; s.top = []; s.pick = s.rpick = false; }
+		fSave(t);
+		freeze(t);
+	}
+	if (BO) {
+		document.addEventListener('click', function (e) {
+			var tg = e.target, bar = tg.closest && tg.closest('.frz-bar');
+			[].forEach.call(document.querySelectorAll('.frz-bar'), function (x) { if (x !== bar) fMenu(x, false); });
+			if (bar) {
+				if (tg.closest('.frz-btn')) fMenu(bar, bar.querySelector('.frz-menu').hidden);
+				var it = tg.closest('.frz-menu [data-a]');
+				if (it && !it.disabled) { fDo(bar._t, it.getAttribute('data-a')); if (it.getAttribute('data-a') === 'top') fMenu(bar, false); }
+				return;
+			}
+			var p = tg.closest && tg.closest('.frz-pin');
+			if (!p) return;
+			e.preventDefault();
+			e.stopPropagation();
+			var t = p.closest('table'), s = fState(t);
+			if (p.hasAttribute('data-r')) { var n = +p.getAttribute('data-r'); s.fr = n === s.fr ? 0 : n; }
+			else { var c = +p.getAttribute('data-c'); s.fc = c === s.fc ? 0 : c; }
+			fSave(t);
+			freeze(t);
+		}, true);
+		document.addEventListener('keydown', function (e) { if (e.key === 'Escape') [].forEach.call(document.querySelectorAll('.frz-bar'), function (x) { fMenu(x, false); }); });
+		window.addEventListener('resize', function () { [].forEach.call(document.querySelectorAll('table.table'), function (t) { if (t._frz && freezable(t)) freeze(t); }); });
+		// 체크하면 메뉴의 '체크한 행' 건수를 맞춘다
+		document.addEventListener('change', function (e) { var t = e.target.closest && e.target.closest('table'); if (t && t._frz) fPaintBar(t); });
 	}
 
 	// ── 아래 끝 버튼 줄(중간 저장·마감·목록 등)을 그 칸의 맨 위로 ──
@@ -285,7 +459,23 @@
 			+ '.bo-load-bar{width:150px;height:4px;border-radius:4px;background:#e6eef2;overflow:hidden}'
 			+ '.bo-load-bar::after{content:"";display:block;width:40%;height:100%;border-radius:4px;background:linear-gradient(90deg,#16d5ff,#6b3fa0);animation:bo-slide .9s ease-in-out infinite}'
 			+ '@keyframes bo-spin{to{transform:rotate(360deg)}}@keyframes bo-slide{from{transform:translateX(-100%)}to{transform:translateX(250%)}}'
-			+ '@media (prefers-reduced-motion:reduce){.bo-load-ring{animation-duration:2.4s}.bo-load-bar::after{animation-duration:2.7s}}';
+			+ '@media (prefers-reduced-motion:reduce){.bo-load-ring{animation-duration:2.4s}.bo-load-bar::after{animation-duration:2.7s}}'
+			// 틀고정: 고정 칸 하늘색·파란 세로선, 맨 윗줄 고정 행 노란색, 줄 고정 하늘색·마지막 줄 아래 선. 화면의 줄 색(체크·시크릿 등)이 우선
+			+ '.frz-bar{display:flex;justify-content:flex-end;position:relative;margin:0 0 2px}'
+			+ '.frz-btn{border:1px solid #ccd3d9;background:#fff;border-radius:6px;padding:0 8px;font-size:11.5px;line-height:20px;color:#5f6b75}'
+			+ '.frz-btn.on{border-color:#0b6e8a;color:#0b6e8a;background:#eef9fc;font-weight:700}'
+			+ '.frz-menu{position:absolute;right:0;top:24px;z-index:20;background:#fff;border:1px solid #ccd3d9;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.12);padding:4px;min-width:240px}'
+			+ '.frz-menu button{display:flex;width:100%;gap:8px;align-items:center;border:0;background:none;text-align:left;padding:5px 8px 5px 24px;border-radius:6px;font-size:12.5px;position:relative}'
+			+ '.frz-menu button:hover:not(:disabled){background:#f1f4f6}.frz-menu button:disabled{color:#b3bac1}'
+			+ '.frz-menu button.ck::before{content:"✓";position:absolute;left:8px;color:#0b6e8a;font-weight:700}'
+			+ '.frz-menu small{color:#8a949c;margin-left:auto}.frz-menu hr{margin:4px 0;border-top:1px solid #eef0f2}'
+			+ '.table .frz-c{position:sticky;z-index:1;background-color:#f3fbfd}.table thead .frz-c{z-index:4;background-color:#eef7fa}'
+			+ '.table .frz-edge{box-shadow:inset -2px 0 0 #0b6e8a}'
+			+ '.table tr.frz-top>td,.table tr.frz-r>td{position:sticky;z-index:2}.table tr.frz-top>td.frz-c,.table tr.frz-r>td.frz-c{z-index:3}'
+			+ '.table tr.frz-top>td{background-color:#fff8e3}.table tr.frz-r>td{background-color:#eef9fc}'
+			+ '.table tr.frz-last>td{box-shadow:inset 0 -2px 0 #0b6e8a}.table tr.frz-top.frz-last>td{box-shadow:inset 0 -2px 0 #e0a800}.table tr.frz-last>td.frz-edge{box-shadow:inset -2px -2px 0 #0b6e8a}'
+			+ '.frz-pin{border:0;background:none;padding:0 2px;margin-left:3px;font-size:10px;line-height:1;color:#9aa4ac;opacity:0;vertical-align:middle;cursor:pointer}'
+			+ '.frz-pin::before{content:"📌"}th:hover>.frz-pin,.frz-pin:focus,.frz-pin.on,.frz-show-c th>.frz-pin,.frz-rpin{opacity:1}.frz-pin.on{filter:none;color:#0b6e8a}.frz-pin:not(.on){filter:grayscale(1)}';
 		document.head.appendChild(css);
 	}
 
