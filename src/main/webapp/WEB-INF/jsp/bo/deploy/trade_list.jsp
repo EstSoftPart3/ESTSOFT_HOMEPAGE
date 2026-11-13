@@ -79,6 +79,7 @@
 								</select>
 								<label for="perInv" class="mb-0">한 장에</label>
 								<input type="number" id="perInv" class="form-control form-control-sm" style="width:70px" min="1" max="99" value="4"><span>행씩</span>
+								<button type="button" class="btn btn-sm btn-primary" id="btnCopyAll" onclick="copyAll();">전체 복사</button>
 								<span class="small text-muted">거래처마다 「다시 묶기」를 누르면 이 설정으로 묶습니다. 묶은 뒤에는 행을 끌거나 ▲▼, 「나누기」「위와 합치기」로 장마다 행 수를 바꿉니다. 바꾸면 바로 저장됩니다.</span>
 							</div>
 							<div id="invBody"></div>
@@ -360,9 +361,30 @@
 		if (on && g.some(function(l) { return l.INV_NO === null || l.INV_NO === undefined; })) savePartner(p, null, go); else go();
 	}
 
+	// 지금 탭에 보이는 거래처(거래처 필터 적용), 화면과 같은 순서
+	function invKeys() {
+		var f = $('#fPartner').val();
+		return Object.keys(inv).filter(function(p) { return !f || p === f; }).sort(function(a, b) { return pName(inv[a][0][0]).localeCompare(pName(inv[b][0][0]), 'ko'); });
+	}
+
+	// 보이는 계산서 전체를 한 번에 복사한다. 제목 → [거래처] → 장마다 '번호. 금액' 한 줄, 빈 줄, 품목·기간·공급가액(탭 구분)
+	function copyAll() {
+		var out = [dpYmLabel(ymNow()) + ' 세금계산서 발급 건'], n = 0;
+		invKeys().forEach(function(p) {
+			out.push('', '[' + pName(inv[p][0][0]) + ']');
+			inv[p].forEach(function(g, i) {
+				var s = sum(g);
+				n++;
+				out.push('', (i + 1) + '. 공급가액 ' + dpWon(s) + ' · 세액 ' + dpWon(vat(s)) + ' · 합계 ' + dpWon(s + vat(s)) + (issued(g) ? ' · 발급 완료 ' + g[0].ISSUE_DT : ''), '');
+				g.forEach(function(l) { out.push(l.ITEM_NM + '\t' + period(l) + '\t' + l.AMT); });
+			});
+		});
+		if (!n) { toast('복사할 계산서가 없습니다'); return; }
+		copyText(out.join('\n'), '계산서 ' + n + '장을 복사했습니다');
+	}
+
 	function drawInv() {
-		var $b = $('#invBody').empty(), f = $('#fPartner').val(), keys = Object.keys(inv).filter(function(p) { return !f || p === f; });
-		keys.sort(function(a, b) { return pName(inv[a][0][0]).localeCompare(pName(inv[b][0][0]), 'ko'); });
+		var $b = $('#invBody').empty(), keys = invKeys();
 		if (!keys.length) $b.append('<p class="text-muted">이 달에 해당하는 건이 없습니다.</p>');
 		keys.forEach(function(p) {
 			var groups = inv[p], all = [].concat.apply([], groups), s = sum(all), done = groups.filter(issued).length;
