@@ -32,14 +32,8 @@
 	#kpiToggle { font-size: 12px; font-weight: 700; color: #5f6b75; }
 	/* 시크릿 행: 시크릿 계정에게만 보이고 맨 위에 옅은 보라 */
 	#lBody tr.pl-secret td { background-color: #f4effc; }
-	.pl-chip.secret.on { border-color: #6b3fa0; background: #f4effc; color: #6b3fa0; }
 	/* 체크 칩: 진짜 체크박스라 공통 Shift+클릭 범위 선택을 받는다 */
 	.pl-chks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 14px; }
-	.pl-chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(17,17,17,.15); font-weight: 700; font-size: 12.5px; color: #444; cursor: pointer; user-select: none; margin: 0; background: #fff; }
-	.pl-chip input { margin: 0; cursor: pointer; }
-	.pl-chip .cnt { background: rgba(17,17,17,.08); border-radius: 999px; padding: 0 7px; font-size: 11px; }
-	.pl-chip.on { border-color: #0b6e8a; background: #eef9fc; color: #0b6e8a; }
-	.pl-chip.alert.on { border-color: #a32020; background: #fdeaea; color: #a32020; }
 	.pl-scroll { max-height: 70vh; overflow: auto; }
 	.pl-scroll thead th { position: sticky; top: 0; z-index: 3; box-shadow: 0 1px 0 rgba(17,17,17,.1); }
 	.pl-sort { background: none; border: 0; padding: 0 0 0 3px; color: #9aa4ac; font-size: 10px; cursor: pointer; }

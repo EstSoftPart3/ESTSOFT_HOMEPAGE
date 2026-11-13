@@ -73,10 +73,6 @@
 	.prj-pv .k { width: 78px; color: #8a949c; font-size: 11px; font-weight: 700; }
 	/* 급여관리와 같은 목록: 체크 칩, 고정 머리글, 위 스크롤, 정렬, 두 줄 */
 	.pl-chks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 14px; }
-	.pl-chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(17,17,17,.15); font-weight: 700; font-size: 12.5px; color: #444; cursor: pointer; user-select: none; margin: 0; background: #fff; }
-	.pl-chip input { margin: 0; cursor: pointer; }
-	.pl-chip .cnt { background: rgba(17,17,17,.08); border-radius: 999px; padding: 0 7px; font-size: 11px; }
-	.pl-chip.on { border-color: #0b6e8a; background: #eef9fc; color: #0b6e8a; }
 	.pl-scroll { max-height: 70vh; overflow: auto; }
 	#dpHead th { position: sticky; top: 0; z-index: 3; background: #fafbfc; box-shadow: 0 1px 0 rgba(17,17,17,.1); }
 	#dpHead th:last-child { right: 0; z-index: 4; }

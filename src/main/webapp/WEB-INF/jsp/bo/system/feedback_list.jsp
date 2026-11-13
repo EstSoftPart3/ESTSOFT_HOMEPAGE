@@ -5,10 +5,6 @@
 <%@ include file="/WEB-INF/jsp/bo/hr/hr_common.jspf"%>
 <style>
 	.fl-chks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 14px; }
-	.pl-chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(17,17,17,.15); font-weight: 700; font-size: 12.5px; color: #444; cursor: pointer; user-select: none; margin: 0; background: #fff; }
-	.pl-chip input { margin: 0; cursor: pointer; }
-	.pl-chip .cnt { background: rgba(17,17,17,.08); border-radius: 999px; padding: 0 7px; font-size: 11px; }
-	.pl-chip.on { border-color: #0b6e8a; background: #eef9fc; color: #0b6e8a; }
 	.fl-split { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); border-top: 1px solid rgba(17,17,17,.08); }
 	.fl-split > div + div { border-left: 1px solid rgba(17,17,17,.08); }
 	#flBody tr { cursor: pointer; } #flBody tr.sel td { background: #eef9fc; }

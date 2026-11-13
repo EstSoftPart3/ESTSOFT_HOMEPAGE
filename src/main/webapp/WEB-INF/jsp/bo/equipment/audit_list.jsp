@@ -5,8 +5,6 @@
 <%@ include file="/WEB-INF/jsp/bo/hr/hr_common.jspf"%>
 <style>
 	.eq-no { font-family: Consolas, monospace; font-size: 12px; white-space: nowrap; }
-	.eq-pill { display: inline-block; padding: 0 8px; border-radius: 10px; font-size: 11px; font-weight: 600; white-space: nowrap; background: #eef1f4; color: #444; }
-	.eq-pill.warn { background: #fff5dc; color: #7a5600; }
 	.au-layout { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 14px; align-items: start; }
 	.au-round { display: flex; justify-content: space-between; gap: 6px; width: 100%; padding: 6px 10px; border: 1px solid rgba(17,17,17,.12); border-radius: 6px; background: #fff; font-size: 13px; margin-bottom: 6px; }
 	.au-round.active { border-color: #0b6e8a; font-weight: 700; }

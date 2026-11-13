@@ -7,8 +7,8 @@
 	.dp-kpi span { display: block; color: #5f6b75; font-size: 12px; }
 	.dp-kpi b { font-size: 19px; font-variant-numeric: tabular-nums; }
 	.dp-kpi.bad b { color: #a32020; } .dp-kpi.warn b { color: #7a5600; }
-	.dp-pill { display: inline-block; padding: 0 8px; border-radius: 10px; font-size: 11px; font-weight: 700; white-space: nowrap; background: #eef1f4; color: #444; margin: 1px 3px 1px 0; }
-	.dp-pill.rent { background: #dff3f9; color: #0b6e8a; } .dp-pill.bad { background: #fdeaea; color: #a32020; } .dp-pill.warn { background: #fff5dc; color: #7a5600; } .dp-pill.ok { background: #e6f6ea; color: #17692f; }
+	/* 배지 모양·색은 include_top 공통. 여기는 줄 사이 여백만 */
+	.dp-pill { margin: 1px 3px 1px 0; }
 	.dp-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 	.dp-name { background: none; border: 0; padding: 0; color: #0b6e8a; font-weight: 600; text-decoration: underline; cursor: pointer; }
 	.dp-mute { color: #8a949c; }

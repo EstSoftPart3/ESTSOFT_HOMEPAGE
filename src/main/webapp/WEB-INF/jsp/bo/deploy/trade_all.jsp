@@ -10,10 +10,6 @@
 	.ta-views button { border-radius: 999px; padding: 2px 12px; border: 1px solid #ced4da; background: #fff; font-size: 13px; }
 	.ta-views button[aria-selected=true] { background: #111; color: #fff; border-color: #111; }
 	.ta-views button b { margin-left: 5px; }
-	.ta-chip { display: inline-flex; gap: 5px; align-items: center; padding: 3px 10px; border-radius: 999px; border: 1px solid rgba(17,17,17,.15); font-weight: 700; font-size: 12.5px; color: #444; cursor: pointer; user-select: none; margin: 0; background: #fff; }
-	.ta-chip input { margin: 0; }
-	.ta-chip.on { border-color: #0b6e8a; background: #eef9fc; color: #0b6e8a; }
-	.ta-chip.alert.on { border-color: #a32020; background: #fdeaea; color: #a32020; }
 	.ta-scroll { max-height: 70vh; overflow: auto; }
 	.ta th, .ta td { white-space: nowrap; }
 	.ta thead th { position: sticky; top: 0; z-index: 3; }

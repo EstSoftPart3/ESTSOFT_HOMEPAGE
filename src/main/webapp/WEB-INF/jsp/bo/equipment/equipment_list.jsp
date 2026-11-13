@@ -6,8 +6,6 @@
 <style>
 	.eq-link { background: none; border: 0; padding: 0; color: #0b6e8a; font-weight: 600; text-decoration: underline; cursor: pointer; white-space: nowrap; }
 	.eq-no { font-family: Consolas, monospace; font-size: 12px; }
-	.eq-pill { display: inline-block; padding: 0 8px; border-radius: 10px; font-size: 11px; font-weight: 600; white-space: nowrap; background: #eef1f4; color: #444; }
-	.eq-pill.rent { background: #dff3f9; color: #0b6e8a; } .eq-pill.bad { background: #fdeaea; color: #a32020; } .eq-pill.warn { background: #fff5dc; color: #7a5600; } .eq-pill.good { background: #e6f6ea; color: #17692f; }
 	#alerts { display: flex; flex-wrap: wrap; gap: 8px; }
 	#alerts button { border: 1px solid #f0d9a0; background: #fff5dc; color: #7a5600; border-radius: 6px; padding: 3px 10px; font-size: 12px; font-weight: 600; }
 	#alerts button.on { background: #7a5600; color: #fff; }

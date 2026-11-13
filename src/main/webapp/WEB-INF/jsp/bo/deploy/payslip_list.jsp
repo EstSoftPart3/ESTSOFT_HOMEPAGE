@@ -8,11 +8,6 @@
 	#psHead th, #psBody td { white-space: nowrap; vertical-align: middle; }
 	#psBody td.ps-prj { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
 	.pl-chks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 14px 4px; }
-	.pl-chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(17,17,17,.15); font-weight: 700; font-size: 12.5px; color: #444; cursor: pointer; user-select: none; margin: 0; background: #fff; }
-	.pl-chip input { margin: 0; cursor: pointer; }
-	.pl-chip .cnt { background: rgba(17,17,17,.08); border-radius: 999px; padding: 0 7px; font-size: 11px; }
-	.pl-chip.on { border-color: #0b6e8a; background: #eef9fc; color: #0b6e8a; }
-	.pl-chip.secret.on { border-color: #6b3fa0; background: #f4effc; color: #6b3fa0; }
 	.pl-sep { width: 1px; align-self: stretch; background: rgba(17,17,17,.15); margin: 0 4px; }
 	.pl-scroll { max-height: 68vh; overflow: auto; }
 	.pl-sort { background: none; border: 0; padding: 0 0 0 3px; color: #9aa4ac; font-size: 10px; cursor: pointer; }

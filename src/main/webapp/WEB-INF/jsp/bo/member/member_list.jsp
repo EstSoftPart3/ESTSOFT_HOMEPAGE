@@ -5,7 +5,6 @@
 <%@ include file="/WEB-INF/jsp/bo/system/system_style.jspf"%>
 <style>
 	.ac-link { background: none; border: 0; padding: 0; color: #0b6e8a; font-weight: 600; text-decoration: underline; white-space: nowrap; }
-	.sys-pill.ok { background: #e6f6ea; color: #17692f; } .sys-pill.warn { background: #fff5dc; color: #7a5600; } .sys-pill.bad { background: #fdeaea; color: #a32020; }
 	#alerts { display: flex; flex-wrap: wrap; gap: 8px; }
 	#alerts > * { border: 1px solid #f0d9a0; background: #fff5dc; color: #7a5600; border-radius: 6px; padding: 3px 10px; font-size: 12px; font-weight: 600; }
 	#alerts button.on { background: #7a5600; color: #fff; }

@@ -21,8 +21,6 @@
 	.hm-todo { list-style: none; margin: 0; padding: 0; }
 	.hm-todo li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed rgba(17,17,17,.12); flex-wrap: wrap; }
 	.hm-todo li:last-child { border-bottom: 0; } .hm-todo li > a.go { margin-left: auto; font-size: 12px; }
-	.hm-pill { display: inline-block; padding: 0 8px; border-radius: 10px; font-size: 11px; font-weight: 700; background: #eef1f4; color: #444; white-space: nowrap; }
-	.hm-pill.ok { background: #e6f6ea; color: #17692f; } .hm-pill.warn { background: #fff5dc; color: #7a5600; } .hm-pill.bad { background: #fdeaea; color: #a32020; } .hm-pill.rent { background: #dff3f9; color: #0b6e8a; }
 	.hm-link { color: #0b6e8a; font-weight: 700; }
 	.hm-bars a { display: grid; grid-template-columns: 80px 1fr 30px; gap: 8px; align-items: center; font-size: 12.5px; padding: 3px 0; color: #111; }
 	.hm-bars i { display: block; height: 14px; background: #9fd8e8; border-radius: 3px; min-width: 2px; } .hm-bars i.w { background: #f6d27c; }
