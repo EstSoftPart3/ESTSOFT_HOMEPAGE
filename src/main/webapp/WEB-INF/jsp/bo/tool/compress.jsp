@@ -13,7 +13,20 @@
 	.cp-chip.good { border-color: #0b6e8a; color: #0b6e8a; }
 	#cpBody td { vertical-align: middle; }
 	.cp-num { text-align: right; font-variant-numeric: tabular-nums; }
-	.cp-st.wait { color: #8a949c; } .cp-st.ok { color: #17692f; font-weight: 700; } .cp-st.same { color: #7a5600; } .cp-st.err { color: #a32020; }
+	/* 상태: 대기 · 올리는 중(막대 %) · 줄이는 중(줄무늬 흐름) · 완료 · 원본 그대로 · 오류 */
+	.cp-st { min-width: 210px; }
+	.cp-st .msg { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 12.5px; }
+	.cp-st.wait .msg { color: #8a949c; font-weight: 400; } .cp-st.up .msg, .cp-st.work .msg { color: #0b6e8a; }
+	.cp-st.ok .msg { color: #17692f; } .cp-st.same .msg { color: #7a5600; } .cp-st.err .msg { color: #a32020; }
+	.cp-bar { height: 6px; border-radius: 3px; background: #e3edf1; overflow: hidden; margin-top: 4px; }
+	.cp-bar i { display: block; height: 100%; width: 0; background: #0b6e8a; border-radius: 3px; transition: width .2s; }
+	.cp-st.work .cp-bar i, .cp-prog.run .cp-bar i { background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.35) 0 8px, transparent 8px 16px); background-size: 23px 23px; animation: cp-flow .8s linear infinite; }
+	.cp-st.work .cp-bar i { width: 100%; }
+	@keyframes cp-flow { to { background-position: 23px 0; } }
+	#cpBody tr.busy td { background: #eef9fc; }
+	.cp-prog { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-weight: 700; color: #0b6e8a; }
+	.cp-prog .cp-bar { flex: 1; height: 10px; margin: 0; } .cp-prog .cp-bar i { background-color: #0b6e8a; }
+	@media (prefers-reduced-motion: reduce) { .cp-bar i { animation: none !important; transition: none; } .fa-spin { animation: none; } }
 </style>
 
 <body class="hold-transition sidebar-mini">
@@ -42,6 +55,9 @@
 								<button type="button" class="btn btn-sm btn-primary ml-auto" id="cpAll" disabled><i class="fas fa-download"></i> 모두 받기</button>
 								<button type="button" class="btn btn-sm btn-outline-secondary" id="cpClear">목록 비우기</button>
 							</div>
+							<div class="cp-prog" id="cpProg" hidden role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-label="전체 진행">
+								<span id="cpProgText"></span><div class="cp-bar"><i></i></div>
+							</div>
 							<table class="table table-sm cal-table mb-0">
 								<thead><tr><th>파일</th><th class="cp-num">원본</th><th class="cp-num">압축</th><th class="cp-num">줄어듦</th><th>상태</th><th></th></tr></thead>
 								<tbody id="cpBody"><tr class="cp-empty"><td colspan="6" class="text-center text-muted py-4">아직 고른 파일이 없습니다.</td></tr></tbody>
@@ -56,19 +72,47 @@
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
 
 	<script>
-	var queue = [], running = 0, saved = 0, done = [];
+	var queue = [], running = 0, saved = 0, done = [], total = 0, finished = 0, gen = 0;
 
 	function size(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB'; }
+
+	// 상태 칸 그리기. kind: wait·up·work·ok·same·err, pct 는 올리는 중의 %
+	var ICON = { wait: 'far fa-clock', up: 'fas fa-cloud-upload-alt', work: 'fas fa-spinner fa-spin', ok: 'fas fa-check-circle', same: 'fas fa-minus-circle', err: 'fas fa-times-circle' };
+	function status(it, kind, text, pct) {
+		it.$st.attr('class', 'cp-st ' + kind).empty().append($('<div class="msg">').append($('<i aria-hidden="true">').addClass(ICON[kind])).append($('<span>').text(text)));
+		if (kind === 'up' || kind === 'work') it.$st.append($('<div class="cp-bar">').append($('<i>').css('width', kind === 'up' ? (pct || 0) + '%' : '')));
+		it.$st.closest('tr').toggleClass('busy', kind === 'up' || kind === 'work');
+	}
+
+	// 전체 진행: 끝난 개수 / 고른 개수
+	function progress() {
+		var pct = total ? Math.round(finished / total * 100) : 0, run = finished < total;
+		$('#cpProg').prop('hidden', !total).toggleClass('run', run).attr('aria-valuenow', pct);
+		$('#cpProgText').text(run ? finished + ' / ' + total + ' 처리 중' : total + '개 모두 끝났습니다');
+		$('#cpProg .cp-bar i').css('width', pct + '%');
+	}
 
 	function add(files) {
 		$('#cpBody .cp-empty').remove();
 		$.each(files, function(i, f) {
-			var $st = $('<td class="cp-st wait">').text('대기'), $after = $('<td class="cp-num">'), $pct = $('<td class="cp-num">'), $get = $('<td class="text-right">');
+			var $st = $('<td>'), $after = $('<td class="cp-num">'), $pct = $('<td class="cp-num">'), $get = $('<td class="text-right">');
 			$('#cpBody').append($('<tr>').append($('<td>').text(f.name), $('<td class="cp-num">').text(size(f.size)), $after, $pct, $st, $get));
-			queue.push({ f: f, $st: $st, $after: $after, $pct: $pct, $get: $get });
+			var it = { f: f, $st: $st, $after: $after, $pct: $pct, $get: $get, gen: gen };
+			status(it, 'wait', '대기');
+			queue.push(it);
+			total++;
 		});
-		$('#cpCount').text($('#cpBody tr').length + '개');
+		$('#cpCount').text(total + '개');
+		progress();
 		next();
+	}
+
+	function finish(it, kind, text) {
+		status(it, kind, text);
+		if (it.gen !== gen) return false;
+		finished++;
+		progress();
+		return true;
 	}
 
 	// 서버 부담을 줄이려고 2개씩 차례로 보낸다
@@ -82,19 +126,25 @@
 		fd.append('file', it.f);
 		xhr.open('POST', '/admin/tool/compressData.do');
 		xhr.responseType = 'blob';
-		xhr.upload.onprogress = function(e) { if (e.lengthComputable) it.$st.text(e.loaded < e.total ? '올리는 중 ' + Math.round(e.loaded / e.total * 100) + '%' : '줄이는 중…'); };
+		status(it, 'up', '올리는 중 0%', 0);
+		xhr.upload.onprogress = function(e) {
+			if (!e.lengthComputable) return;
+			var p = Math.round(e.loaded / e.total * 100);
+			if (p < 100) status(it, 'up', '올리는 중 ' + p + '%', p); else status(it, 'work', '줄이는 중…');
+		};
+		xhr.upload.onload = function() { status(it, 'work', '줄이는 중…'); };
 		xhr.onload = function() {
 			running--;
 			if (xhr.status !== 200) {
 				var r = new FileReader();
-				r.onload = function() { it.$st.attr('class', 'cp-st err').text(xhr.status === 400 ? r.result : '실패했습니다 (' + xhr.status + ')'); };
+				r.onload = function() { finish(it, 'err', xhr.status === 400 ? r.result : '실패했습니다 (' + xhr.status + ')'); };
 				r.readAsText(xhr.response);
 			} else {
 				var before = +xhr.getResponseHeader('X-Before'), after = +xhr.getResponseHeader('X-After'), name = decodeURIComponent(xhr.getResponseHeader('X-Name') || it.f.name);
 				var url = URL.createObjectURL(xhr.response), $a = $('<a class="btn btn-sm btn-outline-primary">').attr({ href: url, download: name }).text('받기');
 				it.$after.text(size(after));
 				it.$pct.text(after < before ? Math.round((1 - after / before) * 100) + '%' : '—');
-				it.$st.attr('class', 'cp-st ' + (after < before ? 'ok' : 'same')).text(after < before ? '완료' : '줄일 수 없음 · 원본 그대로');
+				if (!finish(it, after < before ? 'ok' : 'same', after < before ? '완료' : '줄일 수 없음 · 원본 그대로')) { URL.revokeObjectURL(url); next(); return; }
 				it.$get.append($a);
 				saved += before - after;
 				done.push($a[0]);
@@ -103,7 +153,7 @@
 			}
 			next();
 		};
-		xhr.onerror = function() { running--; it.$st.attr('class', 'cp-st err').text('연결이 끊겼습니다'); next(); };
+		xhr.onerror = function() { running--; finish(it, 'err', '연결이 끊겼습니다'); next(); };
 		xhr.send(fd);
 	}
 
@@ -119,7 +169,9 @@
 		$('#cpAll').on('click', function() { done.forEach(function(a, i) { setTimeout(function() { a.click(); }, i * 400); }); });
 		$('#cpClear').on('click', function() {
 			done.forEach(function(a) { URL.revokeObjectURL(a.href); });
-			done = []; saved = 0;
+			// 처리 중이던 파일은 끝나도 이번 목록 건수·받기에 넣지 않는다(gen 이 바뀜)
+			done = []; saved = 0; queue = []; total = 0; finished = 0; gen++;
+			progress();
 			$('#cpBody').html('<tr class="cp-empty"><td colspan="6" class="text-center text-muted py-4">아직 고른 파일이 없습니다.</td></tr>');
 			$('#cpCount').text('0개'); $('#cpSaved').text('줄어든 용량 0KB'); $('#cpAll').prop('disabled', true);
 		});
