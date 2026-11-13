@@ -1,8 +1,6 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 
-<%@ include file="/WEB-INF/jsp/bo/boinclude/include_top.jspf"%>
-<%@ include file="/WEB-INF/jsp/bo/calendar/calendar_style.jspf"%>
-<%@ include file="/WEB-INF/jsp/bo/hr/hr_common.jspf"%>
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_head.jspf"%>
 <style>
 	.fl-chks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 14px; }
 	.fl-split { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); border-top: 1px solid rgba(17,17,17,.08); }
@@ -17,11 +15,7 @@
 	@media (max-width: 991px) { .fl-split { grid-template-columns: 1fr; } .fl-split > div + div { border-left: 0; border-top: 1px solid rgba(17,17,17,.08); } }
 </style>
 
-<body class="hold-transition sidebar-mini">
-	<div class="wrapper">
-		<%@ include file="/WEB-INF/jsp/bo/boinclude/include_left.jspf"%>
-		<div class="content-wrapper">
-			<section class="content cal-page">
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-header d-flex align-items-center">
 					<h3 class="card-title bTitle"><b>피드백</b></h3>
 					<span class="small text-muted ml-3">위 💬 피드백 버튼으로 남긴 글 · 평일 오전 9시 30분에 Claude 가 기획서를 붙여 '검토 대기'로 둡니다</span>
@@ -40,12 +34,9 @@
 						</div>
 					</div>
 				</div>
-			</section>
-		</div>
-	</div>
+			<%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
 
-	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
-	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
+	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
 	<script>
 	var data = { list: [] }, pick = null, checked = {};
 	var ORDER = ['NEW', 'REVIEW', 'ING', 'DONE', 'HOLD', 'REJECT'];

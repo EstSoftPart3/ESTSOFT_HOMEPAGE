@@ -5,14 +5,7 @@
 <%@ include file="/WEB-INF/jsp/bo/calendar/calendar_style.jspf"%>
 <%@ include file="/WEB-INF/jsp/bo/board/board_style.jspf"%>
 
-<body class="hold-transition sidebar-mini">
-
-	<div class="wrapper">
-
-		<%@ include file="/WEB-INF/jsp/bo/boinclude/include_left.jspf"%>
-
-		<div class="content-wrapper">
-			<section class="content cal-page">
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-body">
 					<nav class="brd-crumb" aria-label="경로"><a href="/admin/board/openBoardManage.do">게시판 관리</a> › <a id="crumbBoard" href="#"></a> › <b id="crumbMode"></b></nav>
 
@@ -64,9 +57,7 @@
 						</footer>
 					</form>
 				</div>
-			</section>
-		</div>
-	</div>
+			<%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
 
 <%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
 <%@ include file="/WEB-INF/jsp/bo/board/board_common.jspf"%>

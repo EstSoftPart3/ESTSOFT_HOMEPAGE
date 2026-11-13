@@ -29,11 +29,7 @@
 	.ac-section { font-size: 13px; font-weight: 700; color: #111; margin: 12px 0 8px; padding-top: 10px; border-top: 1px solid rgba(17,17,17,.1); }
 </style>
 
-<body class="hold-transition sidebar-mini">
-	<div class="wrapper">
-		<%@ include file="/WEB-INF/jsp/bo/boinclude/include_left.jspf"%>
-		<div class="content-wrapper">
-			<section class="content cal-page">
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-header"><h3 class="card-title bTitle"><b>계정관리</b></h3></div>
 				<div class="card-body">
 					<div id="alerts" class="mb-2" role="group" aria-label="확인할 일"></div>
@@ -63,9 +59,7 @@
 						<div class="small text-muted px-3 py-2">주민등록번호와 주소는 계정 카드에서만 볼 수 있습니다.</div>
 					</div>
 				</div>
-			</section>
-		</div>
-	</div>
+			<%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
 
 	<div class="modal fade" id="cardModal" tabindex="-1" role="dialog" aria-labelledby="cardTitle" aria-hidden="true">
 		<div class="modal-dialog modal-lg" role="document"><div class="modal-content">
@@ -153,8 +147,7 @@
 		</div></div>
 	</div>
 
-	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
-	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
+	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
 	<script>
 	hrFillSelect('#cSex', 'MEM_GENDER', ['', '']);
 	var data = { accounts: [], pending: [], roles: [] }, tab = 'staff', leftOnly = false, card = null, pendingPick = null, done = [];

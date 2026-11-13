@@ -1,0 +1,7 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%-- 관리자 화면 틀 ②: 본문 열기(왼쪽 메뉴 포함). page_close 와 짝 --%>
+<body class="hold-transition sidebar-mini">
+	<div class="wrapper">
+		<%@ include file="/WEB-INF/jsp/bo/boinclude/include_left.jspf"%>
+		<div class="content-wrapper">
+			<section class="content cal-page">

@@ -1,17 +1,8 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 
-<%@ include file="/WEB-INF/jsp/bo/boinclude/include_top.jspf"%>
-<%@ include file="/WEB-INF/jsp/bo/calendar/calendar_style.jspf"%>
-<%@ include file="/WEB-INF/jsp/bo/hr/hr_common.jspf"%>
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_head.jspf"%>
 
-<body class="hold-transition sidebar-mini">
-
-	<div class="wrapper">
-
-		<%@ include file="/WEB-INF/jsp/bo/boinclude/include_left.jspf"%>
-
-		<div class="content-wrapper">
-			<section class="content cal-page">
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-header">
 					<h3 class="card-title bTitle"><b>면접 관리</b></h3>
 				</div>
@@ -74,9 +65,7 @@
 						</div>
 					</div>
 				</div>
-			</section>
-		</div>
-	</div>
+			<%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
 
 	<div class="modal fade" id="editModal" tabindex="-1" role="dialog" aria-labelledby="editTitle" aria-hidden="true">
 		<div class="modal-dialog modal-lg" role="document">
@@ -97,8 +86,7 @@
 		</div>
 	</div>
 
-	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
-	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
+	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
 
 	<script>
 	// 면접시간 선택지: 09:00 ~ 18:00, 30분 간격. 이전에 다른 값으로 넣은 시간은 hrControl·hrFillForm 이 선택지에 덧붙인다

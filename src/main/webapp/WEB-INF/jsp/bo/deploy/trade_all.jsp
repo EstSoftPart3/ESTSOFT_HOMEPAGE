@@ -1,8 +1,6 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 
-<%@ include file="/WEB-INF/jsp/bo/boinclude/include_top.jspf"%>
-<%@ include file="/WEB-INF/jsp/bo/calendar/calendar_style.jspf"%>
-<%@ include file="/WEB-INF/jsp/bo/hr/hr_common.jspf"%>
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_head.jspf"%>
 <%@ include file="/WEB-INF/jsp/bo/deploy/deploy_common.jspf"%>
 <%-- 매출·매입 현황: 투입(급여관리의 월 데이터) + 매출·매입 건(trade) 을 한 줄에. 투입·급여의 무거운 기능은 그 화면을 팝업(iframe)으로 띄워 쓴다 --%>
 <style>
@@ -32,11 +30,7 @@
 	#taToast { position: fixed; right: 18px; bottom: 18px; z-index: 2000; background: #222; color: #fff; font-size: 13px; padding: 8px 14px; border-radius: 6px; display: none; }
 </style>
 
-<body class="hold-transition sidebar-mini">
-	<div class="wrapper">
-		<%@ include file="/WEB-INF/jsp/bo/boinclude/include_left.jspf"%>
-		<div class="content-wrapper">
-			<section class="content cal-page">
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-header d-flex flex-wrap align-items-center" style="gap:6px">
 					<h3 class="card-title bTitle"><b>매출·매입 현황</b></h3>
 					<div class="ml-auto d-flex align-items-center flex-wrap" style="gap:6px">
@@ -78,9 +72,7 @@
 						<div class="small text-muted px-3 py-2">점선 밑줄 칸은 눌러서 고칩니다(실매출·매입액은 이 달 금액만, 기본급은 급여관리와 같은 값). 색 띠(투입·매출·매입·급여·손익)를 누르면 그 묶음을 접고 대표 칸 하나만 남깁니다. 성명을 누르면 투입·급여 상세가 팝업으로 열립니다. 투입현황·급여관리와 같은 데이터라 어느 쪽에서 고쳐도 서로 반영됩니다.</div>
 					</div>
 				</div>
-			</section>
-		</div>
-	</div>
+			<%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
 
 	<div class="modal fade" id="frameModal" tabindex="-1" role="dialog" aria-labelledby="frameTitle" aria-hidden="true">
 		<div class="modal-dialog" role="document">
@@ -138,8 +130,7 @@
 
 	<div id="taToast" role="status" aria-live="polite"></div>
 
-	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
-	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
+	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
 	<script>
 	var TYPE_NM = hrCodeMap('HR_EMP_TYPE'), FOREVER = '9999-12';
 	var ym = moment().format('YYYY-MM'), pay = { rows: [], closed: false }, lines = { SALE: [], BUY: [] }, partners = [], types = { SALE: [], BUY: [] }, tradeClosed = false;

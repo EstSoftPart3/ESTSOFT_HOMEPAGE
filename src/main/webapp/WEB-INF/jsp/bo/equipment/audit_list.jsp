@@ -1,8 +1,6 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 
-<%@ include file="/WEB-INF/jsp/bo/boinclude/include_top.jspf"%>
-<%@ include file="/WEB-INF/jsp/bo/calendar/calendar_style.jspf"%>
-<%@ include file="/WEB-INF/jsp/bo/hr/hr_common.jspf"%>
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_head.jspf"%>
 <style>
 	.eq-no { font-family: Consolas, monospace; font-size: 12px; white-space: nowrap; }
 	.au-layout { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 14px; align-items: start; }
@@ -25,14 +23,7 @@
 	@media (max-width: 768px) { .au-layout { grid-template-columns: 1fr; } }
 </style>
 
-<body class="hold-transition sidebar-mini">
-
-	<div class="wrapper">
-
-		<%@ include file="/WEB-INF/jsp/bo/boinclude/include_left.jspf"%>
-
-		<div class="content-wrapper">
-			<section class="content cal-page">
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-header d-flex align-items-center">
 					<h3 class="card-title bTitle mr-auto"><b>전수조사</b></h3>
 					<label for="newYm" class="sr-only">조사 월</label>
@@ -84,12 +75,9 @@
 						</div>
 					</div>
 				</div>
-			</section>
-		</div>
-	</div>
+			<%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
 
-	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
-	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
+	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
 
 	<script>
 	var TYPE = hrCodeMap('EQP_TYPE');

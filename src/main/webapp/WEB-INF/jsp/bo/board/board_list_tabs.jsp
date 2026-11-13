@@ -26,14 +26,7 @@
 	@media (max-width: 767px) { .brd-search { margin-left: 0; width: 100%; } .brd-search input { flex: 1; width: auto; } }
 </style>
 
-<body class="hold-transition sidebar-mini">
-
-	<div class="wrapper">
-
-		<%@ include file="/WEB-INF/jsp/bo/boinclude/include_left.jspf"%>
-
-		<div class="content-wrapper">
-			<section class="content cal-page">
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-header d-flex align-items-center">
 					<h3 class="card-title bTitle"><b>게시판 관리</b></h3>
 					<button type="button" class="btn btn-sm btn-primary ml-auto" id="btnWrite"><i class="fas fa-pen"></i> <span id="writeLabel"></span> 글쓰기</button>
@@ -82,9 +75,7 @@
 						</div>
 					</div>
 				</div>
-			</section>
-		</div>
-	</div>
+			<%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
 	<div class="brd-pop" id="pop" hidden role="tooltip"></div>
 
 <%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>

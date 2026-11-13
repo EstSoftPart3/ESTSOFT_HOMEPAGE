@@ -1,8 +1,6 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 
-<%@ include file="/WEB-INF/jsp/bo/boinclude/include_top.jspf"%>
-<%@ include file="/WEB-INF/jsp/bo/calendar/calendar_style.jspf"%>
-<%@ include file="/WEB-INF/jsp/bo/hr/hr_common.jspf"%>
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_head.jspf"%>
 <%@ include file="/WEB-INF/jsp/bo/deploy/deploy_common.jspf"%>
 <style>
 	.tr-chip { display: inline-flex; align-items: center; gap: 4px; border: 1px solid #ced4da; border-radius: 999px; padding: 2px 10px; font-size: 12.5px; background: #fff; cursor: pointer; margin: 0; user-select: none; }
@@ -35,11 +33,7 @@
 	#trToast { position: fixed; right: 18px; bottom: 18px; z-index: 2000; background: #222; color: #fff; font-size: 13px; padding: 8px 14px; border-radius: 6px; display: none; }
 </style>
 
-<body class="hold-transition sidebar-mini">
-	<div class="wrapper">
-		<%@ include file="/WEB-INF/jsp/bo/boinclude/include_left.jspf"%>
-		<div class="content-wrapper">
-			<section class="content cal-page">
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-header d-flex align-items-center">
 					<h3 class="card-title bTitle"><b id="pageTitle"></b></h3>
 					<span class="ml-auto d-flex" style="gap:6px;">
@@ -84,9 +78,7 @@
 						</div>
 					</div>
 				</div>
-			</section>
-		</div>
-	</div>
+			<%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
 
 	<div class="modal fade" id="formModal" tabindex="-1" role="dialog" aria-labelledby="formTitle" aria-hidden="true">
 		<div class="modal-dialog" role="document">
@@ -121,8 +113,7 @@
 
 	<div id="trToast" role="status" aria-live="polite"></div>
 
-	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
-	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
+	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
 	<script>
 	var KIND = '${kind}', SALE = KIND === 'SALE', BASE = '/admin/trade/' + KIND.toLowerCase() + '/';
 	// 세금계산서 메뉴: 매출 건의 묶음만 보인다(내역·등록은 매출·매입 현황에서)

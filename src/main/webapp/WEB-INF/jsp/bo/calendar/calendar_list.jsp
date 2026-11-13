@@ -5,14 +5,7 @@
 <%@ include file="/WEB-INF/jsp/bo/boinclude/include_top.jspf"%>
 <%@ include file="/WEB-INF/jsp/bo/calendar/calendar_style.jspf"%>
 
-<body class="hold-transition sidebar-mini">
-
-	<div class="wrapper">
-
-		<%@ include file="/WEB-INF/jsp/bo/boinclude/include_left.jspf"%>
-
-		<div class="content-wrapper">
-			<section class="content cal-page">
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-header">
 					<h3 class="card-title bTitle"><b>확정 일정 분류별 보기</b></h3>
 				</div>
@@ -58,9 +51,7 @@
 					</div>
 
 				</div>
-			</section>
-		</div>
-	</div>
+			<%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
 
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
 

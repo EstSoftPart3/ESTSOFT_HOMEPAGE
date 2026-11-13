@@ -1,8 +1,6 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 
-<%@ include file="/WEB-INF/jsp/bo/boinclude/include_top.jspf"%>
-<%@ include file="/WEB-INF/jsp/bo/calendar/calendar_style.jspf"%>
-<%@ include file="/WEB-INF/jsp/bo/hr/hr_common.jspf"%>
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_head.jspf"%>
 <%@ include file="/WEB-INF/jsp/bo/deploy/deploy_common.jspf"%>
 <style>
 	#psHead th, #psBody td { white-space: nowrap; vertical-align: middle; }
@@ -30,11 +28,7 @@
 	@media (max-width: 992px) { .ps-two { grid-template-columns: 1fr; } .ps-form { grid-template-columns: 1fr; } }
 </style>
 
-<body class="hold-transition sidebar-mini">
-	<div class="wrapper">
-		<%@ include file="/WEB-INF/jsp/bo/boinclude/include_left.jspf"%>
-		<div class="content-wrapper">
-			<section class="content cal-page">
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-header d-flex flex-wrap align-items-center" style="gap:8px">
 					<h3 class="card-title bTitle"><b>급여명세서</b></h3>
 					<span class="dp-pill" id="status"></span>
@@ -101,9 +95,7 @@
 						<div class="small text-muted px-3 py-2">금액은 급여관리의 값 그대로입니다. 마감된 달만 보내거나 내려받을 수 있고, 미리보기는 언제든 됩니다(미리보기에는 암호가 없습니다). 받는 주소는 인사카드의 개인 메일, 암호는 주민번호의 생년월일 8자리(예: 19900101)입니다.</div>
 					</div>
 				</div>
-			</section>
-		</div>
-	</div>
+			<%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
 
 	<form id="zipForm" method="post" action="/admin/payslip/zip.do" target="_blank" hidden><input type="hidden" name="YM"><input type="hidden" name="STAFF_SQ"></form>
 
@@ -184,8 +176,7 @@
 		</div>
 	</div>
 
-	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
-	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
+	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
 
 	<script>
 	var TYPE_NM = { REGULAR: '정규', PROBATION: '수습', SPECIAL: '특고프리', BIZ: '사업자프리', EMP_INS: '고용보험알바', ETC: '기타계약', EXTERNAL: '외부업체' };

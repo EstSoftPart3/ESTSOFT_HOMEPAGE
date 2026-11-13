@@ -1,0 +1,5 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%-- 관리자 화면 틀 ③: 본문 닫기. 팝업(modal)은 이 뒤, page_script 앞에 둔다 --%>
+			</section>
+		</div>
+	</div>

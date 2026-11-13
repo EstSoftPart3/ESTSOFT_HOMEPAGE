@@ -29,11 +29,7 @@
 	@media (prefers-reduced-motion: reduce) { .cp-bar i { animation: none !important; transition: none; } .fa-spin { animation: none; } }
 </style>
 
-<body class="hold-transition sidebar-mini">
-	<div class="wrapper">
-		<%@ include file="/WEB-INF/jsp/bo/boinclude/include_left.jspf"%>
-		<div class="content-wrapper">
-			<section class="content cal-page">
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-header">
 					<h3 class="card-title bTitle"><b>파일 용량 줄이기</b></h3>
 				</div>
@@ -65,9 +61,7 @@
 						</div>
 					</div>
 				</div>
-			</section>
-		</div>
-	</div>
+			<%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
 
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
 

@@ -4,11 +4,7 @@
 <%@ include file="/WEB-INF/jsp/bo/calendar/calendar_style.jspf"%>
 <%@ include file="/WEB-INF/jsp/bo/system/system_style.jspf"%>
 
-<body class="hold-transition sidebar-mini">
-	<div class="wrapper">
-		<%@ include file="/WEB-INF/jsp/bo/boinclude/include_left.jspf"%>
-		<div class="content-wrapper">
-			<section class="content cal-page">
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-header"><h3 class="card-title bTitle"><b>메뉴 관리</b></h3></div>
 				<div class="card-body">
 					<div class="sys-split">
@@ -41,12 +37,9 @@
 						</div>
 					</div>
 				</div>
-			</section>
-		</div>
-	</div>
+			<%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
 
-	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
-	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
+	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
 	<script src="/resources/bo/plugins/jquery-ui/jquery-ui.min.js"></script>
 	<script>
 	var menus = [], selected = null, savedOrder = '', draggedAt = 0, sortMsgTimer;

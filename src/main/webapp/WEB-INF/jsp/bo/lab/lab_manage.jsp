@@ -1,8 +1,6 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 
-<%@ include file="/WEB-INF/jsp/bo/boinclude/include_top.jspf"%>
-<%@ include file="/WEB-INF/jsp/bo/calendar/calendar_style.jspf"%>
-<%@ include file="/WEB-INF/jsp/bo/hr/hr_common.jspf"%>
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_head.jspf"%>
 <%@ include file="/WEB-INF/jsp/bo/lab/lab_style.jspf"%>
 <style>
 	.lab-tl { table-layout: fixed; min-width: 760px; }
@@ -41,11 +39,7 @@
 	}
 </style>
 
-<body class="hold-transition sidebar-mini">
-	<div class="wrapper">
-		<%@ include file="/WEB-INF/jsp/bo/boinclude/include_left.jspf"%>
-		<div class="content-wrapper">
-			<section class="content cal-page">
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-header"><h3 class="card-title bTitle"><b>연구소 관리</b></h3></div>
 				<div class="card-body">
 					<div class="lab-view" id="viewList">
@@ -68,9 +62,7 @@
 					</div>
 					<div class="lab-view" id="viewTeam" style="display:none;"></div>
 				</div>
-			</section>
-		</div>
-	</div>
+			<%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
 
 	<div class="modal fade" id="teamModal" tabindex="-1" role="dialog" aria-labelledby="teamTitle" aria-hidden="true">
 		<div class="modal-dialog" role="document">
@@ -126,8 +118,7 @@
 
 	<div id="labToast" role="status" aria-live="polite"></div>
 
-	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
-	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
+	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
 	<script>
 	var TABS = ['기본 정보', '연구원', '소속 현황', '결재라인'];
 	// 비고는 메모로 옮겼다. 목록 💬 버튼과 기본 정보 아래 메모 칸에서 쌓는다

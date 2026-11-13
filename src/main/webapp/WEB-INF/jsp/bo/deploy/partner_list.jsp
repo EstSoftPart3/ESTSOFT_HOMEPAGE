@@ -1,8 +1,6 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 
-<%@ include file="/WEB-INF/jsp/bo/boinclude/include_top.jspf"%>
-<%@ include file="/WEB-INF/jsp/bo/calendar/calendar_style.jspf"%>
-<%@ include file="/WEB-INF/jsp/bo/hr/hr_common.jspf"%>
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_head.jspf"%>
 <%@ include file="/WEB-INF/jsp/bo/deploy/deploy_common.jspf"%>
 <style>
 	.pt-drop { display: flex; align-items: center; gap: 8px; border: 1px dashed #16a0c4; border-radius: 4px; padding: 4px 10px; background: #f3fbfd; color: #3c4a55; font-size: 12.5px; cursor: pointer; }
@@ -39,11 +37,7 @@
 	#partnerForm .pt-auto { background: #e3f6fb; border-color: #7fcde0; }
 </style>
 
-<body class="hold-transition sidebar-mini">
-	<div class="wrapper">
-		<%@ include file="/WEB-INF/jsp/bo/boinclude/include_left.jspf"%>
-		<div class="content-wrapper">
-			<section class="content cal-page">
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-header d-flex align-items-center">
 					<h3 class="card-title bTitle"><b>매출/매입처 관리</b></h3>
 					<button type="button" class="btn btn-sm btn-primary ml-auto" onclick="openForm(null);"><i class="fas fa-plus"></i> 등록</button>
@@ -63,9 +57,7 @@
 						<div class="small text-muted px-3 py-2">삭제는 투입 기록이 없는 거래처만 됩니다. 기록이 있으면 사용 중지로 바꾸면 새 입력 목록에서만 빠집니다.</div>
 					</div>
 				</div>
-			</section>
-		</div>
-	</div>
+			<%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
 
 	<div class="modal fade" id="formModal" tabindex="-1" role="dialog" aria-labelledby="formTitle" aria-hidden="true">
 		<div class="modal-dialog modal-xl" role="document">
@@ -113,8 +105,7 @@
 		</div>
 	</div>
 
-	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
-	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
+	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
 
 	<script>
 	var BIZ = [['PARTNER_NM', '상호 *', 3], ['BIZ_NO', '사업자등록번호', 3], ['CEO_NM', '대표자', 3], ['OPEN_DT', '개업일', 3, 'date'], ['ADDR', '사업장 주소', 6], ['BIZ_TYPE', '업태', 3], ['BIZ_ITEM', '종목', 3], ['USE_YN', '사용', 3, { values: { Y: '사용', N: '사용 중지' } }]];

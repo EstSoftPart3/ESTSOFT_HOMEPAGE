@@ -1,8 +1,6 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 
-<%@ include file="/WEB-INF/jsp/bo/boinclude/include_top.jspf"%>
-<%@ include file="/WEB-INF/jsp/bo/calendar/calendar_style.jspf"%>
-<%@ include file="/WEB-INF/jsp/bo/hr/hr_common.jspf"%>
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_head.jspf"%>
 <style>
 	.eq-link { background: none; border: 0; padding: 0; color: #0b6e8a; font-weight: 600; text-decoration: underline; cursor: pointer; white-space: nowrap; }
 	.eq-no { font-family: Consolas, monospace; font-size: 12px; }
@@ -29,14 +27,7 @@
 	}
 </style>
 
-<body class="hold-transition sidebar-mini">
-
-	<div class="wrapper">
-
-		<%@ include file="/WEB-INF/jsp/bo/boinclude/include_left.jspf"%>
-
-		<div class="content-wrapper">
-			<section class="content cal-page">
+<%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-header">
 					<h3 class="card-title bTitle"><b>장비대장</b></h3>
 				</div>
@@ -79,9 +70,7 @@
 						<div class="small text-muted px-3 py-2">브랜드, 모델, 시리얼은 칸을 누르면 바로 수정되고, 💬 로 메모를 남깁니다. 장비 비밀번호는 적지 마세요. 상태와 사용자는 대여·반납 처리로만 바뀝니다.</div>
 					</div>
 				</div>
-			</section>
-		</div>
-	</div>
+			<%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
 
 	<div id="labelSheet"></div>
 
@@ -189,8 +178,7 @@
 	<datalist id="locations"><option value="장비실"><option value="교육실"></datalist>
 	<datalist id="purposes"><option value="프로젝트"><option value="부트캠프"><option value="연구용"><option value="재택근무용"><option value="교육용"><option value="서버용"></datalist>
 
-	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
-	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
+	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
 
 	<script>
 	var TYPE = hrCodeMap('EQP_TYPE');
