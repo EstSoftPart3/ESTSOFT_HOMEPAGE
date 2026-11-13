@@ -161,6 +161,14 @@
 					<div class="modal-body">
 						<div class="form-row" id="detailFields"></div>
 						<div class="custom-control custom-switch mb-2"><input type="checkbox" class="custom-control-input" id="dOffice"><label class="custom-control-label" for="dOffice">내근직 <span class="small text-muted">· 켜고 저장하면 투입 현황·대기·철수 임박에서 빠지고 내근직 탭에만 보입니다</span></label></div>
+						<div class="custom-control custom-switch mb-1"><input type="checkbox" class="custom-control-input" id="dRest"><label class="custom-control-label" for="dRest">휴직 <span class="small text-muted">· 켜고 기간을 넣어 저장하면 휴직이 끝날 때까지 다른 탭에서 빠지고 휴직 탭에만 보입니다</span></label></div>
+						<div class="d-none align-items-center mb-2 ml-4" style="gap:6px" id="dRestDates">
+							<label class="mb-0 small text-muted" for="dRestFrom">휴직 기간</label>
+							<input type="date" class="form-control form-control-sm" style="width:160px" id="dRestFrom" aria-label="휴직 시작일">
+							<span>~</span>
+							<input type="date" class="form-control form-control-sm" style="width:160px" id="dRestTo" aria-label="휴직 종료일(비우면 미정)">
+							<span class="small text-muted">종료일을 비우면 미정</span>
+						</div>
 						<div class="hr-section">투입 이력 <span class="small text-muted font-weight-normal dp-pay-only">기간 옆 ⓘ 를 누르면 그 건의 월별 단가·급여가 보입니다</span></div>
 						<table class="table table-sm cal-table mb-0">
 							<thead><tr><th>기간</th><th>형태</th><th>고객사</th><th>프로젝트</th><th>지역</th><th>등급</th></tr></thead>
@@ -187,7 +195,7 @@
 		['MEMOS', '메모'], ['HIST', '이력']];
 	var data = null, order = [], view = 'table', drag = null, page = 'ACTIVE', prjCache = {};
 	// 관리자 홈 바로가기: ?page=IDLE(대기 현황) · ENDING(철수 임박)
-	var pageParam = /[?&]page=(IDLE|ENDING|OFFICE)\b/.exec(location.search);
+	var pageParam = /[?&]page=(IDLE|ENDING|OFFICE|REST)\b/.exec(location.search);
 	if (pageParam) page = pageParam[1];
 	// 기준월과 체크 칩(급여관리와 같은 구분). [키, 이름, 고용형태들]
 	var ym = moment().format('YYYY-MM'), sortKey = 'REMAIN', sortDir = 1;
@@ -199,7 +207,7 @@
 	var EDIT = { EMP_TYPE_CD: ['EMP_TYPE_CD', { code: 'HR_EMP_TYPE' }], GRADE_CD: ['GRADE_CD', { code: 'HR_DEPLOY_GRADE' }], SALE_PARTNER_NM: ['SALE_PARTNER_SQ', 'SALE_YN'], BUY_PARTNER_NM: ['BUY_PARTNER_SQ', 'BUY_YN'],
 		CLIENT_NM: ['CLIENT_NM'], PRJ_NM: ['PRJ_NM'], WORK_AREA: ['WORK_AREA'], START_DT: ['START_DT', 'date'], END_DT: ['END_DT', 'date'], SALE_PRICE: ['SALE_PRICE'], COST_PRICE: ['COST_PRICE'] };
 	var FIELD_NM = { EMP_TYPE_CD: '형태', SALE_PARTNER_SQ: '매출처', BUY_PARTNER_SQ: '매입처', CLIENT_NM: '고객사', PRJ_NM: '프로젝트', WORK_AREA: '근무지역', GRADE_CD: '등급', START_DT: '투입일', END_DT: '철수일',
-		PROB_END_DT: '수습해제일', SALE_PRICE: '매출단가', COST_PRICE: '계약단가', MEMO: '메모', OFFICE_YN: '내근직', NEW: '등록', DELETE: '삭제' };
+		PROB_END_DT: '수습해제일', SALE_PRICE: '매출단가', COST_PRICE: '계약단가', MEMO: '메모', OFFICE_YN: '내근직', REST_FROM_DT: '휴직 시작일', REST_TO_DT: '휴직 종료일', NEW: '등록', DELETE: '삭제' };
 	var today = moment().startOf('day'), YM = moment().format('YYYY-MM');
 	var SIDO = { '서울특별시': '서울', '서울시': '서울', '부산광역시': '부산', '대구광역시': '대구', '인천광역시': '인천', '광주광역시': '광주', '대전광역시': '대전', '울산광역시': '울산', '세종특별자치시': '세종',
 		'경기도': '경기', '강원도': '강원', '강원특별자치도': '강원', '충청북도': '충북', '충청남도': '충남', '전라북도': '전북', '전북특별자치도': '전북', '전라남도': '전남', '경상북도': '경북', '경상남도': '경남', '제주특별자치도': '제주' };
@@ -288,7 +296,7 @@
 	function filtered() {
 		var kw = $.trim($('#keyword').val()).toLowerCase();
 		return data.current.filter(function(r) {
-			if (r.STATE !== 'ACTIVE' || !showSecret(r) || isOffice(r.STAFF_SQ)) return false;
+			if (r.STATE !== 'ACTIVE' || !showSecret(r) || away(r.STAFF_SQ)) return false;
 			return matches(r, kw);
 		}).sort(function(a, b) { return secretFirst(a, b) || remain(a).days - remain(b).days || String(a.STAFF_NM).localeCompare(String(b.STAFF_NM), 'ko'); });
 	}
@@ -304,7 +312,7 @@
 	function monthGroups(anyChip) {
 		var first = moment(ym + '-01'), last = first.clone().endOf('month'), kw = $.trim($('#keyword').val()).toLowerCase(), by = {}, keys = [];
 		data.all.forEach(function(x) {
-			if (moment(x.START_DT).isAfter(last) || (x.END_DT && moment(x.END_DT).isBefore(first)) || !showSecret(x) || isOffice(x.STAFF_SQ)) return;
+			if (moment(x.START_DT).isAfter(last) || (x.END_DT && moment(x.END_DT).isBefore(first)) || !showSecret(x) || away(x.STAFF_SQ)) return;
 			if (!by[x.STAFF_SQ]) { by[x.STAFF_SQ] = []; keys.push(x.STAFF_SQ); }
 			by[x.STAFF_SQ].push(x);
 		});
@@ -352,9 +360,16 @@
 
 	// 내근직: 내근직으로 켠 투입 건이 하나라도 있는 사람. 투입 현황·대기·철수 임박에서 빠지고 내근직 탭에만 보인다
 	function isOffice(sq) { return data.all.some(function(x) { return x.STAFF_SQ === sq && x.OFFICE_YN === 'Y'; }); }
+	// 휴직: 휴직 기간이 끝나지 않은(예정 포함) 투입 건. 있으면 다른 탭에서 모두 빠지고 휴직 탭에만 보인다. 종료일이 지나면 원래 목록으로
+	function restOf(sq) { return data.all.filter(function(x) { return x.STAFF_SQ === sq && x.REST_FROM_DT && (!x.REST_TO_DT || !moment(x.REST_TO_DT).isBefore(today)); }).pop(); }
+	function away(sq) { return isOffice(sq) || !!restOf(sq); }
+	function restList() {
+		return data.staff.filter(function(s) { return showSecret(s) && restOf(s.STAFF_SQ); }).map(function(s) { return { s: s, x: restOf(s.STAFF_SQ) }; })
+			.sort(function(a, b) { return secretFirst(a.s, b.s) || String(a.x.REST_FROM_DT).localeCompare(String(b.x.REST_FROM_DT)); });
+	}
 	// 재직자 가운데 내근직. 기간이 끝난 건이어도 보인다. 시크릿 규칙(칩·맨 위 고정)은 다른 탭과 같다
 	function officeList() {
-		return data.staff.filter(function(s) { return showSecret(s) && isOffice(s.STAFF_SQ); }).map(function(s) {
+		return data.staff.filter(function(s) { return showSecret(s) && isOffice(s.STAFF_SQ) && !restOf(s.STAFF_SQ); }).map(function(s) {
 			return { s: s, x: depsOf(s.STAFF_SQ).filter(function(x) { return x.OFFICE_YN === 'Y'; }).pop() };
 		}).sort(function(a, b) { return secretFirst(a.s, b.s) || String(a.s.STAFF_NM).localeCompare(String(b.s.STAFF_NM), 'ko'); });
 	}
@@ -362,7 +377,7 @@
 	// 재직인데 진행 중인 투입이 없는 사람. 철수일이 오늘인 건은 끝난 것으로 본다(철수 처리하면 바로 대기로). 외부업체·내근직은 뺀다
 	function idleList() {
 		function goingOn(x) { return !moment(x.START_DT).isAfter(today) && (!x.END_DT || moment(x.END_DT).isAfter(today)); }
-		return data.staff.filter(function(s) { return showSecret(s) && !isOffice(s.STAFF_SQ); }).map(function(s) {
+		return data.staff.filter(function(s) { return showSecret(s) && !away(s.STAFF_SQ); }).map(function(s) {
 			var deps = depsOf(s.STAFF_SQ);
 			if (deps.some(goingOn)) return null;
 			var last = deps[deps.length - 1];
@@ -378,7 +393,7 @@
 	// 철수일이 이번 달 또는 다음 달인 진행 중 투입
 	function endingList() {
 		var limit = moment().add(1, 'month').endOf('month');
-		return data.all.filter(function(x) { return showSecret(x) && !isOffice(x.STAFF_SQ) && isActive(x) && x.END_DT && !moment(x.END_DT).isAfter(limit); }).map(function(x) {
+		return data.all.filter(function(x) { return showSecret(x) && !away(x.STAFF_SQ) && isActive(x) && x.END_DT && !moment(x.END_DT).isAfter(limit); }).map(function(x) {
 			var next = depsOf(x.STAFF_SQ).filter(function(y) { return y.DEPLOY_SQ !== x.DEPLOY_SQ && y.START_DT > x.END_DT; })[0];
 			return { x: x, next: next };
 		}).sort(function(a, b) { return secretFirst(a.x, b.x) || a.x.END_DT.localeCompare(b.x.END_DT); });
@@ -396,16 +411,16 @@
 		return h && known.indexOf(w) >= 0 && h !== w;
 	}
 
-	function renderViews(idle, ending, office) {
-		var active = data.current.filter(function(r) { return r.STATE === 'ACTIVE' && showSecret(r) && !isOffice(r.STAFF_SQ); }).length;
-		$('#views').empty().append([['ACTIVE', '투입 현황', active, ''], ['IDLE', '대기 현황', idle.length, 'warn'], ['ENDING', '철수 임박', ending.length, 'bad'], ['OFFICE', '내근직', office.length, '']].map(function(v) {
+	function renderViews(idle, ending, office, rest) {
+		var active = data.current.filter(function(r) { return r.STATE === 'ACTIVE' && showSecret(r) && !away(r.STAFF_SQ); }).length;
+		$('#views').empty().append([['ACTIVE', '투입 현황', active, ''], ['IDLE', '대기 현황', idle.length, 'warn'], ['ENDING', '철수 임박', ending.length, 'bad'], ['OFFICE', '내근직', office.length, ''], ['REST', '휴직', rest.length, '']].map(function(v) {
 			return $('<button type="button" role="tab">').addClass(v[3]).attr({ 'data-page': v[0], 'aria-selected': page === v[0] }).text(v[1]).append($('<b>').text(v[2]));
 		}));
 	}
 
 	function render() {
-		var idle = idleList(), ending = endingList(), office = officeList(), showYm = page === 'ACTIVE' && view === 'table';
-		renderViews(idle, ending, office);
+		var idle = idleList(), ending = endingList(), office = officeList(), rest = restList(), showYm = page === 'ACTIVE' && view === 'table';
+		renderViews(idle, ending, office, rest);
 		$('#ymBox').toggleClass('d-flex', showYm).toggleClass('d-none', !showYm);
 		$('#mainPanel').toggle(page === 'ACTIVE');
 		$('#altPanel').toggle(page !== 'ACTIVE');
@@ -413,6 +428,7 @@
 		if (page === 'IDLE') return renderIdle(idle);
 		if (page === 'ENDING') return renderEnding(ending);
 		if (page === 'OFFICE') return renderOffice(office);
+		if (page === 'REST') return renderRest(rest);
 		renderChips(monthGroups(true));
 		$('#tableView').toggle(view === 'table');
 		$('#timelineView').toggle(view === 'timeline');
@@ -736,6 +752,9 @@
 		$('#detailForm [name=STAFF_NM]').prop('readonly', true);
 		$('#detailTitle').text(r.STAFF_NM + ' 투입 상세');
 		$('#dOffice').prop('checked', r.OFFICE_YN === 'Y');
+		$('#dRest').prop('checked', !!r.REST_FROM_DT);
+		$('#dRestFrom').val(r.REST_FROM_DT || ''); $('#dRestTo').val(r.REST_TO_DT || '');
+		$('#dRestDates').toggleClass('d-none', !r.REST_FROM_DT).toggleClass('d-flex', !!r.REST_FROM_DT);
 		var $hb = $('#histBody').empty();
 		data.all.filter(function(x) { return x.STAFF_SQ === r.STAFF_SQ; }).slice().reverse().forEach(function(x) {
 			var $tr = $('<tr class="dp-hist" tabindex="0">').toggleClass('font-weight-bold', x.DEPLOY_SQ === r.DEPLOY_SQ)
@@ -785,6 +804,10 @@
 		$('#detailForm').serializeArray().forEach(function(x) { p[x.name] = x.value; });
 		delete p.STAFF_NM;
 		p.OFFICE_YN = $('#dOffice').prop('checked') ? 'Y' : 'N';
+		p.REST_YN = $('#dRest').prop('checked') ? 'Y' : 'N';
+		p.REST_FROM_DT = p.REST_YN === 'Y' ? $('#dRestFrom').val() : '';
+		p.REST_TO_DT = p.REST_YN === 'Y' ? $('#dRestTo').val() : '';
+		if (p.REST_YN === 'Y' && !p.REST_FROM_DT) { $('#dRestFrom').focus(); return; }
 		hrPost('/admin/deploy/saveDeployData.do', p, function() { $('#detailModal').modal('hide'); load(); });
 	}
 
@@ -799,6 +822,30 @@
 				load();
 			});
 		} });
+	}
+
+	// ── 휴직 ──
+
+	$(document).on('change', '#dRest', function() {
+		$('#dRestDates').toggleClass('d-none', !this.checked).toggleClass('d-flex', this.checked);
+		if (this.checked && !$('#dRestFrom').val()) $('#dRestFrom').val(today.format('YYYY-MM-DD'));
+	});
+
+	function renderRest(list) {
+		var $t = $('<table class="table table-sm cal-table mb-0">').append('<thead><tr><th>성명</th><th>형태</th><th>직급·소속</th><th>휴직 기간</th><th>복귀</th><th>프로젝트</th><th>근속</th><th>프로젝트 이력</th></tr></thead>');
+		var $b = $('<tbody>').appendTo($t);
+		if (!list.length) $b.append('<tr><td colspan="8" class="text-center text-muted py-4">휴직 중인 사람이 없습니다. 투입 상세 팝업에서 휴직을 켜고 기간을 넣으면 여기에만 보입니다.</td></tr>');
+		list.forEach(function(it) {
+			var s = it.s, x = it.x, back = x.REST_TO_DT ? moment(x.REST_TO_DT).add(1, 'days') : null;
+			var left = back ? back.diff(today, 'days') : null, plan = moment(x.REST_FROM_DT).isAfter(today);
+			$b.append($('<tr>').toggleClass('dp-secret', !!s.SECRET)
+				.append($('<td>').append(s.SECRET ? $('<span title="시크릿">').text('🔒 ') : '').append($('<button type="button" class="dp-name">').text(s.STAFF_NM).on('click', function() { openDetail(x); })))
+				.append($('<td>').text(typeLabel(x))).append($('<td>').text([s.POSITION_NM, s.DEPT_NM || s.ORG_NM].filter(Boolean).join(' · ')))
+				.append($('<td>').text(x.REST_FROM_DT + ' ~ ' + (x.REST_TO_DT || '미정')).append(plan ? $('<span class="dp-pill rent ml-1">').text('예정') : ''))
+				.append($('<td>').append($('<span class="dp-pill">').addClass(left !== null && left <= 14 ? 'warn' : '').text(back ? back.format('YYYY-MM-DD') + ' (D-' + left + ')' : '미정')))
+				.append($('<td>').text([x.CLIENT_NM, x.PRJ_NM].filter(Boolean).join(' '))).append($('<td>').text(tenure(s.JOIN_DT))).append($('<td>').append(prjBtn(s.STAFF_SQ, s.STAFF_NM))));
+		});
+		$('#altView').empty().append($t);
 	}
 
 	// ── 내근직 ──

@@ -140,7 +140,7 @@ public class BoDeployService {
 
 	/** 수정이력에 남기는 칸. 단가는 급여 권한이 있을 때만 남기고 보여 준다 */
 	static final List<String> TRACK = Arrays.asList("EMP_TYPE_CD", "SALE_PARTNER_SQ", "BUY_PARTNER_SQ", "CLIENT_NM", "PRJ_NM", "WORK_AREA", "GRADE_CD",
-			"START_DT", "END_DT", "PROB_END_DT", "SALE_PRICE", "COST_PRICE", "MEMO", "CLIENT_DIRECT_CD", "CLIENT_DIRECT_AMT", "OFFICE_YN");
+			"START_DT", "END_DT", "PROB_END_DT", "SALE_PRICE", "COST_PRICE", "MEMO", "CLIENT_DIRECT_CD", "CLIENT_DIRECT_AMT", "OFFICE_YN", "REST_FROM_DT", "REST_TO_DT");
 	static final List<String> PRICES = Arrays.asList("SALE_PRICE", "COST_PRICE", "CLIENT_DIRECT_CD", "CLIENT_DIRECT_AMT");
 	/** 고객사 직접계약: 매출단가 옆 아이콘 팝업에서만 고친다(saveDirect) */
 	static final List<String> DIRECT = Arrays.asList("CLIENT_DIRECT_CD", "CLIENT_DIRECT_AMT");
@@ -301,6 +301,18 @@ public class BoDeployService {
 			require(before != null, "투입 건을 찾지 못했습니다. 새로 고쳐 주세요.");
 			// 내근직: 보내지 않은 요청(칸 바로 수정 등)은 지금 값을 지킨다
 			p.put("OFFICE_YN", p.containsKey("OFFICE_YN") ? ("Y".equals(p.get("OFFICE_YN")) ? "Y" : "N") : before.get("OFFICE_YN"));
+			// 휴직: REST_YN 을 보낸 요청(투입 상세)만 바꾸고, 그 밖의 요청은 지금 기간을 지킨다
+			if (p.containsKey("REST_YN")) {
+				boolean rest = "Y".equals(p.get("REST_YN"));
+				LocalDate from = rest ? PayCalc.date(p.get("REST_FROM_DT")) : null, to = rest ? PayCalc.date(p.get("REST_TO_DT")) : null;
+				require(!rest || from != null, "휴직 시작일을 입력해 주세요.");
+				require(!rest || text(p, "REST_TO_DT").isEmpty() || (to != null && !to.isBefore(from)), "휴직 종료일은 시작일보다 빠를 수 없습니다.");
+				p.put("REST_FROM_DT", from == null ? "" : from.toString());
+				p.put("REST_TO_DT", to == null ? "" : to.toString());
+			} else {
+				p.put("REST_FROM_DT", text(before, "REST_FROM_DT"));
+				p.put("REST_TO_DT", text(before, "REST_TO_DT"));
+			}
 			mapper.updateDeploy(p);
 			diff(before, deployOne(p.get("DEPLOY_SQ")), canPay, reason.isEmpty() ? null : reason, who);
 		}
