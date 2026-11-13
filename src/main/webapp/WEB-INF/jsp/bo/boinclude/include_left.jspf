@@ -135,6 +135,8 @@
         <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
          
           <li class="nav-header"></li>
+          <%-- 관리자 홈 대시보드. 모든 관리자에게 열리고 메뉴 관리 대상이 아니다 --%>
+          <li class="nav-item"><a href="/admin/home.do" class="nav-link bo-home"><i class="nav-icon fas fa-home"></i><p class="sTitle">홈</p></a></li>
           	<%-- 硫붾돱? 沅뚰븳? boLoggerInterceptor 媛 ?ｋ뒗 boMenus 濡?洹몃┛?? 愿由??붾㈃: 怨꾩젙 諛?沅뚰븳 > 硫붾돱 愿由?--%>
           	<c:forEach var="group" items="${boMenus}">
           	<li class="nav-item has-treeview">
@@ -180,6 +182,8 @@
 	[].forEach.call(document.querySelectorAll('aside .has-treeview'), function(li) { li.classList.remove('menu-open'); });
 	var links = [].slice.call(document.querySelectorAll('aside .nav-treeview a.nav-link:not([href="#"])'));
 	var path = location.pathname, dir = path.substring(0, path.lastIndexOf('/') + 1);
+	// 홈은 메뉴 트리 밖에 있어 아래 폴더 찾기(/admin/)가 아무 메뉴나 잡지 않게 먼저 끝낸다
+	if (path === '/admin/home.do') { document.querySelector('aside a.bo-home').classList.add('active'); return; }
 	// 한 메뉴가 여러 하위 폴더를 묶을 때(게시판 관리 → /admin/board/notice/ 등) 한 단계 위 폴더로도 찾는다. /admin/ 자체는 제외
 	var parent = dir.replace(/[^\/]+\/$/, '');
 	var current = links.filter(function(a) { return a.pathname + a.search === path + location.search; })[0]

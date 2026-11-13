@@ -22,12 +22,7 @@ public class BoSystemController {
 	@Autowired
 	private BoSystemService service;
 
-	/** 로그인 뒤와 화면 전환 토글의 진입점. 권한이 있는 첫 메뉴로 보낸다 */
-	@RequestMapping(BoSystemService.HOME)
-	public ModelAndView home(HttpSession session) {
-		String url = service.access(loginId(session)).firstUrl();
-		return new ModelAndView(url != null ? "redirect:" + url : "bo/system/no_access");
-	}
+	// 로그인 뒤 진입점(/admin/home.do)은 BoHomeController 의 대시보드
 
 	@RequestMapping("/admin/system/menu/openMenuManage.do")
 	public ModelAndView openMenuManage() {

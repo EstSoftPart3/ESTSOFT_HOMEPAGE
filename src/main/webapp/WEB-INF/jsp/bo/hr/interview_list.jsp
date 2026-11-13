@@ -423,6 +423,10 @@
 				$('#weekSel').val(thu.clone().subtract(3, 'days').format('YYYY-MM-DD') + '|' + thu.clone().add(3, 'days').format('YYYY-MM-DD'));
 			}
 			render();
+			// 관리자 홈 바로가기: ?INTV_SQ= 면 처음 한 번 그 사람 상세 창을 연다
+			var linked = sel === null && /[?&]INTV_SQ=(\d+)/.exec(location.search);
+			var row = linked && rows.filter(function(r) { return String(r.INTV_SQ) === linked[1]; })[0];
+			if (row) openEdit(row);
 		});
 	}
 

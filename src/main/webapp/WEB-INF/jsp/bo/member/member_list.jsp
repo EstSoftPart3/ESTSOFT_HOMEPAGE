@@ -161,6 +161,9 @@
 	var data = { accounts: [], pending: [], roles: [] }, tab = 'staff', leftOnly = false, card = null, pendingPick = null, done = [];
 	var linked = null, staffRows = [], staffActive = -1, staffTimer = null, staffSeq = 0;
 	var TABS = [['staff', '직원 계정'], ['admin', '관리자 계정'], ['pending', '미발급 재직자'], ['inactive', '중지·퇴사'], ['fix', '정리 필요']];
+	// 관리자 홈 바로가기: ?tab=pending|fix
+	var tabParam = /[?&]tab=(\w+)/.exec(location.search);
+	if (tabParam && TABS.some(function(t) { return t[0] === tabParam[1]; })) tab = tabParam[1];
 
 	$(load);
 	$('#keyword, #pwFilter').on('input change', render);

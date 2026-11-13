@@ -10,4 +10,5 @@ public interface BoMemoMapper {
 	public int deleteMemo(Map<String, Object> param);							//MEMO_SQ, TARGET_CD, EMPLY_ID(본인 것만)
 	public String selectMemoTarget(Map<String, Object> param);					//MEMO_SQ, TARGET_CD 의 TARGET_SQ
 	public List<Map<String, Object>> selectMemoCounts(Map<String, Object> param);	//TARGET_CD → TARGET_SQ, CNT
+	public List<Map<String, Object>> selectRecentMemos(Map<String, Object> param);	//TARGETS(목록, 비면 안 됨), DEPLOY(투입 메모 포함) → 최근 20건
 }

@@ -311,6 +311,16 @@
 		WHERE H.JRN_SQ = #{JRN_SQ} ORDER BY H.HIS_SQ
 	</select>
 
+	<!-- 관리자 홈: 내가 지금 결재할 차례인 일지(BoLabService.currentStep 과 같은 기준) -->
+	<select id="selectMyApprovals" parameterType="hashMap" resultType="hashMap">
+		SELECT J.JRN_SQ, J.YM, IFNULL(J.SNAP_PRJ_NM, P.PRJ_NM) AS PRJ_NM, J.WRITER_NM, S.STEP_NM
+		FROM TB_EEP_LAB_JOURNAL_M J
+		JOIN TB_EEP_LAB_JOURNAL_STEP S ON S.JRN_SQ = J.JRN_SQ AND S.STEP_NO = J.CUR_STEP
+		LEFT JOIN TB_EEP_LAB_PROJECT_M P ON P.PRJ_SQ = J.PRJ_SQ
+		WHERE J.STATUS_CD = 'SUBMITTED' AND S.EMPLY_ID = #{EMPLY_ID}
+		ORDER BY J.YM, J.JRN_SQ
+	</select>
+
 	<select id="selectJournalSteps" parameterType="hashMap" resultType="hashMap">
 		SELECT T.STEP_NO, T.STEP_NM, T.EMPLY_ID, E.EMPLY_NM, T.DONE_NM, DATE_FORMAT(T.DONE_DT, '%Y-%m-%d %H:%i:%s') AS DONE_DT
 			<if test="WITH_SIGN != null">, S.SIGN_IMG</if>

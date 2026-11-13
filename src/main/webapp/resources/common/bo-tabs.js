@@ -188,7 +188,7 @@
 		var t = find(url);
 		if (!t && selfTab && keyOf(selfTab.url) === keyOf(url)) { t = selfTab; tabs.splice(tabs.indexOf(active) + 1, 0, t); }
 		if (!t) {
-			t = { url: fullOf(url), title: title || menuName(url) || '화면' };
+			t = { url: fullOf(url) + link(url).hash, title: title || menuName(url) || '화면' };
 			tabs.splice(tabs.indexOf(active) + 1, 0, t);
 			// 많으면 가장 오래 안 본 탭부터 닫는다(쓰던 입력이 있는 탭은 건너뜀)
 			var extra = tabs.length - MAX, closed = [];
@@ -223,6 +223,17 @@
 		open(a.href, a.textContent.trim());
 		if (document.body.classList.contains('sidebar-open')) { var p = document.querySelector('[data-widget="pushmenu"]'); if (p) p.click(); }
 	});
+
+	// 다른 화면(관리자 홈 대시보드)이 탭으로 열 때. 같은 화면 탭이 있으면 주소의 조건(?·#)으로 다시 연다.
+	// 그 탭에 저장하지 않은 입력이 있거나 첫 탭(지금 창)이면 조건은 버리고 탭만 보인다
+	window.BO_OPEN = function (url) {
+		var t = find(url), full = fullOf(url) + link(url).hash;
+		if (t && !t.self) {
+			if (!t.frame) t.url = full;
+			else if (t.url !== full && !dirty(t)) t.frame.contentWindow.location.href = full;
+		}
+		open(full);
+	};
 
 	if (backBtn) backBtn.addEventListener('click', back);
 

@@ -200,6 +200,10 @@
 	// 특이사항·이슈는 메모로 합쳤다. 목록 💬 버튼과 장비카드 메모 칸에서 쌓는다
 	var MEMO_API = hrMemoApi('/admin/equipment/', 'equipment');
 	var rows = [], staff = [], tab = 'HAVE', alertKey = null, holderKey = null, opened = null, card = null, picked = [];
+	// 관리자 홈 바로가기: ?alert=left|sign(알림 필터) · ?tab=REVIEW(검토 필요)
+	var alertParam = /[?&]alert=(left|sign|audit)\b/.exec(location.search), tabParam = /[?&]tab=(REVIEW)\b/.exec(location.search);
+	if (alertParam) alertKey = alertParam[1];
+	if (tabParam) tab = tabParam[1];
 
 	$(function() {
 		hrFillSelect('#fType', 'EQP_TYPE', ['', '전체']);

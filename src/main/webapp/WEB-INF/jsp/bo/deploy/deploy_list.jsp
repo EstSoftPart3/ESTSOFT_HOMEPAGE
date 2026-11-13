@@ -184,6 +184,9 @@
 		['CLIENT_NM', '고객사'], ['PRJ_NM', '프로젝트'],['GRADE_CD', '등급'], ['START_DT', '투입일'], ['END_DT', '철수일'], ['REMAIN', '남은 기간'], ['TENURE', '근속'], ['PRJ', '프로젝트 이력'],
 		['MEMOS', '메모'], ['HIST', '이력']];
 	var data = null, order = [], view = 'table', drag = null, page = 'ACTIVE', prjCache = {};
+	// 관리자 홈 바로가기: ?page=IDLE(대기 현황) · ENDING(철수 임박)
+	var pageParam = /[?&]page=(IDLE|ENDING)\b/.exec(location.search);
+	if (pageParam) page = pageParam[1];
 	// 기준월과 체크 칩(급여관리와 같은 구분). [키, 이름, 고용형태들]
 	var ym = moment().format('YYYY-MM'), sortKey = 'REMAIN', sortDir = 1;
 	// 고용형태 공통코드(HR_EMP_TYPE) 순서·이름대로 칩 하나씩. 코드에 없는 형태는 '코드 없음'

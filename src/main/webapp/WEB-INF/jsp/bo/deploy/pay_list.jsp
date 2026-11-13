@@ -214,6 +214,10 @@
 	DP_PAY.concat(DP_DED).forEach(function(d) { LABEL[d[0]] = d[1]; });
 	var ym = moment().format('YYYY-MM'), rows = [], monthClosed = false, shown = {}, checked = {}, sortKey = 'STAFF_NM', sortDir = 1, detailTab = 0, detailRow = null;
 	CHIPS.forEach(function(c) { checked[c[0]] = true; });
+	// 관리자 홈 바로가기: ?ym=YYYY-MM 그 달, &flag=1 확인 필요 칩만 켠 상태
+	var ymParam = /[?&]ym=(\d{4}-\d{2})\b/.exec(location.search);
+	if (ymParam) ym = ymParam[1];
+	if (/[?&]flag=1\b/.test(location.search)) CHIPS.forEach(function(c) { checked[c[0]] = c[0] === '_FLAG'; });
 	// 행 체크: 보기용 표시. 서버에 저장하지 않고 달을 바꾸면 풀린다
 	var picked = {}, pickedYm = ym;
 	function paintPicked() {
