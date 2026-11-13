@@ -12,7 +12,7 @@
 	.pl-ledger.show-pl .pl-stub { display: none; }
 	.pl-ledger .x-allow, .pl-ledger .c-allow { background: #dff5f3 !important; }
 	.pl-ledger .x-ded, .pl-ledger .c-ded { background: #fdeadb !important; }
-	.pl-ledger .x-pl, .pl-ledger .pl-stub { background: #efe6fa !important; }
+	.pl-ledger .x-pl, .pl-ledger .pl-stub, .pl-ledger .pl-profit { background: #efe6fa !important; }
 	.pl-ledger .pl-stub { min-width: 44px; padding: 0; }
 	.pl-bands th { background: #fff !important; border: 0 !important; padding: 0 !important; }
 	.pl-bands th.band { color: #fff; font-size: 11.5px; text-align: center; padding: 3px 6px !important; cursor: pointer; }
@@ -400,7 +400,8 @@
 		$h.append(sortTh('지급계', 'PAY_TOTAL', 'dp-num c-allow pl-calc-h'));
 		DED.forEach(function(a) { $h.append(a[0] === '_SETTLE' ? $('<th class="dp-num x-ded pl-calc-h">').text(a[1]).prepend(calcBtn('_SETTLE', a[1])) : sortTh(a[1], a[0], 'dp-num x-ded')); });
 		$h.append(sortTh('공제계', 'DED_TOTAL', 'dp-num c-ded pl-calc-h')).append(sortTh('실지급', 'NET', 'dp-num pl-calc-h')).append(sortTh('전월대비', 'DELTA_PCT', 'dp-num pl-calc-h')).append('<th class="pl-stub"></th>');
-		[['실매출', 'REAL_SALE'], ['기타', 'BUY'], ['수수료', 'FEE'], ['회사부담', 'COMPANY'], ['영업이익', 'PROFIT']].forEach(function(t) { $h.append(sortTh(t[0], t[1], 'dp-num x-pl pl-calc-h')); });
+		[['실매출', 'REAL_SALE'], ['기타', 'BUY'], ['수수료', 'FEE'], ['회사부담', 'COMPANY']].forEach(function(t) { $h.append(sortTh(t[0], t[1], 'dp-num x-pl pl-calc-h')); });
+		$h.append(sortTh('영업이익', 'PROFIT', 'dp-num pl-profit pl-calc-h')); // 손익을 접어도 영업이익은 보인다
 		$h.append(sortTh('확인 사항', 'FLAGS')).append('<th>메모</th><th>이력</th>');
 		$('#lHead').empty().append(bands).append($h);
 		var $b = $('#lBody').empty();
@@ -425,7 +426,7 @@
 			$tr.append(rs($('<td class="dp-num c-ded font-weight-bold pl-calc">').text(dpWon(r.DED_TOTAL)))).append(rs($('<td class="dp-num font-weight-bold pl-calc">').text(dpWon(r.NET))))
 				.append(rs($('<td class="dp-num pl-calc">').text(r.DELTA_PCT === undefined ? '' : (r.DELTA_PCT > 0 ? '+' : '') + r.DELTA_PCT + '%').toggleClass('text-danger', Math.abs(r.DELTA_PCT || 0) >= 10)))
 				.append(rs($('<td class="pl-stub">')))
-				.append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.REAL_SALE)))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(Number(r.BUY) ? dpWon(r.BUY) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(Number(r.FEE) ? dpWon(r.FEE) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.COMPANY)))).append(rs($('<td class="dp-num x-pl font-weight-bold pl-calc">').text(dpWon(r.PROFIT))))
+				.append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.REAL_SALE)))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(Number(r.BUY) ? dpWon(r.BUY) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(Number(r.FEE) ? dpWon(r.FEE) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.COMPANY)))).append(rs($('<td class="dp-num pl-profit font-weight-bold pl-calc">').text(dpWon(r.PROFIT))))
 				.append(rs($('<td>')).append(r.FLAGS.map(function(f) { return flagChip(r, f); })))
 				.append(rs($('<td>')).append(countBtn('💬', r.MEMO_CNT, r.STAFF_NM + ' 메모', function() { memoPopup(r); })))
 				.append(rs($('<td>')).append(countBtn('✎', r.CHG_CNT, r.STAFF_NM + ' 수정이력', function() { historyPopup(r); })));
@@ -438,7 +439,7 @@
 				ALLOW.forEach(function() { $c.append('<td class="x-allow"></td>'); });
 				$c.append($('<td class="dp-num c-allow font-weight-bold">').text(dpWon(d.BASE_AMT)));
 				DED.forEach(function() { $c.append('<td class="x-ded"></td>'); });
-				$c.append('<td class="c-ded"></td>').append($('<td class="dp-num font-weight-bold">').text(dpWon(d.BASE_AMT))).append('<td></td><td class="pl-stub"></td><td class="x-pl"></td><td class="x-pl"></td><td class="x-pl"></td><td class="x-pl"></td><td class="x-pl"></td><td></td><td></td><td></td>');
+				$c.append('<td class="c-ded"></td>').append($('<td class="dp-num font-weight-bold">').text(dpWon(d.BASE_AMT))).append('<td></td><td class="pl-stub"></td><td class="x-pl"></td><td class="x-pl"></td><td class="x-pl"></td><td class="x-pl"></td><td class="pl-profit"></td><td></td><td></td><td></td>');
 				$b.append($c);
 			});
 		});
@@ -528,7 +529,7 @@
 	function applyBands() {
 		$('#ledger [data-t]').each(function() {
 			var t = $(this).attr('data-t'), on = !!shown[t];
-			if (this.tagName === 'TH') $(this).attr({ colspan: on ? +$(this).attr('data-span') + (t === 'show-pl' ? 0 : 1) : 1, 'aria-expanded': on }).text($(this).attr('data-label') + (on ? ' ▾ 접기' : ' ▸'));
+			if (this.tagName === 'TH') $(this).attr({ colspan: on ? +$(this).attr('data-span') + (t === 'show-pl' ? 0 : 1) : t === 'show-pl' ? 2 : 1, 'aria-expanded': on }).text($(this).attr('data-label') + (on ? ' ▾ 접기' : ' ▸'));
 			else $(this).attr('aria-pressed', on).text($(this).text().replace(on ? '펼치기' : '접기', on ? '접기' : '펼치기'));
 			$('#ledger').toggleClass(t, on);
 		});
