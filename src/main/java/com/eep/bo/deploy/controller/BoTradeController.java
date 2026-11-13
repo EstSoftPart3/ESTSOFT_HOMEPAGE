@@ -78,6 +78,25 @@ public class BoTradeController {
 		return run(() -> { String k = BoTradeService.kind(kind); service.issue(k, ym, keys, "Y".equals(on), keys(k, ym, session)); return "OK"; });
 	}
 
+	/** 그 달 엑셀. 화면과 같은 건(시크릿 직원 제외)을 계산서 엑셀 칸 배치로 내려 준다 */
+	@RequestMapping(value = "/admin/trade/{kind}/excel.do", method = RequestMethod.GET)
+	public void excel(@PathVariable("kind") String kind, @RequestParam("YM") String ym, HttpSession session, javax.servlet.http.HttpServletResponse res) throws java.io.IOException {
+		byte[] file;
+		String k;
+		try {
+			k = BoTradeService.kind(kind);
+			file = com.eep.bo.deploy.service.TradeExcel.build(k, ym, visible(k, ym, session));
+		} catch (IllegalArgumentException e) {
+			res.sendError(400);
+			return;
+		}
+		String name = java.net.URLEncoder.encode("이에스티_" + ym + "_" + ("SALE".equals(k) ? "매출" : "매입") + "_계산서.xlsx", "UTF-8").replace("+", "%20");
+		res.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+		res.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + name);
+		res.setContentLength(file.length);
+		res.getOutputStream().write(file);
+	}
+
 	private List<Map<String, Object>> visible(String kind, String ym, HttpSession session) {
 		return secret.view(loginId(session)).filter(service.lines(kind, ym));
 	}

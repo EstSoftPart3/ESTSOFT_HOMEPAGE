@@ -30,6 +30,8 @@
 	.tr-move .hdl { cursor: grab; letter-spacing: -3px; font-size: 16px; }
 	.tr-cut { background: none; border: 1px dashed #adb5bd; border-radius: 4px; color: #495057; font-size: 11px; padding: 0 6px; }
 	.tr-new { border: 1px dashed #adb5bd; border-radius: 8px; padding: 8px; text-align: center; color: #6c757d; font-size: 12.5px; }
+	.tr-cp { background: none; border: 0; padding: 0 3px; margin-left: 2px; color: #8a949c; font-size: 12px; line-height: 1; min-width: 20px; min-height: 20px; }
+	.tr-cp:hover, .tr-cp:focus { color: #0b6e8a; outline: 2px solid #16d5ff; border-radius: 3px; }
 	#trToast { position: fixed; right: 18px; bottom: 18px; z-index: 2000; background: #222; color: #fff; font-size: 13px; padding: 8px 14px; border-radius: 6px; display: none; }
 </style>
 
@@ -40,7 +42,10 @@
 			<section class="content cal-page">
 				<div class="card-header d-flex align-items-center">
 					<h3 class="card-title bTitle"><b id="pageTitle"></b></h3>
-					<button type="button" class="btn btn-sm btn-primary ml-auto" onclick="openForm(null);"><i class="fas fa-plus"></i> 일반 건 등록</button>
+					<span class="ml-auto d-flex" style="gap:6px;">
+						<button type="button" class="btn btn-sm btn-outline-secondary" id="btnExcel" style="display:none;"><i class="fas fa-file-excel"></i> 엑셀 다운로드</button>
+						<button type="button" class="btn btn-sm btn-primary" id="btnAdd" onclick="openForm(null);"><i class="fas fa-plus"></i> <span id="btnAddText">일반 건 등록</span></button>
+					</span>
 				</div>
 				<div class="card-body">
 					<div class="dp-kpis" id="kpis"></div>
@@ -58,7 +63,7 @@
 						<div id="paneList">
 							<div class="table-responsive">
 								<table class="table table-sm table-hover cal-table tr-table mb-0">
-									<thead><tr><th>구분</th><th>거래처</th><th>품목</th><th>기간</th><th class="dp-num">공급가액</th><th class="dp-num">세액</th><th class="dp-num">합계금액</th><th>세금계산서</th><th>메모</th></tr></thead>
+									<thead><tr><th>구분</th><th>거래처</th><th>품목</th><th>기간</th><th class="dp-num">공급가액</th><th class="dp-num">세액</th><th class="dp-num">합계금액</th><th class="only-sale">세금계산서</th><th>메모</th><th><span class="sr-only">작업</span></th></tr></thead>
 									<tbody id="listBody"></tbody>
 									<tfoot id="listFoot"></tfoot>
 								</table>
@@ -94,7 +99,8 @@
 				<div class="modal-body">
 					<input type="hidden" id="TRADE_SQ">
 					<div class="form-row">
-						<div class="form-group col-7"><label for="PARTNER_SQ">거래처</label><select id="PARTNER_SQ" class="form-control form-control-sm" required></select></div>
+						<div class="form-group col-7"><label for="PARTNER_SQ">거래처</label><select id="PARTNER_SQ" class="form-control form-control-sm" required></select>
+							<label for="PARTNER_NM" class="sr-only">거래처 이름 직접 입력</label><input id="PARTNER_NM" class="form-control form-control-sm mt-1" maxlength="200" placeholder="거래처 이름 직접 입력" style="display:none;"></div>
 						<div class="form-group col-5"><label for="TYPE_NM">구분</label><input id="TYPE_NM" class="form-control form-control-sm" maxlength="50" list="typeList" required placeholder="임대료, 장비, 용역…"><datalist id="typeList"></datalist></div>
 					</div>
 					<div class="form-group"><label for="ITEM_NM">품목</label><input id="ITEM_NM" class="form-control form-control-sm" maxlength="300" required></div>
@@ -127,7 +133,12 @@
 	function vat(a) { return a < 0 ? -Math.floor(-a / 10) : Math.floor(a / 10); }
 	function md(d) { return d ? Number(d.substring(5, 7)) + '/' + Number(d.substring(8, 10)) : ''; }
 	function period(l) { return l.START_DT || l.END_DT ? md(l.START_DT) + '-' + md(l.END_DT) : ''; }
-	function pKey(l) { return String(l.PARTNER_SQ || 0); }
+	// 등록된 거래처는 번호, 직접 입력한 곳은 이름으로 묶는다
+	function pKey(l) { return l.PARTNER_SQ ? String(l.PARTNER_SQ) : 'n:' + (l.PARTNER_NM || ''); }
+	// 누르면 그 값만 복사한다(홈택스에 붙여 넣기용). 금액은 쉼표 없는 숫자
+	function cp(v, label) {
+		return $('<button type="button" class="tr-cp" title="복사">&#10697;</button>').attr('aria-label', label + ' ' + v + ' 복사').click(function(e) { e.stopPropagation(); copyText(String(v), label + ' 복사: ' + v); });
+	}
 	function pName(l) { return l.PARTNER_NM || (SALE ? '매출처 미지정' : '매입처 미지정'); }
 	function sum(list) { return list.reduce(function(a, l) { return a + Number(l.AMT || 0); }, 0); }
 	function issued(g) { return g.length > 0 && g.every(function(l) { return !!l.ISSUE_DT; }); }
@@ -168,8 +179,10 @@
 		Object.keys(inv).forEach(function(p) { inv[p].forEach(function(g) { groups.push(g); if (issued(g)) done++; }); });
 		var s = sum(list);
 		$('#kpis').empty().append(kpi('건수', list.length + '건'), kpi('공급가액', dpWon(s)), kpi('세액', dpWon(vat(s))), kpi('합계금액', dpWon(s + vat(s))),
-			kpi('세금계산서', groups.length + '장 · 발급 ' + done + '장', done < groups.length ? 'warn' : ''));
+			SALE ? kpi('세금계산서', groups.length + '장 · 발급 ' + done + '장', done < groups.length ? 'warn' : '') : '');
 		drawChips();
+		// 매입관리는 매입 건을 한눈에 보는 목록만 둔다(세금계산서 묶음은 매출관리에만)
+		if (!SALE) { $('#tabs, .only-sale').hide(); drawList(list); return; }
 		var $t = $('#tabs').empty(), left = groups.length - done;
 		[['내역', lines.length ? '(' + lines.length + ')' : ''], ['세금계산서', left ? '(미발급 ' + left + ')' : '']].forEach(function(x, i) {
 			$('<button type="button" class="cate-tab" role="tab">').toggleClass('active', i === tab).attr('aria-selected', i === tab ? 'true' : 'false').text(x[0] + x[1]).click(function() { tab = i; draw(); }).appendTo($t);
@@ -205,7 +218,7 @@
 
 	function drawList(list) {
 		var $b = $('#listBody').empty();
-		if (!list.length) $b.append('<tr><td colspan="9" class="text-center text-muted">이 달에 해당하는 건이 없습니다.</td></tr>');
+		if (!list.length) $b.append('<tr><td colspan="10" class="text-center text-muted">이 달에 해당하는 건이 없습니다.</td></tr>');
 		list.slice().sort(function(a, b) { return pName(a).localeCompare(pName(b), 'ko') || String(a.ITEM_NM).localeCompare(String(b.ITEM_NM), 'ko'); }).forEach(function(l) {
 			var a = Number(l.AMT || 0), $amt = $('<td class="dp-num">'), $item = $('<td class="item">').attr('title', l.ITEM_NM);
 			if (l.SRC_CD === 'D') {
@@ -217,10 +230,11 @@
 				$amt.text(dpWon(a));
 			}
 			$('<tr>').toggleClass('dp-secret', !!l.SECRET).append($('<td>').append(typePill(l)), $('<td>').text(pName(l)), $item, $('<td>').text(period(l)), $amt,
-				$('<td class="dp-num">').text(dpWon(vat(a))), $('<td class="dp-num">').text(dpWon(a + vat(a))), $('<td>').append(invLabel(l)), $('<td>').text(l.MEMO || '')).appendTo($b);
+				$('<td class="dp-num">').text(dpWon(vat(a))), $('<td class="dp-num">').text(dpWon(a + vat(a))), SALE ? $('<td>').append(invLabel(l)) : '', $('<td>').text(l.MEMO || ''),
+				$('<td>').append(l.SRC_CD === 'M' ? $('<button type="button" class="btn btn-sm btn-outline-danger py-0">삭제</button>').attr('aria-label', l.ITEM_NM + ' 삭제').click(function() { deleteTrade(l.SRC_SQ, l.ITEM_NM); }) : '')).appendTo($b);
 		});
 		var s = sum(list);
-		$('#listFoot').empty().append(list.length ? $('<tr class="font-weight-bold">').append('<td colspan="4">합계</td>', $('<td class="dp-num">').text(dpWon(s)), $('<td class="dp-num">').text(dpWon(vat(s))), $('<td class="dp-num">').text(dpWon(s + vat(s))), '<td colspan="2"></td>') : '');
+		$('#listFoot').empty().append(list.length ? $('<tr class="font-weight-bold">').append('<td colspan="4">합계</td>', $('<td class="dp-num">').text(dpWon(s)), $('<td class="dp-num">').text(dpWon(vat(s))), $('<td class="dp-num">').text(dpWon(s + vat(s))), '<td colspan="3"></td>') : '');
 	}
 
 	function editAmount(l) {
@@ -236,8 +250,12 @@
 		var $p = $('#PARTNER_SQ').empty().append('<option value=""></option>');
 		partners.filter(function(p) { return (l && String(p.PARTNER_SQ) === pKey(l)) || (p.USE_YN === 'Y' && (SALE ? p.SALE_YN : p.BUY_YN) === 'Y'); })
 			.forEach(function(p) { $p.append($('<option>').val(p.PARTNER_SQ).text(p.PARTNER_NM)); });
+		$p.append('<option value="__new">직접 입력… (거래처로 등록하지 않은 곳)</option>');
 		$('#TRADE_SQ').val(l ? l.SRC_SQ : '');
-		$p.val(l ? pKey(l) : ($('#fPartner').val() !== '0' ? $('#fPartner').val() : ''));
+		var typed = l && !l.PARTNER_SQ, f = $('#fPartner').val();
+		$p.val(typed ? '__new' : l ? pKey(l) : (/^\d+$/.test(f) ? f : ''));
+		$('#PARTNER_NM').val(typed ? l.PARTNER_NM : '');
+		$p.trigger('change');
 		$('#TYPE_NM').val(l ? l.TYPE_NM : '');
 		$('#ITEM_NM').val(l ? l.ITEM_NM : '');
 		$('#START_DT').val(l && l.START_DT || '');
@@ -250,13 +268,16 @@
 
 	function saveForm() {
 		var data = { YM: ymNow() };
-		['TRADE_SQ', 'PARTNER_SQ', 'TYPE_NM', 'ITEM_NM', 'START_DT', 'END_DT', 'AMT', 'MEMO'].forEach(function(f) { data[f] = $('#' + f).val(); });
+		['TRADE_SQ', 'PARTNER_SQ', 'PARTNER_NM', 'TYPE_NM', 'ITEM_NM', 'START_DT', 'END_DT', 'AMT', 'MEMO'].forEach(function(f) { data[f] = $('#' + f).val(); });
+		if (data.PARTNER_SQ === '__new') data.PARTNER_SQ = ''; else data.PARTNER_NM = '';
 		hrPost(BASE + 'saveData.do', data, function() { $('#formModal').modal('hide'); toast('저장했습니다'); load(); });
 	}
 
-	function deleteForm() {
-		bootbox.confirm('이 건을 삭제할까요?', function(ok) {
-			if (ok) hrPost(BASE + 'deleteData.do', { TRADE_SQ: $('#TRADE_SQ').val() }, function() { $('#formModal').modal('hide'); toast('삭제했습니다'); load(); });
+	function deleteForm() { deleteTrade($('#TRADE_SQ').val(), $('#ITEM_NM').val()); }
+
+	function deleteTrade(sq, name) {
+		bootbox.confirm($('<div>').text('「' + name + '」 건을 삭제할까요? 되돌릴 수 없습니다.').html(), function(ok) {
+			if (ok) hrPost(BASE + 'deleteData.do', { TRADE_SQ: sq }, function() { $('#formModal').modal('hide'); toast('삭제했습니다'); load(); });
 		});
 	}
 
@@ -364,7 +385,7 @@
 		var $c = $('<div class="tr-inv">').toggleClass('issued', lock), $h = $('<div class="tr-inv-h">').appendTo($c);
 		$h.append($('<b>').text('계산서 ' + (i + 1)), $('<span class="dp-mute">').text(g.length + '행'));
 		if (lock) $h.append($('<span class="dp-pill ok">').text('발급 완료 ' + g[0].ISSUE_DT));
-		$h.append($('<span class="sum">').append('공급가액 ', $('<b>').text(dpWon(s)), ' · 세액 ' + dpWon(vat(s)) + ' · 합계 ', $('<b>').text(dpWon(s + vat(s)))));
+		$h.append($('<span class="sum">').append('공급가액 ', $('<b>').text(dpWon(s)), cp(s, '공급가액'), ' · 세액 ' + dpWon(vat(s)), cp(vat(s), '세액'), ' · 합계 ', $('<b>').text(dpWon(s + vat(s))), cp(s + vat(s), '합계금액')));
 		if (!lock && prev && !issued(prev)) $h.append($('<button type="button" class="btn btn-sm btn-outline-secondary py-0">위와 합치기</button>').click(function() {
 			inv[p][i - 1] = prev.concat(g);
 			inv[p].splice(i, 1);
@@ -386,7 +407,8 @@
 					.on('dragover', function(e) { if (drag && drag.p === p) { e.preventDefault(); $('.tr-inv tr.over').removeClass('over'); $r.addClass('over'); } })
 					.on('drop', function(e) { e.preventDefault(); e.stopPropagation(); dropTo(p, g, j); });
 			}
-			$r.append($mv, $('<td>').append(typePill(l)), $('<td class="item">').text(l.ITEM_NM), $('<td>').text(period(l)), $('<td class="dp-num">').text(dpWon(l.AMT)),
+			$r.append($mv, $('<td>').append(typePill(l)), $('<td class="item">').text(l.ITEM_NM).append(cp(l.ITEM_NM, '품목')), $('<td>').text(period(l)).append(period(l) ? cp(period(l), '기간') : ''),
+				$('<td class="dp-num">').text(dpWon(l.AMT)).append(cp(l.AMT, '공급가액')),
 				$('<td>').append(!lock && j > 0 ? $('<button type="button" class="tr-cut">나누기</button>').attr({ title: '이 행부터 새 계산서로', 'aria-label': l.ITEM_NM + ' 부터 새 계산서로 나누기' }).click(function() {
 					inv[p].splice(i, 1, g.slice(0, j), g.slice(j));
 					savePartner(p, '계산서를 나눴습니다');
@@ -400,6 +422,9 @@
 	}
 
 	$('#pageTitle').text(SALE ? '매출관리' : '매입관리');
+	$('#btnAddText').text(SALE ? '일반 건 등록' : '매입 건 등록');
+	$('#btnExcel').toggle(SALE).click(function() { if (ymNow()) location.href = BASE + 'excel.do?YM=' + encodeURIComponent(ymNow()); });
+	$('#PARTNER_SQ').on('change', function() { var typed = this.value === '__new'; $('#PARTNER_NM').toggle(typed).prop('required', typed); if (typed) $('#PARTNER_NM').focus(); });
 	try { if (localStorage.getItem('tradePerInv')) $('#perInv').val(localStorage.getItem('tradePerInv')); } catch (e) {}
 	$('#perInv').on('change', function() { try { localStorage.setItem('tradePerInv', perInv()); } catch (e) {} });
 	// 계산서는 지난달 것을 끊으므로 지난달부터 연다

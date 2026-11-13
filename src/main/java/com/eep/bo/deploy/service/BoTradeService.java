@@ -80,6 +80,8 @@ public class BoTradeService {
 			l.put("STAFF_SQ", d.get("STAFF_SQ"));
 			l.put("STAFF_NM", d.get("STAFF_NM"));
 			l.put("ITEM_NM", s(d.get("PRJ_NM")) + "-" + s(d.get("STAFF_NM")));
+			l.put("PRJ_NM", d.get("PRJ_NM"));
+			l.put("MONTHLY", monthly);
 			LocalDate from = start.isBefore(m.atDay(1)) ? m.atDay(1) : start, to = end == null || end.isAfter(m.atEndOfMonth()) ? m.atEndOfMonth() : end;
 			l.put("START_DT", from.toString());
 			l.put("END_DT", to.toString());
@@ -120,7 +122,10 @@ public class BoTradeService {
 	public void saveTrade(String kind, Map<String, Object> p, String loginId) {
 		String ym = s(p.get("YM"));
 		month(ym);
-		if (s(p.get("PARTNER_SQ")).isEmpty()) throw new IllegalArgumentException("거래처를 선택해 주세요.");
+		// 거래처는 등록된 곳을 고르거나, 등록하지 않은 곳은 이름만 적는다
+		String partnerNm = s(p.get("PARTNER_SQ")).isEmpty() ? s(p.get("PARTNER_NM")).trim() : "";
+		if (s(p.get("PARTNER_SQ")).isEmpty() && (partnerNm.isEmpty() || partnerNm.length() > 200)) throw new IllegalArgumentException("거래처를 고르거나 이름을 200자 안으로 입력해 주세요.");
+		p.put("PARTNER_NM", partnerNm);
 		String item = s(p.get("ITEM_NM")).trim(), type = s(p.get("TYPE_NM")).trim();
 		if (item.isEmpty() || item.length() > 300) throw new IllegalArgumentException("품목을 300자 안으로 입력해 주세요.");
 		if (type.isEmpty() || type.length() > 50 || "투입".equals(type)) throw new IllegalArgumentException("구분을 입력해 주세요. ('투입'은 투입 건에만 씁니다)");
