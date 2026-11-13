@@ -43,7 +43,7 @@
     	function foNav() { var n = document.querySelector('nav.sticky-top'); if (n) document.documentElement.style.setProperty('--fo-nav', n.offsetHeight + 'px'); }
     	document.addEventListener('DOMContentLoaded', foNav); window.addEventListener('resize', foNav);
     </script>
-    <script src="/resources/common/ui-table.js?v=20261113frz" defer></script>
+    <script src="/resources/common/ui-table.js?v=20261113top" defer></script>
     <style>
     	th.th-sort { cursor: pointer; user-select: none; }
     	th.th-sort:hover::after, th.th-sort:focus::after { content: ' ↕'; color: #9aa4ac; font-size: 10px; }

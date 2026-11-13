@@ -40,8 +40,6 @@
 	.pl-chip .cnt { background: rgba(17,17,17,.08); border-radius: 999px; padding: 0 7px; font-size: 11px; }
 	.pl-chip.on { border-color: #0b6e8a; background: #eef9fc; color: #0b6e8a; }
 	.pl-chip.alert.on { border-color: #a32020; background: #fdeaea; color: #a32020; }
-	.pl-top { overflow-x: auto; overflow-y: hidden; height: 12px; }
-	.pl-top div { height: 1px; }
 	.pl-scroll { max-height: 70vh; overflow: auto; }
 	.pl-scroll thead th { position: sticky; top: 0; z-index: 3; box-shadow: 0 1px 0 rgba(17,17,17,.1); }
 	.pl-sort { background: none; border: 0; padding: 0 0 0 3px; color: #9aa4ac; font-size: 10px; cursor: pointer; }
@@ -130,8 +128,7 @@
 								<button type="button" class="btn btn-sm t-pl" data-t="show-pl" aria-pressed="false">손익 펼치기</button>
 							</div>
 						</div>
-						<div class="pl-top" id="topScroll" aria-hidden="true"><div></div></div>
-						<div class="pl-scroll" id="mainScroll">
+							<div class="pl-scroll" id="mainScroll">
 							<table class="table table-sm cal-table mb-0">
 								<thead id="lHead"></thead>
 								<tbody id="lBody"></tbody>
@@ -251,9 +248,6 @@
 			CHIPS.forEach(function(c) { checked[c[0]] = !all; });
 			render();
 		});
-		// 위 스크롤 막대와 표 스크롤을 서로 맞춘다
-		$('#topScroll').on('scroll', function() { $('#mainScroll').scrollLeft(this.scrollLeft); });
-		$('#mainScroll').on('scroll', function() { $('#topScroll').scrollLeft(this.scrollLeft); });
 		$('#detailTabs').on('click', '.cate-tab', function() { detailTab = +$(this).attr('data-tab'); renderDetail(); });
 		// 위쪽 합계 카드 접기. 이 브라우저에만 기억한다
 		var kpiOpen = true;
@@ -488,10 +482,8 @@
 		applyBands();
 		$('#ledger').toggleClass('show-prob', probOpen);
 		paintPicked();
-		// 두 번째 머리글 줄은 색 띠 아래에 붙고, 위 스크롤 막대 길이는 표 너비에 맞춘다
+		// 두 번째 머리글 줄은 색 띠 아래에 붙는다(위 가로 스크롤바는 공통 ui-table.js)
 		$('#lHead tr').eq(1).children().css('top', $('#lHead tr').eq(0).outerHeight());
-		$('#topScroll div').width($('#mainScroll table').outerWidth());
-		$('#topScroll').toggle($('#mainScroll table').outerWidth() > $('#mainScroll').innerWidth());
 	}
 
 	function contractCells(r, d, top) {
@@ -588,8 +580,6 @@
 			else $(this).attr('aria-pressed', on).text($(this).text().replace(on ? '펼치기' : '접기', on ? '접기' : '펼치기'));
 			$('#ledger').toggleClass(t, on);
 		});
-		$('#topScroll div').width($('#mainScroll table').outerWidth());
-		$('#topScroll').toggle($('#mainScroll table').outerWidth() > $('#mainScroll').innerWidth());
 	}
 
 	$(document).on('click keydown', '#ledger [data-t]', function(e) {

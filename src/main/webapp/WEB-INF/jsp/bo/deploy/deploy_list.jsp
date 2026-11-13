@@ -77,8 +77,6 @@
 	.pl-chip input { margin: 0; cursor: pointer; }
 	.pl-chip .cnt { background: rgba(17,17,17,.08); border-radius: 999px; padding: 0 7px; font-size: 11px; }
 	.pl-chip.on { border-color: #0b6e8a; background: #eef9fc; color: #0b6e8a; }
-	.pl-top { overflow-x: auto; overflow-y: hidden; height: 12px; }
-	.pl-top div { height: 1px; }
 	.pl-scroll { max-height: 70vh; overflow: auto; }
 	#dpHead th { position: sticky; top: 0; z-index: 3; background: #fafbfc; box-shadow: 0 1px 0 rgba(17,17,17,.1); }
 	#dpHead th:last-child { right: 0; z-index: 4; }
@@ -138,8 +136,7 @@
 							<div class="ml-auto"><button type="button" class="btn btn-sm btn-outline-secondary" id="btnResetCols">컬럼 순서 초기화</button></div>
 						</div>
 						<div id="tableView">
-							<div class="pl-top" id="topScroll" aria-hidden="true"><div></div></div>
-							<div class="pl-scroll" id="mainScroll">
+								<div class="pl-scroll" id="mainScroll">
 								<table class="table table-sm cal-table mb-0">
 									<thead id="dpHead"></thead>
 									<tbody id="dpBody"></tbody>
@@ -243,8 +240,6 @@
 			CHIPS.forEach(function(c) { checked[c[0]] = !all; });
 			render();
 		});
-		$('#topScroll').on('scroll', function() { $('#mainScroll').scrollLeft(this.scrollLeft); });
-		$('#mainScroll').on('scroll', function() { $('#topScroll').scrollLeft(this.scrollLeft); });
 	});
 
 	function load(after) {
@@ -548,8 +543,6 @@
 		if (!groups.length) $b.append($('<tr>').append($('<td class="text-center text-muted py-4">').attr('colspan', order.length + payKeys().length + 1).text(moment(ym + '-01').format('YYYY년 M월') + '에 걸친 투입이 없습니다. 체크나 기준월을 바꿔 보세요.')));
 		groups.forEach(function(g) { var open = isOpen(g); g.rows.forEach(function(r, i) { if (!i || open) $b.append(viewRow(r, g, i > 0).toggleClass('dp-dup', g.rows.length > 1)); }); });
 		arrangeAll();
-		$('#topScroll div').width($('#mainScroll table').outerWidth());
-		$('#topScroll').toggle($('#mainScroll table').outerWidth() > $('#mainScroll').innerWidth());
 	}
 
 	// 사람 단위 칸(성명·근속·거주지역·이력 등)은 윗줄에만, 계약 단위 칸은 줄마다

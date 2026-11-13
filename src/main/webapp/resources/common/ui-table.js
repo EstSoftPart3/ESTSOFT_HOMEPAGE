@@ -1,6 +1,7 @@
 /*
  * 모든 표 공통 (BO·FO)
  * - 머리글을 누르면(또는 Enter) 그 칸으로 정렬, 다시 누르면 반대로. 빈 칸은 항상 아래
+ * - 가로로 넘치는 표는 표 위에도 가로 스크롤바(아래 것과 같이 움직임)
  * - BO: 표를 스크롤 상자에 넣어 머리글 고정·가로 스크롤이 되게 하고, 잘린 칸은 올리면 전체 글
  * - BO: 검색필터 줄(.cal-panel-body 첫 줄)을 접고 편다. 접으면 검색어·기간·버튼만 한 줄
  * - BO: 목록 표 맨 앞 체크박스(없으면 넣음)와 체크한 줄 파란 테두리 강조
@@ -141,10 +142,50 @@
 				d.appendChild(t);
 			}
 			if (BO && moreable(t)) applyMore(t);
+			topBar(t);
 			if (BO && freezable(t)) freeze(t);
 		});
+		// 틀고정·글꼴이 자리 잡은 뒤 폭이 조금 달라져 한 번 더 잰다
+		sizeTops();
+		setTimeout(sizeTops, 300);
 		if (BO) { filters(); actionsTop(); checkMore(); }
 	}
+
+	// ── 표 위 가로 스크롤바 (BO·FO 모든 표): 표 상자 바로 위에 같이 움직이는 가로 스크롤바를 하나 더 둔다. 아래 것은 상자 자체 스크롤바 ──
+	function hBox(t) {
+		for (var p = t.parentElement; p && p !== document.body; p = p.parentElement) if (/auto|scroll/.test(getComputedStyle(p).overflowX)) return p;
+		return null;
+	}
+	// 상자 앞에 끼워 넣을 자리(위 스크롤바가 있으면 그 앞). 틀고정 바도 이 자리 앞에 둔다
+	function anchor(box) { var p = box.previousElementSibling; return p && p.classList.contains('tbl-top') ? p : box; }
+	function topBar(t) {
+		var box = hBox(t);
+		if (!box || box._top || box.closest('.modal')) return;
+		var bar = document.createElement('div');
+		bar.className = 'tbl-top';
+		bar.setAttribute('aria-hidden', 'true');
+		bar.innerHTML = '<div></div>';
+		box.parentNode.insertBefore(bar, box);
+		box._top = bar;
+		bar._box = box;
+		// 한쪽을 옮기면 다른 쪽을 맞춘다(같은 값이면 scroll 이 다시 안 나서 서로 되부르지 않는다)
+		// 화면 배율에 따라 값이 소수로 어긋나 1px 안쪽 차이는 같은 것으로 본다
+		bar.addEventListener('scroll', function () { if (Math.abs(box.scrollLeft - bar.scrollLeft) > 1) box.scrollLeft = bar.scrollLeft; });
+		box.addEventListener('scroll', function () { if (Math.abs(bar.scrollLeft - box.scrollLeft) > 1) bar.scrollLeft = box.scrollLeft; });
+	}
+	// 표 폭이 상자보다 넓을 때만 보인다. 칸을 접고 펴도 맞게 클릭·창 크기 바뀔 때도 다시 잰다
+	function sizeTops() {
+		[].forEach.call(document.querySelectorAll('.tbl-top'), function (bar) {
+			var box = bar._box;
+			if (!box || !box.isConnected) { bar.remove(); return; }
+			var w = box.scrollWidth, show = w > box.clientWidth + 1 && !!box.offsetParent;
+			if (bar.firstChild.style.width !== w + 'px') bar.firstChild.style.width = w + 'px';
+			if (bar.hidden === show) bar.hidden = !show;
+			if (show && Math.abs(bar.scrollLeft - box.scrollLeft) > 1) bar.scrollLeft = box.scrollLeft;
+		});
+	}
+	window.addEventListener('resize', sizeTops);
+	document.addEventListener('click', function () { setTimeout(sizeTops, 60); });
 
 	// ── 틀고정 (BO 목록 표, plans/table-freeze-pick-spec.html) ──
 	// 머리글은 CSS 로 늘 고정. 칸: 맨 앞부터 fc 칸(기본 체크박스+옆 1칸). 줄: 체크해서 맨 윗줄로 올린 행(top) + 그 아래 fr 줄.
@@ -233,7 +274,7 @@
 
 	// 표 위 오른쪽 '📌 틀고정' 버튼과 메뉴
 	function fBar(t) {
-		var box = t.closest('.tbl-scroll, .table-responsive, .pl-scroll') || t, bar = box.previousElementSibling;
+		var box = anchor(t.closest('.tbl-scroll, .table-responsive, .pl-scroll') || t), bar = box.previousElementSibling;
 		if (bar && bar.classList.contains('frz-bar') && bar._t === t) return;
 		bar = document.createElement('div');
 		bar.className = 'frz-bar';
@@ -249,7 +290,7 @@
 		box.parentNode.insertBefore(bar, box);
 	}
 	function fPaintBar(t) {
-		var box = t.closest('.tbl-scroll, .table-responsive, .pl-scroll') || t, bar = box.previousElementSibling;
+		var box = anchor(t.closest('.tbl-scroll, .table-responsive, .pl-scroll') || t), bar = box.previousElementSibling;
 		if (!bar || bar._t !== t) return;
 		var s = fState(t), cols = colsOk(t), rok = rowsOk(t), checked = fRows(t).filter(function (r) { var b = firstBox(r); return b && b.checked; }).length;
 		var nRows = rok ? t.tBodies[0].querySelectorAll('tr.frz-top, tr.frz-r').length : 0, fc = cols ? s.fc : 0;
@@ -478,6 +519,10 @@
 			+ '.frz-pin::before{content:"📌"}th:hover>.frz-pin,.frz-pin:focus,.frz-pin.on,.frz-show-c th>.frz-pin,.frz-rpin{opacity:1}.frz-pin.on{filter:none;color:#0b6e8a}.frz-pin:not(.on){filter:grayscale(1)}';
 		document.head.appendChild(css);
 	}
+
+	var topCss = document.createElement('style');
+	topCss.textContent = '.tbl-top{overflow-x:auto;overflow-y:hidden;height:13px}.tbl-top>div{height:1px}.tbl-top[hidden]{display:none}';
+	document.head.appendChild(topCss);
 
 	var timer = null;
 	function later() { clearTimeout(timer); timer = setTimeout(scan, 120); }
