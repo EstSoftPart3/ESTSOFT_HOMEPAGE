@@ -6,7 +6,8 @@
  * - BO: 검색필터 줄(.cal-panel-body 첫 줄)을 접고 편다. 접으면 검색어·기간·버튼만 한 줄
  * - BO: 목록 표 맨 앞 체크박스(없으면 넣음)와 체크한 줄 파란 테두리 강조
  * - BO: 목록은 50줄씩, 표 끝까지 내리면 로딩 화면 뒤 50줄 더(월별 화면 제외)
- * 화면이 직접 정렬을 그리는 표(.pl-sort), 줄 합치기(rowspan)·하위 줄이 있는 표, data-nosort 표는 건드리지 않는다.
+ * - BO: 머리글을 끌어(또는 Alt+←/→) 칸 위치를 바꾼다. 화면·표마다 기억
+ * 화면이 직접 정렬을 그리는 표(.pl-sort), 하위 줄이 있는 표, data-nosort 표는 정렬을 건드리지 않는다. 줄 합친(rowspan) 표는 메인 줄 기준으로 묶음째 정렬한다.
  */
 (function () {
 	var BO = !!document.querySelector('.content-wrapper');
@@ -20,7 +21,7 @@
 		if (!t || t.hasAttribute('data-nosort') || t.classList.contains('dataTable') || !t.tHead || t.tHead.rows.length !== 1 || t.tBodies.length !== 1) return false;
 		// 체크 칸 머리글의 rowspan="1" 같은 1 짜리는 합친 칸이 아니다
 		function span(c) { return c.rowSpan > 1 || c.colSpan > 1; }
-		if (t.tHead.querySelector('.pl-sort, [draggable]') || [].some.call(t.tHead.querySelectorAll('[colspan], [rowspan]'), span) || [].some.call(t.tBodies[0].querySelectorAll('[rowspan]'), span)) return false;
+		if (t.tHead.querySelector('.pl-sort, [draggable]:not(.th-move)') || [].some.call(t.tHead.querySelectorAll('[colspan], [rowspan]'), span)) return false;
 		var rows = t.tBodies[0].rows;
 		for (var i = 0; i < rows.length; i++) if (/child|sub|form|detail/.test(rows[i].className)) return false;
 		return true;
@@ -32,16 +33,23 @@
 		var dir = th.getAttribute('aria-sort') === 'ascending' ? -1 : 1, n = th.parentNode.cells.length, idx = th.cellIndex, b = t.tBodies[0];
 		[].forEach.call(th.parentNode.cells, function (c) { c.removeAttribute('aria-sort'); });
 		th.setAttribute('aria-sort', dir > 0 ? 'ascending' : 'descending');
-		var all = [].slice.call(b.rows), rows = all.filter(function (r) { return r.cells.length === n; });
+		// 줄 합친(rowspan) 표: 메인 줄과 그 줄이 덮는 아래 줄을 한 묶음으로 보고, 메인 줄 값으로만 비교해 묶음째 옮긴다
+		var all = [], src = [].slice.call(b.rows);
+		for (var i = 0; i < src.length;) {
+			var sp = Math.max.apply(null, [1].concat([].map.call(src[i].cells, function (c) { return c.rowSpan; })));
+			all.push(src.slice(i, i + sp));
+			i += sp;
+		}
+		var rows = all.filter(function (g) { return g[0].cells.length === n; });
 		// 시크릿 줄(tr 의 dp-secret·pl-secret·ps-secret·st-secret-row)은 어느 칸으로 정렬해도 맨 위에 둔다
 		function pin(r) { return /(^|\s)[\w-]*secret[\w-]*(\s|$)/.test(r.className) ? 0 : 1; }
-		rows.map(function (r, i) { return { r: r, k: key(text(r.cells[idx])), i: i }; }).sort(function (x, y) {
+		rows.map(function (g, i) { return { g: g, r: g[0], k: key(text(g[0].cells[idx])), i: i }; }).sort(function (x, y) {
 			if (pin(x.r) !== pin(y.r)) return pin(x.r) - pin(y.r);
 			if (x.k === '' || y.k === '') return (x.k === '') - (y.k === '') || x.i - y.i;
 			return dir * cmp(x.k, y.k) || x.i - y.i;
-		}).forEach(function (o) { b.appendChild(o.r); });
+		}).forEach(function (o) { o.g.forEach(function (r) { b.appendChild(r); }); });
 		// '목록이 없습니다' 같은 줄은 아래에 그대로
-		all.filter(function (r) { return r.cells.length !== n; }).forEach(function (r) { b.appendChild(r); });
+		all.filter(function (g) { return g[0].cells.length !== n; }).forEach(function (g) { g.forEach(function (r) { b.appendChild(r); }); });
 		if (more.has(t)) applyMore(t);
 	}
 
@@ -150,6 +158,7 @@
 	function scan() {
 		[].forEach.call(document.querySelectorAll('table.table'), function (t) {
 			if (BO && pickable(t)) addPicks(t);
+			if (BO && movable(t)) { arrange(t); mMark(t); }
 			if (sortable(t)) [].forEach.call(t.tHead.rows[0].cells, function (th) {
 				if (th.classList.contains('th-sort') || th.querySelector('input, select, button:not(.frz-pin)') || !text(th)) return;
 				th.classList.add('th-sort');
@@ -174,6 +183,114 @@
 		sizeTops();
 		setTimeout(sizeTops, 300);
 		if (BO) { filters(); actionsTop(); checkMore(); }
+	}
+
+	// ── 칸 위치 이동 (BO 목록 표, plans/list-common-all-spec.html) ──
+	// 머리글을 끌어 놓거나 Alt+←/→ 로 칸 순서를 바꾸고, 화면·표·머리글 구성마다 이 브라우저에 기억한다. 맨 앞 체크 칸은 그대로.
+	// 머리글 두 줄·칸/줄 합친 표, 합계 줄(tfoot)·colgroup 이 있는 표, 화면이 직접 칸을 옮기는 표([draggable]), data-nocol 표는 뺀다.
+	// 화면은 줄을 늘 원래 순서로 그린다. 칸마다 원래 번호(_ci)를 붙여 두고, 번호 없는 줄(새로 그린 줄)은 원래 순서로 보고 옮긴다
+	function movable(t) {
+		return pickable(t) && !t.hasAttribute('data-nocol') && colsOk(t) && !t.querySelector('colgroup') && !(t.tFoot && t.tFoot.rows.length)
+			&& !t.tHead.querySelector('[draggable]:not(.th-move)');
+	}
+	function mCells(tr) {
+		var cs = [].filter.call(tr.cells, function (c) { return !c.classList.contains('tp-pick'); });
+		if (cs.some(function (c) { return c._ci === undefined; })) cs.forEach(function (c, i) { c._ci = i; });
+		return cs;
+	}
+	// 머리글 글자(정렬 ▲▼ 같은 버튼 글자는 뺀다). 글자가 없거나 같은 칸은 번호를 붙여 구분
+	function mKeys(ths) {
+		var seen = {};
+		return ths.map(function (th, i) {
+			var k = [].map.call(th.childNodes, function (x) { return x.nodeType === 3 ? x.nodeValue : x.tagName === 'BUTTON' ? '' : x.textContent; }).join('').replace(/\s+/g, ' ').trim();
+			if (!k || seen[k]) k += '#' + i;
+			seen[k] = 1;
+			return k;
+		});
+	}
+	function mState(t) {
+		var ths = mCells(t.tHead.rows[0]).slice().sort(function (a, b) { return a._ci - b._ci; }), keys = mKeys(ths), sig = keys.join('|');
+		if (t._col && t._col.sig === sig) return t._col;
+		for (var h = 0, i = 0; i < sig.length; i++) h = (h * 31 + sig.charCodeAt(i)) | 0;
+		var s = { sig: sig, keys: keys, store: 'col:' + location.pathname + ':' + (t.id || [].indexOf.call(document.querySelectorAll('table.table'), t)) + ':' + (h >>> 0).toString(36) }, saved = null;
+		try { saved = JSON.parse(localStorage.getItem(s.store)); } catch (e) { saved = null; }
+		s.moved = !!saved;
+		s.ord = (saved || []).map(function (k) { return keys.indexOf(k); }).filter(function (x) { return x >= 0; });
+		// 저장한 순서에 없는 칸(새로 생긴 칸)은 원래 앞 칸 바로 뒤에 둔다
+		keys.forEach(function (k, x) { if (s.ord.indexOf(x) < 0) s.ord.splice(x ? s.ord.indexOf(x - 1) + 1 : 0, 0, x); });
+		return (t._col = s);
+	}
+	// 이미 그 순서면 건드리지 않는다(다시 그리기가 돌지 않게). 칸 수가 다른 줄('목록이 없습니다' 등)은 그대로
+	function arrange(t) {
+		var s = mState(t), n = s.ord.length;
+		[].forEach.call(t.rows, function (tr) {
+			if (tr.cells.length - (tr.cells[0] && tr.cells[0].classList.contains('tp-pick') ? 1 : 0) !== n) return;
+			var cs = mCells(tr), by = {};
+			if (cs.every(function (c, i) { return c._ci === s.ord[i]; })) return;
+			cs.forEach(function (c) { by[c._ci] = c; });
+			s.ord.forEach(function (ci) { if (by[ci]) tr.appendChild(by[ci]); });
+		});
+	}
+	function mMark(t) {
+		[].forEach.call(t.tHead.rows[0].cells, function (th) {
+			if (th.classList.contains('th-move') || th.classList.contains('tp-pick') || th.querySelector('input, select') || !text(th)) return;
+			th.classList.add('th-move');
+			th.draggable = true;
+			th.tabIndex = 0;
+			th.title = (th.title ? th.title + ' · ' : '') + '끌어서 칸 이동(Alt+←/→)';
+		});
+	}
+	function mMove(t, from, to, after) {
+		var s = mState(t);
+		s.ord.splice(s.ord.indexOf(from._ci), 1);
+		s.ord.splice(s.ord.indexOf(to._ci) + (after ? 1 : 0), 0, from._ci);
+		s.moved = true;
+		try { localStorage.setItem(s.store, JSON.stringify(s.ord.map(function (x) { return s.keys[x]; }))); } catch (e) { /* 저장 못 해도 지금 화면엔 적용 */ }
+		arrange(t);
+		if (freezable(t)) freeze(t);
+	}
+	if (BO) {
+		var mDrag = null;
+		var mClear = function () { [].forEach.call(document.querySelectorAll('.th-drop-l, .th-drop-r, .th-drag'), function (x) { x.classList.remove('th-drop-l', 'th-drop-r', 'th-drag'); }); };
+		// 끌어 놓을 자리: 같은 머리글 줄의 다른 칸(체크 칸 제외). 칸의 오른쪽 절반이면 그 뒤
+		var mOver = function (e) {
+			var th = mDrag && e.target.closest && e.target.closest('th');
+			if (!th || th === mDrag || th.parentNode !== mDrag.parentNode || th.classList.contains('tp-pick')) return null;
+			var r = th.getBoundingClientRect();
+			return { th: th, after: e.clientX > r.left + r.width / 2 };
+		};
+		document.addEventListener('dragstart', function (e) {
+			var th = e.target.closest && e.target.closest('th.th-move');
+			if (!th) return;
+			mDrag = th;
+			e.dataTransfer.effectAllowed = 'move';
+			e.dataTransfer.setData('text/plain', text(th));
+			th.classList.add('th-drag');
+		});
+		document.addEventListener('dragover', function (e) {
+			var o = mOver(e);
+			if (!o) return;
+			e.preventDefault();
+			var cls = o.after ? 'th-drop-r' : 'th-drop-l';
+			if (o.th.classList.contains(cls)) return;
+			[].forEach.call(document.querySelectorAll('.th-drop-l, .th-drop-r'), function (x) { x.classList.remove('th-drop-l', 'th-drop-r'); });
+			o.th.classList.add(cls);
+		});
+		document.addEventListener('drop', function (e) {
+			var o = mOver(e);
+			if (!o) return;
+			e.preventDefault();
+			mMove(mDrag.closest('table'), mDrag, o.th, o.after);
+		});
+		document.addEventListener('dragend', function () { mDrag = null; mClear(); });
+		document.addEventListener('keydown', function (e) {
+			if (!e.altKey || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') || !e.target.matches || !e.target.matches('th.th-move')) return;
+			var th = e.target, right = e.key === 'ArrowRight', nb = right ? th.nextElementSibling : th.previousElementSibling;
+			e.preventDefault();
+			if (!nb || nb.classList.contains('tp-pick')) return;
+			mMove(th.closest('table'), th, nb, right);
+			th.focus();
+		});
 	}
 
 	// ── 표 위 가로 스크롤바 (BO·FO 모든 표): 표 상자 바로 위에 같이 움직이는 가로 스크롤바를 하나 더 둔다. 아래 것은 상자 자체 스크롤바 ──
@@ -311,6 +428,7 @@
 			+ '<button type="button" role="menuitemcheckbox" data-a="base">기본 틀고정 <small>체크박스+옆 1칸</small></button>'
 			+ '<button type="button" role="menuitemcheckbox" data-a="pick">칸 직접 고르기 <small>머리글 📌</small></button>'
 			+ '<button type="button" role="menuitemcheckbox" data-a="rpick">줄 직접 고르기 <small>행 앞 📌</small></button><hr>'
+			+ '<button type="button" role="menuitem" data-a="cols">칸 순서 처음으로 <small>머리글을 끌어 옮긴 칸</small></button>'
 			+ '<button type="button" role="menuitem" data-a="off">모두 풀기</button></div>';
 		box.parentNode.insertBefore(bar, box);
 	}
@@ -329,6 +447,7 @@
 		[['base', s.fc === fBase(t)], ['pick', s.pick], ['rpick', s.rpick]].forEach(function (x) { item(x[0]).setAttribute('aria-checked', !!x[1]); item(x[0]).classList.toggle('ck', !!x[1]); });
 		item('base').disabled = item('pick').disabled = !cols;
 		item('rpick').disabled = !rok;
+		item('cols').disabled = !(movable(t) && mState(t).moved);
 	}
 	function fMenu(bar, open) {
 		var m = bar.querySelector('.frz-menu');
@@ -354,6 +473,7 @@
 		if (a === 'pick') s.pick = !s.pick;
 		if (a === 'rpick') s.rpick = !s.rpick;
 		if (a === 'off') { s.fc = 0; s.fr = 0; s.top = []; s.pick = s.rpick = false; }
+		if (a === 'cols') { try { localStorage.removeItem(mState(t).store); } catch (e) { /* 저장소를 못 써도 화면은 되돌린다 */ } t._col = null; arrange(t); }
 		fSave(t);
 		freeze(t);
 	}
@@ -444,8 +564,11 @@
 		return !!(t.tHead && t.tHead.rows.length && t.tBodies.length === 1 && !t.hasAttribute('data-nopick') && !t.classList.contains('dataTable') && t.closest('.content-wrapper') && !t.closest('.modal'));
 	}
 	function firstBox(tr) { var c = tr.cells[0]; return c && c.tagName === 'TD' && c.querySelector('input[type=checkbox]'); }
-	// 체크 칸을 뺀 앞쪽 네 칸 글자
-	function rowKey(tr) { return [].filter.call(tr.cells, function (c) { return !c.classList.contains('tp-pick'); }).slice(0, 4).map(text).join('|'); }
+	// 체크 칸을 뺀 앞쪽 네 칸 글자. 칸을 옮긴 표도 같은 줄을 찾게 원래 칸 순서(_ci)로 본다
+	function rowKey(tr) {
+		return [].filter.call(tr.cells, function (c) { return !c.classList.contains('tp-pick'); })
+			.sort(function (a, b) { return (a._ci || 0) - (b._ci || 0); }).slice(0, 4).map(text).join('|');
+	}
 	function store(t) { var i = [].indexOf.call(document.querySelectorAll('table.table'), t), k = location.pathname + ':' + (t.id || i); return picked[k] || (picked[k] = {}); }
 	// 줄과 그 줄이 rowspan 으로 덮는 아래 줄들
 	function block(tr) { var out = [tr], n = tr.cells[0] ? tr.cells[0].rowSpan : 1; for (var r = tr; --n > 0 && (r = r.nextElementSibling);) out.push(r); return out; }
@@ -518,6 +641,8 @@
 		css.textContent = '.tp-pick{width:30px;text-align:center;padding-left:8px!important;padding-right:4px!important}'
 			+ 'tr.tp-on{outline:2px solid #2563eb;outline-offset:-2px}tr.tp-on>td{background-color:#eef4ff}'
 			+ 'tr.more-hide{display:none}.tbl-more{padding:9px 12px;text-align:center;font-size:12px;color:#5f6b75}'
+			// 칸 이동: 끄는 칸은 흐리게, 놓일 자리는 파란 세로선
+			+ '.table th.th-drag{opacity:.45}.table th.th-drop-l{box-shadow:inset 3px 0 0 #0b6e8a}.table th.th-drop-r{box-shadow:inset -3px 0 0 #0b6e8a}'
 			// 틀고정: 고정 칸 하늘색·파란 세로선, 맨 윗줄 고정 행 노란색, 줄 고정 하늘색·마지막 줄 아래 선. 화면의 줄 색(체크·시크릿 등)이 우선
 			+ '.frz-bar{display:flex;justify-content:flex-end;position:relative;margin:0 0 2px}'
 			+ '.frz-btn{border:1px solid #ccd3d9;background:#fff;border-radius:6px;padding:0 8px;font-size:11.5px;line-height:20px;color:#5f6b75}'
@@ -551,7 +676,12 @@
 	document.head.appendChild(topCss);
 
 	var timer = null;
-	function later() { clearTimeout(timer); timer = setTimeout(scan, 120); }
+	function later() {
+		// 칸을 옮겨 둔 표는 화면이 줄을 다시 그리자마자 맞춘다(120ms 뒤에 하면 원래 순서가 잠깐 보인다)
+		if (BO) [].forEach.call(document.querySelectorAll('table.table'), function (t) { if (t._col && t._col.moved && movable(t)) arrange(t); });
+		clearTimeout(timer);
+		timer = setTimeout(scan, 120);
+	}
 
 	document.addEventListener('click', function (e) {
 		var th = e.target.closest && e.target.closest('th.th-sort');
