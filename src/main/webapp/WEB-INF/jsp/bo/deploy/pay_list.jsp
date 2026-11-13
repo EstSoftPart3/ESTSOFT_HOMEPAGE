@@ -199,15 +199,15 @@
 	var SETTLES = ['NP_SETTLE', 'HI_SETTLE', 'EI_SETTLE', 'LTC_SETTLE', 'IT_SETTLE', 'LIT_SETTLE'];
 	// 자동 계산 칸: 머리글 🧮 에 마우스를 올리면 계산식, 누르면 계산 기준값. [계산식 줄들, 쓰는 기준값]
 	var CALC = {
-		BASE_AMT: [['계약 단가 = 이 계약으로 이번 달 나가는 금액', '정규 = 계약단가 − 식대', '수습 = 수습급여 (입사 첫 달·수습해제 달은 일할)', '그 외 = (계약단가 ÷ 월 일수) × 근무일수', '다른 계약(정규 직원의 기타·외부 계약) 줄은 매입처에 주는 돈 · 우리 급여·명세서에 안 들어감', '칸을 눌러 고치면 노란 칸(수기)으로 고정'], ['PROBATION_PAY', 'MEAL', 'PRORATE_UNIT']],
+		BASE_AMT: [['계약 단가 = 이 계약으로 이번 달 나가는 금액', '정규 = 계약단가 − 식대 (퇴사 달은 계약단가 × 근무일 ÷ 월 일수, 식대 없음)', '수습 = 수습급여 (입사 첫 달·수습해제 달은 일할)', '그 외 = (계약단가 ÷ 월 일수) × 근무일수', '다른 계약(정규 직원의 기타·외부 계약) 줄은 매입처에 주는 돈 · 우리 급여·명세서에 안 들어감', '칸을 눌러 고치면 노란 칸(수기)으로 고정'], ['PROBATION_PAY', 'MEAL', 'PRORATE_UNIT']],
 		MEAL_AMT: [['정규 = 식대', '수습 = 0 (수습해제 달은 해제 뒤 날짜만 일할)', '칸을 눌러 고치면 노란 칸(수기)으로 고정'], ['MEAL']],
 		PAY_TOTAL: [['지급계 = 기본 + 수당 칸 합']], DED_TOTAL: [['공제계 = 공제 칸 + 정산 칸 합']], _SETTLE: [['정산 = 국민연금·건강·고용·장기요양·소득세·지방소득세 정산 합', '칸별 정산은 성명을 눌러 상세에서 고칩니다']],
 		NET: [['실지급 = 지급계 − 공제계']], DELTA_PCT: [['전월대비 = (이번 달 실지급 − 전월 실지급) ÷ 전월 실지급']],
-		REAL_SALE: [['실매출 = (매출단가 ÷ 월 일수) × 근무일수'], ['PRORATE_UNIT']],
+		REAL_SALE: [['실매출 = (매출단가 ÷ 월 일수) × 근무일수', '같은 기간의 정규 건과 수습 건은 한 투입이라 한 번만 셉니다'], ['PRORATE_UNIT']],
 		COMPANY: [['회사부담 = 4대보험 회사분 + 퇴직금 적립 (정규·수습만)', '퇴직금 적립 = (기본 + 식대 + 연구비 + 유류비 + 상여) ÷ 10']],
 		BUY: [['기타 = 본인 계약이 있는 사람에게 함께 걸린 기타계약·외부기타 몫 (업체에 주는 돈, 급여 아님)', '= (계약단가 ÷ 월 일수) × 근무일수'], ['PRORATE_UNIT']],
 		FEE: [['수수료 = 본인 계약이 있는 사람에게 함께 걸린 외부수수료(MCS) 몫 (업체에 주는 돈, 급여 아님)', '= (계약단가 ÷ 월 일수) × 근무일수'], ['PRORATE_UNIT']],
-		PROFIT: [['영업이익 = 실매출 − 지급계 − 회사부담 − 기타 − 수수료']]
+		PROFIT: [['영업이익 = 실매출 − 지급계 − 회사부담 − 기타 − 수수료', '투입현황에서 내근직으로 켠 사람은 빼고 셉니다(급여·공제는 그대로)']]
 	};
 	var PARAMS = [];
 	var LABEL = { CLOSE: '마감', REOPEN: '마감 해제', MEMO: '메모', BONUS: '상여 적용', BONUS_EXCLUDE: '상여 제외' };
@@ -426,7 +426,7 @@
 			$tr.append(rs($('<td class="dp-num c-ded font-weight-bold pl-calc">').text(dpWon(r.DED_TOTAL)))).append(rs($('<td class="dp-num font-weight-bold pl-calc">').text(dpWon(r.NET))))
 				.append(rs($('<td class="dp-num pl-calc">').text(r.DELTA_PCT === undefined ? '' : (r.DELTA_PCT > 0 ? '+' : '') + r.DELTA_PCT + '%').toggleClass('text-danger', Math.abs(r.DELTA_PCT || 0) >= 10)))
 				.append(rs($('<td class="pl-stub">')))
-				.append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.REAL_SALE)))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(Number(r.BUY) ? dpWon(r.BUY) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(Number(r.FEE) ? dpWon(r.FEE) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.COMPANY)))).append(rs($('<td class="dp-num pl-profit font-weight-bold pl-calc">').text(dpWon(r.PROFIT))))
+				.append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.REAL_SALE)))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(Number(r.BUY) ? dpWon(r.BUY) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(Number(r.FEE) ? dpWon(r.FEE) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.COMPANY)))).append(rs(r.OFFICE ? $('<td class="dp-num pl-profit text-muted" title="투입현황에서 내근직으로 켠 사람은 영업이익(합계 포함)에서 뺍니다">').text('내근 제외') : $('<td class="dp-num pl-profit font-weight-bold pl-calc">').text(dpWon(r.PROFIT))))
 				.append(rs($('<td>')).append(r.FLAGS.map(function(f) { return flagChip(r, f); })))
 				.append(rs($('<td>')).append(countBtn('💬', r.MEMO_CNT, r.STAFF_NM + ' 메모', function() { memoPopup(r); })))
 				.append(rs($('<td>')).append(countBtn('✎', r.CHG_CNT, r.STAFF_NM + ' 수정이력', function() { historyPopup(r); })));

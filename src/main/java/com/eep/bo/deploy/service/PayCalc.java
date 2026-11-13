@@ -73,6 +73,18 @@ public final class PayCalc {
 		return to.isBefore(from) ? 0 : (int) ChronoUnit.DAYS.between(from, to) + 1;
 	}
 
+	/** 두 기간이 그 달 안에서 겹치는 일수 */
+	public static int overlapDays(LocalDate s1, LocalDate e1, LocalDate s2, LocalDate e2, String ym) {
+		LocalDate start = s1.isAfter(s2) ? s1 : s2;
+		LocalDate end = e1 == null ? e2 : e2 == null ? e1 : e1.isBefore(e2) ? e1 : e2;
+		return workDays(start, end, ym);
+	}
+
+	/** 정규직 퇴사 달 기본: 계약단가 × 근무일 ÷ 전체일(원 미만 버림), 식대는 없다 (사용자 엑셀이 손으로 넣던 값) */
+	public static long leaveMonth(long cost, int days, int total) {
+		return cost * days / total;
+	}
+
 	/** 월 금액 ÷ 전체일수 × 근무일수, 버림 단위(기본 천원) 미만 버림 */
 	public static long prorate(long monthly, int days, int total) {
 		return monthly * days / total / PRORATE_UNIT * PRORATE_UNIT;

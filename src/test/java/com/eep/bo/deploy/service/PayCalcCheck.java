@@ -168,6 +168,15 @@ public class PayCalcCheck {
 		ledger();
 		license();
 		tax();
+		// 퇴사 달 정규 일할(엑셀 나유리 10월), 정규·수습 건 겹침 일수, 내근직은 영업이익 0
+		same(PayCalc.leaveMonth(2160000, 12, 31), 836129, "퇴사 달 일할");
+		same(PayCalc.overlapDays(LocalDate.parse("2026-06-08"), null, LocalDate.parse("2026-06-08"), LocalDate.parse("2026-09-07"), "2026-06"), 23, "정규·수습 겹침");
+		same(PayCalc.overlapDays(LocalDate.parse("2026-06-01"), LocalDate.parse("2026-06-10"), LocalDate.parse("2026-06-11"), null, "2026-06"), 0, "안 겹침");
+		Map<String, Object> or = new HashMap<>(), od = new HashMap<>();
+		or.put("PAY_YM", "2026-10"); or.put("STAFF_SQ", 9); or.put("EMP_TYPE_CD", "REGULAR"); or.put("BASE_AMT", 7800000L);
+		od.put("PAY_YM", "2026-10"); od.put("STAFF_SQ", 9); od.put("DEPLOY_TYPE", "REGULAR"); od.put("OFFICE_YN", "Y"); od.put("BASE_AMT", 7800000L);
+		Map<String, Object> derived = BoPayrollService.derive(new ArrayList<>(java.util.Collections.singletonList(or)), new ArrayList<>(java.util.Collections.singletonList(od))).get(0);
+		same(derived.get("OFFICE") + "|" + derived.get("PROFIT") + "|" + derived.get("PAY_TOTAL"), "true|0|7800000", "내근직은 영업이익에서 빠지고 급여는 그대로");
 		System.out.println("PayCalcCheck OK");
 	}
 

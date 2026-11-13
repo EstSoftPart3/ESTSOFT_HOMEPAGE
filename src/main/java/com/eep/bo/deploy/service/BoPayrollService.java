@@ -436,6 +436,10 @@ public class BoPayrollService {
 					long[] bm = PayCalc.salaried(type, n(d.get("COST_PRICE")), ym, PayCalc.date(staff.get("JOIN_DT")), PayCalc.date(d.get("PROB_END_DT")), lastDay);
 					b = bm[0];
 					meal = bm[1];
+					if (PayCalc.REGULAR.equals(type) && leave != null && YearMonth.from(leave).equals(m)) {
+						b = PayCalc.leaveMonth(n(d.get("COST_PRICE")), days, total);
+						meal = 0;
+					}
 				} else {
 					b = 0; // 고정급은 한 달에 한 번만
 				}
@@ -453,7 +457,12 @@ public class BoPayrollService {
 				long sale = Math.max(0, n(d.get("SALE_PRICE")) - n(d.get("CLIENT_DIRECT_AMT")));
 				row.put("SALE_PRICE", sale);
 				row.put("COST_PRICE", n(d.get("COST_PRICE")));
-				row.put("REAL_SALE", PayCalc.prorate(sale, days, total));
+				// 같은 기간의 정규 건과 수습 건은 한 투입이라 매출은 기준 건 쪽에서만 센다
+				int saleDays = days;
+				if (d != primary && PayCalc.isSalaried(str(d.get("EMP_TYPE_CD"))) && PayCalc.isSalaried(type)) {
+					saleDays -= PayCalc.overlapDays(PayCalc.date(d.get("START_DT")), PayCalc.date(d.get("END_DT")), PayCalc.date(primary.get("START_DT")), PayCalc.date(primary.get("END_DT")), ym);
+				}
+				row.put("REAL_SALE", PayCalc.prorate(sale, Math.max(0, saleDays), total));
 				row.put("BASE_AMT", b);
 				mapper.savePayrollDetail(row);
 				keepDeploy.add(d.get("DEPLOY_SQ"));
@@ -529,6 +538,9 @@ public class BoPayrollService {
 				how = PayCalc.prorate(cost, days, total) == b ? PayCalc.prorateHow(cost, days, total) : won(b) + " (저장된 값)";
 			} else if (b == 0 && days > 0) {
 				how = "0 (고정급은 한 달에 한 건만 셉니다)";
+			} else if (PayCalc.REGULAR.equals(t) && PayCalc.date(r.get("LEAVE_DT")) != null && YearMonth.from(PayCalc.date(r.get("LEAVE_DT"))).equals(YearMonth.parse(ym))) {
+				long v = PayCalc.leaveMonth(cost, days, total);
+				how = v == b ? "퇴사 달: 계약단가 " + won(cost) + " × " + days + "/" + total + "일 = " + won(b) + " (식대 없음)" : won(b) + " (저장된 값)";
 			} else {
 				YearMonth m = YearMonth.parse(ym);
 				LocalDate end = PayCalc.date(d.get("END_DT"));
@@ -594,7 +606,10 @@ public class BoPayrollService {
 			r.put("COMPANY", company);
 			r.put("BUY", buy);
 			r.put("FEE", fee);
-			r.put("PROFIT", sale - pay - company - buy - fee);
+			// 투입현황에서 내근직으로 켠 건만 있는 사람(임원·내근)은 엑셀처럼 영업이익에서 뺀다. 급여·공제는 그대로
+			boolean office = !ds.isEmpty() && ds.stream().allMatch(d -> "Y".equals(d.get("OFFICE_YN")));
+			r.put("OFFICE", office);
+			r.put("PROFIT", office ? 0 : sale - pay - company - buy - fee);
 			r.put("WORK_DAYS", Math.min(days, totalDays));
 			r.put("TOTAL_DAYS", totalDays);
 			r.put("SALE_PRICE", latest == null ? 0 : n(latest.get("SALE_PRICE")));
