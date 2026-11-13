@@ -26,4 +26,10 @@ public interface BoTradeMapper {
 	public int upsertLayout(Map<String, Object> param);
 	public int upsertAmt(Map<String, Object> param);
 	public int updateIssue(Map<String, Object> param);
+
+	public int selectClosed(String ym);
+	public int insertClose(Map<String, Object> param);
+	public int deleteClose(String ym);
+	public int insertRepeats(Map<String, Object> param);
+	public int stopRepeat(Map<String, Object> param);
 }

@@ -205,7 +205,12 @@
 		'경기도': '경기', '강원도': '강원', '강원특별자치도': '강원', '충청북도': '충북', '충청남도': '충남', '전라북도': '전북', '전북특별자치도': '전북', '전라남도': '전남', '경상북도': '경북', '경상남도': '경남', '제주특별자치도': '제주' };
 
 	$(function() {
-		load();
+		// 매출·매입 현황의 팝업에서 열 때: ?open=투입번호(상세) · ?add=1(투입 추가) · ?view=timeline
+		load(function() {
+			var q = location.search, o = /[?&]open=(\d+)\b/.exec(q), x = o && data.all.filter(function(d) { return d.DEPLOY_SQ === +o[1]; })[0];
+			if (/[?&]view=timeline\b/.test(q)) $('[data-view=timeline]').click();
+			if (x) openDetail(x); else if (/[?&]add=1\b/.test(q)) $('#btnAdd').click();
+		});
 		$('#views').on('click', 'button', function() { page = $(this).attr('data-page'); render(); });
 		$('#showSecret').on('change', function() { render(); });
 		$('#keyword').on('input', render);

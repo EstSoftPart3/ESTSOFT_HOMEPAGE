@@ -58,6 +58,54 @@
 		INSERT IGNORE INTO TB_EEP_ROLE_MENU_R (ROLE_SQ, MENU_CODE)
 		SELECT ROLE_SQ, 'H00010' FROM TB_EEP_ROLE_MENU_R WHERE MENU_CODE = 'H00006'
 		  AND NOT EXISTS (SELECT 1 FROM (SELECT MENU_CODE FROM TB_EEP_ROLE_MENU_R) R WHERE R.MENU_CODE = 'H00010');
+
+		<!--
+			2026-11 통합: 매출관리 → 매출·매입 현황(투입·급여까지 한 화면), 매입관리 → 세금계산서. 이름이 옛것일 때 한 번만 바꾼다.
+			통합 화면은 투입현황·급여관리 주소를 그대로 불러 쓰므로 그 주소를 권한에 함께 넣는다(화면 권한자는 급여 칸도 본다).
+			되돌리기: UPDATE TB_EEP_MENU SET MENU_NM='매출관리', MENU_URL='/admin/trade/openSaleList.do', AUTH_PATTERN='/admin/trade/openSaleList.do,/admin/trade/sale/**' WHERE MENU_CODE='H00009';
+			          UPDATE TB_EEP_MENU SET MENU_NM='매입관리', MENU_URL='/admin/trade/openBuyList.do', AUTH_PATTERN='/admin/trade/openBuyList.do,/admin/trade/buy/**' WHERE MENU_CODE='H00010';
+			          DROP TABLE TB_EEP_TRADE_CLOSE_M; ALTER TABLE TB_EEP_TRADE_M DROP COLUMN REPEAT_UNTIL, DROP COLUMN REPEAT_SRC;
+		-->
+		CREATE TABLE IF NOT EXISTS TB_EEP_TRADE_CLOSE_M (
+			  YM            char(7) NOT NULL
+			, UPDT_EMPLY_ID varchar(50) NULL
+			, UPDT_DT       datetime NULL
+			, PRIMARY KEY (YM)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='매출·매입 마감한 달(줄이 있으면 마감)';
+		ALTER TABLE TB_EEP_TRADE_M ADD COLUMN IF NOT EXISTS REPEAT_UNTIL char(7) NULL COMMENT '매달 반복 종료월(9999-12 = 끌 때까지)';
+		ALTER TABLE TB_EEP_TRADE_M ADD COLUMN IF NOT EXISTS REPEAT_SRC int NULL COMMENT '반복으로 생긴 건의 처음 건 TRADE_SQ';
+		UPDATE TB_EEP_MENU SET MENU_NM = '매출·매입 현황', MENU_URL = '/admin/trade/openAllList.do', AUTH_PATTERN = '/admin/trade/**,/admin/deploy/**,/admin/pay/**', LAST_UPDT_DT = NOW()
+		WHERE MENU_CODE = 'H00009' AND MENU_NM = '매출관리';
+		UPDATE TB_EEP_MENU SET MENU_NM = '세금계산서', MENU_URL = '/admin/trade/openInvoiceList.do', AUTH_PATTERN = '/admin/trade/openInvoiceList.do,/admin/trade/sale/**', LAST_UPDT_DT = NOW()
+		WHERE MENU_CODE = 'H00010' AND MENU_NM = '매입관리';
+	</update>
+
+	<select id="selectClosed" parameterType="string" resultType="int">
+		SELECT COUNT(*) FROM TB_EEP_TRADE_CLOSE_M WHERE YM = #{ym}
+	</select>
+	<insert id="insertClose" parameterType="hashMap">
+		INSERT IGNORE INTO TB_EEP_TRADE_CLOSE_M (YM, UPDT_EMPLY_ID, UPDT_DT) VALUES (#{YM}, #{UPDT_EMPLY_ID}, NOW())
+	</insert>
+	<delete id="deleteClose" parameterType="string">
+		DELETE FROM TB_EEP_TRADE_CLOSE_M WHERE YM = #{ym}
+	</delete>
+
+	<!-- 매달 반복: 같은 뿌리(REPEAT_SRC)의 가장 최근 앞달 건을 이 달로 복사한다. 이 달에 이미 있으면 건너뛴다 -->
+	<insert id="insertRepeats" parameterType="hashMap">
+		INSERT INTO TB_EEP_TRADE_M (KIND_CD, YM, PARTNER_SQ, PARTNER_NM, TYPE_NM, ITEM_NM, START_DT, END_DT, AMT, MEMO, REPEAT_UNTIL, REPEAT_SRC, UPDT_EMPLY_ID, UPDT_DT)
+		SELECT T.KIND_CD, #{YM}, T.PARTNER_SQ, T.PARTNER_NM, T.TYPE_NM, T.ITEM_NM, IF(T.START_DT IS NULL, NULL, #{FROM_DT}), IF(T.END_DT IS NULL, NULL, #{TO_DT}), T.AMT, T.MEMO
+			, T.REPEAT_UNTIL, COALESCE(T.REPEAT_SRC, T.TRADE_SQ), T.UPDT_EMPLY_ID, NOW()
+		FROM TB_EEP_TRADE_M T
+		WHERE T.KIND_CD = #{KIND_CD} AND T.YM &lt; #{YM} AND T.REPEAT_UNTIL &gt;= #{YM}
+		  AND T.YM = (SELECT MAX(X.YM) FROM TB_EEP_TRADE_M X WHERE COALESCE(X.REPEAT_SRC, X.TRADE_SQ) = COALESCE(T.REPEAT_SRC, T.TRADE_SQ) AND X.YM &lt; #{YM})
+		  AND NOT EXISTS (SELECT 1 FROM TB_EEP_TRADE_M Y WHERE COALESCE(Y.REPEAT_SRC, Y.TRADE_SQ) = COALESCE(T.REPEAT_SRC, T.TRADE_SQ) AND Y.YM = #{YM})
+	</insert>
+
+	<!-- 반복 건을 지우면 그 달부터 반복을 멈춘다(앞달 건들의 종료월을 전달로) -->
+	<update id="stopRepeat" parameterType="hashMap">
+		UPDATE TB_EEP_TRADE_M T JOIN (SELECT COALESCE(REPEAT_SRC, TRADE_SQ) AS ROOT FROM TB_EEP_TRADE_M WHERE TRADE_SQ = #{TRADE_SQ}) R ON COALESCE(T.REPEAT_SRC, T.TRADE_SQ) = R.ROOT
+		SET T.REPEAT_UNTIL = #{PREV_YM}
+		WHERE T.YM &lt; #{YM} AND T.REPEAT_UNTIL &gt;= #{YM}
 	</update>
 
 	<select id="selectPartners" resultType="hashMap">
@@ -84,7 +132,7 @@
 	</select>
 
 	<select id="selectTrades" parameterType="hashMap" resultType="hashMap">
-		SELECT T.TRADE_SQ, T.PARTNER_SQ, COALESCE(P.PARTNER_NM, T.PARTNER_NM) AS PARTNER_NM, T.TYPE_NM, T.ITEM_NM, T.START_DT, T.END_DT, T.AMT, T.MEMO
+		SELECT T.TRADE_SQ, T.PARTNER_SQ, COALESCE(P.PARTNER_NM, T.PARTNER_NM) AS PARTNER_NM, T.TYPE_NM, T.ITEM_NM, T.START_DT, T.END_DT, T.AMT, T.MEMO, T.REPEAT_UNTIL
 		FROM TB_EEP_TRADE_M T
 		LEFT JOIN TB_EEP_PARTNER_M P ON P.PARTNER_SQ = T.PARTNER_SQ
 		WHERE T.KIND_CD = #{KIND_CD} AND T.YM = #{YM}
@@ -104,13 +152,13 @@
 	</select>
 
 	<insert id="insertTrade" parameterType="hashMap">
-		INSERT INTO TB_EEP_TRADE_M (KIND_CD, YM, PARTNER_SQ, PARTNER_NM, TYPE_NM, ITEM_NM, START_DT, END_DT, AMT, MEMO, UPDT_EMPLY_ID, UPDT_DT)
-		VALUES (#{KIND_CD}, #{YM}, NULLIF(#{PARTNER_SQ}, ''), NULLIF(#{PARTNER_NM}, ''), #{TYPE_NM}, #{ITEM_NM}, NULLIF(#{START_DT}, ''), NULLIF(#{END_DT}, ''), #{AMT}, NULLIF(#{MEMO}, ''), #{UPDT_EMPLY_ID}, NOW())
+		INSERT INTO TB_EEP_TRADE_M (KIND_CD, YM, PARTNER_SQ, PARTNER_NM, TYPE_NM, ITEM_NM, START_DT, END_DT, AMT, MEMO, REPEAT_UNTIL, UPDT_EMPLY_ID, UPDT_DT)
+		VALUES (#{KIND_CD}, #{YM}, NULLIF(#{PARTNER_SQ}, ''), NULLIF(#{PARTNER_NM}, ''), #{TYPE_NM}, #{ITEM_NM}, NULLIF(#{START_DT}, ''), NULLIF(#{END_DT}, ''), #{AMT}, NULLIF(#{MEMO}, ''), NULLIF(#{REPEAT_UNTIL}, ''), #{UPDT_EMPLY_ID}, NOW())
 	</insert>
 
 	<update id="updateTrade" parameterType="hashMap">
 		UPDATE TB_EEP_TRADE_M
-		SET PARTNER_SQ = NULLIF(#{PARTNER_SQ}, ''), PARTNER_NM = NULLIF(#{PARTNER_NM}, ''), TYPE_NM = #{TYPE_NM}, ITEM_NM = #{ITEM_NM}, START_DT = NULLIF(#{START_DT}, ''), END_DT = NULLIF(#{END_DT}, ''), AMT = #{AMT}, MEMO = NULLIF(#{MEMO}, '')
+		SET PARTNER_SQ = NULLIF(#{PARTNER_SQ}, ''), PARTNER_NM = NULLIF(#{PARTNER_NM}, ''), TYPE_NM = #{TYPE_NM}, ITEM_NM = #{ITEM_NM}, START_DT = NULLIF(#{START_DT}, ''), END_DT = NULLIF(#{END_DT}, ''), AMT = #{AMT}, MEMO = NULLIF(#{MEMO}, ''), REPEAT_UNTIL = NULLIF(#{REPEAT_UNTIL}, '')
 			, UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
 		WHERE TRADE_SQ = #{TRADE_SQ} AND KIND_CD = #{KIND_CD}
 	</update>

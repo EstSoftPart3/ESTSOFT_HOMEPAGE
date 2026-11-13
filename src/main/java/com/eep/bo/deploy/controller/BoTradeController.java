@@ -41,11 +41,30 @@ public class BoTradeController {
 		return new ModelAndView("bo/deploy/trade_list").addObject("kind", "BUY");
 	}
 
+	/** 매출·매입 현황: 투입·매출·매입·급여·손익을 한 줄에. 투입·급여 데이터는 그 화면들의 주소를 그대로 부른다 */
+	@RequestMapping("/admin/trade/openAllList.do")
+	public ModelAndView openAllList() {
+		return new ModelAndView("bo/deploy/trade_all");
+	}
+
+	/** 세금계산서: 매출 건의 묶음·발급 표시만 */
+	@RequestMapping("/admin/trade/openInvoiceList.do")
+	public ModelAndView openInvoiceList() {
+		return new ModelAndView("bo/deploy/trade_list").addObject("kind", "SALE").addObject("invoiceOnly", true);
+	}
+
+	/** 매출·매입 마감·해제(급여 마감과 따로) */
+	@RequestMapping(value = "/admin/trade/all/closeData.do", method = RequestMethod.POST)
+	public ModelAndView closeData(@RequestParam("YM") String ym, @RequestParam("CLOSE") boolean close, HttpSession session) {
+		return run(() -> { service.setClosed(ym, close, loginId(session)); return "OK"; });
+	}
+
 	@RequestMapping(value = "/admin/trade/{kind}/listData.do", method = RequestMethod.POST)
 	public ModelAndView listData(@PathVariable("kind") String kind, @RequestParam("YM") String ym, HttpSession session) {
 		return run(() -> {
 			String k = BoTradeService.kind(kind);
 			Map<String, Object> out = new HashMap<>(service.options(k));
+			out.put("closed", service.closed(ym));
 			out.put("lines", visible(k, ym, session));
 			return out;
 		});

@@ -73,7 +73,8 @@
   
   <script>
   	// 바깥 틀(bo-tabs.js)의 탭 안에서 열렸으면 그리기 전에 표시해 둔다
-  	try { if (window.top !== window.self && window.top.BO_TABS) document.documentElement.className += ' in-tab'; } catch (e) {}
+  	// ?embed=1: 다른 화면의 팝업(iframe) 안에 띄운 화면도 같은 방식으로 메뉴를 숨긴다(매출·매입 현황)
+  	try { if (/[?&]embed=1\b/.test(location.search) || (window.top !== window.self && window.top.BO_TABS)) document.documentElement.className += ' in-tab'; } catch (e) {}
   </script>
   <link href="/resources/navereditor/css/smart_editor2.css" rel="stylesheet" type="text/css">
 	

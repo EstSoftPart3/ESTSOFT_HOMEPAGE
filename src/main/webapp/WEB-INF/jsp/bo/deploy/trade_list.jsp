@@ -125,7 +125,9 @@
 	<%@ include file="/WEB-INF/jsp/bo/hr/hr_script.jspf"%>
 	<script>
 	var KIND = '${kind}', SALE = KIND === 'SALE', BASE = '/admin/trade/' + KIND.toLowerCase() + '/';
-	var lines = [], partners = [], tab = 0, typeOff = {}, inv = {}, drag = null;
+	// 세금계산서 메뉴: 매출 건의 묶음만 보인다(내역·등록은 매출·매입 현황에서)
+	var INV_ONLY = '${invoiceOnly}' === 'true', invOff = {};
+	var lines = [], partners = [], tab = INV_ONLY ? 1 : 0, typeOff = {}, inv = {}, drag = null;
 
 	function toast(msg) { $('#trToast').text(msg).stop(true, true).fadeIn(100).delay(1500).fadeOut(300); }
 	function ymNow() { return $('#ym').val(); }
@@ -179,6 +181,18 @@
 		var s = sum(list);
 		$('#kpis').empty().append(kpi('건수', list.length + '건'), kpi('공급가액', dpWon(s)), kpi('세액', dpWon(vat(s))), kpi('합계금액', dpWon(s + vat(s))),
 			SALE ? kpi('세금계산서', groups.length + '장 · 발급 ' + done + '장', done < groups.length ? 'warn' : '') : '');
+		if (INV_ONLY) {
+			// 미발급·발급 완료 칩으로 계산서를 거른다
+			var $c = $('#chips').empty();
+			[['todo', '미발급', groups.length - done], ['done', '발급 완료', done]].forEach(function(x) {
+				var $i = $('<input type="checkbox" class="tr-chk">').prop('checked', !invOff[x[0]]).on('change', function() { invOff[x[0]] = !this.checked; draw(); });
+				$c.append($('<label class="tr-chip">').toggleClass('on', !invOff[x[0]]).append($i, document.createTextNode(x[1] + ' ' + x[2])));
+			});
+			$('#tabs, #paneList').hide();
+			$('#paneInv').show();
+			drawInv();
+			return;
+		}
 		drawChips();
 		// 매입관리는 매입 건을 한눈에 보는 목록만 둔다(세금계산서 묶음은 매출관리에만)
 		if (!SALE) { $('#tabs, .only-sale').hide(); drawList(list); return; }
@@ -386,6 +400,8 @@
 		if (!keys.length) $b.append('<p class="text-muted">이 달에 해당하는 건이 없습니다.</p>');
 		keys.forEach(function(p) {
 			var groups = inv[p], all = [].concat.apply([], groups), s = sum(all), done = groups.filter(issued).length;
+			function hidden(g) { return invOff[issued(g) ? 'done' : 'todo']; }
+			if (groups.every(hidden)) return;
 			var unsaved = all.some(function(l) { return l.INV_NO === null || l.INV_NO === undefined; });
 			var $p = $('<div class="tr-partner">').appendTo($b);
 			$p.append($('<h5>').append($('<span>').text(pName(all[0])),
@@ -395,7 +411,7 @@
 				$('<button type="button" class="btn btn-sm btn-outline-secondary">다시 묶기</button>').attr('aria-label', pName(all[0]) + ' 다시 묶기').click(function() {
 					bootbox.confirm('발급 전인 ' + pName(all[0]) + ' 건을 ' + ($('#sortKey').val() ? $('#sortKey option:selected').text() + '으로 정렬해 ' : '') + perInv() + '행씩 다시 묶을까요? 손으로 맞춘 묶음은 바뀝니다.', function(ok) { if (ok) regroup(p); });
 				})));
-			groups.forEach(function(g, i) { $p.append(invCard(p, g, i)); });
+			groups.forEach(function(g, i) { if (!hidden(g)) $p.append(invCard(p, g, i)); });
 			var $new = $('<div class="tr-new">끌어온 행을 여기에 놓으면 새 계산서 한 장이 됩니다</div>').appendTo($p);
 			$new.on('dragover', function(e) { if (drag && drag.p === p) { e.preventDefault(); $new.addClass('over'); } }).on('dragleave', function() { $new.removeClass('over'); })
 				.on('drop', function(e) { e.preventDefault(); dropTo(p, null, 0); });
@@ -443,7 +459,8 @@
 		return $c;
 	}
 
-	$('#pageTitle').text(SALE ? '매출관리' : '매입관리');
+	$('#pageTitle').text(INV_ONLY ? '세금계산서' : SALE ? '매출관리' : '매입관리');
+	if (INV_ONLY) $('#btnAdd, #keyword').hide();
 	$('#btnAddText').text(SALE ? '일반 건 등록' : '매입 건 등록');
 	$('#btnExcel').toggle(SALE).click(function() { if (ymNow()) location.href = BASE + 'excel.do?YM=' + encodeURIComponent(ymNow()); });
 	$('#PARTNER_SQ').on('change', function() { var typed = this.value === '__new'; $('#PARTNER_NM').toggle(typed).prop('required', typed); if (typed) $('#PARTNER_NM').focus(); });

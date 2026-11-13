@@ -62,6 +62,8 @@ public class BoTradeService {
 		Map<String, Object> q = q(kind, ym);
 		q.put("FROM_DT", m.atDay(1).toString());
 		q.put("TO_DT", m.atEndOfMonth().toString());
+		// shortcut: 반복 건은 그 달을 처음 열 때 만든다(동시에 두 사람이 처음 열면 두 번 생길 수 있다), 겹치면 배치로 옮긴다
+		if (!closed(ym)) mapper.insertRepeats(q);
 		Map<String, Map<String, Object>> saved = new HashMap<>();
 		for (Map<String, Object> l : mapper.selectLines(q)) saved.put(l.get("SRC_CD") + ":" + l.get("SRC_SQ"), l);
 		List<Map<String, Object>> out = new ArrayList<>();
@@ -97,6 +99,7 @@ public class BoTradeService {
 			l.put("END_DT", t.get("END_DT"));
 			l.put("AMT", n(t.get("AMT")));
 			l.put("MEMO", t.get("MEMO"));
+			l.put("REPEAT_UNTIL", t.get("REPEAT_UNTIL"));
 			out.add(l);
 		}
 		return out;
@@ -122,6 +125,11 @@ public class BoTradeService {
 	public void saveTrade(String kind, Map<String, Object> p, String loginId) {
 		String ym = s(p.get("YM"));
 		month(ym);
+		open(ym);
+		// 매달 반복: 비우면 반복 없음, 종료월(yyyy-MM) 또는 9999-12(끌 때까지)
+		String until = s(p.get("REPEAT_UNTIL")).trim();
+		if (!until.isEmpty() && (!until.matches("\\d{4}-(0[1-9]|1[0-2])") || until.compareTo(ym) < 0)) throw new IllegalArgumentException("반복 종료월은 이 달이나 그 뒤로 골라 주세요.");
+		p.put("REPEAT_UNTIL", until);
 		// 거래처는 등록된 곳을 고르거나, 등록하지 않은 곳은 이름만 적는다
 		String partnerNm = s(p.get("PARTNER_SQ")).isEmpty() ? s(p.get("PARTNER_NM")).trim() : "";
 		if (s(p.get("PARTNER_SQ")).isEmpty() && (partnerNm.isEmpty() || partnerNm.length() > 200)) throw new IllegalArgumentException("거래처를 고르거나 이름을 200자 안으로 입력해 주세요.");
@@ -143,16 +151,21 @@ public class BoTradeService {
 			mapper.insertTrade(p);
 			return;
 		}
-		notIssued(kind, tradeYm(kind, p.get("TRADE_SQ")), "M", p.get("TRADE_SQ"));
+		String saved = tradeYm(kind, p.get("TRADE_SQ"));
+		open(saved);
+		notIssued(kind, saved, "M", p.get("TRADE_SQ"));
 		mapper.updateTrade(p);
 	}
 
 	public void deleteTrade(String kind, Object tradeSq) {
 		String ym = tradeYm(kind, tradeSq);
+		open(ym);
 		notIssued(kind, ym, "M", tradeSq);
 		Map<String, Object> q = key(kind, ym, "M:" + tradeSq);
 		q.put("TRADE_SQ", tradeSq);
+		q.put("PREV_YM", YearMonth.parse(ym).minusMonths(1).toString());
 		tx.execute(st -> {
+			mapper.stopRepeat(q); // 지운 달에 다시 생기지 않게 반복을 전달까지로 줄인다
 			mapper.deleteTrade(q);
 			mapper.deleteLine(q);
 			return null;
@@ -170,6 +183,7 @@ public class BoTradeService {
 	/** 투입 건 금액을 이 달만 고친다. 비우면 계산 금액으로 돌아간다 */
 	public void setAmount(String kind, String ym, String key, String amt, Set<String> valid) {
 		month(ym);
+		open(ym);
 		if (!key.startsWith("D:") || !valid.contains(key)) throw new IllegalArgumentException("건을 찾지 못했습니다.");
 		String v = amt == null ? "" : amt.replace(",", "").trim();
 		if (!v.isEmpty() && !v.matches("-?\\d{1,13}")) throw new IllegalArgumentException("금액을 숫자로 입력해 주세요.");
@@ -212,8 +226,28 @@ public class BoTradeService {
 		});
 	}
 
+	/** 매출·매입 마감(급여 마감과 따로). 마감한 달은 건 등록·수정·삭제와 금액 고치기를 막는다. 세금계산서 묶음·발급 표시는 그대로 된다 */
+	public boolean closed(String ym) {
+		return mapper.selectClosed(ym) > 0;
+	}
+
+	public void setClosed(String ym, boolean close, String loginId) {
+		month(ym);
+		if (!close) {
+			mapper.deleteClose(ym);
+			return;
+		}
+		Map<String, Object> q = q(null, ym);
+		q.put("UPDT_EMPLY_ID", loginId);
+		mapper.insertClose(q);
+	}
+
+	private void open(String ym) {
+		if (closed(ym)) throw new IllegalArgumentException("매출·매입을 마감한 달입니다. 마감을 해제한 뒤 고쳐 주세요.");
+	}
+
 	private void notIssued(String kind, String ym, String src, Object sq) {
-		if (mapper.selectIssueDt(key(kind, ym, src + ":" + sq)) != null) throw new IllegalArgumentException("발급 완료로 표시한 건입니다. 세금계산서 탭에서 발급을 취소한 뒤 고쳐 주세요.");
+		if (mapper.selectIssueDt(key(kind, ym, src + ":" + sq)) != null) throw new IllegalArgumentException("발급 완료로 표시한 건입니다. 세금계산서 화면에서 발급을 취소한 뒤 고쳐 주세요.");
 	}
 
 	private static Map<String, Object> key(String kind, String ym, String key) {

@@ -261,7 +261,11 @@
 		function paintKpi() { $('#kpis').toggle(kpiOpen); $('#kpiToggle').attr('aria-expanded', kpiOpen).text(kpiOpen ? '합계 ▾ 접기' : '합계 ▸ 펼치기'); }
 		$('#kpiToggle').on('click', function() { kpiOpen = !kpiOpen; try { localStorage.setItem('payKpi', kpiOpen ? 'on' : 'off'); } catch (e) {} paintKpi(); });
 		paintKpi();
-		load();
+		// 매출·매입 현황의 팝업에서 열 때: ?open=직원번호(상세) · &tab=3 메모 · &tab=4 수정이력 · ?import=1(공제 불러오기)
+		load(function() {
+			var q = location.search, o = /[?&]open=(\d+)\b/.exec(q), t = /[?&]tab=(\d)\b/.exec(q), r = o && rows.filter(function(x) { return x.STAFF_SQ === +o[1]; })[0];
+			if (r) { openDetail(r); if (t) { detailTab = +t[1]; renderDetail(); } } else if (/[?&]import=1\b/.test(q)) $('#btnImport').click();
+		});
 		loadParams();
 	});
 
