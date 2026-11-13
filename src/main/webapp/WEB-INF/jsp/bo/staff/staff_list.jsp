@@ -872,7 +872,7 @@
 	}
 
 	function upload(r, d, file) {
-		if (file.size > 20 * 1024 * 1024) { bootbox.alert('20MB 이하 파일만 올릴 수 있습니다.'); return; }
+		if (file.size > 50 * 1024 * 1024) { bootbox.alert('50MB 이하 파일만 올릴 수 있습니다.'); return; }
 		var fd = new FormData();
 		fd.append('STAFF_SQ', r.STAFF_SQ);
 		fd.append('DOC_CD', d[0]);

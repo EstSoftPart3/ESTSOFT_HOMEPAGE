@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
+
+import com.common.upload.Upload;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.eep.bo.card.service.BoCardService;
@@ -60,7 +62,10 @@ public class BoCardController {
 	@RequestMapping(value = "/admin/card/periodData.do", method = RequestMethod.POST)
 	public ModelAndView periodData(@RequestParam("CARD_SQ") int cardSq, @RequestParam("FROM") String from, @RequestParam("TO") String to,
 			@RequestParam(value = "file", required = false) MultipartFile file, HttpSession session) {
-		return call(() -> service.period(cardSq, from, to, file == null ? null : file.getBytes(), loginId(session)));
+		return call(() -> {
+			if (file != null && !file.isEmpty()) Upload.check(file, Upload.EXCEL);
+			return service.period(cardSq, from, to, file == null ? null : file.getBytes(), loginId(session));
+		});
 	}
 
 	/** 중간 저장(CLOSE=N)과 마감(CLOSE=Y). 배열은 String[] 로 받으면 값이 하나일 때 쉼표로 쪼개지므로 그대로 읽는다 */

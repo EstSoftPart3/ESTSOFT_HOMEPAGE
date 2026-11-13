@@ -21,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 import org.springframework.web.servlet.ModelAndView;
 
+import com.common.upload.Upload;
 import com.eep.bo.deploy.service.BoBonusService;
 import com.eep.bo.deploy.service.BoDeployService;
 import com.eep.bo.deploy.service.BoPayrollService;
@@ -205,7 +206,8 @@ public class BoDeployController {
 	@RequestMapping(value = "/admin/partner/savePartnerData.do", method = RequestMethod.POST)
 	/** 서류 파일은 종류 이름(LICENSE·LOGO·SEAL·BANK)으로, 지울 종류는 REMOVE 에 쉼표로 받는다 */
 	public ModelAndView savePartnerData(@RequestParam Map<String, Object> param, MultipartHttpServletRequest request, HttpSession session) {
-		return run(() -> {
+		List<Upload> ups = new ArrayList<>();
+		return Upload.noted(run(() -> {
 			String remove = String.valueOf(param.getOrDefault("REMOVE", ""));
 			param.remove("REMOVE");
 			param.put("UPDT_EMPLY_ID", loginId(session));
@@ -213,16 +215,18 @@ public class BoDeployController {
 			for (Map.Entry<String, MultipartFile> e : request.getFileMap().entrySet()) {
 				MultipartFile f = e.getValue();
 				if (!f.isEmpty()) {
+					Upload u = Upload.of(f, Upload.DOCS);
+					ups.add(u);
 					Map<String, Object> m = new HashMap<>();
-					m.put("FILE_NM", f.getOriginalFilename());
-					m.put("FILE_TYPE", f.getContentType());
-					m.put("FILE_DATA", f.getBytes());
+					m.put("FILE_NM", u.name);
+					m.put("FILE_TYPE", u.mime);
+					m.put("FILE_DATA", u.data);
 					files.put(e.getKey(), m);
 				}
 			}
 			deployService.savePartner(param, files, remove.isEmpty() ? new ArrayList<>() : Arrays.asList(remove.split(",")));
 			return "OK";
-		});
+		}), ups.toArray(new Upload[0]));
 	}
 
 	@RequestMapping(value = "/admin/partner/deletePartnerData.do", method = RequestMethod.POST)
@@ -235,7 +239,8 @@ public class BoDeployController {
 
 	@RequestMapping(value = "/admin/partner/readDocData.do", method = RequestMethod.POST)
 	public ModelAndView readDocData(@RequestParam("file") MultipartFile file, @RequestParam(value = "KIND", required = false) String kind) {
-		return run(() -> deployService.readDoc(file.getOriginalFilename(), file.getContentType(), file.getBytes(), kind));
+		// 저장 때와 같이 줄인 파일로 읽는다(서류 5MB 제한을 줄인 크기로 본다)
+		return run(() -> { Upload u = Upload.of(file, Upload.DOCS); return deployService.readDoc(u.name, u.mime, u.data, kind); });
 	}
 
 	@RequestMapping(value = "/admin/partner/partnerFile.do", method = RequestMethod.GET)
@@ -395,6 +400,7 @@ public class BoDeployController {
 			List<byte[]> data = new ArrayList<>();
 			for (MultipartFile f : request.getFiles("files")) {
 				if (!f.isEmpty()) {
+					Upload.check(f, Upload.EXCEL);
 					data.add(f.getBytes());
 				}
 			}

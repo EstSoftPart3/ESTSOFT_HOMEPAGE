@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.multipart.MultipartFile;
+
+import com.common.upload.Upload;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.eep.bo.equipment.service.BoEquipmentService;
@@ -94,7 +96,8 @@ public class BoEquipmentController {
 
 	@RequestMapping(value = "/admin/equipment/uploadFileData.do", method = RequestMethod.POST)
 	public ModelAndView uploadFileData(@RequestParam("EQP_SQ") int eqpSq, @RequestParam("DOC_CD") String doc, @RequestParam("file") MultipartFile file, HttpSession session) {
-		return call(() -> { service.uploadFile(eqpSq, doc, file.getOriginalFilename(), file.getContentType(), file.getBytes(), loginId(session)); return "OK"; });
+		Upload[] u = new Upload[1];
+		return Upload.noted(call(() -> { u[0] = Upload.of(file); service.uploadFile(eqpSq, doc, u[0].name, u[0].mime, u[0].data, loginId(session)); return "OK"; }), u);
 	}
 
 	@RequestMapping(value = "/admin/equipment/deleteFileData.do", method = RequestMethod.POST)
@@ -171,7 +174,8 @@ public class BoEquipmentController {
 
 	@RequestMapping(value = "/admin/equipment/uploadSignedData.do", method = RequestMethod.POST)
 	public ModelAndView uploadSignedData(@RequestParam("group") String group, @RequestParam("file") MultipartFile file, HttpServletRequest request, HttpSession session) {
-		return call(() -> { service.uploadSigned(group, file.getOriginalFilename(), file.getContentType(), file.getBytes(), loginId(session), ip(request)); return "OK"; });
+		Upload[] u = new Upload[1];
+		return Upload.noted(call(() -> { u[0] = Upload.of(file); service.uploadSigned(group, u[0].name, u[0].mime, u[0].data, loginId(session), ip(request)); return "OK"; }), u);
 	}
 
 	public static String ip(HttpServletRequest request) {

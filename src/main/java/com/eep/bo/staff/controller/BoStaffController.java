@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.multipart.MultipartFile;
+
+import com.common.upload.Upload;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.eep.bo.batch.controller.BoBatchController;
@@ -176,7 +178,8 @@ public class BoStaffController {
 	@RequestMapping(value = "/admin/staff/uploadStaffDocData.do", method = RequestMethod.POST)
 	public ModelAndView uploadStaffDocData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("DOC_CD") String doc,
 			@RequestParam("file") MultipartFile file, HttpSession session) {
-		return drive(() -> StaffDriveService.upload(staffSq, doc, file.getOriginalFilename(), file.getContentType(), file.getBytes(), loginId(session)));
+		Upload[] u = new Upload[1];
+		return Upload.noted(drive(() -> { u[0] = Upload.of(file); return StaffDriveService.upload(staffSq, doc, u[0].name, u[0].mime, u[0].data, loginId(session)); }), u);
 	}
 
 	@RequestMapping(value = "/admin/staff/scanStaffDocsData.do", method = RequestMethod.POST)

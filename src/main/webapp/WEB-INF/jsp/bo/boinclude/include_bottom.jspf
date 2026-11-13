@@ -79,5 +79,13 @@ $(document).on('keydown', 'textarea.enter-send, textarea.bootbox-input-textarea'
 	// bootbox prompt 입력칸만 확인 버튼을 누른다. 메모 창(bootbox.dialog)의 메모 칸은 자기 '남기기'로
 	if ($(this).is('.bootbox-input-textarea')) $(this).closest('.bootbox').find('.bootbox-accept').click(); else $(this).trigger('enter-send');
 });
+// 업로드 공통(com.common.upload.Upload): 서버가 용량을 줄였으면 응답의 uploaded 를 잠깐 띄운다
+$(document).ajaxSuccess(function(e, xhr) {
+	var r = xhr.responseJSON, msg = r && r.uploaded;
+	if (!msg) return;
+	var $t = $('#uploadToast');
+	if (!$t.length) $t = $('<div id="uploadToast" role="status" aria-live="polite">').css({ position: 'fixed', right: 16, bottom: 16, zIndex: 2000, maxWidth: 420, padding: '10px 14px', borderRadius: 8, background: '#0b6e8a', color: '#fff', fontSize: 13, boxShadow: '0 4px 14px rgba(0,0,0,.2)' }).appendTo('body');
+	$t.text(msg).stop(true, true).fadeIn(150).delay(4000).fadeOut(400);
+});
 </script>
 <%@ include file="/WEB-INF/jsp/bo/boinclude/include_guide.jspf"%>

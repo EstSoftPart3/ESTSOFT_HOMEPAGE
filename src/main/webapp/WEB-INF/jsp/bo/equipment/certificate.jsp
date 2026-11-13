@@ -63,7 +63,7 @@
 		<c:if test="${canUpload}">
 			<div class="box">
 				<h2>서명본 파일 업로드</h2>
-				<div>증서를 인쇄해 서명받은 뒤 스캔본이나 사진을 올립니다. (이미지·PDF, 20MB 이하)</div>
+				<div>증서를 인쇄해 서명받은 뒤 스캔본이나 사진을 올립니다. (이미지·PDF, 50MB 이하 · 올릴 때 용량을 줄입니다)</div>
 				<div class="row"><input type="file" id="file" accept="image/*,application/pdf" aria-label="서명본 파일"><button type="button" class="p" id="upload">업로드</button></div>
 			</div>
 		</c:if>
@@ -102,7 +102,7 @@
 		if (upload) upload.addEventListener('click', function() {
 			var file = document.getElementById('file').files[0];
 			if (!file) { msg.textContent = '파일을 골라 주세요.'; return; }
-			if (file.size > 20 * 1024 * 1024) { msg.textContent = '20MB 이하 파일만 올릴 수 있습니다.'; return; }
+			if (file.size > 50 * 1024 * 1024) { msg.textContent = '50MB 이하 파일만 올릴 수 있습니다.'; return; }
 			var fd = new FormData();
 			fd.append('group', group);
 			fd.append('file', file);
