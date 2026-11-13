@@ -9,11 +9,10 @@
 	#lHead th, #lBody td { white-space: nowrap; }
 	.pl-ledger .x-allow, .pl-ledger .x-ded, .pl-ledger .x-pl { display: none; }
 	.pl-ledger.show-allow .x-allow, .pl-ledger.show-ded .x-ded, .pl-ledger.show-pl .x-pl { display: table-cell; }
-	.pl-ledger.show-pl .pl-stub { display: none; }
+	.pl-ledger .pl-stub { display: none; } /* 손익을 접으면 영업이익 칸 하나만 남는다 */
 	.pl-ledger .x-allow, .pl-ledger .c-allow { background: #dff5f3 !important; }
 	.pl-ledger .x-ded, .pl-ledger .c-ded { background: #fdeadb !important; }
 	.pl-ledger .x-pl, .pl-ledger .pl-stub, .pl-ledger .pl-profit { background: #efe6fa !important; }
-	.pl-ledger .pl-stub { min-width: 44px; padding: 0; }
 	.pl-bands th { background: #fff !important; border: 0 !important; padding: 0 !important; }
 	.pl-bands th.band { color: #fff; font-size: 11.5px; text-align: center; padding: 3px 6px !important; cursor: pointer; }
 	.pl-bands th.band:focus { outline: 2px solid #16d5ff; outline-offset: -2px; }
@@ -285,15 +284,48 @@
 	function typeOf(d) { return d.DEPLOY_TYPE || ''; }
 	function chipOf(type) { var c = CHIPS.filter(function(c) { return c[2] && c[2].indexOf(type) >= 0; })[0]; return c ? c[0] : '_NONE'; }
 	function typesOf(r) { return [r.EMP_TYPE_CD].concat(r.DETAILS.map(typeOf)).filter(Boolean); }
-	function visible(r) {
+	// 체크 칩은 계약 줄마다 따진다: 우리 계약 줄(급여)은 그 형태들 중 하나가 체크되면, 다른 계약 줄(기타·외부)은 그 줄 형태가 체크되면 보인다
+	function ownShown(r) {
 		if (r.SECRET) return !!checked._SECRET;
 		if (checked._FLAG && r.FLAGS.length) return true;
-		return typesOf(r).some(function(t) { return checked[chipOf(t)]; });
+		return [r.EMP_TYPE_CD].concat(r.DETAILS.filter(function(d) { return !isOther(r, d); }).map(typeOf)).filter(Boolean).some(function(t) { return checked[chipOf(t)]; });
+	}
+	function otherShown(r, d) { return (!r.SECRET || !!checked._SECRET) && !!checked[chipOf(typeOf(d))]; }
+	function visible(r) { return ownShown(r) || r.DETAILS.some(function(d) { return isOther(r, d) && otherShown(r, d); }); }
+	// 숨긴 다른 계약 줄의 몫을 뺀 이 사람의 손익. 다른 계약 줄 몫(매출 − 업체 몫)은 영업이익에 이미 들어 있다
+	function plView(r) {
+		var v = { sale: Number(r.REAL_SALE || 0), buy: Number(r.BUY || 0), fee: Number(r.FEE || 0), profit: Number(r.PROFIT || 0) };
+		r.DETAILS.forEach(function(d) {
+			if (!isOther(r, d) || otherShown(r, d)) return;
+			var amt = Number(d.BASE_AMT || 0), sale = Number(d.REAL_SALE || 0);
+			v.sale -= sale; if (isFeeT(typeOf(d))) v.fee -= amt; else v.buy -= amt;
+			if (!r.OFFICE) v.profit -= sale - amt;
+		});
+		return v;
+	}
+	// 합계도 보이는 줄만: 우리 계약 줄은 급여·손익, 다른 계약 줄만 보이면 기타·수수료와 그 몫의 영업이익
+	function totals(list) {
+		var k = { pay: 0, ded: 0, net: 0, buy: 0, fee: 0, profit: 0, flag: 0 };
+		list.forEach(function(r) {
+			if (ownShown(r)) {
+				var v = plView(r);
+				k.pay += Number(r.PAY_TOTAL || 0); k.ded += Number(r.DED_TOTAL || 0); k.net += Number(r.NET || 0); k.buy += v.buy; k.fee += v.fee; k.profit += r.OFFICE ? 0 : v.profit;
+				if (r.FLAGS.length) k.flag++;
+				return;
+			}
+			r.DETAILS.forEach(function(d) {
+				if (!isOther(r, d) || !otherShown(r, d)) return;
+				var amt = Number(d.BASE_AMT || 0);
+				if (isFeeT(typeOf(d))) k.fee += amt; else k.buy += amt;
+				if (!r.OFFICE) k.profit += Number(d.REAL_SALE || 0) - amt;
+			});
+		});
+		return k;
 	}
 	// 중복계약 줄은 기본으로 접는다. 사람별로 누른 상태가 '모두 접기/펼치기'보다 우선
 	// 같은 달 다른 계약 줄은 기본으로 접고, 성명 앞 작은 화살표로 사람별로 편다
 	var openDup = {};
-	function isOpen(r) { return !!openDup[r.STAFF_SQ]; }
+	function isOpen(r) { return openDup[r.STAFF_SQ] !== false; } // 처음엔 펼쳐 둔다
 	// 수습기간 열 접기. 이 브라우저에 기억한다
 	var probOpen = false;
 	try { probOpen = localStorage.getItem('payProb') === 'on'; } catch (e) {}
@@ -330,7 +362,8 @@
 		$('#btnClose').text(monthClosed ? '마감 해제' : '마감');
 		$('#btnImport').prop('disabled', monthClosed);
 		var list = rows.filter(visible);
-		var kp = [['지급 합계', sum(list, 'PAY_TOTAL')], ['공제 합계', sum(list, 'DED_TOTAL')], ['실지급 합계', sum(list, 'NET')], ['기타 합계', sum(list, 'BUY')], ['수수료 합계', sum(list, 'FEE')], ['영업이익', sum(list, 'PROFIT')], ['확인 필요', list.filter(function(r) { return r.FLAGS.length; }).length, 'bad']];
+		var t = totals(list);
+		var kp = [['지급 합계', t.pay], ['공제 합계', t.ded], ['실지급 합계', t.net], ['기타 합계', t.buy], ['수수료 합계', t.fee], ['영업이익', t.profit], ['확인 필요', t.flag, 'bad']];
 		$('#kpis').empty().append(kp.map(function(k) { return $('<div class="dp-kpi">').addClass(k[2] || '').append($('<span>').text(k[0])).append($('<b>').text(dpWon(k[1]))); }));
 		renderChips();
 		renderLedger(list);
@@ -412,7 +445,18 @@
 		if (!list.length) $b.append('<tr><td colspan="40" class="text-center text-muted py-4">해당하는 급여가 없습니다. 체크를 바꾸거나, 투입현황에 투입을 등록하면 자동으로 생깁니다.</td></tr>');
 		list.forEach(function(r) {
 			// 다른 계약(정규 직원의 기타·외부 계약)은 우리 급여가 아니다: 줄을 따로 두고 지급계·실지급도 그 줄에 따로 보인다
-			var cs = contracts(r), dup = cs.length > 1, open = dup && isOpen(r), own = cs.filter(function(d) { return !isOther(r, d); }), span = open ? Math.max(1, own.length) : 1;
+			if (!ownShown(r)) {
+				// 다른 계약 형태만 체크했을 때: 그 계약 줄만 이름을 붙여 보인다
+				contracts(r).filter(function(d) { return isOther(r, d) && otherShown(r, d); }).forEach(function(d) {
+					$b.append($('<tr class="pl-other">').attr('data-sq', r.STAFF_SQ).toggleClass('pl-picked', !!picked[r.STAFF_SQ]).toggleClass('pl-secret', !!r.SECRET)
+						.append($('<td class="pl-pick-col">').append($('<input type="checkbox" class="pl-pick">').val(r.STAFF_SQ).prop('checked', !!picked[r.STAFF_SQ]).attr('aria-label', r.STAFF_NM + ' 체크')))
+						.append($('<td>').append(r.SECRET ? $('<span title="시크릿">').text('🔒 ') : '').append($('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { openDetail(r); })))
+						.append(otherCells(r, d)));
+				});
+				return;
+			}
+			var cs = contracts(r).filter(function(d) { return !isOther(r, d) || otherShown(r, d); }), dup = cs.length > 1, open = dup && isOpen(r), own = cs.filter(function(d) { return !isOther(r, d); }), span = open ? Math.max(1, own.length) : 1;
+			var pv = plView(r);
 			function rs($td) { return $td.attr('rowspan', span); }
 			function rsAll($td) { return $td.attr('rowspan', open ? cs.length : 1); }
 			var $tr = $('<tr>').attr('data-sq', r.STAFF_SQ).toggleClass('pl-picked', !!picked[r.STAFF_SQ]).toggleClass('pl-secret', !!r.SECRET).toggleClass('pl-dup', dup)
@@ -426,7 +470,7 @@
 			$tr.append(rs($('<td class="dp-num c-ded font-weight-bold pl-calc">').text(dpWon(r.DED_TOTAL)))).append(rs($('<td class="dp-num font-weight-bold pl-calc">').text(dpWon(r.NET))))
 				.append(rs($('<td class="dp-num pl-calc">').text(r.DELTA_PCT === undefined ? '' : (r.DELTA_PCT > 0 ? '+' : '') + r.DELTA_PCT + '%').toggleClass('text-danger', Math.abs(r.DELTA_PCT || 0) >= 10)))
 				.append(rs($('<td class="pl-stub">')))
-				.append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.REAL_SALE)))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(Number(r.BUY) ? dpWon(r.BUY) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(Number(r.FEE) ? dpWon(r.FEE) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.COMPANY)))).append(rs(r.OFFICE ? $('<td class="dp-num pl-profit text-muted" title="투입현황에서 내근직으로 켠 사람은 영업이익(합계 포함)에서 뺍니다">').text('내근 제외') : $('<td class="dp-num pl-profit font-weight-bold pl-calc">').text(dpWon(r.PROFIT))))
+				.append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(pv.sale)))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(pv.buy ? dpWon(pv.buy) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(pv.fee ? dpWon(pv.fee) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.COMPANY)))).append(rs(r.OFFICE ? $('<td class="dp-num pl-profit text-muted" title="투입현황에서 내근직으로 켠 사람은 영업이익(합계 포함)에서 뺍니다">').text('내근 제외') : $('<td class="dp-num pl-profit font-weight-bold pl-calc">').text(dpWon(pv.profit))))
 				.append(rs($('<td>')).append(r.FLAGS.map(function(f) { return flagChip(r, f); })))
 				.append(rs($('<td>')).append(countBtn('💬', r.MEMO_CNT, r.STAFF_NM + ' 메모', function() { memoPopup(r); })))
 				.append(rs($('<td>')).append(countBtn('✎', r.CHG_CNT, r.STAFF_NM + ' 수정이력', function() { historyPopup(r); })));
@@ -434,13 +478,7 @@
 			if (open) cs.slice(1).forEach(function(d) {
 				var $c = $('<tr class="pl-child pl-dup">').attr('data-sq', r.STAFF_SQ).toggleClass('pl-picked', !!picked[r.STAFF_SQ]).toggleClass('pl-secret', !!r.SECRET).append(contractCells(r, d, false));
 				if (!isOther(r, d)) { $b.append($c.append($('<td class="dp-num">').text(dpWon(d.BASE_AMT)))); return; }
-				// 다른 계약 줄: 계약 단가·지급계·실지급만, 수당·공제·손익 칸은 비운다
-				$c.addClass('pl-other').append($('<td class="dp-num">').text(dpWon(d.BASE_AMT)).attr('title', '다른 계약 · 매입처에 주는 돈(우리 급여 아님, 급여명세서 없음)'));
-				ALLOW.forEach(function() { $c.append('<td class="x-allow"></td>'); });
-				$c.append($('<td class="dp-num c-allow font-weight-bold">').text(dpWon(d.BASE_AMT)));
-				DED.forEach(function() { $c.append('<td class="x-ded"></td>'); });
-				$c.append('<td class="c-ded"></td>').append($('<td class="dp-num font-weight-bold">').text(dpWon(d.BASE_AMT))).append('<td></td><td class="pl-stub"></td><td class="x-pl"></td><td class="x-pl"></td><td class="x-pl"></td><td class="x-pl"></td><td class="pl-profit"></td><td></td><td></td><td></td>');
-				$b.append($c);
+				$b.append($('<tr class="pl-child pl-dup pl-other">').attr('data-sq', r.STAFF_SQ).toggleClass('pl-picked', !!picked[r.STAFF_SQ]).toggleClass('pl-secret', !!r.SECRET).append(otherCells(r, d)));
 			});
 		});
 		applyBands();
@@ -459,6 +497,19 @@
 			$('<td>').text(d.DEPLOY_SQ ? period(d) : ''),
 			$('<td class="pl-prob">').append(prob && prob.inMonth ? [$('<span class="full">').text(prob.from.format('YY/MM/DD') + '~' + prob.to.format('YY/MM/DD')), $('<span class="dot">').attr('title', '수습 ' + prob.from.format('YY/MM/DD') + '~' + prob.to.format('YY/MM/DD')).text('●')] : ''),
 			saleCell(d)];
+	}
+
+	// 다른 계약 줄의 칸들(성명 뒤부터): 계약 단가·지급계·실지급만, 수당·공제·손익 칸은 비운다
+	function otherCells(r, d) {
+		var out = contractCells(r, d, false), amt = dpWon(d.BASE_AMT);
+		out.push($('<td class="dp-num">').text(amt).attr('title', '다른 계약 · 매입처에 주는 돈(우리 급여 아님, 급여명세서 없음)'));
+		ALLOW.forEach(function() { out.push($('<td class="x-allow">')); });
+		out.push($('<td class="dp-num c-allow font-weight-bold">').text(amt));
+		DED.forEach(function() { out.push($('<td class="x-ded">')); });
+		out.push($('<td class="c-ded">'), $('<td class="dp-num font-weight-bold">').text(amt), $('<td>'), $('<td class="pl-stub">'));
+		for (var i = 0; i < 4; i++) out.push($('<td class="x-pl">'));
+		out.push($('<td class="pl-profit">'), $('<td>'), $('<td>'), $('<td>'));
+		return out;
 	}
 
 	// 매출단가: 투입현황과 같은 모양(dpSaleFill). 급여의 건별 매출단가는 이미 직접계약을 뺀 값이고 일할 금액은 저장된 실매출
@@ -529,7 +580,7 @@
 	function applyBands() {
 		$('#ledger [data-t]').each(function() {
 			var t = $(this).attr('data-t'), on = !!shown[t];
-			if (this.tagName === 'TH') $(this).attr({ colspan: on ? +$(this).attr('data-span') + (t === 'show-pl' ? 0 : 1) : t === 'show-pl' ? 2 : 1, 'aria-expanded': on }).text($(this).attr('data-label') + (on ? ' ▾ 접기' : ' ▸'));
+			if (this.tagName === 'TH') $(this).attr({ colspan: on ? +$(this).attr('data-span') + (t === 'show-pl' ? 0 : 1) : 1, 'aria-expanded': on }).text($(this).attr('data-label') + (on ? ' ▾ 접기' : ' ▸'));
 			else $(this).attr('aria-pressed', on).text($(this).text().replace(on ? '펼치기' : '접기', on ? '접기' : '펼치기'));
 			$('#ledger').toggleClass(t, on);
 		});
