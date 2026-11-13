@@ -59,7 +59,7 @@
 			return $('<button type="button" role="tab">').attr({ 'data-v': v[0], 'aria-selected': view === v[0] }).toggleClass('on', view === v[0]).text(v[1]).append(n ? $('<span class="cnt">').text(n) : '');
 		}));
 		var test = VIEWS.filter(function(v) { return v[0] === view; })[0][2], $b = $('#ulBody').empty(), rows = list.filter(test);
-		if (!rows.length) $b.append('<tr><td colspan="5" class="text-center text-muted py-4">아직 업데이트 내역이 없습니다. 다음 배포부터 쌓입니다.</td></tr>');
+		if (!rows.length) boEmpty($b, '아직 업데이트 내역이 없습니다. 다음 배포부터 쌓입니다.');
 		rows.forEach(function(u) {
 			$b.append($('<tr tabindex="0">').on('click keydown', function(e) { if (e.type === 'keydown' && e.key !== 'Enter') return; BO_UPDATE(u.UPD_SQ); })
 				.append($('<td>').text(u.DEPLOY_DT)).append($('<td>').append($('<span class="td-cut">').text(u.TITLE))).append($('<td>').text(u.SCREENS || ''))

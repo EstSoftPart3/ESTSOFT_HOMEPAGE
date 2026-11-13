@@ -92,7 +92,7 @@
 
 	function render() {
 		var $b = $('#bList').empty();
-		if (!items.length) $b.append('<tr><td colspan="9" class="text-center text-muted py-4">상여 항목이 없습니다.</td></tr>');
+		if (!items.length) boEmpty($b, '상여 항목이 없습니다.');
 		items.forEach(function(b) {
 			var steps = dpSteps(b.STEPS), on = b.USE_YN === 'Y', id = 'use' + b.BONUS_SQ;
 			var $sw = $('<div class="custom-control custom-switch">').append($('<input type="checkbox" class="custom-control-input">').attr('id', id).prop('checked', on).on('change', function() {

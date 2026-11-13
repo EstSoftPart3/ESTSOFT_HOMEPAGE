@@ -236,12 +236,6 @@
 		$('#btnImport').on('click', function() { $('#importFiles').val(''); $('#importResult').empty(); $('#btnApply').prop('disabled', true); $('#importModal').modal('show'); });
 		$('#importFiles').on('change', preview);
 		$('#btnApply').on('click', apply);
-		$('#chks').on('change', 'input.pl-chk', function() { checked[this.value] = this.checked; render(); });
-		$('#chks').on('click', '#chkAll', function() {
-			var all = CHIPS.every(function(c) { return checked[c[0]]; });
-			CHIPS.forEach(function(c) { checked[c[0]] = !all; });
-			render();
-		});
 		$('#detailTabs').on('click', '.cate-tab', function() { detailTab = +$(this).attr('data-tab'); renderDetail(); });
 		// 위쪽 합계 카드 접기. 이 브라우저에만 기억한다
 		var kpiOpen = true;
@@ -362,14 +356,10 @@
 	}
 
 	function renderChips() {
-		var all = CHIPS.every(function(c) { return checked[c[0]]; });
-		var $c = $('#chks').empty().append($('<button type="button" class="btn btn-sm btn-outline-secondary" id="chkAll">').text(all ? '☑ 전체 해제' : '☐ 전체 선택'));
-		CHIPS.forEach(function(c) {
+		boChips('#chks', CHIPS.map(function(c) {
 			var n = c[0] === '_SECRET' ? rows.filter(function(r) { return r.SECRET; }).length : c[0] === '_FLAG' ? rows.filter(function(r) { return r.FLAGS.length; }).length : rows.filter(function(r) { return typesOf(r).some(function(t) { return chipOf(t) === c[0]; }); }).length;
-			if (c[0] === '_NONE' && !n) return;
-			$c.append($('<label class="pl-chip">').toggleClass('on', !!checked[c[0]]).toggleClass('alert', c[0] === '_FLAG').toggleClass('secret', c[0] === '_SECRET')
-				.append($('<input type="checkbox" class="pl-chk">').val(c[0]).prop('checked', !!checked[c[0]])).append($('<span>').text(c[1])).append($('<span class="cnt">').text(n)));
-		});
+			return { k: c[0], name: c[1], n: n, cls: c[0] === '_FLAG' ? 'alert' : c[0] === '_SECRET' ? 'secret' : '', hide: c[0] === '_NONE' && !n };
+		}), checked, render);
 	}
 
 	// 자동 계산 머리글의 작은 계산기 버튼
@@ -434,7 +424,7 @@
 			var x = sortVal(a), y = sortVal(b);
 			return (b.SECRET ? 1 : 0) - (a.SECRET ? 1 : 0) || sortDir * (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'ko', { numeric: true }));
 		});
-		if (!list.length) $b.append('<tr><td colspan="40" class="text-center text-muted py-4">해당하는 급여가 없습니다. 체크를 바꾸거나, 투입현황에 투입을 등록하면 자동으로 생깁니다.</td></tr>');
+		if (!list.length) boEmpty($b, '해당하는 급여가 없습니다. 체크를 바꾸거나, 투입현황에 투입을 등록하면 자동으로 생깁니다.');
 		list.forEach(function(r) {
 			// 다른 계약(정규 직원의 기타·외부 계약)은 우리 급여가 아니다: 줄을 따로 두고 지급계·실지급도 그 줄에 따로 보인다
 			if (!ownShown(r)) {
@@ -671,7 +661,7 @@
 					.append($('<td>').text(LABEL[h.FIELD_NM] || h.FIELD_NM)).append($('<td class="dp-num">').text(h.BEFORE_VAL === null && h.AFTER_VAL === null ? '' : dpWon(h.BEFORE_VAL) + ' → ' + dpWon(h.AFTER_VAL)))
 					.append($('<td>').text(h.REASON || '')).append($act));
 			});
-			if (!res.result.length) $b.append('<tr><td colspan="6" class="text-center text-muted py-3">이 달 수정이력이 없습니다.</td></tr>');
+			if (!res.result.length) boEmpty($b, '이 달 수정이력이 없습니다.');
 			$box.empty().append($('<div class="table-responsive">').append($t));
 			if (monthClosed) $box.append('<div class="small text-muted mt-2">마감된 달은 되돌릴 수 없습니다.</div>');
 			if (done) done();
@@ -731,7 +721,7 @@
 				.append($('<td class="dp-num">').text(dpWon(m.PAY_TOTAL))).append($('<td class="dp-num">').text(dpWon(m.DED_TOTAL))).append($('<td class="dp-num">').text(dpWon(m.NET)))
 				.append($('<td class="dp-num">').text(dpWon(m.PROFIT))));
 		});
-		if (!(year || []).length) $b.append('<tr><td colspan="7" class="text-center text-muted py-3">올해 급여 기록이 없습니다.</td></tr>');
+		if (!(year || []).length) boEmpty($b, '올해 급여 기록이 없습니다.');
 		$body.append($('<div class="table-responsive">').append($t));
 	}
 
@@ -748,7 +738,7 @@
 				.append($('<td class="small">').text(b.BASIS || '')).append($('<td class="dp-num">').append(off ? $('<s>').text(dpWon(b.AMT)) : dpWon(b.AMT)))
 				.append($('<td>').append($('<span class="dp-pill">').addClass(TONE[b.STATUS] || '').text(b.STATUS))).append($('<td class="small">').text(b.NOTE || '')));
 		});
-		if (!bonus.length) $b.append('<tr><td colspan="6" class="text-center text-muted py-3">상여 내역이 없습니다. 상여는 직원관리에서 켭니다.</td></tr>');
+		if (!bonus.length) boEmpty($b, '상여 내역이 없습니다. 상여는 직원관리에서 켭니다.');
 		$body.append($('<div class="table-responsive">').append($t));
 	}
 

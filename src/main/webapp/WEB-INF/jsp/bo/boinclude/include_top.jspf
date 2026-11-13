@@ -78,12 +78,12 @@
   	:is(.fb-pill, .eq-pill, .dp-pill, .sys-pill, .hm-pill).bad { background: #fdeaea; color: #a32020; }
   	:is(.fb-pill, .eq-pill, .dp-pill, .sys-pill, .hm-pill):is(.rent, .info) { background: #dff3f9; color: #0b6e8a; }
   	/* 체크 칩: 모든 화면 한 벌. 칩 줄 여백(.pl-chks 등)만 화면에 둔다 */
-  	.pl-chip, .ta-chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(17,17,17,.15); font-weight: 700; font-size: 12.5px; color: #444; cursor: pointer; user-select: none; margin: 0; background: #fff; }
-  	:is(.pl-chip, .ta-chip) input { margin: 0; cursor: pointer; }
-  	:is(.pl-chip, .ta-chip) .cnt { background: rgba(17,17,17,.08); border-radius: 999px; padding: 0 7px; font-size: 11px; }
-  	:is(.pl-chip, .ta-chip).on { border-color: #0b6e8a; background: #eef9fc; color: #0b6e8a; }
+  	.pl-chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(17,17,17,.15); font-weight: 700; font-size: 12.5px; color: #444; cursor: pointer; user-select: none; margin: 0; background: #fff; }
+  	.pl-chip input { margin: 0; cursor: pointer; }
+  	.pl-chip .cnt { background: rgba(17,17,17,.08); border-radius: 999px; padding: 0 7px; font-size: 11px; }
+  	.pl-chip.on { border-color: #0b6e8a; background: #eef9fc; color: #0b6e8a; }
   	.pl-chip.secret.on { border-color: #6b3fa0; background: #f4effc; color: #6b3fa0; }
-  	:is(.pl-chip, .ta-chip).alert.on { border-color: #a32020; background: #fdeaea; color: #a32020; }
+  	.pl-chip.alert.on { border-color: #a32020; background: #fdeaea; color: #a32020; }
   	.fb-seg { display: flex; gap: 4px; margin: 12px 0 8px; }
   	.fb-seg button { border: 1px solid rgba(17,17,17,.15); background: #fff; border-radius: 999px; padding: 2px 12px; font-size: 12px; font-weight: 700; color: #444; }
   	.fb-seg button.on { background: #111; border-color: #111; color: #fff; }

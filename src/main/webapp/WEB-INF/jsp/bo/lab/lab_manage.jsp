@@ -144,7 +144,7 @@
 		var name = $('#fName').val().trim().toLowerCase(), use = $('#fUse').val();
 		var list = teams.filter(function(t) { return (!name || t.TEAM_NM.toLowerCase().indexOf(name) >= 0) && (!use || t.USE_YN === use); });
 		var $b = $('#listBody').empty();
-		if (!list.length) $b.append('<tr><td colspan="7" class="text-center text-muted">연구팀이 없습니다.</td></tr>');
+		if (!list.length) boEmpty($b, '연구팀이 없습니다.');
 		list.forEach(function(t) {
 			$('<tr>').append($('<td>').append($('<a class="lab-open">').attr('href', '#t=' + t.TEAM_SQ).text(t.TEAM_NM)), $('<td>').text(t.FIELD_NM || ''), $('<td>').text(t.RSCH_CNT + '명'),
 				$('<td>').text(t.APPR_LINE || '미지정'), $('<td>').text(t.PRJ_CNT + '건'), $('<td>').text(t.USE_YN === 'Y' ? '사용' : '미사용'),
@@ -193,7 +193,7 @@
 	function drawMembers($b) {
 		$b.append(actions(['연구원 등록', function() { openMember(); }]));
 		var $t = $('<tbody>');
-		if (!detail.researchers.length) $t.append('<tr><td colspan="6" class="text-center text-muted">등록된 연구원이 없습니다.</td></tr>');
+		if (!detail.researchers.length) boEmpty($t, '등록된 연구원이 없습니다.');
 		detail.researchers.forEach(function(r) {
 			$('<tr>').append($('<td>').append($('<a href="#" class="lab-open">').text(r.STAFF_NM).click(function(e) { e.preventDefault(); openMember(r); })), $('<td>').text(r.DEPT_NM || ''),
 				$('<td>').text(ROLE[r.ROLE_CD] || r.ROLE_CD), $('<td>').text(r.START_DT), $('<td>').text(r.END_DT || '소속 중'), $('<td>').append(cardLink(r.STAFF_SQ))).appendTo($t);
@@ -215,7 +215,7 @@
 		var $t = $('<tbody>');
 		var rows = detail.researchers.filter(function(r) { return r.START_DT.slice(0, 4) <= String(year) && (!r.END_DT || r.END_DT.slice(0, 4) >= String(year)); })
 			.sort(function(a, b) { return (a.START_DT > b.START_DT) - (a.START_DT < b.START_DT); });
-		if (!rows.length) $t.append('<tr><td colspan="14" class="text-center text-muted">이 해에 소속된 연구원이 없습니다.</td></tr>');
+		if (!rows.length) boEmpty($t, '이 해에 소속된 연구원이 없습니다.');
 		rows.forEach(function(r) {
 			var $r = $('<tr>').append($('<td>').append($('<b>').text(r.STAFF_NM)));
 			months.forEach(function(m) {
@@ -372,7 +372,7 @@
 	function drawPick() {
 		var q = $('#pickSearch').val().trim().toLowerCase(), $b = $('#pickBody').empty();
 		var list = staff.filter(function(s) { return String(s.STAFF_SQ) === String(picked) || (q && ((s.STAFF_NM || '') + ' ' + (s.DEPT_NM || '')).toLowerCase().indexOf(q) >= 0); }).slice(0, 30);
-		if (!list.length) $b.append('<tr><td colspan="5" class="text-center text-muted">성명이나 부서로 검색해 주세요.</td></tr>');
+		if (!list.length) boEmpty($b, '성명이나 부서로 검색해 주세요.');
 		list.forEach(function(s) {
 			var $radio = $('<input type="radio" name="pick">').attr('aria-label', s.STAFF_NM + ' 선택').prop('checked', String(s.STAFF_SQ) === String(picked)).on('change', function() { picked = s.STAFF_SQ; });
 			$('<tr>').append($('<td>').append($radio), $('<td>').text(s.STAFF_NM + (s.STATUS_CD === 'LEFT' ? ' (퇴사)' : '')), $('<td>').text(s.DEPT_NM || ''), $('<td>').text(s.POSITION_NM || ''), $('<td>').append(cardLink(s.STAFF_SQ))).appendTo($b);

@@ -299,25 +299,15 @@
 		loadDrive();
 	});
 
-	$(document).on('change', '#stChks input.pl-chk', function() { shownSt[this.value] = this.checked; render(); });
-	$(document).on('click', '#stChks #stAll', function() {
-		var keys = chipKeys(), all = keys.every(function(k) { return shownSt[k]; });
-		keys.forEach(function(k) { shownSt[k] = !all; });
-		render();
-	});
-
 	// 시크릿 계정에게만 서버가 secretViewer 와 시크릿 행(SECRET)을 준다. 투입현황·급여관리처럼 맨 앞에 🔒 시크릿 칩
 	var SECRET_VIEW = false;
 	function chipKeys() { return (SECRET_VIEW ? ['_SECRET'] : []).concat(Object.keys(STATUS)); }
 
 	function renderStatusChips() {
-		var keys = chipKeys(), all = keys.every(function(k) { return shownSt[k]; });
-		var $c = $('#stChks').empty().append($('<button type="button" class="btn btn-sm btn-outline-secondary" id="stAll">').text(all ? '☑ 전체 해제' : '☐ 전체 선택'));
-		keys.forEach(function(k) {
-			var n = k === '_SECRET' ? rows.filter(function(r) { return r.SECRET; }).length : rows.filter(function(r) { return r.STATUS_CD === k; }).length;
-			$c.append($('<label class="pl-chip">').toggleClass('on', !!shownSt[k]).toggleClass('secret', k === '_SECRET').append($('<input type="checkbox" class="pl-chk">').val(k).prop('checked', !!shownSt[k]))
-				.append($('<span>').text(k === '_SECRET' ? '🔒 시크릿' : STATUS[k])).append($('<span class="cnt">').text(n)));
-		});
+		boChips('#stChks', chipKeys().map(function(k) {
+			var secret = k === '_SECRET';
+			return { k: k, name: secret ? '🔒 시크릿' : STATUS[k], cls: secret ? 'secret' : '', n: rows.filter(function(r) { return secret ? r.SECRET : r.STATUS_CD === k; }).length };
+		}), shownSt, render);
 	}
 
 	function onlyLeft() { return shownSt.LEFT && !Object.keys(STATUS).some(function(k) { return k !== 'LEFT' && shownSt[k]; }); }
@@ -466,7 +456,7 @@
 			['JOIN_DT', '입사일'], shownSt.LEFT ? ['LEAVE_DT', '퇴사일'] : null, ['_TENURE', '근속'], ['_DOCS', '서류'], BN && !onlyLeft() ? ['_BONUS', '상여 적용'] : null, ['_MEMO', '메모']].filter(Boolean);
 		$('#listHead').empty().append($('<tr>').append(cols.map(function(c) { return $('<th>').text(c[1]); })));
 		var $body = $('#listBody').empty();
-		if (!list.length) { $body.append($('<tr>').append($('<td class="text-center text-muted py-4">').attr('colspan', cols.length).text('해당하는 직원이 없습니다.'))); return; }
+		if (!list.length) { boEmpty($body, '해당하는 직원이 없습니다.'); return; }
 		list.forEach(function(r) {
 			var $tr = $('<tr>').toggleClass('st-secret-row', !!r.SECRET);
 			cols.forEach(function(c) {
@@ -926,7 +916,7 @@
 			$('#scanFolder').attr('href', res.result.folderLink);
 			var linked = (docs && docs.list || []).map(function(f) { return f.FILE_ID + '|' + f.DOC_CD; });
 			var $b = $('#scanBody').empty();
-			if (!scanned.length) $b.append('<tr><td colspan="3" class="text-center text-muted py-3">폴더에 파일이 없습니다.</td></tr>');
+			if (!scanned.length) boEmpty($b, '폴더에 파일이 없습니다.');
 			scanned.forEach(function(f, i) {
 				var $sel = $('<select class="form-control form-control-sm">').attr('aria-label', f.FILE_NM + ' 서류 종류').append('<option value="">연결 안 함</option>');
 				DOCS.forEach(function(d) { $sel.append($('<option>').val(d[0]).text(d[1])); });

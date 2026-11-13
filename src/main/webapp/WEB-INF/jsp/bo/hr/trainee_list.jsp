@@ -333,7 +333,7 @@
 	function renderImport() {
 		var kw = $.trim($('#importKeyword').val()).toLowerCase(), $b = $('#importBody').empty();
 		var list = candidates.filter(function(r) { return !kw || [r.APLY_NM, r.PHONE].join(' ').toLowerCase().indexOf(kw) >= 0; });
-		if (!list.length) { $b.append($('<tr>').append($('<td class="cal-empty" colspan="6">').text('가져올 면접자가 없습니다.'))); return; }
+		if (!list.length) { boEmpty($b, '가져올 면접자가 없습니다.'); return; }
 		list.forEach(function(r) {
 			// 엑셀에서 이관한 교육생은 면접자와 연결돼 있지 않아 이름으로만 중복을 알려 준다. 동명이인일 수 있어 막지는 않는다
 			var dup = rows.some(function(t) { return t.TRN_NM === r.APLY_NM; });

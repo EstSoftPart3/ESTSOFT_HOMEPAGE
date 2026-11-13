@@ -263,15 +263,12 @@
 			var n = v[2] ? items.filter(v[2]).length : partnerRows().length;
 			return $('<button type="button" role="tab">').attr({ 'data-v': v[0], 'aria-selected': view === v[0] }).text(v[1]).append($('<b>').text(n));
 		}));
-		var all = CHIPS.every(function(c) { return checked[c[0]]; });
-		var $c = $('#chks').empty().append($('<button type="button" class="btn btn-sm btn-outline-secondary" id="chkAll">').text(all ? '☑ 전체 해제' : '☐ 전체 선택'));
-		CHIPS.forEach(function(c) {
+		boChips('#chks', CHIPS.map(function(c) {
 			var n = c[0] === '_GEN' ? items.filter(function(it) { return !it.staff; }).length : c[0] === '_FLAG' ? items.filter(function(it) { return it.flags; }).length
 				: items.filter(function(it) { return it.staff && [it.r.EMP_TYPE_CD].concat(it.cs.map(function(x) { return x.d && x.d.DEPLOY_TYPE; })).filter(Boolean).some(function(t) { return chipOf(t) === c[0]; }); }).length;
-			if (!n && c[0] !== '_GEN' && c[0] !== '_FLAG') return; // 이 달에 없는 고용형태 칩은 숨긴다
-			$c.append($('<label class="ta-chip">').toggleClass('on', !!checked[c[0]]).toggleClass('alert', c[0] === '_FLAG')
-				.append($('<input type="checkbox" class="ta-chk">').val(c[0]).prop('checked', !!checked[c[0]])).append(document.createTextNode(c[1] + ' ' + n)));
-		});
+			// 이 달에 없는 고용형태 칩은 숨긴다
+			return { k: c[0], name: c[1], n: n, cls: c[0] === '_FLAG' ? 'alert' : '', hide: !n && c[0] !== '_GEN' && c[0] !== '_FLAG' };
+		}), checked, render);
 		var list = filtered();
 		renderKpis(list);
 		if (view === 'PARTNER') renderPartners(); else renderTable(list);
@@ -324,7 +321,7 @@
 			return (a.staff ? 0 : 1) - (b.staff ? 0 : 1) || sortDir * (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'ko', { numeric: true }));
 		});
 		var $b = $('#taBody').empty(), f = { sale: 0, buy: 0, pay: 0, ded: 0, net: 0, profit: 0 };
-		if (!list.length) $b.append('<tr><td colspan="22" class="text-center text-muted py-4">해당하는 건이 없습니다. 체크나 기준월을 바꿔 보세요.</td></tr>');
+		if (!list.length) boEmpty($b, '해당하는 건이 없습니다. 체크나 기준월을 바꿔 보세요.');
 		list.forEach(function(it) {
 			f.sale += it.sale; f.buy += it.buy; f.profit += it.profit;
 			if (it.staff) { f.pay += num(it.r.PAY_TOTAL); f.ded += num(it.r.DED_TOTAL); f.net += num(it.r.NET); }
@@ -427,7 +424,7 @@
 		$('#ta').removeClass(BANDS.map(function(b) { return 'hide-' + b[0]; }).join(' '));
 		$('#taHead').empty().append('<tr><th>거래처</th><th class="dp-num">매출 건수</th><th class="dp-num">매출 공급가액</th><th class="dp-num">매입 건수</th><th class="dp-num">매입 공급가액</th><th class="dp-num">차액</th><th>세금계산서</th></tr>');
 		var rows = partnerRows(), $b = $('#taBody').empty(), t = { sale: 0, saleN: 0, buy: 0, buyN: 0 };
-		if (!rows.length) $b.append('<tr><td colspan="7" class="text-center text-muted py-4">이 달에 매출·매입 건이 없습니다.</td></tr>');
+		if (!rows.length) boEmpty($b, '이 달에 매출·매입 건이 없습니다.');
 		rows.forEach(function(p) {
 			var inv = invoices(p.lines);
 			t.sale += p.sale; t.saleN += p.saleN; t.buy += p.buy; t.buyN += p.buyN;
@@ -520,8 +517,6 @@
 		$('#ym').val(ym).on('change', function() { if (this.value) { ym = this.value; load(); } });
 		$('#prevYm, #nextYm').on('click', function() { ym = moment(ym + '-01').add(this.id === 'prevYm' ? -1 : 1, 'months').format('YYYY-MM'); $('#ym').val(ym); load(); });
 		$('#views').on('click', 'button', function() { view = $(this).attr('data-v'); render(); });
-		$('#chks').on('change', 'input.ta-chk', function() { checked[this.value] = this.checked; render(); })
-			.on('click', '#chkAll', function() { var all = CHIPS.every(function(c) { return checked[c[0]]; }); CHIPS.forEach(function(c) { checked[c[0]] = !all; }); render(); });
 		$('#keyword').on('input', render);
 		$(document).on('change', '.ta-filter', render);
 		function setFold(key, on) { fold[key] = on; try { localStorage.setItem('tradeAllFold', JSON.stringify(fold)); } catch (e) {} }

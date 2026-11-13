@@ -46,6 +46,7 @@
 
 
 <script src="/resources/common/ui-table.js?v=20261113col"></script>
+<script src="/resources/common/bo-list.js?v=20261113"></script>
 <script src="/resources/common/bo-tabs.js?v=20261113b"></script>
 <script src="/resources/common/bo-feedback.js?v=20261113"></script>
 <script>

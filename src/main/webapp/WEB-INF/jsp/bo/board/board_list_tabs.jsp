@@ -144,7 +144,7 @@
 			.append('<th class="text-center" style="width:80px">블라인드</th><th class="text-center" style="width:64px">삭제</th>');
 
 		var $body = $('#boardBody').empty();
-		if (!list.length) $body.append($('<tr>').append($('<td class="cal-empty">').attr('colspan', cols.length + 3).text(search.kw ? '검색 결과가 없습니다.' : '글이 없습니다.')));
+		if (!list.length) boEmpty($body, search.kw ? '검색 결과가 없습니다.' : '글이 없습니다.');
 		shown.forEach(function(r) {
 			var $tr = $('<tr>').attr('data-sq', r.brdSq).toggleClass('is-deleted', r.delYn === 'Y').toggleClass('is-blind', r.blindYn === 'Y');
 			$tr.append($('<td class="chk">').append($('<input type="checkbox" class="pick">').attr('aria-label', r.brdSq + '번 선택').attr('data-sq', r.brdSq).prop('checked', !!picked[r.brdSq])));

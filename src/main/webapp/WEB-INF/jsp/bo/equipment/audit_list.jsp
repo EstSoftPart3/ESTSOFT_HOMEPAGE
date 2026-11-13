@@ -202,7 +202,7 @@
 		var list = visible(), byPerson = view === 'person';
 		if (!byPerson) list = list.slice().sort(function(a, b) { return a.EQP_NO.localeCompare(b.EQP_NO); });
 		var $b = $('#body').empty(), last = null;
-		if (!list.length) $b.append('<tr><td colspan="8" class="cal-empty">해당하는 장비가 없습니다.</td></tr>');
+		if (!list.length) boEmpty($b, '해당하는 장비가 없습니다.');
 		list.forEach(function(r) {
 			var key = r.HOLDER_NM || '보관 장비', $who = $('<td>');
 			if (!byPerson || key !== last) {

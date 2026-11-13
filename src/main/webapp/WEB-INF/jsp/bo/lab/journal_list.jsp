@@ -154,7 +154,7 @@
 			return String(p.TEAM_SQ) === team && (!name || p.PRJ_NM.toLowerCase().indexOf(name) >= 0) && (!run || (run === 'ON') === (p.END_DT >= now));
 		});
 		var $b = $('#listBody').empty();
-		if (!list.length) $b.append('<tr><td colspan="6" class="text-center text-muted">과제가 없습니다.</td></tr>');
+		if (!list.length) boEmpty($b, '과제가 없습니다.');
 		list.forEach(function(p) {
 			$('<tr>').append($('<td>').append($('<a class="lab-open">').attr('href', '#p=' + p.PRJ_SQ).text(p.PRJ_NM)),
 				$('<td>').text(p.START_DT + ' ~ ' + p.END_DT), $('<td>').text(p.PLACE), $('<td>').text(p.LAST_YM || ''),
@@ -268,7 +268,7 @@
 		if (prjTab === 0) {
 			$b.append($('<div class="lab-actions">').append($('<button type="button" class="btn btn-sm btn-primary"><i class="fas fa-plus"></i> 일지 등록</button>').click(function() { openJournal(); })));
 			var $t = $('<tbody>');
-			if (!project.journals.length) $t.append('<tr><td colspan="6" class="text-center text-muted">일지가 없습니다.</td></tr>');
+			if (!project.journals.length) boEmpty($t, '일지가 없습니다.');
 			project.journals.forEach(function(j) {
 				var pdf = j.PDF_LINK ? $('<a target="_blank" rel="noopener">열기</a>').attr('href', j.PDF_LINK) : j.UPLOAD_ERR ? $('<span class="text-danger">업로드 실패</span>') : '';
 				var origin = fileLink(j.ATTACH_NM, j.ORIGIN_LINK);

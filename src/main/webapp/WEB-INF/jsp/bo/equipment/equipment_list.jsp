@@ -284,7 +284,7 @@
 		$('#mainTable').prop('hidden', focus);
 		$('#focusTable').prop('hidden', !focus);
 		if (focus) { renderFocus(list); return; }
-		if (!list.length) { $b.append('<tr><td colspan="12" class="cal-empty">해당하는 장비가 없습니다.</td></tr>'); return; }
+		if (!list.length) { boEmpty($b, '해당하는 장비가 없습니다.'); return; }
 		list.forEach(function(r) {
 			var $tr = $('<tr>');
 			$tr.append($('<td>').append($('<input type="checkbox" class="eq-check">').attr('aria-label', r.EQP_NO + ' 선택').val(r.EQP_SQ)));
@@ -312,7 +312,7 @@
 		var $b = $('#focusBody').empty();
 		$('#focusLabel').text('검토 사유');
 		list = list.slice().sort(function(a, b) { return (b.REVIEW_OPEN > 0) - (a.REVIEW_OPEN > 0); });
-		if (!list.length) { $b.append('<tr><td colspan="7" class="cal-empty">해당하는 장비가 없습니다.</td></tr>'); return; }
+		if (!list.length) { boEmpty($b, '해당하는 장비가 없습니다.'); return; }
 		list.forEach(function(r) {
 			var $why = $('<td>');
 			if (r.REVIEW_OPEN > 0) $why.append('<span class="eq-pill bad">대여일 없음</span> ');
@@ -399,7 +399,7 @@
 		$b.append('<div class="hr-section">대여이력</div>');
 		var $t = $('<table class="table table-sm mb-0"><thead><tr><th>사용자</th><th>대여일</th><th>반납일</th><th>용도</th><th>프로젝트·현장</th><th>인계자</th><th>증서</th><th>검토</th></tr></thead></table>');
 		var $body = $('<tbody>').appendTo($t);
-		if (!card.rents.length) $body.append('<tr><td colspan="8" class="text-muted text-center">대여이력이 없습니다.</td></tr>');
+		if (!card.rents.length) boEmpty($body, '대여이력이 없습니다.');
 		card.rents.forEach(function(x) {
 			var need = rentNeeds(x) || [];
 			var $tr = $('<tr>').toggleClass('eq-fix', need.length > 0).append(rentCell(x, 'HOLDER_NM', '사용자')).append(rentCell(x, 'START_DT', '대여일', 'date', need.indexOf('START_DT') >= 0));

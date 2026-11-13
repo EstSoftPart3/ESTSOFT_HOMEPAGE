@@ -230,12 +230,6 @@
 		$('#btnResetCols').on('click', function() { saveOrder(''); order = defaultOrder(); arrangeAll(); });
 		$('#ym').val(ym).on('change', function() { if (this.value) { ym = this.value; loadPay(render); } });
 		$('#prevYm, #nextYm').on('click', function() { ym = moment(ym + '-01').add(this.id === 'prevYm' ? -1 : 1, 'months').format('YYYY-MM'); $('#ym').val(ym); loadPay(render); });
-		$('#chks').on('change', 'input.pl-chk', function() { checked[this.value] = this.checked; render(); });
-		$('#chks').on('click', '#chkAll', function() {
-			var all = CHIPS.every(function(c) { return checked[c[0]]; });
-			CHIPS.forEach(function(c) { checked[c[0]] = !all; });
-			render();
-		});
 	});
 
 	function load(after) {
@@ -428,14 +422,10 @@
 	}
 
 	function renderChips(groups) {
-		var all = CHIPS.every(function(c) { return checked[c[0]]; });
-		var $c = $('#chks').empty().append($('<button type="button" class="btn btn-sm btn-outline-secondary" id="chkAll">').text(all ? '☑ 전체 해제' : '☐ 전체 선택'));
-		CHIPS.forEach(function(c) {
+		boChips('#chks', CHIPS.map(function(c) {
 			var n = groups.filter(function(g) { return g.rows.some(function(x) { return chipOf(x.EMP_TYPE_CD) === c[0]; }); }).length;
-			if (c[0] === '_NONE' && !n) return;
-			$c.append($('<label class="pl-chip">').toggleClass('on', !!checked[c[0]]).append($('<input type="checkbox" class="pl-chk">').val(c[0]).prop('checked', !!checked[c[0]]))
-				.append($('<span>').text(c[1])).append($('<span class="cnt">').text(n)));
-		});
+			return { k: c[0], name: c[1], n: n, hide: c[0] === '_NONE' && !n };
+		}), checked, render);
 	}
 
 	// ── 탭: 투입 현황 · 대기 현황 · 철수 임박 ──
@@ -536,7 +526,7 @@
 		$('#dpHead').empty().append($h);
 		bindDrag();
 		var $b = $('#dpBody').empty();
-		if (!groups.length) $b.append($('<tr>').append($('<td class="text-center text-muted py-4">').attr('colspan', order.length + payKeys().length + 1).text(moment(ym + '-01').format('YYYY년 M월') + '에 걸친 투입이 없습니다. 체크나 기준월을 바꿔 보세요.')));
+		if (!groups.length) boEmpty($b, moment(ym + '-01').format('YYYY년 M월') + '에 걸친 투입이 없습니다. 체크나 기준월을 바꿔 보세요.');
 		groups.forEach(function(g) { var open = isOpen(g); g.rows.forEach(function(r, i) { if (!i || open) $b.append(viewRow(r, g, i > 0).toggleClass('dp-dup', g.rows.length > 1)); }); });
 		arrangeAll();
 	}
@@ -715,7 +705,7 @@
 						.append($('<td>').text(h.FIELD_NM === 'NEW' ? histVal('', h.AFTER_VAL) : h.FIELD_NM === 'DELETE' ? histVal('', h.BEFORE_VAL) : histVal(h.FIELD_NM, h.BEFORE_VAL) + ' → ' + histVal(h.FIELD_NM, h.AFTER_VAL)))
 						.append($('<td>').text(h.REASON || '')).append($act));
 				});
-				if (!res.result.length) $b.append('<tr><td colspan="6" class="text-center text-muted py-3">수정이력이 없습니다.</td></tr>');
+				if (!res.result.length) boEmpty($b, '수정이력이 없습니다.');
 				$box.empty().append($('<div class="table-responsive" style="max-height:60vh">').append($t));
 				if (first) dpInfo(r.STAFF_NM + ' 투입 수정이력', $box);
 			});
@@ -920,7 +910,7 @@
 	function renderRest(list) {
 		var $t = $('<table class="table table-sm cal-table mb-0">').append('<thead><tr><th>성명</th><th>형태</th><th>직급·소속</th><th>휴직 기간</th><th>복귀</th><th>프로젝트</th><th>근속</th><th>프로젝트 이력</th></tr></thead>');
 		var $b = $('<tbody>').appendTo($t);
-		if (!list.length) $b.append('<tr><td colspan="8" class="text-center text-muted py-4">휴직 중인 사람이 없습니다. 투입 상세 팝업에서 휴직을 켜고 기간을 넣으면 여기에만 보입니다.</td></tr>');
+		if (!list.length) boEmpty($b, '휴직 중인 사람이 없습니다. 투입 상세 팝업에서 휴직을 켜고 기간을 넣으면 여기에만 보입니다.');
 		list.forEach(function(it) {
 			var s = it.s, x = it.x, back = x.REST_TO_DT ? moment(x.REST_TO_DT).add(1, 'days') : null;
 			var left = back ? back.diff(today, 'days') : null, plan = moment(x.REST_FROM_DT).isAfter(today);
@@ -939,7 +929,7 @@
 	function renderOffice(list) {
 		var $t = $('<table class="table table-sm cal-table mb-0">').append('<thead><tr><th>성명</th><th>형태</th><th>직급·소속</th><th>업무</th><th>근무지역</th><th>시작일</th><th>근속</th><th>프로젝트 이력</th></tr></thead>');
 		var $b = $('<tbody>').appendTo($t);
-		if (!list.length) $b.append('<tr><td colspan="8" class="text-center text-muted py-4">내근직이 없습니다. 투입 상세 팝업에서 내근직을 켜면 여기에만 보입니다.</td></tr>');
+		if (!list.length) boEmpty($b, '내근직이 없습니다. 투입 상세 팝업에서 내근직을 켜면 여기에만 보입니다.');
 		list.forEach(function(it) {
 			var s = it.s, x = it.x;
 			$b.append($('<tr>').toggleClass('dp-secret', !!s.SECRET)
@@ -977,7 +967,7 @@
 		var KIND = { WAIT: ['대기', 'warn'], NONE: ['이력 없음', ''], FUTURE: ['투입 예정', 'rent'] };
 		var $t = $('<table class="table table-sm cal-table mb-0">').append('<thead><tr><th>성명</th><th>구분</th><th>직급·소속</th><th>거주지역</th><th>희망지역</th><th>입사일</th><th>대기 기간</th><th>프로젝트 이력</th><th><span class="sr-only">작업</span></th></tr></thead>');
 		var $b = $('<tbody>').appendTo($t);
-		if (!list.length) $b.append('<tr><td colspan="9" class="text-center text-muted py-4">대기 중인 직원이 없습니다.</td></tr>');
+		if (!list.length) boEmpty($b, '대기 중인 직원이 없습니다.');
 		list.forEach(function(it) {
 			var s = it.s, k = KIND[it.kind];
 			var wait = it.kind === 'FUTURE' ? moment(it.future.START_DT).diff(today, 'days') + '일 뒤 투입' : it.days + '일' + (it.kind === 'NONE' ? ' (입사 후)' : '');
@@ -1047,7 +1037,7 @@
 		var thisM = moment().format('YYYY-MM');
 		var $t = $('<table class="table table-sm cal-table mb-0">').append('<thead><tr><th>성명</th><th>형태</th><th>거주지역</th><th>근무지역</th><th>희망지역</th><th>고객사 · 프로젝트</th><th>철수일</th><th>남은 기간</th><th>프로젝트 이력</th><th><span class="sr-only">작업</span></th></tr></thead>');
 		var $b = $('<tbody>').appendTo($t);
-		if (!list.length) $b.append('<tr><td colspan="10" class="text-center text-muted py-4">이번 달·다음 달 철수 예정자가 없습니다.</td></tr>');
+		if (!list.length) boEmpty($b, '이번 달·다음 달 철수 예정자가 없습니다.');
 		list.forEach(function(it) {
 			var x = it.x, s = staffOf(x.STAFF_SQ), d = moment(x.END_DT).diff(today, 'days');
 			var $tr = $('<tr>').toggleClass('dp-secret', !!x.SECRET).append($('<td>').append($('<button type="button" class="dp-name">').text(x.STAFF_NM).on('click', function() { openDetail(x); })))

@@ -257,7 +257,7 @@
 		var kw = $.trim($('#keyword').val()).toLowerCase();
 		var list = rows.filter(function(r) { return inTab(r, tab) && (!kw || [r.PARTNER_NM, r.BIZ_NO, r.MGR_NM].some(function(v) { return v && v.toLowerCase().indexOf(kw) >= 0; })); });
 		var $b = $('#body').empty();
-		if (!list.length) $b.append('<tr><td colspan="10" class="text-center text-muted py-4">해당하는 거래처가 없습니다.</td></tr>');
+		if (!list.length) boEmpty($b, '해당하는 거래처가 없습니다.');
 		list.forEach(function(r) {
 			var used = Number(r.USE_CNT) > 0;
 			$b.append($('<tr>').toggleClass('text-muted', r.USE_YN !== 'Y')

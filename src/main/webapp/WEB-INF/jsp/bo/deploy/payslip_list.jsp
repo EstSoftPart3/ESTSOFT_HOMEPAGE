@@ -199,12 +199,6 @@
 	$(function() {
 		$('#ym').val(ym).on('change', function() { if (this.value) { ym = this.value; picked = {}; load(); } });
 		$('#prevYm, #nextYm').on('click', function() { ym = moment(ym + '-01').add(this.id === 'prevYm' ? -1 : 1, 'months').format('YYYY-MM'); $('#ym').val(ym); picked = {}; load(); });
-		$('#chks').on('change', 'input.pl-chk', function() { checked[this.value] = this.checked; render(); });
-		$('#chks').on('click', '#chkAll', function() {
-			var keys = chipKeys(), all = keys.every(function(k) { return checked[k]; });
-			keys.forEach(function(k) { checked[k] = !all; });
-			render();
-		});
 		$('#psHead').on('change', '#pickAll', function() { var on = this.checked; shown().forEach(function(r) { if (on) picked[r.STAFF_SQ] = true; else delete picked[r.STAFF_SQ]; }); render(); });
 		$('#psBody').on('change', 'input.ps-chk', function() { if (this.checked) picked[this.value] = true; else delete picked[this.value]; paintBar(); });
 		$('#btnMail').on('click', openSend);
@@ -257,7 +251,7 @@
 				$l.append($('<tr>').append($('<td>').text(x.REG_DT)).append($('<td>').text(x.EMPLY_NM || '')).append($('<td>').text(dpYmLabel(x.PAY_YM))).append($('<td>').text(x.TO_ADDR || ''))
 					.append($('<td>').append($('<span class="dp-pill">').addClass(x.RESULT === 'OK' ? 'ok' : 'bad').text(x.RESULT === 'OK' ? '보냄' : '실패')).append(x.ERROR_MSG ? document.createTextNode(' ' + x.ERROR_MSG) : '')));
 			});
-			if (!taxConf.logs.length) $l.append('<tr><td colspan="5" class="text-center text-muted py-3">보낸 적이 없습니다.</td></tr>');
+			if (!taxConf.logs.length) boEmpty($l, '보낸 적이 없습니다.');
 			paintTaxRange();
 		});
 	}
@@ -302,7 +296,6 @@
 			} });
 	}
 
-	function chipKeys() { return (secretViewer ? ['_SECRET'] : []).concat(TYPES.map(function(c) { return c[0]; }), SENT.map(function(c) { return c[0]; })); }
 	function chipOf(type) { var c = TYPES.filter(function(c) { return c[2].indexOf(type) >= 0; })[0]; return c ? c[0] : 'BIZ'; }
 	function typesOf(r) { var t = (r.TYPES || []).filter(Boolean); return t.length ? t : [r.EMP_TYPE_CD]; }
 	function sentOf(r) { return r.LAST ? r.LAST.RESULT : 'NONE'; }
@@ -344,7 +337,7 @@
 		});
 		$('#psHead').empty().append($h.append('<th>명세서</th>'));
 		var $b = $('#psBody').empty();
-		if (!list.length) $b.append('<tr><td colspan="11" class="text-center text-muted py-4">해당하는 급여가 없습니다. 체크나 달을 바꿔 보세요.</td></tr>');
+		if (!list.length) boEmpty($b, '해당하는 급여가 없습니다. 체크나 달을 바꿔 보세요.');
 		list.forEach(function(r) {
 			$b.append($('<tr>').toggleClass('ps-secret', !!r.SECRET)
 				.append($('<td>').append($('<input type="checkbox" class="ps-chk">').val(r.STAFF_SQ).prop('checked', !!picked[r.STAFF_SQ]).attr('aria-label', r.STAFF_NM + ' 선택')))
@@ -360,15 +353,11 @@
 	}
 
 	function renderChips() {
-		var keys = chipKeys(), all = keys.every(function(k) { return checked[k]; });
-		var $c = $('#chks').empty().append($('<button type="button" class="btn btn-sm btn-outline-secondary" id="chkAll">').text(all ? '☑ 전체 해제' : '☐ 전체 선택'));
-		function chip(k, name, n, cls) {
-			$c.append($('<label class="pl-chip">').addClass(cls || '').toggleClass('on', !!checked[k]).append($('<input type="checkbox" class="pl-chk">').val(k).prop('checked', !!checked[k])).append($('<span>').text(name)).append($('<span class="cnt">').text(n)));
-		}
-		if (secretViewer) chip('_SECRET', '🔒 시크릿', rows.filter(function(r) { return r.SECRET; }).length, 'secret');
-		TYPES.forEach(function(c) { chip(c[0], c[1], rows.filter(function(r) { return typesOf(r).some(function(t) { return chipOf(t) === c[0]; }); }).length); });
-		$c.append('<span class="pl-sep" aria-hidden="true"></span>');
-		SENT.forEach(function(c) { chip(c[0], c[1], rows.filter(function(r) { return sentOf(r) === c[0]; }).length); });
+		var chips = secretViewer ? [{ k: '_SECRET', name: '🔒 시크릿', cls: 'secret', n: rows.filter(function(r) { return r.SECRET; }).length }] : [];
+		TYPES.forEach(function(c) { chips.push({ k: c[0], name: c[1], n: rows.filter(function(r) { return typesOf(r).some(function(t) { return chipOf(t) === c[0]; }); }).length }); });
+		chips.push('<span class="pl-sep" aria-hidden="true"></span>');
+		SENT.forEach(function(c) { chips.push({ k: c[0], name: c[1], n: rows.filter(function(r) { return sentOf(r) === c[0]; }).length }); });
+		boChips('#chks', chips, checked, render);
 	}
 
 	function paintBar() {
@@ -389,7 +378,7 @@
 					$b.append($('<tr>').append($('<td>').text(x.REG_DT)).append($('<td>').text(x.EMPLY_NM || '')).append($('<td>').text(x.TO_ADDR || '—'))
 						.append($('<td>').append($('<span class="dp-pill">').addClass(x.RESULT === 'OK' ? 'ok' : 'bad').text(x.RESULT === 'OK' ? '보냄' : '실패')).append(x.ERROR_MSG ? document.createTextNode(' ' + x.ERROR_MSG) : '')));
 				});
-				if (!res.result.length) $b.append('<tr><td colspan="4" class="text-center text-muted py-3">보낸 적이 없습니다.</td></tr>');
+				if (!res.result.length) boEmpty($b, '보낸 적이 없습니다.');
 				dpInfo(r.STAFF_NM + ' · ' + dpYmLabel(ym) + ' 명세서 발송 이력', $('<div class="table-responsive">').append($t));
 			});
 		});
@@ -475,7 +464,7 @@
 				}));
 			$h.append($('<tr>').append($('<td>').text(h.REG_DT)).append($('<td>').text(h.EMPLY_NM || h.EMPLY_ID)).append($('<td>').text(h.SUMMARY)).append($act));
 		});
-		if (!conf.hist.length) $h.append('<tr><td colspan="4" class="text-center text-muted py-3">아직 바꾼 기록이 없습니다.</td></tr>');
+		if (!conf.hist.length) boEmpty($h, '아직 바꾼 기록이 없습니다.');
 		$('#confTabs').empty().append(hrTab('account', '메일 계정', conf.VERIFIED_YN === 'Y' ? '' : '!', confTab === 'account')).append(hrTab('body', '메일 내용', '', confTab === 'body'))
 			.append(hrTab('hist', '설정 이력', conf.hist.length || '', confTab === 'hist'));
 	}

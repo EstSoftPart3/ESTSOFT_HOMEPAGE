@@ -147,7 +147,7 @@
 		$('<div class="d-flex mb-2" style="max-width:420px">').append($input).append($add).appendTo($b);
 		var $body = $('<tbody>');
 		$('<div class="table-responsive">').append($('<table class="table table-sm table-hover cal-table mb-2">').append('<thead><tr><th>이름</th><th>아이디</th><th>이메일</th><th>추가일</th><th></th></tr></thead>').append($body)).appendTo($b);
-		if (!list.length) $body.append('<tr><td colspan="5" class="cal-empty">아직 이 권한을 가진 사용자가 없습니다.</td></tr>');
+		if (!list.length) boEmpty($body, '아직 이 권한을 가진 사용자가 없습니다.');
 		list.forEach(function(u) {
 			$('<tr>').append($('<td>').text(u.EMPLY_NM || '')).append($('<td class="sys-mono">').text(u.EMPLY_ID)).append($('<td>').text(u.EMPLY_EMAIL || '')).append($('<td>').text(u.REG_DT || ''))
 				.append($('<td class="text-right">').append($('<button type="button" class="btn btn-xs btn-outline-danger">제외</button>').attr('aria-label', (u.EMPLY_NM || u.EMPLY_ID) + ' 제외').on('click', function() { removeUser(u); }))).appendTo($body);

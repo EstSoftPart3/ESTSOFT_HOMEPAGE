@@ -231,7 +231,7 @@
 
 	function drawList(list) {
 		var $b = $('#listBody').empty();
-		if (!list.length) $b.append('<tr><td colspan="10" class="text-center text-muted">이 달에 해당하는 건이 없습니다.</td></tr>');
+		if (!list.length) boEmpty($b, '이 달에 해당하는 건이 없습니다.');
 		list.slice().sort(function(a, b) { return pName(a).localeCompare(pName(b), 'ko') || String(a.ITEM_NM).localeCompare(String(b.ITEM_NM), 'ko'); }).forEach(function(l) {
 			var a = Number(l.AMT || 0), $amt = $('<td class="dp-num">'), $item = $('<td class="item">').attr('title', l.ITEM_NM);
 			if (l.SRC_CD === 'D') {

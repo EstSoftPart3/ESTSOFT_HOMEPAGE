@@ -113,7 +113,7 @@
 	function renderList(list) {
 		var $body = $('#evtBody').empty();
 		if (!list || !list.length) {
-			$body.append('<tr><td colspan="4" class="cal-empty">이 기간에 확정된 일정이 없습니다.</td></tr>');
+			boEmpty($body, '이 기간에 확정된 일정이 없습니다.');
 			return;
 		}
 		list.forEach(function(e) {

@@ -53,12 +53,6 @@
 
 	$(function() {
 		load();
-		$('#chks').on('change', 'input.pl-chk', function() { checked[this.value] = this.checked; render(); });
-		$('#chks').on('click', '#chkAll', function() {
-			var all = ORDER.every(function(s) { return checked[s]; });
-			ORDER.forEach(function(s) { checked[s] = !all; });
-			render();
-		});
 	});
 
 	function load(keep) {
@@ -71,15 +65,11 @@
 
 	function render() {
 		var st = BO_FB.status(), kind = BO_FB.kind();
-		var all = ORDER.every(function(s) { return checked[s]; });
-		var $c = $('#chks').empty().append($('<button type="button" class="btn btn-sm btn-outline-secondary" id="chkAll">').text(all ? '☑ 전체 해제' : '☐ 전체 선택'));
-		ORDER.forEach(function(s) {
-			var n = data.list.filter(function(f) { return f.STATUS_CD === s; }).length;
-			$c.append($('<label class="pl-chip">').toggleClass('on', !!checked[s]).append($('<input type="checkbox" class="pl-chk">').val(s).prop('checked', !!checked[s]))
-				.append($('<span>').text(st[s])).append(n ? $('<span class="cnt">').text(n) : ''));
-		});
+		boChips('#chks', ORDER.map(function(s) {
+			return { k: s, name: st[s], n: data.list.filter(function(f) { return f.STATUS_CD === s; }).length || undefined };
+		}), checked, render);
 		var rows = data.list.filter(function(f) { return checked[f.STATUS_CD]; }), $b = $('#flBody').empty();
-		if (!rows.length) $b.append('<tr><td colspan="7" class="text-center text-muted py-4">해당하는 피드백이 없습니다.</td></tr>');
+		if (!rows.length) boEmpty($b, '해당하는 피드백이 없습니다.');
 		rows.forEach(function(f) {
 			$b.append($('<tr>').toggleClass('sel', f.FB_SQ === pick).on('click', function() { pick = f.FB_SQ; render(); })
 				.append($('<td>').text(f.REG_DT.substr(5, 5))).append($('<td>').text(f.SCREEN_NM || '')).append($('<td>').text(kind[f.KIND_CD] || f.KIND_CD))

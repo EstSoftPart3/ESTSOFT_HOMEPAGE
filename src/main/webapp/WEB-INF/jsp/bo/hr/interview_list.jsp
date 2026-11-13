@@ -448,7 +448,7 @@
 			hrTab(t[0], t[1], base.filter(t[2]).length, t[0] === current).appendTo($tabs);
 		});
 		var $body = $('#listBody').empty(), list = sortRows(base.filter(test));
-		if (!list.length) { $body.append($('<tr>').append($('<td class="cal-empty">').attr('colspan', COLS.length + 1).text('조건에 맞는 면접자가 없습니다.'))); return; }
+		if (!list.length) { boEmpty($body, '조건에 맞는 면접자가 없습니다.'); return; }
 		list.forEach(function(r) {
 			var $tr = $('<tr>');
 			COLS.forEach(function(c) {
