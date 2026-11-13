@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 피드백·업데이트 내역. 표는 sql/feedback_update.sql -->
+<mapper namespace="com.eep.mapper.BoFeedbackMapper">
+
+	<sql id="who">(SELECT E.EMPLY_NM FROM TB_EEP_EMPLY_M E WHERE E.EMPLY_ID = </sql>
+
+	<insert id="insertFeedback" parameterType="hashMap">
+		INSERT INTO TB_EEP_FEEDBACK_M (SCREEN_NM, SCREEN_URL, KIND_CD, CONTENT, EMPLY_ID)
+		VALUES (NULLIF(#{SCREEN_NM}, ''), NULLIF(#{SCREEN_URL}, ''), #{KIND_CD}, #{CONTENT}, #{EMPLY_ID})
+	</insert>
+
+	<select id="selectFeedbacks" resultType="hashMap">
+		SELECT F.FB_SQ, F.SCREEN_NM, F.KIND_CD, F.CONTENT, F.EMPLY_ID, DATE_FORMAT(F.REG_DT, '%Y-%m-%d %H:%i') AS REG_DT
+			, F.STATUS_CD, F.PLAN_TXT, F.EST_TXT, F.DEV_NOTE, F.REJECT_REASON, F.ACT_EMPLY_ID, DATE_FORMAT(F.ACT_DT, '%Y-%m-%d') AS ACT_DT, F.UPD_SQ, F.SEEN_YN
+			, F.SPEC_HTML IS NOT NULL AS HAS_SPEC
+			, <include refid="who"/>F.EMPLY_ID LIMIT 1) AS EMPLY_NM
+			, <include refid="who"/>F.ACT_EMPLY_ID LIMIT 1) AS ACT_NM
+		FROM TB_EEP_FEEDBACK_M F
+		ORDER BY F.FB_SQ DESC
+	</select>
+
+	<select id="selectFeedback" parameterType="hashMap" resultType="hashMap">
+		SELECT F.FB_SQ, F.SCREEN_NM, F.CONTENT, F.STATUS_CD, F.PLAN_TXT, F.SPEC_HTML FROM TB_EEP_FEEDBACK_M F WHERE F.FB_SQ = #{FB_SQ}
+	</select>
+
+	<update id="updateFeedbackAct" parameterType="hashMap">
+		UPDATE TB_EEP_FEEDBACK_M
+		SET STATUS_CD = #{STATUS_CD}, DEV_NOTE = IF(#{STATUS_CD} = 'ING', #{DEV_NOTE}, DEV_NOTE), REJECT_REASON = IF(#{STATUS_CD} = 'REJECT', #{REJECT_REASON}, NULL)
+			, ACT_EMPLY_ID = #{ACT_EMPLY_ID}, ACT_DT = NOW(), SEEN_YN = IF(EMPLY_ID = #{ACT_EMPLY_ID}, 'Y', 'N')
+		WHERE FB_SQ = #{FB_SQ} AND STATUS_CD &lt;&gt; 'DONE'
+	</update>
+
+	<select id="countUnseen" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*) FROM TB_EEP_FEEDBACK_M WHERE EMPLY_ID = #{EMPLY_ID} AND SEEN_YN = 'N'
+	</select>
+
+	<update id="updateSeen" parameterType="hashMap">
+		UPDATE TB_EEP_FEEDBACK_M SET SEEN_YN = 'Y' WHERE EMPLY_ID = #{EMPLY_ID} AND SEEN_YN = 'N'
+	</update>
+
+	<select id="selectUpdates" parameterType="hashMap" resultType="hashMap">
+		SELECT U.UPD_SQ, U.TITLE, U.SCREENS, U.COMMIT_ID, U.FB_SQ, DATE_FORMAT(U.DEPLOY_DT, '%Y-%m-%d') AS DEPLOY_DT
+			, <include refid="who"/>F.EMPLY_ID LIMIT 1) AS FB_EMPLY_NM
+		FROM TB_EEP_UPDATE_H U LEFT JOIN TB_EEP_FEEDBACK_M F ON F.FB_SQ = U.FB_SQ
+		ORDER BY U.UPD_SQ DESC
+		<if test="LIMIT != null">LIMIT ${LIMIT}</if>
+	</select>
+
+	<select id="selectUpdate" parameterType="hashMap" resultType="hashMap">
+		SELECT U.UPD_SQ, U.TITLE, U.SCREENS, U.CHANGED_TXT, U.TESTS_TXT, U.CAUTIONS_TXT, U.SPEC_HTML, U.COMMIT_ID, U.FB_SQ, DATE_FORMAT(U.DEPLOY_DT, '%Y-%m-%d') AS DEPLOY_DT
+			, F.CONTENT AS FB_CONTENT, F.SCREEN_NM AS FB_SCREEN, DATE_FORMAT(F.REG_DT, '%m-%d %H:%i') AS FB_REG_DT, DATE_FORMAT(F.ACT_DT, '%m-%d') AS FB_ACT_DT, F.DEV_NOTE
+			, <include refid="who"/>F.EMPLY_ID LIMIT 1) AS FB_EMPLY_NM
+			, <include refid="who"/>F.ACT_EMPLY_ID LIMIT 1) AS FB_ACT_NM
+		FROM TB_EEP_UPDATE_H U LEFT JOIN TB_EEP_FEEDBACK_M F ON F.FB_SQ = U.FB_SQ
+		WHERE U.UPD_SQ = #{UPD_SQ}
+	</select>
+
+	<select id="selectLatestUpdate" resultType="java.lang.Integer">
+		SELECT MAX(UPD_SQ) FROM TB_EEP_UPDATE_H
+	</select>
+</mapper>

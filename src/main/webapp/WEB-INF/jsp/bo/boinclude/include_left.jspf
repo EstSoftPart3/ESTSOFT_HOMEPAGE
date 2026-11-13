@@ -21,7 +21,9 @@
 
     <!-- Right navbar links -->
     <%-- 관리자 계정용 홈페이지/관리자 화면 전환 토글 (FO navbar.jspf 와 같은 모양). 이 include 엔 JSTL 이 보장되지 않아 EL 로만 숨긴다 --%>
-    <div class="mode-switch ml-auto" role="group" aria-label="화면 전환" ${sessionScope.emplyAuthCheck == '2' ? '' : 'hidden'}>
+    <%-- 피드백: 쓰기 + 내 피드백 상태(bo-feedback.js). 숫자는 상태가 바뀌었는데 안 본 내 피드백 --%>
+    <button type="button" id="fbBtn" class="nav-link bo-pill bo-fb ml-auto" aria-label="피드백" title="불편·오류·새 기능을 알려 주세요"><span aria-hidden="true">💬</span> 피드백<span class="fb-dot" hidden></span></button>
+    <div class="mode-switch" role="group" aria-label="화면 전환" ${sessionScope.emplyAuthCheck == '2' ? '' : 'hidden'}>
       <a href="/eep/mainPage.do" class="mode-switch-item"><i class="fas fa-home"></i> 홈페이지</a>
       <a href="/admin/home.do" class="mode-switch-item active" aria-current="page"><i class="fas fa-cog"></i> 관리자</a>
     </div>

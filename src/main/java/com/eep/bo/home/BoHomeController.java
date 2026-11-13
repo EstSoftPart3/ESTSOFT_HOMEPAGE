@@ -16,6 +16,7 @@ import org.springframework.web.servlet.ModelAndView;
 import com.eep.bo.deploy.service.SecretFilter;
 import com.eep.bo.system.service.BoSystemService;
 import com.eep.bo.system.service.BoSystemService.Access;
+import com.eep.mapper.BoFeedbackMapper;
 import com.eep.mapper.BoLabMapper;
 import com.eep.mapper.BoMemoMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -59,6 +60,9 @@ public class BoHomeController {
 	private BoLabMapper labMapper;
 
 	@Autowired
+	private BoFeedbackMapper feedbackMapper;
+
+	@Autowired
 	private SecretFilter secret;
 
 	@RequestMapping(BoSystemService.HOME)
@@ -69,7 +73,10 @@ public class BoHomeController {
 		CARDS.forEach((k, url) -> { if (access.allows(url)) cards.add(k); });
 		List<String> targets = new ArrayList<>();
 		MEMOS.forEach((k, url) -> { if (access.allows(url)) targets.add(k); });
-		if (cards.isEmpty() && targets.isEmpty()) {
+		Map<String, Object> lim = new HashMap<>();
+		lim.put("LIMIT", 5);
+		List<Map<String, Object>> updates = feedbackMapper.selectUpdates(lim);
+		if (cards.isEmpty() && targets.isEmpty() && updates.isEmpty()) {
 			// 볼 카드가 없으면 예전처럼 권한 있는 첫 메뉴로
 			String url = access.firstUrl();
 			return new ModelAndView(url != null ? "redirect:" + url : "bo/system/no_access");
@@ -91,6 +98,7 @@ public class BoHomeController {
 			if (memos.size() > 8) memos = new ArrayList<>(memos.subList(0, 8));
 		}
 		data.put("memos", memos);
+		data.put("updates", updates);
 		ModelAndView mv = new ModelAndView("bo/home/home");
 		// <script> 안에 넣으므로 </ 를 끊는다
 		mv.addObject("homeJson", new ObjectMapper().writeValueAsString(data).replace("</", "<\\/"));

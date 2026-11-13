@@ -28,6 +28,8 @@ public class BoSystemService {
 	static final String SUPER = "SUPER";
 	// 화면만 지킨다. 담긴 그룹은 숨김 검사가 상위까지 보고, 하위가 있으면 삭제도 막힌다
 	private static final Set<String> CORE_MENUS = new HashSet<>(Arrays.asList("M00002", "C00002"));
+	// 권한 설정 없이 모든 관리자에게 열리는 화면: 업데이트 내역, 피드백(sql/feedback_update.sql)
+	static final Set<String> OPEN_MENUS = new HashSet<>(Arrays.asList("U00001", "U00002"));
 	private static final Pattern URL = Pattern.compile("^/[A-Za-z0-9_./-]*$");
 	private static final Pattern ICON = Pattern.compile("^fa-[a-z0-9-]+$");
 	private static final AntPathMatcher MATCHER = new AntPathMatcher();
@@ -57,19 +59,28 @@ public class BoSystemService {
 		public final boolean superUser;
 		public final List<Map<String, Object>> tree = new ArrayList<>();
 		private final List<Map<String, Object>> items = new ArrayList<>();
+		private final Set<Object> roles = new HashSet<>();
 
 		private Access(boolean superUser) {
 			this.superUser = superUser;
 		}
 
+		/** 권한 코드(SUPER, SYS …)를 가졌는지 */
+		public boolean hasRole(String roleCd) {
+			return roles.contains(roleCd);
+		}
+
 		static Access of(List<Map<String, Object>> menus, List<Map<String, Object>> grants) {
 			boolean superUser = false;
-			Set<Object> granted = new HashSet<>();
+			Set<Object> granted = new HashSet<>(OPEN_MENUS);
+			Set<Object> roles = new HashSet<>();
 			for (Map<String, Object> g : grants) {
 				superUser |= SUPER.equals(g.get("ROLE_CD"));
 				granted.add(g.get("MENU_CODE"));
+				roles.add(g.get("ROLE_CD"));
 			}
 			Access access = new Access(superUser);
+			access.roles.addAll(roles);
 			Map<Object, List<Map<String, Object>>> byParent = new HashMap<>();
 			for (Map<String, Object> m : menus) {
 				byParent.computeIfAbsent(m.get("REL_CODE"), k -> new ArrayList<>()).add(m);

@@ -68,6 +68,25 @@
   	.flt-tg { margin-left: auto; }
   	/* ui-table.js 가 칸 맨 위로 올린 버튼 줄 */
   	.bo-act-top { margin: 0 0 .6rem !important; }
+  	/* 피드백·업데이트 내역(bo-feedback.js) */
+  	.main-header .bo-fb { position: relative; border-color: #0b6e8a; color: #0b6e8a !important; background: #eef9fc; margin-right: 8px; }
+  	.bo-fb .fb-dot { position: absolute; top: -6px; right: -6px; min-width: 18px; padding: 0 5px; border-radius: 999px; background: #e0a800; color: #111; font-size: 10.5px; line-height: 18px; font-weight: 700; text-align: center; }
+  	.fb-pill { display: inline-block; padding: 0 8px; border-radius: 10px; font-size: 11px; font-weight: 700; background: #eef1f4; color: #444; white-space: nowrap; }
+  	.fb-pill.ok { background: #e6f6ea; color: #17692f; } .fb-pill.warn { background: #fff5dc; color: #7a5600; } .fb-pill.bad { background: #fdeaea; color: #a32020; } .fb-pill.rent { background: #dff3f9; color: #0b6e8a; }
+  	.fb-seg { display: flex; gap: 4px; margin: 12px 0 8px; }
+  	.fb-seg button { border: 1px solid rgba(17,17,17,.15); background: #fff; border-radius: 999px; padding: 2px 12px; font-size: 12px; font-weight: 700; color: #444; }
+  	.fb-seg button.on { background: #111; border-color: #111; color: #fff; }
+  	.fb-list { max-height: 45vh; overflow-y: auto; }
+  	.fb-it { border: 1px solid rgba(17,17,17,.1); border-radius: 8px; padding: 7px 10px; margin-bottom: 6px; font-size: 13px; }
+  	.fb-who { display: flex; gap: 8px; align-items: center; font-size: 11.5px; color: #5f6b75; } .fb-who .fb-pill { margin-left: auto; }
+  	.fb-txt { white-space: pre-wrap; } .fb-why { color: #a32020; font-size: 12px; white-space: pre-wrap; } .fb-mute { color: #8a949c; }
+  	.fb-meta { color: #5f6b75; font-size: 12px; margin-bottom: 8px; }
+  	.fb-req { border: 1px solid #f0d58a; background: #fffaeb; border-radius: 8px; padding: 7px 12px; font-size: 12.5px; margin-bottom: 10px; } .fb-req b { color: #7a5600; }
+  	.fb-spec { width: 100%; border: 1px solid rgba(17,17,17,.12); border-radius: 8px; background: #fff; margin-bottom: 10px; }
+  	.fb-three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 12.5px; }
+  	.fb-three > div { border: 1px solid rgba(17,17,17,.12); border-radius: 8px; padding: 8px 10px; } .fb-three b { display: block; margin-bottom: 4px; } .fb-three ul { margin: 0; padding-left: 18px; }
+  	.fb-new { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 999px; background: #e0a800; color: #111; font-size: 10px; font-weight: 700; line-height: 15px; }
+  	@media (max-width: 767px) { .fb-three { grid-template-columns: 1fr; } .main-header .bo-fb { padding: 6px 9px; } }
 
   </style>
   

@@ -120,8 +120,21 @@
 		if (can('EQP')) equipmentTodo();
 		if (can('MEMBER')) memberTodo();
 		if (HOME.memos.length) memoCard();
+		updateCard();
 		paintTodo();
 	});
+
+	// 최근 업데이트 5건(모든 관리자). 줄을 누르면 상세 팝업, 피드백 반영이면 요청자 표시
+	function updateCard() {
+		var $c = $('<div class="hm-card wide" id="hmUpdCard">').append($('<header>').text('🔔 최근 업데이트').append(link('전체 보기 ›', '/admin/update/openUpdateList.do', '')));
+		var $b = $('<div class="hm-body">').appendTo($c);
+		$c.prependTo('#hmCards');
+		if (!HOME.updates.length) { $b.append('<div class="hm-empty">아직 업데이트 내역이 없습니다. 다음 배포부터 쌓입니다.</div>'); return; }
+		$b.append(table(['배포일', '내용', '화면', '피드백'], HOME.updates.map(function(u) {
+			return [u.DEPLOY_DT.substr(5), $('<a href="#" class="hm-link">').text(u.TITLE).on('click', function(e) { e.preventDefault(); e.stopPropagation(); BO_UPDATE(u.UPD_SQ); }),
+				u.SCREENS || '', u.FB_SQ ? pill('💬 ' + (u.FB_EMPLY_NM || '요청'), 'warn') : ''];
+		})));
+	}
 
 	function staffCard() {
 		kpiSlot('staff');
