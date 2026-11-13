@@ -78,9 +78,7 @@
 									<option value="">지금 순서 그대로</option><option value="ITEM_NM">품목 이름순</option><option value="STAFF_NM">성명순</option><option value="AMT">금액 큰 순</option><option value="START_DT">시작일순</option>
 								</select>
 								<label for="perInv" class="mb-0">한 장에</label>
-								<input type="number" id="perInv" class="form-control form-control-sm" style="width:70px" min="1" max="99" value="4"><span>행씩</span>
-								<button type="button" class="btn btn-sm btn-primary" id="btnCopyAll" onclick="copyAll();">전체 복사</button>
-								<span class="small text-muted">거래처마다 「다시 묶기」를 누르면 이 설정으로 묶습니다. 묶은 뒤에는 행을 끌거나 ▲▼, 「나누기」「위와 합치기」로 장마다 행 수를 바꿉니다. 바꾸면 바로 저장됩니다.</span>
+								<input type="number" id="perInv" class="form-control form-control-sm" style="width:70px" min="1" max="99" value="4"><span>행씩</span>								<span class="small text-muted">거래처마다 「다시 묶기」를 누르면 이 설정으로 묶습니다. 묶은 뒤에는 행을 끌거나 ▲▼, 「나누기」「위와 합치기」로 장마다 행 수를 바꿉니다. 바꾸면 바로 저장됩니다.</span>
 							</div>
 							<div id="invBody"></div>
 						</div>
@@ -392,7 +390,9 @@
 			var $p = $('<div class="tr-partner">').appendTo($b);
 			$p.append($('<h5>').append($('<span>').text(pName(all[0])),
 				$('<small>').text('계산서 ' + groups.length + '장 · ' + all.length + '행 · 공급가액 ' + dpWon(s) + ' · 발급 ' + done + '/' + groups.length + (unsaved ? ' · 자동 묶음(저장 전)' : '')),
-				$('<button type="button" class="btn btn-sm btn-outline-secondary ml-auto">다시 묶기</button>').attr('aria-label', pName(all[0]) + ' 다시 묶기').click(function() {
+				// 어느 거래처에서 눌러도 지금 보이는 계산서 전체를 복사한다
+				$('<button type="button" class="btn btn-sm btn-primary ml-auto">전체 복사</button>').attr('aria-label', '보이는 계산서 전체 복사').click(copyAll),
+				$('<button type="button" class="btn btn-sm btn-outline-secondary">다시 묶기</button>').attr('aria-label', pName(all[0]) + ' 다시 묶기').click(function() {
 					bootbox.confirm('발급 전인 ' + pName(all[0]) + ' 건을 ' + ($('#sortKey').val() ? $('#sortKey option:selected').text() + '으로 정렬해 ' : '') + perInv() + '행씩 다시 묶을까요? 손으로 맞춘 묶음은 바뀝니다.', function(ok) { if (ok) regroup(p); });
 				})));
 			groups.forEach(function(g, i) { $p.append(invCard(p, g, i)); });
