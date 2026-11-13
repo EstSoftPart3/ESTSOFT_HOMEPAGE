@@ -121,12 +121,13 @@
 
 	<!-- 직원 본인 가입. 인사정보는 하이픈·점이 섞여 있어 숫자만 비교한다. 생년월일은 복호화해 서비스에서 비교한다 -->
 	<select id="selectSignupStaff" parameterType="hashmap" resultType="hashmap">
+		<!-- 입사일은 서비스에서 비교한다(입사일만 틀렸을 때 따로 알려 준다) -->
 		SELECT STAFF_SQ, STAFF_NM, RRN_ENC, ORG_NM, DEPT_NM, POSITION_NM, EMPLY_ID
+			, REPLACE(REPLACE(REPLACE(JOIN_DT, '-', ''), '.', ''), '/', '') AS JOIN_KEY
 		FROM TB_EEP_HR_STAFF_M
 		WHERE STATUS_CD = 'WORK'
 			AND TRIM(STAFF_NM) = #{NAME}
 			AND REPLACE(REPLACE(REPLACE(PHONE, '-', ''), ' ', ''), '.', '') = #{PHONE}
-			AND REPLACE(REPLACE(REPLACE(JOIN_DT, '-', ''), '.', ''), '/', '') = #{JOIN}
 		ORDER BY STAFF_SQ
 		LIMIT 20
 	</select>

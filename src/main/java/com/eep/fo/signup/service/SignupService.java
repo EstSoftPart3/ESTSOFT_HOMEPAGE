@@ -50,7 +50,7 @@ public class SignupService {
 	@Value("${mail.username}")
 	private String mailFrom;
 
-	/** 4항목이 모두 맞는 재직자 목록. 어느 항목이 틀렸는지, 재직 여부는 알려 주지 않는다 */
+	/** 4항목이 모두 맞는 재직자 목록. 입사일만 틀린 경우(사용자 요청 2026-11-13)만 따로 알리고, 그 밖에는 어느 항목이 틀렸는지 알려 주지 않는다 */
 	public List<Map<String, Object>> match(String name, String joinDt, String birth, String phone, HttpSession session) {
 		String nm = name == null ? "" : name.trim();
 		String tel = phone == null ? "" : phone.replaceAll("[^0-9]", "");
@@ -66,8 +66,13 @@ public class SignupService {
 		p.put("JOIN", joinDt.replace("-", ""));
 		List<Map<String, Object>> found = new ArrayList<>();
 		Set<Integer> selectable = new HashSet<>();
+		boolean joinOnly = false; // 이름·전화번호·생년월일은 맞고 입사일만 다른 직원이 있다
 		for (Map<String, Object> r : mapper.selectSignupStaff(p)) {
 			if (!birthMatches((String) r.get("RRN_ENC"), birth)) {
+				continue;
+			}
+			if (!p.get("JOIN").equals(r.get("JOIN_KEY"))) {
+				joinOnly = true;
 				continue;
 			}
 			Map<String, Object> row = new HashMap<>();
@@ -86,7 +91,7 @@ public class SignupService {
 		}
 		if (found.isEmpty()) {
 			throttle.fail(nm, now);
-			throw new IllegalArgumentException(MISMATCH);
+			throw new IllegalArgumentException(joinOnly ? "입사일이 일치하지 않습니다." : MISMATCH);
 		}
 		throttle.clear(nm);
 		session.setAttribute(STATE, new State(selectable, now + WINDOW));
