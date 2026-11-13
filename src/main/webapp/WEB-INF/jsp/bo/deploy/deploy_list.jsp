@@ -37,6 +37,15 @@
 	.dp-prj.zero { opacity: .45; }
 	.dp-far { color: #7a5600; font-size: 11px; font-weight: 700; margin-left: 4px; }
 	.dp-want { color: #0b6e8a; }
+	/* 급여 칸 묶음(급여 권한만): 투입 칸과 구분되는 회색 바탕, 묶음 첫 칸 머리에 접기·펴기 */
+	th.dp-pay-h { background: #eceef1 !important; color: #222; }
+	td.dp-pay { background: #f7f8fa; }
+	td.dp-pay.a { background: #eefaf8; } td.dp-pay.d { background: #fdf3ec; } td.dp-pay.p { background: #f6f1fc; }
+	td.dp-pay.edit { text-decoration: underline dotted rgba(11,110,138,.6); text-underline-offset: 3px; cursor: pointer; }
+	.dp-pay-tog { border: 0; background: #111; color: #fff; border-radius: 999px; padding: 1px 10px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+	.dp-pay-band { border: 0; border-radius: 8px; padding: 0 6px; font-size: 11px; font-weight: 700; color: #fff; margin-left: 4px; }
+	.dp-pay-band.a { background: #0e7c86; } .dp-pay-band.d { background: #b4531a; } .dp-pay-band.p { background: #6b3fa0; }
+	.dp-pay-x { border: 0; background: none; padding: 0 0 0 3px; color: inherit; font-size: 10px; }
 	#altView td { white-space: nowrap; vertical-align: middle; }
 	#altView tr.dp-child td { background: #f4fafc; font-size: 12px; }
 	#altView tr.dp-child td:first-child { padding-left: 24px; color: #0b6e8a; font-weight: 700; }
@@ -226,8 +235,8 @@
 		$('[data-view]').on('click', function() { view = $(this).data('view'); $('[data-view]').removeClass('active'); $(this).addClass('active'); render(); });
 		$('#btnAdd').on('click', function() { if (view !== 'table') $('[data-view=table]').click(); addRow(true); });
 		$('#btnResetCols').on('click', function() { saveOrder(''); order = defaultOrder(); arrangeAll(); });
-		$('#ym').val(ym).on('change', function() { if (this.value) { ym = this.value; render(); } });
-		$('#prevYm, #nextYm').on('click', function() { ym = moment(ym + '-01').add(this.id === 'prevYm' ? -1 : 1, 'months').format('YYYY-MM'); $('#ym').val(ym); render(); });
+		$('#ym').val(ym).on('change', function() { if (this.value) { ym = this.value; loadPay(render); } });
+		$('#prevYm, #nextYm').on('click', function() { ym = moment(ym + '-01').add(this.id === 'prevYm' ? -1 : 1, 'months').format('YYYY-MM'); $('#ym').val(ym); loadPay(render); });
 		$('#chks').on('change', 'input.pl-chk', function() { checked[this.value] = this.checked; render(); });
 		$('#chks').on('click', '#chkAll', function() {
 			var all = CHIPS.every(function(c) { return checked[c[0]]; });
@@ -252,9 +261,95 @@
 			$('#secretBox').prop('hidden', !data.secretViewer);
 			$('#secretCnt').text(data.staff.filter(function(s) { return s.SECRET; }).length);
 			fillFilters();
-			render();
-			if (after) after();
+			loadPay(function() { render(); if (after) after(); });
 		});
+	}
+
+	// ── 급여 칸 묶음: 기준월 급여(급여관리와 같은 데이터·같은 시크릿 규칙)를 사람 단위로 표 오른쪽에 붙인다. 급여 권한이 있을 때만 ──
+	var pay = { by: {}, closed: false }, payOpen = false, payBand = {};
+	try { payOpen = localStorage.getItem('dpPay') === 'on'; } catch (e) {}
+	// 급여관리와 같은 칸. 정산은 합계만(칸별 정산은 급여 상세에서)
+	var PAY_ALLOW = [['MEAL_AMT', '식대'], ['RESEARCH_AMT', '연구비'], ['DRIVE_AMT', '운전보조'], ['CHILD_AMT', '자녀보육'], ['BONUS_AMT', '상여'], ['FUEL_AMT', '유류비']];
+	var PAY_DED = [['NP_AMT', '국민연금'], ['HI_AMT', '건강보험'], ['LTC_AMT', '장기요양'], ['EI_AMT', '고용보험'], ['ACC_AMT', '산재'], ['IT_AMT', '소득세'], ['LIT_AMT', '지방소득세'], ['_SETTLE', '정산'], ['MUTUAL_AMT', '상조회비'], ['ETC_DED', '기타공제']];
+	var PAY_PL = [['REAL_SALE', '실매출'], ['BUY', '기타'], ['FEE', '수수료'], ['COMPANY', '회사부담']];
+	var PAY_OWN = ['REGULAR', 'PROBATION', 'SPECIAL', 'BIZ', 'EMP_INS'];
+	function loadPay(done) {
+		var want = ym;
+		if (!data.canPay) return done();
+		hrPost('/admin/pay/monthData.do', { YM: want }, function(res) {
+			if (want !== ym) return; // 그사이 달을 또 바꿨으면 나중 응답이 그린다
+			pay = { by: {}, closed: !!res.result.closed };
+			res.result.rows.forEach(function(r) { pay.by[r.STAFF_SQ] = r; });
+			done();
+		}, function() { pay = { by: {}, closed: false }; done(); });
+	}
+	// [칸 키, 머리글, 칸 색, 머리글 띠(수당·공제·손익 펼치기)]
+	function payCols() {
+		if (!data.canPay) return [];
+		if (!payOpen) return [['P_TOG'], ['P_NET', 'Σ 실지급'], ['P_PROFIT', 'Σ 영업이익'], ['P_FLAG', '확인'], ['P_LINK', '메모·이력']];
+		var c = [['P_TOG'], ['P_BASE_AMT', '기본'], ['P_DAYS', '근무기간']];
+		if (payBand.a) PAY_ALLOW.forEach(function(x) { c.push(['P_' + x[0], x[1], 'a']); });
+		c.push(['P_PAY_TOTAL', 'Σ 지급계', 'a', ['a', '수당']]);
+		if (payBand.d) PAY_DED.forEach(function(x) { c.push(['P_' + x[0], x[1], 'd']); });
+		c.push(['P_DED_TOTAL', 'Σ 공제계', 'd', ['d', '공제']], ['P_NET', 'Σ 실지급'], ['P_DELTA', 'Σ 전월대비']);
+		if (payBand.p) PAY_PL.forEach(function(x) { c.push(['P_' + x[0], x[1], 'p']); });
+		return c.concat([['P_PROFIT', 'Σ 영업이익', 'p', ['p', '손익']], ['P_FLAG', '확인 사항'], ['P_LINK', '메모·이력']]);
+	}
+	function payKeys() { return payCols().map(function(c) { return c[0]; }); }
+	function payUrl(sq, tab) { return '/admin/pay/openPayList.do?ym=' + ym + '&open=' + sq + (tab ? '&tab=' + tab : ''); }
+	function payHeads() {
+		return payCols().map(function(c) {
+			var $th = $('<th class="dp-pay-h">').attr('data-c', c[0]).toggleClass('dp-num', /^P_(?!DAYS|FLAG|LINK|TOG)/.test(c[0]));
+			if (c[0] === 'P_TOG') return $th.append($('<button type="button" class="dp-pay-tog">').attr('aria-expanded', payOpen)
+				.text('급여 · ' + Number(ym.substring(5)) + '월 ' + (pay.closed ? '마감' : '작성중') + (payOpen ? ' ▾ 접기' : ' ▸ 펼치기'))
+				.on('click', function() { payOpen = !payOpen; try { localStorage.setItem('dpPay', payOpen ? 'on' : 'off'); } catch (e) {} dpHide(); render(); }));
+			$th.text(c[1]);
+			if (c[3]) $th.append($('<button type="button" class="dp-pay-band">').addClass(c[3][0]).attr('aria-expanded', !!payBand[c[3][0]])
+				.text(c[3][1] + (payBand[c[3][0]] ? ' ▾' : ' ▸')).on('click', function() { payBand[c[3][0]] = !payBand[c[3][0]]; render(); }));
+			return $th;
+		});
+	}
+	// 사람 한 명의 급여 칸들. 급여 행이 없는 사람(그 달 급여 없음)은 빈 칸
+	function payCells(sq) {
+		var r = pay.by[sq];
+		return payCols().map(function(c) {
+			var k = c[0], f = k.substring(2), $td = $('<td class="dp-pay">').attr('data-c', k).addClass(c[2] || '');
+			if (!r) return $td;
+			if (k === 'P_TOG') return $td.append($('<a class="pl-btn" target="_blank" rel="noopener">').attr({ href: payUrl(sq), 'aria-label': r.STAFF_NM + ' 급여 상세(새 탭)', title: '급여 상세' }).text('💰'));
+			if (k === 'P_DAYS') { var d = r.DETAILS.filter(function(x) { return PAY_OWN.indexOf(x.DEPLOY_TYPE) >= 0; }).reduce(function(s, x) { return s + Number(x.WORK_DAYS || 0); }, 0); return $td.addClass('dp-num').text(d ? d + '일' : '대기'); }
+			if (k === 'P_DELTA') return $td.addClass('dp-num').text(r.DELTA_PCT === undefined ? '' : (r.DELTA_PCT > 0 ? '+' : '') + r.DELTA_PCT + '%').toggleClass('text-danger', Math.abs(r.DELTA_PCT || 0) >= 10);
+			if (k === 'P_PROFIT') return r.OFFICE ? $td.addClass('dp-num text-muted').attr('title', '내근직은 영업이익에서 뺍니다').text('내근 제외') : $td.addClass('dp-num font-weight-bold').toggleClass('text-danger', Number(r.PROFIT) < 0).text(dpWon(r.PROFIT));
+			if (k === 'P_FLAG') return payFlags($td, r);
+			if (k === 'P_LINK') return $td.append($('<a class="pl-btn" target="_blank" rel="noopener">').toggleClass('zero', !Number(r.MEMO_CNT)).attr({ href: payUrl(sq, 3), 'aria-label': r.STAFF_NM + ' 급여 메모 ' + Number(r.MEMO_CNT || 0) + '건(새 탭)' }).text('💬' + (Number(r.MEMO_CNT) ? ' ' + r.MEMO_CNT : '')))
+				.append(' ').append($('<a class="pl-btn" target="_blank" rel="noopener">').toggleClass('zero', !Number(r.CHG_CNT)).attr({ href: payUrl(sq, 4), 'aria-label': r.STAFF_NM + ' 급여 수정이력 ' + Number(r.CHG_CNT || 0) + '건(새 탭)' }).text('✎' + (Number(r.CHG_CNT) ? ' ' + r.CHG_CNT : '')));
+			$td.addClass('dp-num');
+			if (f === '_SETTLE') return $td.text(dpWon(['NP_SETTLE', 'HI_SETTLE', 'EI_SETTLE', 'LTC_SETTLE', 'IT_SETTLE', 'LIT_SETTLE'].reduce(function(s, x) { return s + Number(r[x] || 0); }, 0))).attr('title', '정산 합계 · 칸별 정산은 급여 상세에서');
+			if (/TOTAL$|^NET$/.test(f)) $td.addClass('font-weight-bold');
+			// 급여관리처럼 기본·수당·공제 칸은 눌러 바로 고친다(수정이력 저장). 마감된 달은 보기만
+			var editable = !pay.closed && (f === 'BASE_AMT' || PAY_ALLOW.concat(PAY_DED).some(function(x) { return x[0] === f; }));
+			if (!editable) return $td.text(dpWon(r[f]));
+			return hrEditable($td.addClass('edit'), { url: '/admin/pay/saveFieldData.do', key: { YM: ym, STAFF_SQ: sq }, field: f, label: r.STAFF_NM + ' ' + (c[1] || f),
+				show: function() { return dpWon(r[f]); }, value: function() { return r[f]; }, saved: function() { loadPay(render); } });
+		});
+	}
+	// 확인 사항: 접으면 건수(올리면 목록), 펼치면 급여관리와 같은 칩과 ✕
+	function payFlags($td, r) {
+		if (!r.FLAGS.length) return $td;
+		if (!payOpen) {
+			var $n = $('<span class="dp-pill" tabindex="0">').addClass(r.FLAGS.some(function(f) { return /공제없음|대장차/.test(f.K); }) ? 'bad' : 'warn').text(r.FLAGS.length).attr('aria-label', '확인 사항 ' + r.FLAGS.map(function(f) { return f.K; }).join(', '));
+			dpHover($n, $n, function() { return '<div class="dp-card sm"><div class="dp-card-top">확인 사항 ' + r.FLAGS.length + '건</div><div class="dp-sec">' + r.FLAGS.map(function(f) { return dpLine(f.K, '') + '<div><span class="dp-mute" style="white-space:normal">' + dpEsc(f.D) + '</span><span></span></div>'; }).join('') + '</div></div>'; });
+			return $td.append($n);
+		}
+		return $td.append(r.FLAGS.map(function(f) {
+			var $p = dpFlag(f), bonus = f.K === '상여', what = bonus ? '이번 달 상여 제외' : '확인 완료(숨김)';
+			if (!pay.closed) $p.append($('<button type="button" class="dp-pay-x">').attr({ title: what, 'aria-label': r.STAFF_NM + ' ' + f.K + ' ' + what }).text('✕').on('click', function(e) {
+				e.stopPropagation(); dpHide();
+				function send() { hrPost('/admin/pay/ackData.do', { YM: ym, STAFF_SQ: r.STAFF_SQ, FLAG_K: f.K }, function() { loadPay(render); }); }
+				if (!bonus) return send();
+				bootbox.confirm(r.STAFF_NM + '의 ' + dpYmLabel(ym) + ' 상여 ' + dpWon(r.BONUS_AMT) + '원을 뺄까요? 수정이력과 급여 상세의 상여 탭에 제외로 남습니다.', function(ok) { if (ok) send(); });
+			}));
+			return $p;
+		}));
 	}
 
 	function visibleCols() { return COLS.filter(function(c) { return !c[2] || data.canPay; }); }
@@ -446,11 +541,11 @@
 					.on('click', function(e) { e.stopPropagation(); if (sortKey === c[0]) sortDir = -sortDir; else { sortKey = c[0]; sortDir = 1; } render(); }));
 			$h.append($th);
 		});
-		$h.append($('<th data-c="_ACT">').append('<span class="sr-only">작업</span>'));
+		$h.append(payHeads()).append($('<th data-c="_ACT">').append('<span class="sr-only">작업</span>'));
 		$('#dpHead').empty().append($h);
 		bindDrag();
 		var $b = $('#dpBody').empty();
-		if (!groups.length) $b.append($('<tr>').append($('<td class="text-center text-muted py-4">').attr('colspan', order.length + 1).text(moment(ym + '-01').format('YYYY년 M월') + '에 걸친 투입이 없습니다. 체크나 기준월을 바꿔 보세요.')));
+		if (!groups.length) $b.append($('<tr>').append($('<td class="text-center text-muted py-4">').attr('colspan', order.length + payKeys().length + 1).text(moment(ym + '-01').format('YYYY년 M월') + '에 걸친 투입이 없습니다. 체크나 기준월을 바꿔 보세요.')));
 		groups.forEach(function(g) { var open = isOpen(g); g.rows.forEach(function(r, i) { if (!i || open) $b.append(viewRow(r, g, i > 0).toggleClass('dp-dup', g.rows.length > 1)); }); });
 		arrangeAll();
 		$('#topScroll div').width($('#mainScroll table').outerWidth());
@@ -491,6 +586,8 @@
 			else $td.text(v || '');
 			$tr.append($td);
 		});
+		// 급여는 사람 단위: 윗줄에만 두고 └ 줄까지 합친다
+		if (!child) payCells(r.STAFF_SQ).forEach(function($td) { $tr.append($td.attr('rowspan', span)); });
 		$tr.append($('<td data-c="_ACT">'));
 		return $tr;
 	}
@@ -638,7 +735,7 @@
 	}
 
 	function arrange($tr) {
-		order.concat(['_ACT']).forEach(function(k) { var $c = $tr.children('[data-c="' + k + '"]'); if ($c.length) $tr.append($c); });
+		order.concat(payKeys(), ['_ACT']).forEach(function(k) { var $c = $tr.children('[data-c="' + k + '"]'); if ($c.length) $tr.append($c); });
 	}
 	function arrangeAll() { $('#dpHead tr, #dpBody tr').each(function() { arrange($(this)); }); }
 
@@ -654,7 +751,7 @@
 	function bindDrag() {
 		$('#dpHead th').each(function() {
 			var th = this, c = $(th).attr('data-c');
-			if (c === '_ACT') return;
+			if (c === '_ACT' || /^P_/.test(c)) return; // 급여 칸 묶음은 순서 고정
 			$(th).attr({ draggable: true, tabindex: 0, title: '끌어서 순서 변경 (Alt+←/→)' });
 			function after(e) { var r = th.getBoundingClientRect(); return e.originalEvent.clientX > r.left + r.width / 2; }
 			function clear() { $('#dpHead th').removeClass('drop-l drop-r dragging'); }
@@ -843,9 +940,9 @@
 				.append($('<td>').text(typeLabel(x))).append($('<td>').text([s.POSITION_NM, s.DEPT_NM || s.ORG_NM].filter(Boolean).join(' · ')))
 				.append($('<td>').text(x.REST_FROM_DT + ' ~ ' + (x.REST_TO_DT || '미정')).append(plan ? $('<span class="dp-pill rent ml-1">').text('예정') : ''))
 				.append($('<td>').append($('<span class="dp-pill">').addClass(left !== null && left <= 14 ? 'warn' : '').text(back ? back.format('YYYY-MM-DD') + ' (D-' + left + ')' : '미정')))
-				.append($('<td>').text([x.CLIENT_NM, x.PRJ_NM].filter(Boolean).join(' '))).append($('<td>').text(tenure(s.JOIN_DT))).append($('<td>').append(prjBtn(s.STAFF_SQ, s.STAFF_NM))));
+				.append($('<td>').text([x.CLIENT_NM, x.PRJ_NM].filter(Boolean).join(' '))).append($('<td>').text(tenure(s.JOIN_DT))).append($('<td>').append(prjBtn(s.STAFF_SQ, s.STAFF_NM))).append(payCells(s.STAFF_SQ)));
 		});
-		$('#altView').empty().append($t);
+		$('#altView').empty().append(withPay($t));
 	}
 
 	// ── 내근직 ──
@@ -860,10 +957,13 @@
 				.append($('<td>').append(s.SECRET ? $('<span title="시크릿">').text('🔒 ') : '').append($('<button type="button" class="dp-name">').text(s.STAFF_NM).on('click', function() { openDetail(x); })))
 				.append($('<td>').text(typeLabel(x))).append($('<td>').text([s.POSITION_NM, s.DEPT_NM || s.ORG_NM].filter(Boolean).join(' · ')))
 				.append($('<td>').text([x.CLIENT_NM, x.PRJ_NM].filter(Boolean).join(' '))).append($('<td>').text(x.WORK_AREA || ''))
-				.append($('<td>').text(x.START_DT || '')).append($('<td>').text(tenure(s.JOIN_DT))).append($('<td>').append(prjBtn(s.STAFF_SQ, s.STAFF_NM))));
+				.append($('<td>').text(x.START_DT || '')).append($('<td>').text(tenure(s.JOIN_DT))).append($('<td>').append(prjBtn(s.STAFF_SQ, s.STAFF_NM))).append(payCells(s.STAFF_SQ)));
 		});
-		$('#altView').empty().append($t);
+		$('#altView').empty().append(withPay($t));
 	}
+
+	// 대기·내근직·휴직 표에도 같은 급여 칸 묶음(머리글)
+	function withPay($t) { $t.find('thead tr').first().append(payHeads()); return $t; }
 
 	function deleteDetail() {
 		bootbox.confirm('이 투입 건을 삭제할까요? 마감 전 달의 급여에서도 빠집니다.', function(ok) {
@@ -901,10 +1001,10 @@
 				.append($('<td class="text-nowrap">').append(it.kind === 'FUTURE'
 					? $('<button type="button" class="btn btn-sm btn-outline-secondary">투입 수정</button>').on('click', function() { openDetail(it.future); })
 					: $('<button type="button" class="btn btn-sm btn-primary">+ 투입 등록</button>').on('click', function() { regForm($tr, s, it.last, 9); })));
-			$b.append($tr);
+			$b.append($tr.append(payCells(s.STAFF_SQ)));
 			if (it.kind === 'FUTURE') $b.append(childRow('└ 투입 예정', it.future, 9, 'D-' + moment(it.future.START_DT).diff(today, 'days')));
 		});
-		$('#altView').empty().append($t);
+		$('#altView').empty().append(withPay($t));
 	}
 
 	// 예정·다음 투입을 한 줄로
