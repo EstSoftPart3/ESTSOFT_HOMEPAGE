@@ -1174,10 +1174,8 @@
 	function loadDrive() {
 		$.post('/admin/staff/staffDriveStatusData.do', function(res) {
 			var d = res.drive || {}, $s = $('#driveStatus').empty().append('<i class="fab fa-google-drive"></i> ');
-			// 서류는 지금 로그인한 관리자의 내 연동 드라이브로 올리고 읽는다
-			if (d.connected) $s.append(document.createTextNode('내 드라이브: ' + (d.account || '연결됨') + ' '));
-			else $s.append(document.createTextNode('내 드라이브 미연결 '));
-			$s.append($('<a>').attr('href', '/admin/my/openGoogleLink.do?svc=DRIVE&back=' + encodeURIComponent(location.pathname)).text(d.connected ? '내 연동' : '내 연동에서 연결'));
+			// 서류는 회사 공용 드라이브 연결로 올리고 읽는다(연결은 시스템 관리자가 왼쪽 계정 아래에서)
+			$s.append(document.createTextNode(d.connected ? '공용 드라이브: ' + (d.account || '연결됨') : '공용 드라이브 미연결 · 시스템 관리자에게 연결 요청'));
 		});
 	}
 

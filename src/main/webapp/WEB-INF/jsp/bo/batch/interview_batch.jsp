@@ -48,20 +48,15 @@
 									<input type="text" id="icalFolder" class="form-control form-control-sm" autocomplete="off">
 								</div>
 								<div class="col-md-4 mb-2">
-									<label for="driveAccount">이력서 드라이브 (연결한 관리자의 내 연동)</label>
-									<div class="input-group input-group-sm">
-										<input type="text" id="driveAccount" class="form-control" readonly>
-										<div class="input-group-append">
-											<button type="button" id="driveConnect" class="btn btn-outline-dark" onclick="connectDrive();">내 연동으로 연결</button>
-										</div>
-									</div>
+									<label for="driveAccount">이력서 드라이브 (회사 공용 연결)</label>
+									<input type="text" id="driveAccount" class="form-control form-control-sm" readonly>
 								</div>
 								<div class="col-md-3 mb-2 d-flex align-items-end">
 									<button type="button" class="btn btn-sm btn-dark flex-fill" onclick="saveAll();">저장</button>
 									<button type="button" class="btn btn-sm btn-outline-secondary flex-fill ml-1" onclick="newSet();">새로 추가</button>
 								</div>
 							</div>
-							<small class="text-muted">배치는 '내 연동으로 연결'을 누른 관리자의 드라이브로 이력서를 읽습니다. 구글 앱(클라이언트 ID·시크릿)은 슈퍼관리자가 🔗 내 연동 화면에서 설정합니다.<code id="driveRedirect" hidden></code></small>
+							<small class="text-muted">배치는 회사 공용 드라이브 연결로 이력서를 읽습니다. 연결은 시스템 관리자가 왼쪽 계정 아래에서 합니다.<code id="driveRedirect" hidden></code></small>
 						</div>
 					</div>
 
@@ -163,7 +158,6 @@
 		setMasked('#driveClientId', drive.clientMask);
 		setMasked('#driveClientSecret', drive.secretMask);
 		$('#driveAccount').val(r.DRIVE_CONNECTED ? (r.DRIVE_ACCOUNT || '연결됨') : '연결 안 됨');
-		$('#driveConnect').text(r.DRIVE_CONNECTED ? '내 연동으로 바꾸기' : '내 연동으로 연결');
 	}
 
 	// 사용자 입력과 일정 제목이 들어가므로 모두 text() 로 넣는다

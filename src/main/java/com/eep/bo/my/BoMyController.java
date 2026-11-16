@@ -18,7 +18,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.servlet.ModelAndView;
 
 /**
- * 내 연동(/admin/my). 메뉴 권한과 상관없이 로그인한 관리자 누구나 자기 연동만 다룬다(BoSystemService.Access).
+ * 내 연동(/admin/my). 누구나 회사 공용 연결 상태를 보고, 연결·해제는 시스템 관리자만 한다(BoSystemService.Access).
  * 구글 콘솔의 승인된 리디렉션 URI 는 예전부터 등록된 https://www.estsw.co.kr/admin/batch/driveCallback.do 를 그대로 쓴다.
  */
 @Controller
@@ -57,6 +57,7 @@ public class BoMyController {
 	/** 구글 승인 화면으로 보낸다. back 은 연결 뒤 돌아갈 이 사이트 안 주소 */
 	@RequestMapping("/admin/my/googleStart.do")
 	public String googleStart(@RequestParam("svc") String svc, @RequestParam(value = "back", required = false) String back, HttpServletRequest request, HttpSession session) {
+		if (!superUser()) return "redirect:/admin/my/openGoogleLink.do?result=admin";
 		String state = UUID.randomUUID().toString();
 		String url;
 		try {
@@ -81,7 +82,7 @@ public class BoMyController {
 		session.removeAttribute(SS_BACK);
 		String fail = "redirect:/admin/my/openGoogleLink.do?svc=" + (svc == null ? "" : svc) + "&result=";
 		// state 가 다르면 이 세션이 시작한 승인이 아니다(CSRF). 사용자가 동의를 취소하면 code 없이 error 로 온다
-		if (state == null || svc == null || !state.equals(param.get("state")) || param.get("code") == null) {
+		if (state == null || svc == null || !state.equals(param.get("state")) || param.get("code") == null || !superUser()) {
 			return fail + (param.get("error") != null ? "denied" : "fail");
 		}
 		try {
@@ -144,12 +145,18 @@ public class BoMyController {
 
 	@RequestMapping(value = "/admin/my/googleUnlinkData.do", method = RequestMethod.POST)
 	public ModelAndView googleUnlinkData(@RequestParam("svc") String svc) {
+		if (!superUser()) return json("error", "회사 공용 연결이라 시스템 관리자만 해제할 수 있습니다.");
 		try {
 			link.disconnect(GoogleLinkService.currentUser(), svc);
 			return json("result", "OK");
 		} catch (IllegalArgumentException e) {
 			return json("error", e.getMessage());
 		}
+	}
+
+	/** 구글 연동은 회사 공용 하나라 시스템 관리자(superUser)만 연결·해제한다 */
+	private boolean superUser() {
+		return systemService.access(GoogleLinkService.currentUser()).superUser;
 	}
 
 	/** 구글 콘솔 등록값과 글자까지 같아야 한다. 프록시가 https 를 전달하지 않아 운영 도메인은 https 로 고정한다(BoBatchController 와 같음) */

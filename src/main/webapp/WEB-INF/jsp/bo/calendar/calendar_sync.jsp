@@ -119,7 +119,7 @@
 		$('#fromDt').val(q.get('fromDt') || today.clone().startOf('month').format('YYYY-MM-DD'));
 		$('#toDt').val(q.get('toDt') || today.clone().endOf('month').format('YYYY-MM-DD'));
 		if (q.get('gerr')) {
-			bootbox.alert('구글 캘린더 연결이 취소되었거나 확인에 실패했습니다. 내 연동에서 다시 연결해 주세요.');
+			bootbox.alert('구글 캘린더 연결이 취소되었거나 확인에 실패했습니다. 시스템 관리자에게 다시 연결을 요청해 주세요.');
 		}
 
 		renderGoogleState();
@@ -135,8 +135,8 @@
 
 	function renderGoogleState() {
 		$('#googleState').html(GOOGLE_LOGIN
-			? '<i class="fas fa-check-circle text-success"></i> 내 연동 캘린더 사용 · <a href="/admin/my/openGoogleLink.do?svc=CALENDAR">내 연동</a>'
-			: '<i class="fas fa-info-circle"></i> 캘린더 미연결 · <a href="/admin/my/openGoogleLink.do?svc=CALENDAR&back=%2Fadmin%2Fcalendar%2FopenCalendarSync.do">내 연동에서 연결</a>');
+			? '<i class="fas fa-check-circle text-success"></i> 회사 공용 캘린더 연결 사용'
+			: '<i class="fas fa-info-circle"></i> 공용 캘린더 미연결 · 시스템 관리자에게 연결 요청');
 	}
 
 	function saveConf() {

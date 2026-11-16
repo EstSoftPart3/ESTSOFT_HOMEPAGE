@@ -26,8 +26,8 @@ import com.eep.mapper.BoGoogleLinkMapper;
 import common.util.RrnCipher;
 
 /**
- * 내 연동: 관리자마다 자기 구글 계정(드라이브·캘린더)을 연결해 refresh token 을 암호화해 둔다.
- * 구글을 쓰는 기능은 accessToken() 으로 요청한 관리자의 연동을 쓰고, 없으면 NeedLink 로 '내 연동'에 보낸다.
+ * 구글 연동(드라이브·캘린더)은 회사 공용 하나(EMPLY_ID=COMPANY). 시스템 관리자만 연결·해제하고 모두가 쓴다.
+ * 없으면 NeedLink 로 '내 연동'(연결 상태 화면)에 보낸다.
  */
 @Service
 public class GoogleLinkService {
@@ -46,7 +46,7 @@ public class GoogleLinkService {
 		public final String service;
 
 		public NeedLink(String service, String why) {
-			super("[연동 필요:" + service + "] " + SERVICES.get(service)[1] + " " + why + " 내 연동에서 연결해 주세요.");
+			super("[연동 필요:" + service + "] " + SERVICES.get(service)[1] + " " + why + " 회사 공용 연결이라 시스템 관리자가 연결해야 합니다.");
 			this.service = service;
 		}
 	}
@@ -65,7 +65,7 @@ public class GoogleLinkService {
 	}
 
 	public boolean linked(String loginId, String service) {
-		return loginId != null && mapper.selectRefresh(key(loginId, service)) != null;
+		return mapper.selectRefresh(key(loginId, service)) != null;
 	}
 
 	public String account(String loginId, String service) {
@@ -111,7 +111,7 @@ public class GoogleLinkService {
 	/** 그 관리자의 연동으로 액세스 토큰. 연동이 없거나 구글에서 끊겼으면 NeedLink */
 	public String accessToken(String loginId, String service) {
 		check(service);
-		String stored = loginId == null ? null : mapper.selectRefresh(key(loginId, service));
+		String stored = mapper.selectRefresh(key(loginId, service));
 		if (stored == null) throw new NeedLink(service, "연동이 없습니다.");
 		Map<String, String> conf = confDao.ConfMap();
 		try {
@@ -165,9 +165,12 @@ public class GoogleLinkService {
 		if (!SERVICES.containsKey(service)) throw new IllegalArgumentException("알 수 없는 연동입니다.");
 	}
 
+	/** 회사 공용 연동 하나를 모두가 쓴다(사용자 결정). 넘어온 아이디는 무시하고 이 키로 저장·조회한다 */
+	public static final String COMPANY = "COMPANY";
+
 	private static Map<String, Object> key(String loginId, String service) {
 		Map<String, Object> p = new HashMap<>();
-		p.put("EMPLY_ID", loginId);
+		p.put("EMPLY_ID", COMPANY);
 		if (service != null) p.put("SERVICE_CD", service);
 		return p;
 	}

@@ -80,7 +80,7 @@ function boGoogleOff(svc, nm) {
 		if (ok) $.post('/admin/my/googleUnlinkData.do', { svc: svc }, function() { location.reload(); });
 	});
 }
-// 구글을 쓰는 기능이 '[연동 필요:DRIVE] …' 오류를 주면 내 연동으로 보낸다. 연결하고 나면 지금 화면으로 돌아온다
+// 구글을 쓰는 기능이 '[연동 필요:DRIVE] …' 오류를 주면 내 연동(회사 공용 연결 상태)으로 보낸다. 연결하고 나면 지금 화면으로 돌아온다
 function boNeedLink(msg) {
 	var m = /^\[연동 필요:(\w+)\]\s*/.exec(msg || '');
 	if (!m) return false;

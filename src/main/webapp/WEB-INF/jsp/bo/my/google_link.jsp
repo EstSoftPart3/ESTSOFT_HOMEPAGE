@@ -42,7 +42,7 @@
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-header"><h3 class="card-title bTitle"><b>내 연동</b></h3></div>
 				<div class="card-body">
-					<div class="gl-top">한 번 연결하면 드라이브·캘린더를 쓰는 기능이 내 구글 계정으로 동작합니다.<button type="button" class="gl-help" id="glHelp">연결이 안 되나요?</button></div>
+					<div class="gl-top">회사 공용 구글 연결 하나를 모든 계정이 씁니다. 연결·해제는 시스템 관리자만 합니다.<button type="button" class="gl-help" id="glHelp">연결이 안 되나요?</button></div>
 					<div id="glNeed" class="gl-need" hidden></div>
 					<div id="glCards" class="gl-cards"></div>
 					<c:if test="${superUser}">
@@ -78,6 +78,7 @@
 		DRIVE: { nm: 'Google Drive', logo: '▲', perm: 'Google Drive의 모든 파일 보기, 수정, 생성, 삭제' },
 		CALENDAR: { nm: 'Google Calendar', logo: '31', perm: 'Google Calendar를 사용하여 액세스할 수 있는 모든 캘린더 보기' }
 	};
+	var IS_ADMIN = ${superUser == true};
 	var q = new URLSearchParams(location.search), back = q.get('back') || '', focusSvc = q.get('svc');
 
 	$(function() {
@@ -92,10 +93,10 @@
 			});
 		}
 		$('#glRedirect').text(location.origin.replace(/^http:/, 'https:') + '/admin/batch/driveCallback.do');
-		if (q.get('need') && SVC[focusSvc]) $('#glNeed').prop('hidden', false).text(SVC[focusSvc].nm + ' 연동이 필요한 기능입니다. 아래에서 연결하면 하던 화면으로 돌아갑니다.');
+		if (q.get('need') && SVC[focusSvc]) $('#glNeed').prop('hidden', false).text(SVC[focusSvc].nm + (IS_ADMIN ? ' 연동이 필요한 기능입니다. 아래에서 연결하면 하던 화면으로 돌아갑니다.' : ' 회사 공용 연결이 없어 쓸 수 없습니다. 시스템 관리자에게 연결을 요청해 주세요.'));
 		var msg = { ok: '연결했습니다.', fail: '연결하지 못했습니다. 다시 시도해 주세요.', denied: '구글에서 연결을 취소했습니다.',
 			scope: '구글 동의 화면에서 권한 체크가 빠져 연결하지 않았습니다. 다시 연결하면서 권한 항목을 체크해 주세요.',
-			noclient: '구글 OAuth 클라이언트가 설정되지 않았습니다. 관리자에게 문의해 주세요.' }[q.get('result')];
+			noclient: '구글 OAuth 클라이언트가 설정되지 않았습니다. 관리자에게 문의해 주세요.', admin: '회사 공용 연결이라 시스템 관리자만 연결할 수 있습니다.' }[q.get('result')];
 		if (msg) bootbox.alert((SVC[focusSvc] ? SVC[focusSvc].nm + ' ' : '') + msg);
 		load();
 	});
@@ -108,8 +109,8 @@
 				// 한 줄: 로고 · 이름(연결되면 초록 점 + 계정 메일) · 버튼 하나
 				var $name = $('<div>').append($('<div class="t">').text(s.nm));
 				if (l.LINKED) $name.append($('<div class="m">').text('● ' + (l.ACCOUNT || '연결됨')));
-				var $btn = l.LINKED
-					? $('<button type="button" class="btn btn-sm btn-outline-danger">').text('연결 해제').attr('aria-label', s.nm + ' 연결 해제').on('click', function() { unlink(l.SERVICE_CD); })
+				var $btn = !IS_ADMIN ? $('<span class="text-muted small ml-auto">').text(l.LINKED ? '' : '시스템 관리자가 연결합니다')
+					: l.LINKED ? $('<button type="button" class="btn btn-sm btn-outline-danger">').text('연결 해제').attr('aria-label', s.nm + ' 연결 해제').on('click', function() { unlink(l.SERVICE_CD); })
 					: $('<button type="button" class="btn btn-sm btn-primary">').text('연결').attr('aria-label', s.nm + ' 연결').on('click', function() { go(l.SERVICE_CD); });
 				$c.append($('<div class="gl-card">').toggleClass('focus', l.SERVICE_CD === focusSvc)
 					.append($('<div class="gl-logo">').addClass(l.SERVICE_CD).text(s.logo)).append($name).append($btn));
@@ -121,7 +122,7 @@
 	function go(svc) { location.href = '/admin/my/googleStart.do?svc=' + svc + (back ? '&back=' + encodeURIComponent(back) : ''); }
 
 	function unlink(svc) {
-		bootbox.confirm(SVC[svc].nm + ' 연결을 해제할까요? 이 연동을 쓰는 기능은 다시 연결할 때까지 동작하지 않습니다.' + (svc === 'DRIVE' ? ' 면접 배치를 이 계정으로 연결해 두었다면 배치도 이력서를 못 읽습니다.' : ''), function(ok) {
+		bootbox.confirm(SVC[svc].nm + ' 회사 공용 연결을 해제할까요? 모든 계정에서 이 연동을 쓰는 기능(면접 배치 포함)이 다시 연결할 때까지 동작하지 않습니다.', function(ok) {
 			if (ok) hrPost('/admin/my/googleUnlinkData.do', { svc: svc }, load);
 		});
 	}

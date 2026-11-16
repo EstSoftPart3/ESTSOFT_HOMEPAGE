@@ -245,17 +245,17 @@ public class BoBatchServiceImpl implements BoBatchService {
 		if (targets.isEmpty()) {
 			return;
 		}
-		// 사람 없이 도는 배치라 iCal 에서 '연결'을 누른 관리자(DRIVE_OWNER)의 내 연동을 쓴다
-		String owner = (String) target.get("DRIVE_OWNER"), root = (String) target.get("DRIVE_FOLDER_ID");
-		if (!hasText(owner) || !hasText(root)) {
-			targets.forEach(d -> d.put("RESUME_NOTE", hasText(root) ? "드라이브 미연결" : "이력서 폴더 미설정"));
+		// 회사 공용 드라이브 연동을 쓴다(GoogleLinkService.COMPANY)
+		String root = (String) target.get("DRIVE_FOLDER_ID");
+		if (!hasText(root)) {
+			targets.forEach(d -> d.put("RESUME_NOTE", "이력서 폴더 미설정"));
 			return;
 		}
 		String token;
 		try {
-			token = googleLink.accessToken(owner, GoogleLinkService.DRIVE);
+			token = googleLink.accessToken(GoogleLinkService.COMPANY, GoogleLinkService.DRIVE);
 		} catch (GoogleLinkService.NeedLink e) {
-			targets.forEach(d -> d.put("RESUME_NOTE", "연결한 관리자(" + owner + ")의 내 연동 드라이브가 없음 - 다시 연결해 주세요"));
+			targets.forEach(d -> d.put("RESUME_NOTE", "회사 공용 드라이브 미연결 - 시스템 관리자가 연결해 주세요"));
 			return;
 		} catch (Exception e) {
 			log.error("드라이브 인증 실패: {}", InterviewCalendarParser.cleanError(e));
