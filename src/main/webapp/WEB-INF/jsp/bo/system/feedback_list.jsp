@@ -194,8 +194,10 @@
 		var $c = $('<textarea class="form-control form-control-sm enter-send" rows="2" maxlength="4000" aria-label="기획서 코멘트" placeholder="기획서에 더하거나 바꿀 점 · Enter 남기기, Shift+Enter 줄바꿈">');
 		var $send = $('<button type="button" class="btn btn-sm btn-outline-primary">코멘트 남기기</button>').on('click', function() {
 			if (!$.trim($c.val())) { $c.focus(); return; }
-			$send.prop('disabled', true);
-			hrPost('/admin/feedback/commentData.do', { FB_SQ: f.FB_SQ, CONTENT: $c.val() }, function() { load(true); }, function() { $send.prop('disabled', false); });
+			BO_FB.confirmIng(f, function() {
+				$send.prop('disabled', true);
+				hrPost('/admin/feedback/commentData.do', { FB_SQ: f.FB_SQ, CONTENT: $c.val() }, function() { load(true); }, function() { $send.prop('disabled', false); });
+			});
 		});
 		$c.on('enter-send', function() { if (!$send.prop('disabled')) $send.click(); });
 		$d.append($('<div class="fl-sec">').text('코멘트 남기기')).append($c).append($('<div class="d-flex align-items-center mt-1">')

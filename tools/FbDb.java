@@ -85,14 +85,26 @@ public class FbDb {
 			ResultSet k = s.getGeneratedKeys();
 			k.next();
 			int upd = k.getInt(1);
+			String note = "";
 			if (fb != null && !fb.isEmpty()) {
-				try (PreparedStatement u = c.prepareStatement("UPDATE TB_EEP_FEEDBACK_M SET STATUS_CD = 'DONE', UPD_SQ = ?, SEEN_YN = 'N' WHERE FB_SQ = ?")) {
-					u.setInt(1, upd); u.setInt(2, Integer.parseInt(fb));
-					require(u.executeUpdate() == 1, "피드백 " + fb + " 이 없습니다.");
+				int n = Integer.parseInt(fb);
+				// 개발하는 사이 마지막 기획서 뒤에 새 코멘트(의견)가 들어왔으면 반영으로 바꾸지 않는다: 접수로 남아 다음 처리 때 기획서를 다시 만든다
+				try (PreparedStatement u = c.prepareStatement("UPDATE TB_EEP_FEEDBACK_M SET STATUS_CD = 'DONE', UPD_SQ = ?, SEEN_YN = 'N' WHERE FB_SQ = ? AND NOT EXISTS (SELECT 1 FROM TB_EEP_FEEDBACK_LOG L WHERE L.FB_SQ = ? AND L.LOG_CD = 'COMMENT' AND L.LOG_SQ > IFNULL((SELECT MAX(S.LOG_SQ) FROM TB_EEP_FEEDBACK_LOG S WHERE S.FB_SQ = ? AND S.LOG_CD = 'SPEC'), 0))");
+						PreparedStatement e = c.prepareStatement("SELECT COUNT(*) FROM TB_EEP_FEEDBACK_M WHERE FB_SQ = ?")) {
+					u.setInt(1, upd); u.setInt(2, n); u.setInt(3, n); u.setInt(4, n);
+					if (u.executeUpdate() == 1) {
+						note = " (피드백 " + fb + " 반영)";
+					} else {
+						e.setInt(1, n);
+						ResultSet r = e.executeQuery();
+						r.next();
+						require(r.getInt(1) == 1, "피드백 " + fb + " 이 없습니다.");
+						note = " (피드백 " + fb + " 은 반영 안 함: 개발 중 새 코멘트가 들어와 접수로 남김)";
+					}
 				}
 			}
 			c.commit();
-			System.out.println("update " + upd + (fb == null || fb.isEmpty() ? "" : " (피드백 " + fb + " 반영)"));
+			System.out.println("update " + upd + note);
 		} catch (RuntimeException | SQLException e) {
 			c.rollback();
 			throw e;

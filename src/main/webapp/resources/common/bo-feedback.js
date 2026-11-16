@@ -16,7 +16,13 @@
 		if (window.HR_ALL_CODES) HR_ALL_CODES.forEach(function (c) { if (c.GRP === grp) m[c.CD] = c.NM; });
 		return m;
 	}
-	window.BO_FB = { status: function () { return names('FB_STATUS', STATUS); }, kind: function () { return names('FB_KIND', KIND); }, tone: TONE };
+	window.BO_FB = { status: function () { return names('FB_STATUS', STATUS); }, kind: function () { return names('FB_KIND', KIND); }, tone: TONE,
+		// 진행 중인 건에 의견·코멘트를 남기면 진행이 풀리고 접수로 돌아가므로 한 번 더 묻는다
+		confirmIng: function (f, go) {
+			if (f.STATUS_CD !== 'ING') { go(); return; }
+			bootbox.confirm({ title: '진행 중인 피드백입니다', message: '지금 남기면 <b>진행이 취소되고 접수로 돌아갑니다.</b><br>다음 처리 때 개발하지 않고 이 내용까지 반영해 기획서를 다시 만들며, 관리자가 다시 진행을 눌러야 개발됩니다.<br>그래도 남길까요?',
+				buttons: { cancel: { label: '취소' }, confirm: { label: '접수로 돌리고 남기기', className: 'btn-danger' } }, callback: function (ok) { if (ok) go(); } });
+		} };
 
 	function esc(s) { return $('<div>').text(s == null ? '' : String(s)).html(); }
 	function pill(text, tone) { return $('<span class="fb-pill">').addClass(tone || '').text(text); }
@@ -105,11 +111,13 @@
 			var $c = $('<textarea class="form-control form-control-sm enter-send mt-2" rows="2" maxlength="4000" aria-label="기획서 의견" placeholder="이 기획서에 의견 남기기 · 맞아요 / 이렇게 바꿔 주세요 · Enter 보내기">');
 			var $go = $('<button type="button" class="btn btn-sm btn-primary py-0">의견 보내기</button>').on('click', function () {
 				if (!$.trim($c.val())) { $c.focus(); return; }
-				$go.prop('disabled', true);
-				$.post('/admin/feedback/commentData.do', { FB_SQ: f.FB_SQ, CONTENT: $c.val() }).done(function (res) {
-					if (res.error) { $go.prop('disabled', false); bootbox.alert(res.error); return; }
-					load();
-				}).fail(function () { $go.prop('disabled', false); });
+				BO_FB.confirmIng(f, function () {
+					$go.prop('disabled', true);
+					$.post('/admin/feedback/commentData.do', { FB_SQ: f.FB_SQ, CONTENT: $c.val() }).done(function (res) {
+						if (res.error) { $go.prop('disabled', false); bootbox.alert(res.error); return; }
+						load();
+					}).fail(function () { $go.prop('disabled', false); });
+				});
 			});
 			$c.on('enter-send', function () { if (!$go.prop('disabled')) $go.click(); });
 			$s.append($c).append($('<div class="d-flex align-items-center mt-1">').append($('<span class="fb-mute small mr-auto">').text('남기면 접수로 돌아가고, 다음 처리 때 의견까지 반영해 기획서를 다시 만들어요.')).append($go));
