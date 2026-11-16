@@ -495,22 +495,30 @@ public class BoBatchServiceImpl implements BoBatchService {
 		out.put("CAL_ID", src == null || src.startsWith(ICAL_PREFIX) ? null : src);
 		out.put("LEGACY_ICAL", src != null && src.startsWith(ICAL_PREFIX));
 		out.put("FOLDER_MASK", InterviewCalendarParser.maskMiddle((String) r.get("DRIVE_FOLDER_ID")));
+		out.put("FOLDER_ID", r.get("DRIVE_FOLDER_ID")); // 화면에는 내보내지 않고 폴더 경로 이름을 찾는 데만 쓴다(BoMyController)
 		return out;
 	}
 
-	/** 면접 일정은 한 세트(첫 줄)만 쓴다. 캘린더는 회사 공용 캘린더 연결에서 고른 ID, 폴더는 비우면 그대로 둔다 */
+	/** 면접 일정은 한 세트(첫 줄)만 쓴다. 캘린더는 회사 공용 캘린더 연결에서 고른 ID. 캘린더·폴더 중 비운 쪽은 그대로 둔다 */
 	@Override
 	public void saveInterviewSource(String calId, String calName, String folder) {
 		String id = calId == null ? "" : calId.trim(), nm = calName == null || calName.trim().isEmpty() ? "면접일정" : calName.trim();
-		if (id.isEmpty() || id.length() > 500 || id.startsWith("http")) throw new IllegalArgumentException("면접 캘린더를 목록에서 골라 주세요.");
+		List<Map<String, Object>> current = BoBatchDao.IcalList();
+		if (id.isEmpty()) {
+			// 폴더만 바꿀 때: 지금 캘린더(예전 iCal 포함)와 이름을 그대로 둔다
+			if (current.isEmpty()) throw new IllegalArgumentException("면접 캘린더를 먼저 골라 주세요.");
+			Object old = current.get(0).get("ICAL_NM");
+			nm = old == null ? nm : String.valueOf(old);
+		} else if (id.length() > 500 || id.startsWith("http")) {
+			throw new IllegalArgumentException("면접 캘린더를 목록에서 골라 주세요.");
+		}
 		String folderText = folder == null ? "" : folder.trim(), folderId = null;
 		if (!folderText.isEmpty()) {
 			Matcher m = FOLDER_ID.matcher(folderText);
 			if (!m.matches()) throw new IllegalArgumentException("이력서 폴더 주소를 확인해 주세요.");
 			folderId = m.group(1);
 		}
-		List<Map<String, Object>> rows = BoBatchDao.IcalList();
-		Integer sq = rows.isEmpty() ? null : ((Number) rows.get(0).get("ICAL_SQ")).intValue();
+		Integer sq = current.isEmpty() ? null : ((Number) current.get(0).get("ICAL_SQ")).intValue();
 		BoBatchDao.IcalSave(sq, nm.length() > 100 ? nm.substring(0, 100) : nm, id, folderId);
 	}
 

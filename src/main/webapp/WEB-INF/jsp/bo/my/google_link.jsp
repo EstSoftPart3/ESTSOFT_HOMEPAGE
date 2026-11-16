@@ -41,6 +41,15 @@
 	.gl-tag { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; background: #eef1f4; color: #3c4650; }
 	.gl-tag.CALENDAR { background: #e3edfd; color: #1a4b9c; } .gl-tag.DRIVE { background: #e6f6ea; color: #17692f; }
 	.gl-admin ol { font-size: 13px; padding-left: 18px; } .gl-admin code { background: #eef1f4; border-radius: 4px; padding: 0 5px; }
+	/* 단계(시스템 관리자): 1 앱 키 → 2 연결. 끝난 단계는 초록 ✓ */
+	.gl-step { max-width: 640px; border: 1px solid rgba(17,17,17,.12); border-radius: 10px; background: #fff; margin-bottom: 10px; }
+	.gl-step-h { display: flex; align-items: center; gap: 10px; padding: 10px 14px; }
+	.gl-step-s { font-size: 12.5px; color: #5f6b75; } .gl-step-s.ok { color: #17692f; } .gl-step-s.warn { color: #7a5600; font-weight: 600; }
+	.gl-num { width: 24px; height: 24px; border-radius: 999px; display: grid; place-items: center; font-size: 12px; font-weight: 800; flex: none; background: #0b6e8a; color: #fff; }
+	.gl-num.done { background: #17692f; }
+	.gl-step-b { border-top: 1px solid #f0f1f3; padding: 10px 14px 12px; }
+	.gl-step.lock { opacity: .55; }
+	.gl-step .gl-cards { max-width: none; } .gl-step .gl-card { margin-bottom: 8px; }
 	@media (max-width: 767px) { .gl-guide .modal-body { grid-template-columns: 1fr; } .gl-steps { border-right: 0; border-bottom: 1px solid rgba(17,17,17,.1); } }
 </style>
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
@@ -48,33 +57,18 @@
 				<div class="card-body">
 					<div class="gl-top">회사 공용 구글 연결 하나를 모든 계정이 씁니다. 연결·해제는 시스템 관리자만 합니다.<button type="button" class="gl-help" id="glHelp">연결이 안 되나요?</button></div>
 					<div id="glNeed" class="gl-need" hidden></div>
-					<div id="glCards" class="gl-cards"></div>
 					<c:if test="${superUser}">
-					<%-- 시스템 관리자 설정. 영역마다 어느 서비스에 쓰는 값인지 머리표로 나눈다 --%>
-					<div class="gl-admin gl-sec mt-4" id="glIntv">
-						<div class="gl-sec-h"><span class="gl-tag CALENDAR">캘린더</span><span class="gl-tag DRIVE">드라이브</span> 신입면접 배치가 읽을 곳</div>
-						<div class="form-row" style="max-width:780px">
-							<div class="col-md-5 mb-2"><label for="glIntvCal" class="small font-weight-bold mb-1">면접 캘린더 <span class="text-muted">(공용 캘린더 연결)</span></label><select id="glIntvCal" class="form-control form-control-sm"></select></div>
-							<div class="col-md-5 mb-2"><label for="glIntvFolder" class="small font-weight-bold mb-1">이력서 폴더 주소 <span class="text-muted">(공용 드라이브 연결)</span></label><input id="glIntvFolder" class="form-control form-control-sm" autocomplete="off"></div>
-							<div class="col-md-2 mb-2 d-flex align-items-end"><button type="button" class="btn btn-sm btn-primary btn-block" id="glIntvSave">저장</button></div>
-						</div>
-						<div class="small text-muted" id="glIntvNote"></div>
-						<details class="mt-1"><summary>어디서 확인하나요?</summary>
-							<ol>
-								<li><b>면접 캘린더</b>: 위 「Google Calendar」를 연결한 계정이 볼 수 있는 캘린더가 목록에 나옵니다. 면접 일정이 있는 캘린더를 고르세요. 안 보이면 그 캘린더 주인 계정에서 구글 캘린더 → 캘린더 설정 → 「특정 사용자와 공유」에 연결 계정 메일을 넣어 주세요.</li>
-								<li><b>이력서 폴더</b>: 구글 드라이브에서 이력서 폴더를 열고 주소창의 주소(…/folders/<i>폴더ID</i>)를 그대로 붙여 넣습니다. 연결한 드라이브 계정에 그 폴더 보기 권한이 있어야 합니다.</li>
-								<li>배치는 매일 09:00·면접 10분 전에 이 캘린더의 이번 주 일정과 이 폴더의 이력서를 읽습니다. 실행·이력은 「신입면접 일정 가져오기」 화면에서 봅니다.</li>
-							</ol>
-						</details>
-					</div>
-					<div class="gl-admin gl-sec mt-4" id="glClient">
-						<div class="gl-sec-h"><span class="gl-tag">공통</span> 구글 앱 키 · 드라이브·캘린더 연결이 함께 씀</div>
+					<%-- 1단계 앱 키 → 2단계 연결. 앱 키가 있으면 한 줄로 접는다. 무엇을 읽을지(면접 캘린더·폴더)는 쓰는 화면에서 고른다 --%>
+					<div class="gl-step" id="glStep1">
+						<div class="gl-step-h"><span class="gl-num" id="glNum1">1</span><div><b>구글 앱 키</b><div class="gl-step-s" id="glClientState">확인 중…</div></div>
+							<button type="button" class="gl-help ml-auto" id="glClientToggle" aria-expanded="false" aria-controls="glClient">바꾸기</button></div>
+					<div class="gl-admin gl-step-b" id="glClient" hidden>
+						<div class="small text-muted mb-2">「연결」 버튼이 구글에 우리 홈페이지를 알리는 열쇠입니다. <b>연결하기 전에 처음 한 번만</b> 넣고, 구글 콘솔에서 키를 새로 만들었을 때만 바꿉니다. 비운 칸은 지금 값을 그대로 둡니다.</div>
 						<div class="form-row" style="max-width:780px">
 							<div class="col-md-6 mb-2"><label for="glClientId" class="small font-weight-bold mb-1">OAuth 클라이언트 ID</label><input id="glClientId" class="form-control form-control-sm" autocomplete="off"></div>
 							<div class="col-md-4 mb-2"><label for="glClientSecret" class="small font-weight-bold mb-1">클라이언트 시크릿</label><input id="glClientSecret" class="form-control form-control-sm" autocomplete="off"></div>
 							<div class="col-md-2 mb-2 d-flex align-items-end"><button type="button" class="btn btn-sm btn-primary btn-block" id="glClientSave">저장</button></div>
 						</div>
-						<div class="small text-muted">위 「연결」 버튼이 구글에 우리 홈페이지를 알리는 열쇠입니다. 한 번 넣으면 바꿀 일이 거의 없고, 비운 칸은 지금 값을 그대로 둡니다.</div>
 						<details class="mt-1"><summary>어디서 발급하나요?</summary>
 							<ol>
 								<li><a href="https://console.cloud.google.com/" target="_blank" rel="noopener">구글 클라우드 콘솔</a>에 회사 구글 계정으로 들어가 위쪽에서 프로젝트를 고릅니다(없으면 「새 프로젝트」).</li>
@@ -86,7 +80,16 @@
 							</ol>
 						</details>
 					</div>
-					<div class="small text-muted mt-3">폴더·파일 이름 규칙은 각 화면(직원관리·장비대장·거래처·연구일지)의 ⚙ 드라이브 설정에서 정합니다.</div>
+					</div>
+					<div class="gl-step" id="glStep2">
+						<div class="gl-step-h"><span class="gl-num" id="glNum2">2</span><div><b>구글 연결</b><div class="gl-step-s">회사 공용 계정 하나로 드라이브·캘린더를 연결합니다</div></div></div>
+						<div class="gl-step-b">
+					</c:if>
+					<div id="glCards" class="gl-cards"></div>
+					<c:if test="${superUser}">
+							<div class="small text-muted mt-1">이 연결을 쓰는 곳: <a href="/admin/batch/openInterviewBatch.do">신입면접 배치</a>(면접 캘린더·이력서 폴더는 그 화면에서 고름) · 직원 서류 · 장비 · 거래처 · 연구일지. 폴더·파일 이름 규칙은 각 화면의 ⚙ 드라이브 설정에서 정합니다.</div>
+						</div>
+					</div>
 					</c:if>
 				</div>
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
@@ -118,17 +121,25 @@
 		$('#glHelp').on('click', function() { guide(SVC[focusSvc] ? focusSvc : 'DRIVE'); });
 		// 구글 앱 설정(슈퍼관리자): 저장값은 가려서 안내문으로만 보여 준다
 		if ($('#glClient').length) {
-			var client = function(d) { $('#glClientId').val('').attr('placeholder', d.clientMask || '미설정'); $('#glClientSecret').val('').attr('placeholder', d.secretMask || '미설정'); };
+			// 1단계: 앱 키가 있으면 「✓ 설정됨」 한 줄로 접고, 없으면 펼치고 2단계(연결)를 흐리게
+			var client = function(d) {
+				var set = !!d.clientReady;
+				$('#glClientId').val('').attr('placeholder', d.clientMask || '…apps.googleusercontent.com');
+				$('#glClientSecret').val('').attr('placeholder', d.secretMask || 'GOCSPX-…');
+				$('#glNum1').toggleClass('done', set).text(set ? '✓' : '1');
+				$('#glClientState').attr('class', 'gl-step-s ' + (set ? 'ok' : 'warn')).text(set ? '설정됨 · ' + d.clientMask : '아직 없음 · 연결하기 전에 먼저 넣어 주세요');
+				$('#glClient').prop('hidden', set);
+				$('#glClientToggle').prop('hidden', !set).text('바꾸기').attr('aria-expanded', !set);
+				$('#glStep2').toggleClass('lock', !set);
+			};
 			hrPost('/admin/my/googleClientData.do', {}, function(res) { client(res.result); });
-			$('#glClientSave').on('click', function() {
-				hrPost('/admin/my/saveGoogleClientData.do', { clientId: $('#glClientId').val(), clientSecret: $('#glClientSecret').val() }, function(res) { client(res.result); hrToast('구글 앱 설정을 저장했습니다.'); });
+			$('#glClientToggle').on('click', function() {
+				var open = $('#glClient').prop('hidden');
+				$('#glClient').prop('hidden', !open);
+				$(this).text(open ? '접기' : '바꾸기').attr('aria-expanded', open);
 			});
-		}
-		if ($('#glIntv').length) {
-			loadIntv();
-			$('#glIntvSave').on('click', function() {
-				var $o = $('#glIntvCal option:selected');
-				hrPost('/admin/my/saveInterviewSourceData.do', { calId: $o.val() || '', calName: $o.data('nm') || '', folder: $('#glIntvFolder').val() }, function() { hrToast('면접 배치 설정을 저장했습니다.'); loadIntv(); });
+			$('#glClientSave').on('click', function() {
+				hrPost('/admin/my/saveGoogleClientData.do', { clientId: $('#glClientId').val(), clientSecret: $('#glClientSecret').val() }, function(res) { client(res.result); hrToast('구글 앱 키를 저장했습니다.'); });
 			});
 		}
 		$('#glRedirect').text(location.origin.replace(/^http:/, 'https:') + '/admin/batch/driveCallback.do');
@@ -154,19 +165,6 @@
 				$c.append($('<div class="gl-card">').toggleClass('focus', l.SERVICE_CD === focusSvc)
 					.append($('<div class="gl-logo">').addClass(l.SERVICE_CD).text(s.logo)).append($name).append($btn));
 			});
-		});
-	}
-
-	// 면접 배치 설정: 공용 캘린더 연결의 캘린더 목록 + 이력서 폴더(저장값은 가려서 안내로만)
-	function loadIntv() {
-		hrPost('/admin/my/interviewSourceData.do', {}, function(res) {
-			var s = res.result || {}, cals = res.calendars || [], $sel = $('#glIntvCal').empty();
-			$sel.append($('<option value="">').text(cals.length ? '캘린더 고르기' : (res.calendarError || '먼저 위에서 Google Calendar 를 연결하세요')));
-			cals.forEach(function(c) { $sel.append($('<option>').val(c.id).attr('data-nm', c.summary).text(c.summary + (c.primary ? ' (기본)' : ''))); });
-			if (s.CAL_ID) $sel.val(s.CAL_ID);
-			$('#glIntvFolder').val('').attr('placeholder', s.FOLDER_MASK || 'https://drive.google.com/drive/folders/…');
-			$('#glIntvNote').text(s.LEGACY_ICAL ? '지금은 예전 iCal 주소로 읽고 있습니다. 캘린더를 고르고 저장하면 공용 연결로 바뀝니다.'
-				: s.CAL_ID ? '배치가 「' + (s.CAL_NM || '') + '」 캘린더를 읽습니다. 폴더 칸은 비우면 지금 값을 그대로 둡니다.' : '아직 면접 캘린더가 정해지지 않았습니다.');
 		});
 	}
 

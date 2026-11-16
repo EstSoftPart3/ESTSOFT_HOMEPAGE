@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.servlet.ModelAndView;
 
@@ -36,6 +39,8 @@ public class BoMyController {
 	private com.eep.bo.batch.service.BoBatchService batch;
 	@Autowired
 	private com.eep.bo.calendar.service.GoogleCalendarApi calendarApi;
+	@Autowired
+	private com.eep.bo.batch.service.GoogleDriveApi drive;
 
 	@RequestMapping("/admin/my/openGoogleLink.do")
 	public ModelAndView openGoogleLink() {
@@ -145,20 +150,86 @@ public class BoMyController {
 		}
 	}
 
-	// ── 신입면접 배치가 읽을 면접 캘린더·이력서 폴더. 회사 공용 캘린더 연결의 캘린더 목록에서 고른다. 시스템 관리자만 ──
+	// ── 신입면접 배치가 읽을 면접 캘린더·이력서 폴더. 신입면접 배치 화면에서 고르고, 시스템 관리자만 고친다 ──
+	// 주소는 /admin/my/ 라 메뉴 권한과 무관하게 열리고, 여기서 superUser 를 다시 본다
 
 	@RequestMapping(value = "/admin/my/interviewSourceData.do", method = RequestMethod.POST)
 	public ModelAndView interviewSourceData() {
 		if (!superUser()) return json("error", "시스템 관리자만 볼 수 있습니다.");
-		ModelAndView mv = json("result", batch.interviewSource());
+		Map<String, Object> src = batch.interviewSource();
+		String folderId = (String) src.remove("FOLDER_ID");
+		ModelAndView mv = json("result", src);
 		try {
 			mv.addObject("calendars", calendarApi.calendarList(link.accessToken(GoogleLinkService.COMPANY, GoogleLinkService.CALENDAR)));
-		} catch (GoogleLinkService.NeedLink e) {
-			mv.addObject("calendars", new ArrayList<Object>()); // 캘린더 미연결: 화면이 '먼저 연결' 안내
-		} catch (RestClientException e) {
-			mv.addObject("calendarError", "캘린더 목록을 불러오지 못했습니다.");
+		} catch (RuntimeException e) {
+			mv.addObject("calendarError", googleError("CALENDAR", e));
+		}
+		if (folderId != null) {
+			try {
+				mv.addObject("folderPath", drive.pathOf(folderId, link.accessToken(GoogleLinkService.COMPANY, GoogleLinkService.DRIVE)));
+			} catch (RuntimeException e) {
+				mv.addObject("folderError", googleError("DRIVE", e));
+			}
 		}
 		return mv;
+	}
+
+	/** 이력서 폴더 고르기 창: parent 아래 폴더(없으면 내 드라이브 맨 위, SHARED 면 나와 공유됨), q 가 있으면 이름으로 찾기 */
+	@RequestMapping(value = "/admin/my/driveFoldersData.do", method = RequestMethod.POST)
+	public ModelAndView driveFoldersData(@RequestParam(value = "parent", defaultValue = "") String parent, @RequestParam(value = "mode", defaultValue = "MY") String mode,
+			@RequestParam(value = "q", defaultValue = "") String q) {
+		if (!superUser()) return json("error", "시스템 관리자만 볼 수 있습니다.");
+		try {
+			String token = link.accessToken(GoogleLinkService.COMPANY, GoogleLinkService.DRIVE);
+			String text = q.trim(), at = parent.trim().isEmpty() ? ("SHARED".equals(mode) ? null : "root") : parent.trim();
+			List<Map<String, Object>> folders = !text.isEmpty() ? drive.findFolders(text.length() > 100 ? text.substring(0, 100) : text, token) : drive.folders(at, token);
+			List<Map<String, Object>> out = new ArrayList<>();
+			for (Map<String, Object> f : folders) {
+				Map<String, Object> m = new HashMap<>();
+				m.put("id", f.get("id"));
+				m.put("name", f.get("name"));
+				out.add(m);
+			}
+			ModelAndView mv = json("result", out);
+			mv.addObject("path", text.isEmpty() && at != null ? drive.pathOf(at, token) : new ArrayList<Object>());
+			return mv;
+		} catch (RuntimeException e) {
+			return json("googleError", googleError("DRIVE", e));
+		}
+	}
+
+	/** 구글 응답을 화면 안내용 { code, msg, url } 으로. code: NOLINK·API_OFF·EXPIRED·SCOPE·NOTFOUND·OTHER */
+	static Map<String, Object> googleError(String service, RuntimeException e) {
+		Map<String, Object> err = new HashMap<>();
+		String nm = "CALENDAR".equals(service) ? "Google Calendar" : "Google Drive";
+		if (e instanceof GoogleLinkService.NeedLink) {
+			err.put("code", "NOLINK");
+			err.put("msg", nm + " 회사 공용 연결이 없거나 끊겼습니다. 내 연동에서 연결해 주세요.");
+			return err;
+		}
+		String body = e instanceof HttpStatusCodeException ? ((HttpStatusCodeException) e).getResponseBodyAsString() : "";
+		int status = e instanceof HttpStatusCodeException ? ((HttpStatusCodeException) e).getStatusCode().value() : 0;
+		System.out.println("GOOGLE_API_ERROR " + service + " " + status + " " + (body.length() > 300 ? body.substring(0, 300) : body).replaceAll("\\s+", " "));
+		if (body.contains("accessNotConfigured") || body.contains("SERVICE_DISABLED")) {
+			err.put("code", "API_OFF");
+			err.put("msg", "구글 클라우드 프로젝트에서 " + nm + " API 가 꺼져 있습니다. 앱 키를 만든 계정으로 켜고 1~2분 뒤 다시 시도해 주세요.");
+			Matcher m = Pattern.compile("https://console\\.(?:developers|cloud)\\.google\\.com/apis/[^\\s\"\\\\]+").matcher(body);
+			err.put("url", m.find() ? m.group() : "https://console.cloud.google.com/apis/library/" + ("CALENDAR".equals(service) ? "calendar-json" : "drive") + ".googleapis.com");
+		} else if (status == 401) {
+			err.put("code", "EXPIRED");
+			err.put("msg", nm + " 연결이 만료됐습니다. 내 연동에서 다시 연결해 주세요.");
+		} else if (body.contains("insufficientPermissions") || body.contains("ACCESS_TOKEN_SCOPE_INSUFFICIENT")) {
+			err.put("code", "SCOPE");
+			err.put("msg", nm + " 권한 체크가 빠져 있습니다. 내 연동에서 권한을 모두 켜고 다시 연결해 주세요.");
+		} else if (status == 404) {
+			err.put("code", "NOTFOUND");
+			err.put("msg", "폴더나 캘린더를 찾지 못했습니다. 지워졌거나 연결 계정에 공유되지 않았습니다. 다시 골라 주세요.");
+		} else {
+			Matcher m = Pattern.compile("\"message\"\\s*:\\s*\"([^\"]+)\"").matcher(body);
+			err.put("code", "OTHER");
+			err.put("msg", "구글이 요청을 거절했습니다" + (m.find() ? ": " + m.group(1) : " (" + e.getClass().getSimpleName() + ")") + ". 잠시 뒤 다시 시도해 주세요.");
+		}
+		return err;
 	}
 
 	@RequestMapping(value = "/admin/my/saveInterviewSourceData.do", method = RequestMethod.POST)

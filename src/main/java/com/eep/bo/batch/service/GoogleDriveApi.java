@@ -68,6 +68,38 @@ public class GoogleDriveApi {
 		return (List<Map<String, Object>>) get(url, token).get("files");
 	}
 
+	/** 폴더만(이름순). parentId 가 null 이면 '나와 공유됨' 최상위 */
+	public List<Map<String, Object>> folders(String parentId, String token) {
+		return search((parentId == null ? "sharedWithMe" : "'" + quote(parentId) + "' in parents") + " and mimeType = '" + FOLDER + "' and trashed = false", token);
+	}
+
+	/** 이름에 글자가 든 폴더(드라이브 전체) */
+	public List<Map<String, Object>> findFolders(String text, String token) {
+		return search("name contains '" + quote(text) + "' and mimeType = '" + FOLDER + "' and trashed = false", token);
+	}
+
+	/** 맨 위부터 그 폴더까지 [{id, name}]. 부모를 볼 수 없으면(공유받은 폴더) 거기서 멈춘다. shortcut: 8단계까지만 올라간다 */
+	public List<Map<String, Object>> pathOf(String folderId, String token) {
+		java.util.LinkedList<Map<String, Object>> path = new java.util.LinkedList<>();
+		String id = folderId;
+		for (int i = 0; i < 8 && id != null; i++) {
+			Map<String, Object> f;
+			try {
+				f = file(id, token);
+			} catch (org.springframework.web.client.HttpClientErrorException e) {
+				if (path.isEmpty()) throw e; // 고른 폴더 자체를 못 보면 오류, 그 위는 권한 밖이라 멈춤
+				break;
+			}
+			Map<String, Object> p = new java.util.HashMap<>();
+			p.put("id", f.get("id"));
+			p.put("name", f.get("name"));
+			path.addFirst(p);
+			Object parents = f.get("parents");
+			id = parents instanceof List && !((List<?>) parents).isEmpty() ? (String) ((List<?>) parents).get(0) : null;
+		}
+		return path;
+	}
+
 	@SuppressWarnings("unchecked")
 	public Map<String, Object> file(String fileId, String token) {
 		return get(API_URL + "/files/" + enc(fileId) + "?supportsAllDrives=true&fields=" + enc(FILE_FIELDS + ",parents"), token);

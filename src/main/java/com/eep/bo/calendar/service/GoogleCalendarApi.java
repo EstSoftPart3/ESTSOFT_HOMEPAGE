@@ -59,7 +59,7 @@ public class GoogleCalendarApi {
 		return (String) res.get("access_token");
 	}
 
-	/** 로그인한 계정이 볼 수 있는 캘린더 목록 (id, summary, primary) */
+	/** 로그인한 계정이 볼 수 있는 캘린더 목록 (id, summary, primary, color, role: owner·writer·reader) */
 	@SuppressWarnings("unchecked")
 	public List<Map<String, Object>> calendarList(String token) {
 		List<Map<String, Object>> result = new ArrayList<>();
@@ -68,6 +68,8 @@ public class GoogleCalendarApi {
 			cal.put("id", item.get("id"));
 			cal.put("summary", item.get("summaryOverride") != null ? item.get("summaryOverride") : item.get("summary"));
 			cal.put("primary", Boolean.TRUE.equals(item.get("primary")));
+			cal.put("color", item.get("backgroundColor"));
+			cal.put("role", item.get("accessRole"));
 			result.add(cal);
 		}
 		return result;
