@@ -3,7 +3,13 @@
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_head.jspf"%>
 <style>
 	.fl-chks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 14px; }
-	.fl-split { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 6fr); border-top: 1px solid rgba(17,17,17,.08); }
+	/* 목록 폭은 손잡이(#flHandle)로 바꾸고 이 브라우저에 저장. 처음엔 '종류' 칸까지 보이는 340px */
+	.fl-split { display: grid; grid-template-columns: var(--fl-left, 340px) 8px minmax(0, 1fr); border-top: 1px solid rgba(17,17,17,.08); }
+	.fl-split > div:first-child { min-width: 0; }
+	.fl-split > .fl-handle { border: 0; background: #f1f3f5; cursor: col-resize; display: grid; place-items: center; touch-action: none; }
+	.fl-handle::before { content: ''; width: 3px; height: 34px; border-radius: 2px; background: #b9c3ca; }
+	.fl-handle:hover, .fl-handle:focus { background: #e3eef2; outline: none; } .fl-handle:hover::before, .fl-handle:focus::before { background: #0b6e8a; }
+	.fl-dragging, .fl-dragging * { user-select: none; } .fl-dragging iframe { pointer-events: none; }
 	.fl-sec .ml-auto { font-weight: 400; }
 	.fl-spec { width: 100%; height: 50vh; min-height: 280px; border: 1px solid rgba(17,17,17,.12); border-radius: 8px; background: #fff; }
 	.fl-split > div + div { border-left: 1px solid rgba(17,17,17,.08); }
@@ -17,7 +23,7 @@
 	.fl-tabs { display: flex; gap: 4px; margin: 10px 0 2px; border-bottom: 1px solid rgba(17,17,17,.1); }
 	.fl-tabs button { border: 0; background: none; padding: 5px 12px; font-size: 13px; font-weight: 700; color: #5f6b75; border-bottom: 2px solid transparent; margin-bottom: -1px; }
 	.fl-tabs button.on { color: #0b6e8a; border-bottom-color: #0b6e8a; }
-	@media (max-width: 991px) { .fl-split { grid-template-columns: 1fr; } .fl-split > div + div { border-left: 0; border-top: 1px solid rgba(17,17,17,.08); } }
+	@media (max-width: 991px) { .fl-split { grid-template-columns: 1fr; } .fl-split > div + div { border-left: 0; border-top: 1px solid rgba(17,17,17,.08); } .fl-split > .fl-handle { display: none; } }
 </style>
 
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
@@ -31,10 +37,11 @@
 						<div class="fl-split">
 							<div>
 								<table class="table table-sm cal-table mb-0">
-									<thead><tr><th>접수</th><th>화면</th><th>종류</th><th>내용</th><th>요청자</th><th>상태</th><th>처리</th></tr></thead>
+									<thead><tr><th>접수</th><th>상태</th><th>화면</th><th>종류</th><th>내용</th><th>요청자</th><th>처리</th></tr></thead>
 									<tbody id="flBody"></tbody>
 								</table>
 							</div>
+							<div class="fl-handle" id="flHandle" role="separator" aria-orientation="vertical" tabindex="0" aria-label="목록·상세 폭 조절" title="끌어서 폭 조절 · ←→ 키 · 더블클릭하면 처음 폭"></div>
 							<div class="fl-detail" id="flDetail"><div class="text-muted">왼쪽에서 피드백을 고르세요.</div></div>
 						</div>
 					</div>
@@ -49,7 +56,44 @@
 
 	$(function() {
 		load();
+		splitter();
 	});
+
+	// 목록·상세 폭 손잡이: 끌기(마우스·터치), ←→ 20px, 더블클릭은 처음 폭. 놓을 때 이 브라우저에 저장
+	// 목록 260px 이상, 상세 40% 이상으로 막는다
+	function splitter() {
+		var KEY = 'boFeedbackSplit', DEF = 340, box = document.querySelector('.fl-split'), h = document.getElementById('flHandle');
+		function left() { return box.firstElementChild.getBoundingClientRect().width; }
+		function set(px, save) {
+			// 숨은 탭으로 열리면 폭이 0 이라 윗한도는 보일 때만 건다
+			px = Math.round(Math.max(260, box.clientWidth ? Math.min(px, box.clientWidth * 0.6) : px));
+			box.style.setProperty('--fl-left', px + 'px');
+			h.setAttribute('aria-valuenow', px);
+			if (save) try { localStorage.setItem(KEY, px); } catch (e) {}
+		}
+		var saved = 0;
+		try { saved = Number(localStorage.getItem(KEY)) || 0; } catch (e) {}
+		set(saved || DEF);
+		h.addEventListener('pointerdown', function(e) {
+			var x0 = e.clientX, w0 = left();
+			h.setPointerCapture(e.pointerId);
+			box.classList.add('fl-dragging');
+			function move(ev) { set(w0 + ev.clientX - x0); }
+			function up() {
+				h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up);
+				box.classList.remove('fl-dragging');
+				set(left(), true);
+			}
+			h.addEventListener('pointermove', move); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
+			e.preventDefault();
+		});
+		h.addEventListener('keydown', function(e) {
+			if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+			e.preventDefault();
+			set(left() + (e.key === 'ArrowLeft' ? -20 : 20), true);
+		});
+		h.addEventListener('dblclick', function() { try { localStorage.removeItem(KEY); } catch (e) {} set(DEF); });
+	}
 	// 탭을 다시 열면 새로 불러온다(bo-tabs.js). 고른 피드백은 그대로
 	window.addEventListener('bo-tab-shown', function() { load(true); });
 
@@ -71,9 +115,10 @@
 		if (!rows.length) boEmpty($b, '해당하는 피드백이 없습니다.');
 		rows.forEach(function(f) {
 			$b.append($('<tr>').toggleClass('sel', f.FB_SQ === pick).on('click', function() { pick = f.FB_SQ; render(); })
-				.append($('<td>').text(f.REG_DT.substr(5, 5))).append($('<td>').text(f.SCREEN_NM || '')).append($('<td>').text(kind[f.KIND_CD] || f.KIND_CD))
+				.append($('<td>').text(f.REG_DT.substr(5, 5))).append($('<td>').append($('<span class="fb-pill">').addClass(BO_FB.tone[f.STATUS_CD] || '').text(st[f.STATUS_CD] || f.STATUS_CD)))
+				.append($('<td>').text(f.SCREEN_NM || '')).append($('<td>').text(kind[f.KIND_CD] || f.KIND_CD))
 				.append($('<td>').append($('<span class="td-cut">').text(f.CONTENT.replace(/\s+/g, ' '))))
-				.append($('<td>').text(f.EMPLY_NM || f.EMPLY_ID)).append($('<td>').append($('<span class="fb-pill">').addClass(BO_FB.tone[f.STATUS_CD] || '').text(st[f.STATUS_CD] || f.STATUS_CD)))
+				.append($('<td>').text(f.EMPLY_NM || f.EMPLY_ID))
 				.append($('<td>').text(f.ACT_NM ? f.ACT_NM + ' ' + (f.ACT_DT || '').substr(5) : '')));
 		});
 		detail(data.list.filter(function(f) { return f.FB_SQ === pick; })[0]);
