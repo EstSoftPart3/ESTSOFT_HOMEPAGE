@@ -2,24 +2,17 @@
 
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_head.jspf"%>
 <style>
-	.gl-intro { color: #5f6b75; margin-bottom: 12px; }
+	.gl-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; color: #5f6b75; }
+	.gl-top .gl-help { margin-left: auto; background: none; border: 0; color: #0b6e8a; font-weight: 700; padding: 0; }
 	.gl-need { background: #fff5dc; color: #7a5600; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; font-weight: 600; }
-	.gl-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
-	.gl-card { background: #fff; border: 1px solid rgba(17,17,17,.12); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-	.gl-card.off { border-style: dashed; }
+	.gl-cards { max-width: 640px; }
+	.gl-card { display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid rgba(17,17,17,.12); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
 	.gl-card.focus { box-shadow: 0 0 0 3px #e0a800; }
-	.gl-head { display: flex; align-items: center; gap: 10px; }
-	.gl-logo { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; font-weight: 800; color: #fff; flex: none; }
+	.gl-logo { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; font-weight: 800; color: #fff; flex: none; font-size: 13px; }
 	.gl-logo.DRIVE { background: linear-gradient(135deg, #1fa463 0 33%, #ffd04b 33% 66%, #4688f4 66%); }
 	.gl-logo.CALENDAR { background: #4688f4; }
-	.gl-head .t { font-weight: 700; font-size: 15px; } .gl-head .d { color: #5f6b75; font-size: 12px; }
-	.gl-state { margin-left: auto; font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 1px 10px; white-space: nowrap; }
-	.gl-state.ok { background: #e6f6ea; color: #17692f; } .gl-state.no { background: #eef1f4; color: #444; }
-	.gl-acct { background: #f6f8fa; border-radius: 8px; padding: 7px 10px; font-size: 13px; }
-	.gl-scope { font-size: 12.5px; color: #444; margin: 0; padding-left: 18px; }
-	.gl-uses { display: flex; flex-wrap: wrap; gap: 4px; } .gl-uses span { font-size: 11px; border: 1px solid #b9dbe6; background: #eef9fc; color: #0b6e8a; border-radius: 10px; padding: 0 8px; }
-	.gl-foot { display: flex; align-items: center; gap: 6px; border-top: 1px solid rgba(17,17,17,.1); padding-top: 10px; font-size: 12px; color: #5f6b75; }
-	.gl-foot .gl-help { margin-right: auto; background: none; border: 0; color: #0b6e8a; font-weight: 700; padding: 0; }
+	.gl-card .t { font-weight: 700; } .gl-card .m { color: #17692f; font-size: 13px; }
+	.gl-card .btn { margin-left: auto; min-width: 92px; }
 	/* 가이드 창 */
 	.gl-guide .modal-body { display: grid; grid-template-columns: 190px 1fr; padding: 0; min-height: 360px; }
 	.gl-steps { border-right: 1px solid rgba(17,17,17,.1); background: #fafbfc; padding: 8px 0; }
@@ -49,7 +42,7 @@
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-header"><h3 class="card-title bTitle"><b>내 연동</b></h3></div>
 				<div class="card-body">
-					<div class="gl-intro">내 구글 계정을 한 번 연결해 두면 아래 기능이 내 계정으로 동작합니다. 다른 관리자의 연동은 보이지 않습니다.</div>
+					<div class="gl-top">한 번 연결하면 드라이브·캘린더를 쓰는 기능이 내 구글 계정으로 동작합니다.<button type="button" class="gl-help" id="glHelp">연결이 안 되나요?</button></div>
 					<div id="glNeed" class="gl-need" hidden></div>
 					<div id="glCards" class="gl-cards"></div>
 					<c:if test="${superUser}">
@@ -74,10 +67,8 @@
 				<div class="modal-header"><h5 class="modal-title" id="glGuideTitle"></h5><button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button></div>
 				<div class="modal-body"><div class="gl-steps" id="glSteps" role="tablist"></div><div class="gl-view" id="glView" role="tabpanel"></div></div>
 				<div class="modal-footer">
-					<label class="mr-auto small text-muted mb-0" id="glSkipBox"><input type="checkbox" id="glSkip"> 다음부터 바로 구글로 이동</label>
 					<button type="button" class="btn btn-sm btn-outline-secondary" id="glPrev">이전</button>
 					<button type="button" class="btn btn-sm btn-outline-primary" id="glNext">다음</button>
-					<button type="button" class="btn btn-sm btn-primary" id="glGo">구글로 이동해 연결</button>
 				</div>
 			</div>
 		</div>
@@ -86,16 +77,14 @@
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
 <script>
 	var SVC = {
-		DRIVE: { nm: 'Google Drive', d: '파일 올리기·읽기', logo: '▲', scope: ['회사 폴더에 서류·이력서·연구일지 PDF 를 올리고 읽기', '연결한 계정 메일 보기'], uses: ['직원 서류', '장비 첨부', '거래처 서류 읽기', '연구일지 PDF', '면접 배치 이력서'],
-			perm: 'Google Drive의 모든 파일 보기, 수정, 생성, 삭제' },
-		CALENDAR: { nm: 'Google Calendar', d: '일정 읽기', logo: '31', scope: ['내 캘린더 일정 읽기만 (고치지 않음)', '연결한 계정 메일 보기'], uses: ['캘린더 일정 가져오기'],
-			perm: 'Google Calendar를 사용하여 액세스할 수 있는 모든 캘린더 보기' }
+		DRIVE: { nm: 'Google Drive', logo: '▲', perm: 'Google Drive의 모든 파일 보기, 수정, 생성, 삭제' },
+		CALENDAR: { nm: 'Google Calendar', logo: '31', perm: 'Google Calendar를 사용하여 액세스할 수 있는 모든 캘린더 보기' }
 	};
 	var q = new URLSearchParams(location.search), back = q.get('back') || '', focusSvc = q.get('svc');
-	var SKIP_KEY = 'glGuideSkip';
-	function skip(v) { try { if (v === undefined) return localStorage.getItem(SKIP_KEY) === '1'; localStorage.setItem(SKIP_KEY, v ? '1' : '0'); } catch (e) { return false; } }
 
 	$(function() {
+		// 도움말 가이드는 '연결이 안 되나요?'를 누를 때만. 기능 화면에서 넘어왔으면 그 서비스, 아니면 드라이브
+		$('#glHelp').on('click', function() { guide(SVC[focusSvc] ? focusSvc : 'DRIVE'); });
 		$('#glRedirect').text(location.origin.replace(/^http:/, 'https:') + '/admin/batch/driveCallback.do');
 		if (q.get('need') && SVC[focusSvc]) $('#glNeed').prop('hidden', false).text(SVC[focusSvc].nm + ' 연동이 필요한 기능입니다. 아래에서 연결하면 하던 화면으로 돌아갑니다.');
 		var msg = { ok: '연결했습니다.', fail: '연결하지 못했습니다. 다시 시도해 주세요.', denied: '구글에서 연결을 취소했습니다.',
@@ -110,29 +99,20 @@
 			var $c = $('#glCards').empty();
 			res.result.forEach(function(l) {
 				var s = SVC[l.SERVICE_CD]; if (!s) return;
-				var $card = $('<div class="gl-card">').toggleClass('off', !l.LINKED).toggleClass('focus', l.SERVICE_CD === focusSvc);
-				$card.append($('<div class="gl-head">').append($('<div class="gl-logo">').addClass(l.SERVICE_CD).text(s.logo))
-					.append($('<div>').append($('<div class="t">').text(s.nm)).append($('<div class="d">').text(s.d)))
-					.append($('<span class="gl-state">').addClass(l.LINKED ? 'ok' : 'no').text(l.LINKED ? '● 연결됨' : '연결 안 됨')));
-				if (l.LINKED) $card.append($('<div class="gl-acct">').text(l.ACCOUNT || '연결됨'));
-				$card.append($('<ul class="gl-scope">').append(s.scope.map(function(x) { return $('<li>').text(x); })));
-				$card.append($('<div class="gl-uses">').append(s.uses.map(function(x) { return $('<span>').text(x); })));
-				var $f = $('<div class="gl-foot">').append($('<button type="button" class="gl-help">').text('? 연결 방법 보기').on('click', function() { guide(l.SERVICE_CD, false); }));
-				if (l.LINKED) {
-					$f.append($('<span>').text(l.REG_DT + ' 연결'));
-					$f.append($('<button type="button" class="btn btn-sm btn-outline-primary">').text('다시 연결').on('click', function() { start(l.SERVICE_CD); }));
-					$f.append($('<button type="button" class="btn btn-sm btn-outline-danger">').text('연결 해제').on('click', function() { unlink(l.SERVICE_CD); }));
-				} else {
-					$f.append($('<button type="button" class="btn btn-sm btn-primary">').text('연결').on('click', function() { start(l.SERVICE_CD); }));
-				}
-				$c.append($card.append($f));
+				// 한 줄: 로고 · 이름(연결되면 초록 점 + 계정 메일) · 버튼 하나
+				var $name = $('<div>').append($('<div class="t">').text(s.nm));
+				if (l.LINKED) $name.append($('<div class="m">').text('● ' + (l.ACCOUNT || '연결됨')));
+				var $btn = l.LINKED
+					? $('<button type="button" class="btn btn-sm btn-outline-danger">').text('연결 해제').attr('aria-label', s.nm + ' 연결 해제').on('click', function() { unlink(l.SERVICE_CD); })
+					: $('<button type="button" class="btn btn-sm btn-primary">').text('연결').attr('aria-label', s.nm + ' 연결').on('click', function() { go(l.SERVICE_CD); });
+				$c.append($('<div class="gl-card">').toggleClass('focus', l.SERVICE_CD === focusSvc)
+					.append($('<div class="gl-logo">').addClass(l.SERVICE_CD).text(s.logo)).append($name).append($btn));
 			});
 		});
 	}
 
+	// 「연결」은 바로 구글로 간다
 	function go(svc) { location.href = '/admin/my/googleStart.do?svc=' + svc + (back ? '&back=' + encodeURIComponent(back) : ''); }
-	// 처음 연결은 가이드를 먼저 보여 주고, '다음부터 바로'를 고른 사람은 바로 구글로
-	function start(svc) { if (skip()) go(svc); else guide(svc, true); }
 
 	function unlink(svc) {
 		bootbox.confirm(SVC[svc].nm + ' 연결을 해제할까요? 이 연동을 쓰는 기능은 다시 연결할 때까지 동작하지 않습니다.' + (svc === 'DRIVE' ? ' 면접 배치를 이 계정으로 연결해 두었다면 배치도 이력서를 못 읽습니다.' : ''), function(ok) {
@@ -160,17 +140,15 @@
 				li: ['① 「' + s.perm + '」 항목에 반드시 체크', '② 「계속」'],
 				warn: '체크를 빼고 넘어가면 연결되지 않고 이 화면으로 돌아옵니다.' },
 			{ t: '연결 완료', h: '5. 내 연동으로 돌아와 「연결됨」 확인',
-				shot: '<div class="gl-g" style="background:#f6f8fa"><div style="background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:10px;display:flex;gap:10px;align-items:center"><div class="gl-logo ' + svc + '" style="width:28px;height:28px;font-size:12px">' + s.logo + '</div><b>' + s.nm + '</b><span class="gl-state ok">● 연결됨</span></div><div class="small text-muted mt-1">연결한 계정 메일이 보이면 끝</div></div>',
-				li: ['카드에 연결한 계정 메일이 보이면 끝입니다.', '기능 화면에서 넘어왔다면 그 화면으로 바로 돌아갑니다.', '안 될 때: 「403 access_denied」는 관리자에게 테스트 사용자 추가를, 「redirect_uri_mismatch」는 콘솔 설정을 요청하세요.'] }
+				shot: '<div class="gl-g" style="background:#f6f8fa"><div class="gl-card" style="margin:0"><div class="gl-logo ' + svc + '">' + s.logo + '</div><div><div class="t">' + s.nm + '</div><div class="m">● 내 구글 계정 메일</div></div><span class="btn btn-sm btn-outline-danger">연결 해제</span></div></div>',
+				li: ['이름 아래 초록 점과 계정 메일이 보이면 끝입니다.', '기능 화면에서 넘어왔다면 그 화면으로 바로 돌아갑니다.', '안 될 때: 「403 access_denied」는 관리자에게 테스트 사용자 추가를, 「redirect_uri_mismatch」는 콘솔 설정을 요청하세요.'] }
 		];
 	}
 
-	var gSvc = null, gAt = 0, gList = [];
-	function guide(svc, connecting) {
-		gSvc = svc; gAt = 0; gList = steps(svc);
+	var gAt = 0, gList = [];
+	function guide(svc) {
+		gAt = 0; gList = steps(svc);
 		$('#glGuideTitle').text(SVC[svc].nm + ' 연결 방법');
-		$('#glGo, #glSkipBox').toggle(connecting);
-		$('#glSkip').prop('checked', skip());
 		paintGuide();
 		$('#glGuide').modal('show');
 	}
@@ -187,7 +165,6 @@
 	}
 	$('#glPrev').on('click', function() { if (gAt > 0) { gAt--; paintGuide(); } });
 	$('#glNext').on('click', function() { if (gAt < gList.length - 1) { gAt++; paintGuide(); } });
-	$('#glGo').on('click', function() { skip($('#glSkip').prop('checked')); go(gSvc); });
 </script>
 </body>
 </html>
