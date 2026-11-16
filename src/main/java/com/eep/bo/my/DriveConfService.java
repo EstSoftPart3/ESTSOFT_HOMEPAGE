@@ -29,29 +29,31 @@ public class DriveConfService {
 		SCREENS.put("STAFF", new String[] { "직원관리 · 교육생", "/admin/staff/openStaffList.do" });
 		FIELDS.put("STAFF", new String[][] {
 			{ "ROOT", "최상위 폴더 ('2. 인사관리')", "", "", "folder" },
-			{ "WAIT", "대기자(교육생) 구분 폴더", "1. 대기자 관리", "", "" },
-			{ "REG", "정규직 구분 폴더", "2. 정규직 관리", "", "" },
-			{ "CON", "계약직·프리랜서 구분 폴더", "3. 계약직 관리", "", "" },
-			{ "LEFT", "퇴사자 구분 폴더 (중도이탈 교육생 포함)", "4. 퇴사자 관리", "", "" },
+			// 구분 폴더: 골라 두면 폴더 ID, 비우면 최상위 폴더 아래에서 기본 이름으로 찾고 없으면 만든다(StaffDriveService.groupId)
+			{ "WAIT", "대기자(교육생) 구분 폴더", "1. 대기자 관리", "", "folder" },
+			{ "REG", "정규직 구분 폴더", "2. 정규직 관리", "", "folder" },
+			{ "CON", "계약직·프리랜서 구분 폴더", "3. 계약직 관리", "", "folder" },
+			{ "LEFT", "퇴사자 구분 폴더 (중도이탈 교육생 포함)", "4. 퇴사자 관리", "", "folder" },
 			{ "TRAINEE", "교육생 폴더 이름", "(0000.00.00) {성명}", "{성명}", "" },
 			{ "PERSON", "직원 폴더 이름", "({입사일}) {성명}", "{성명},{입사일}", "" },
-			{ "DOCS", "서류 하위 폴더", "00. 입사관련서류", "", "" },
+			{ "DOCS", "서류 하위 폴더 이름 (사람 폴더마다 만들어짐)", "00. 입사관련서류", "", "" },
 			{ "FILE", "서류 파일 이름", "{성명}_{서류명}", "{성명},{서류명},{올린날짜}", "" },
 			{ "WORD", "이력카드 워드 이름", "{성명}_이력카드(시스템)", "{성명}", "" } });
 		SCREENS.put("EQUIP", new String[] { "장비대장", "/admin/equipment/openEquipmentList.do" });
 		FIELDS.put("EQUIP", new String[][] {
 			// 예전엔 이름으로만 찾았다. 폴더를 고르면 ID 가 저장되고, 비우면 기본 이름으로 찾는다(BoEquipmentService.upload)
 			{ "ROOT", "최상위 폴더", "3. 장비 관리", "", "folder" },
-			{ "RECEIPT", "구매영수증 하위 폴더", "01. 구매영수증", "", "" },
-			{ "ETC", "기타 첨부 하위 폴더", "04. 장비첨부", "", "" },
-			{ "SIGN", "서명한 대여증서 하위 폴더", "03. 대여증서", "", "" },
+			// 하위 폴더도 골라 두면 폴더 ID, 비우면 최상위 폴더 아래에서 이름으로 찾고 없으면 만든다(BoEquipmentService.upload)
+			{ "RECEIPT", "구매영수증 폴더", "01. 구매영수증", "", "folder" },
+			{ "ETC", "기타 첨부 폴더", "04. 장비첨부", "", "folder" },
+			{ "SIGN", "서명한 대여증서 폴더", "03. 대여증서", "", "folder" },
 			{ "FILE", "첨부 파일 이름 (기본: 올린 파일 이름 그대로)", "{원래이름}", "{원래이름},{올린날짜}", "" } });
 		SCREENS.put("PARTNER", new String[] { "매출·매입처", "/admin/partner/openPartnerList.do" });
 		FIELDS.put("PARTNER", new String[][] {
 			{ "TEMP", "서류 글자 읽기용 임시 폴더 (읽고 바로 지움)", "", "", "folder" } });
 		SCREENS.put("LAB", new String[] { "연구일지", "/admin/lab/openJournalList.do" });
 		FIELDS.put("LAB", new String[][] {
-			{ "SUB", "과제 폴더 안 하위 폴더", "02. 연구일지", "", "" },
+			{ "SUB", "과제 폴더 안 하위 폴더 이름 (과제마다 만들어짐)", "02. 연구일지", "", "" },
 			{ "FILE", "마감 PDF 이름", "{연월} 월간연구일지_{과제명}", "{연월},{과제명}", "" } });
 	}
 	private static final Pattern FOLDER_URL = Pattern.compile("(?:folders/|id=)([A-Za-z0-9_-]{10,})");

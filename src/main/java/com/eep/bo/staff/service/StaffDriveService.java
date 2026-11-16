@@ -90,8 +90,8 @@ public class StaffDriveService {
 		boolean isLeft = "LEFT".equals(str(staff.get("STATUS_CD")));
 		List<Map<String, Object>> groups = new ArrayList<>();
 		for (Map<String, Object> g : groups(token)) {
-			// 재입사한 사람이 퇴사자 관리의 예전 폴더를 다시 잡지 않게, 퇴사자 폴더는 퇴사 상태일 때만 찾는다
-			if (!left.equals(g.get("name")) || isLeft) groups.add(g);
+			// 재입사한 사람이 퇴사자 관리의 예전 폴더를 다시 잡지 않게, 퇴사자 폴더는 퇴사 상태일 때만 찾는다(⚙ 에서 고른 폴더면 ID 로 비교)
+			if (!(left.equals(g.get("name")) || left.equals(g.get("id"))) || isLeft) groups.add(g);
 		}
 		String id = null;
 		if (!groups.isEmpty()) {
@@ -109,19 +109,40 @@ public class StaffDriveService {
 		return id;
 	}
 
-	/** 최상위 아래 '…관리' 구분 폴더들 */
+	/** 최상위 아래 '…관리' 구분 폴더들 + ⚙ 에서 직접 고른 구분 폴더(최상위 밖일 수도 있음) */
 	private List<Map<String, Object>> groups(String token) {
 		List<Map<String, Object>> groups = new ArrayList<>();
+		java.util.Set<String> ids = new java.util.HashSet<>();
 		for (Map<String, Object> f : drive.children(root(), token)) {
-			if (GoogleDriveApi.FOLDER.equals(f.get("mimeType")) && str(f.get("name")).endsWith("관리")) groups.add(f);
+			if (GoogleDriveApi.FOLDER.equals(f.get("mimeType")) && str(f.get("name")).endsWith("관리")) { groups.add(f); ids.add(str(f.get("id"))); }
+		}
+		for (String k : new String[] { "WAIT", "REG", "CON", "LEFT" }) {
+			String v = conf.get("STAFF", k);
+			if (DriveConfService.isFolderId(v) && ids.add(v)) {
+				Map<String, Object> g = new HashMap<>();
+				g.put("id", v);
+				g.put("name", v);
+				groups.add(g);
+			}
 		}
 		return groups;
 	}
 
-	/** 이름이 같은 구분 폴더 ID. 없으면 만든다 */
+	/** 구분 폴더 ID. ⚙ 에서 고른 폴더면 그대로, 이름이면 같은 이름 구분 폴더를 찾고 없으면 만든다 */
 	private String groupId(String group, String token) {
+		if (DriveConfService.isFolderId(group)) return group;
 		for (Map<String, Object> g : groups(token)) if (group.equals(g.get("name"))) return str(g.get("id"));
 		return drive.createFolder(group, root(), token);
+	}
+
+	/** 안내 문구용 구분 폴더 이름(고른 폴더면 드라이브에서 이름을 읽는다) */
+	private String groupLabel(String group, String token) {
+		if (!DriveConfService.isFolderId(group)) return group;
+		try {
+			return str(drive.file(group, token).get("name"));
+		} catch (RuntimeException e) {
+			return "구분 폴더";
+		}
 	}
 
 	private void saveFolder(Object staffSq, String id) {
@@ -187,7 +208,7 @@ public class StaffDriveService {
 			String token = token(), wait = conf.get("STAFF", "WAIT"), folder = traineeName(name);
 			String g = groupId(wait, token);
 			if (drive.childFolderId(g, folder, token) == null) drive.createFolder(folder, g, token);
-			return "드라이브 '" + wait + "/" + folder + "' 폴더를 만들었습니다.";
+			return "드라이브 '" + groupLabel(wait, token) + "/" + folder + "' 폴더를 만들었습니다.";
 		});
 	}
 
@@ -198,7 +219,7 @@ public class StaffDriveService {
 			String id = drive.childFolderId(groupId(conf.get("STAFF", "WAIT"), token), folder, token);
 			if (id == null) return null;
 			drive.move(id, groupId(conf.get("STAFF", "LEFT"), token), null, token);
-			return "드라이브 '" + folder + "' 폴더를 '" + conf.get("STAFF", "LEFT") + "' 로 옮겼습니다.";
+			return "드라이브 '" + folder + "' 폴더를 '" + groupLabel(conf.get("STAFF", "LEFT"), token) + "' 로 옮겼습니다.";
 		});
 	}
 
@@ -221,11 +242,11 @@ public class StaffDriveService {
 			String msg;
 			if (id != null) {
 				drive.move(id, target, name, token);
-				msg = "교육생 폴더를 '" + group + "/" + name + "' 로 옮겼습니다.";
+				msg = "교육생 폴더를 '" + groupLabel(group, token) + "/" + name + "' 로 옮겼습니다.";
 			} else {
 				id = drive.childFolderId(target, name, token);
 				if (id == null) id = drive.createFolder(name, target, token);
-				msg = "드라이브 '" + group + "/" + name + "' 폴더를 만들었습니다.";
+				msg = "드라이브 '" + groupLabel(group, token) + "/" + name + "' 폴더를 만들었습니다.";
 			}
 			saveFolder(staffSq, id);
 			return msg;
@@ -241,7 +262,7 @@ public class StaffDriveService {
 				String token = token(), left = conf.get("STAFF", "LEFT");
 				String id = personFolder(staff, token);
 				drive.move(id, groupId(left, token), null, token);
-				return "드라이브 사람 폴더를 '" + left + "' 로 옮겼습니다.";
+				return "드라이브 사람 폴더를 '" + groupLabel(left, token) + "' 로 옮겼습니다.";
 			});
 		}
 		if ("LEFT".equals(before)) {

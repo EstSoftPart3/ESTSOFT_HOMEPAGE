@@ -78,11 +78,15 @@ public class GoogleDriveApi {
 		return search("name contains '" + quote(text) + "' and mimeType = '" + FOLDER + "' and trashed = false", token);
 	}
 
-	/** 맨 위부터 그 폴더까지 [{id, name}]. 부모를 볼 수 없으면(공유받은 폴더) 거기서 멈춘다. shortcut: 8단계까지만 올라간다 */
+	/**
+	 * 맨 위부터 그 폴더까지 [{id, name}]. 맨 위가 내 드라이브면 '내 드라이브', 부모를 볼 수 없는(공유받은) 폴더면 맨 앞에 '공유받은 폴더'(id 없음)를 붙인다.
+	 * shortcut: 12단계까지만 올라간다(더 깊으면 맨 앞이 잘림)
+	 */
 	public List<Map<String, Object>> pathOf(String folderId, String token) {
 		java.util.LinkedList<Map<String, Object>> path = new java.util.LinkedList<>();
 		String id = folderId;
-		for (int i = 0; i < 8 && id != null; i++) {
+		boolean top = false;
+		for (int i = 0; i < 12 && id != null; i++) {
 			Map<String, Object> f;
 			try {
 				f = file(id, token);
@@ -90,12 +94,21 @@ public class GoogleDriveApi {
 				if (path.isEmpty()) throw e; // 고른 폴더 자체를 못 보면 오류, 그 위는 권한 밖이라 멈춤
 				break;
 			}
-			Map<String, Object> p = new java.util.HashMap<>();
-			p.put("id", f.get("id"));
-			p.put("name", f.get("name"));
-			path.addFirst(p);
 			Object parents = f.get("parents");
 			id = parents instanceof List && !((List<?>) parents).isEmpty() ? (String) ((List<?>) parents).get(0) : null;
+			Map<String, Object> p = new java.util.HashMap<>();
+			p.put("id", f.get("id"));
+			// 내 드라이브 맨 위 폴더는 부모가 없고 API 이름이 'My Drive' 다
+			top = id == null && ("My Drive".equals(f.get("name")) || "내 드라이브".equals(f.get("name")));
+			p.put("name", top ? "내 드라이브" : f.get("name"));
+			path.addFirst(p);
+		}
+		if (!top && !path.isEmpty()) {
+			// id 가 남았는데 멈췄으면 단계 제한(…), 아니면 부모를 볼 수 없는 공유받은 폴더
+			Map<String, Object> head = new java.util.HashMap<>();
+			head.put("id", null);
+			head.put("name", id != null && path.size() >= 12 ? "…" : "공유받은 폴더");
+			path.addFirst(head);
 		}
 		return path;
 	}

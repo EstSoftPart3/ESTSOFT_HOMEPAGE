@@ -242,7 +242,8 @@ public class BoEquipmentService {
 			if (roots.isEmpty()) throw new IllegalArgumentException("내 연동 드라이브 계정에서 '" + rootName + "' 폴더를 찾지 못했습니다. 장비대장 ⚙ 드라이브 설정에서 최상위 폴더를 골라 주세요.");
 			parent = (String) roots.get(0).get("id");
 		}
-		String folder = drive.childFolderId(parent, sub, token);
+		// 하위 폴더도 ⚙ 에서 직접 골랐으면 그 폴더, 이름이면 최상위 아래에서 찾고 없으면 만든다
+		String folder = com.eep.bo.my.DriveConfService.isFolderId(sub) ? sub : drive.childFolderId(parent, sub, token);
 		if (folder == null) folder = drive.createFolder(sub, parent, token);
 		String original = name == null || name.isEmpty() ? "file" : name;
 		int dot = original.lastIndexOf('.');

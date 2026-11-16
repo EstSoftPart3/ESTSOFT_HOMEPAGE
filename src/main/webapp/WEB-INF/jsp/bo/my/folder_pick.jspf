@@ -20,7 +20,8 @@
 	.ib-alert { background: #fdeaea; color: #8a1c1c; border-radius: 8px; padding: 8px 12px; font-size: 13px; }
 	.ib-alert a { font-weight: 700; }
 	.ib-alert ol { font-size: 12.5px; } .ib-alert li { margin-bottom: 2px; }
-	#folderPick { z-index: 1065; } /* ⚙ 드라이브 설정 창(bootbox) 위에 뜬다 */
+	/* 다른 창 위에 뜬다: bootbox 는 화면에 따라 1075(deploy_common), 화면 가이드 투어는 1080 이라 그 사이 */
+	#folderPick { z-index: 1078 !important; }
 </style>
 <script>
 // 구글 오류 { code, msg, url } → 빨간 칸 내용. API 꺼짐이면 켜는 순서까지
@@ -69,7 +70,7 @@ function boFolderPick(opts) {
 			+ '<div class="modal-footer"><span class="small text-muted mr-auto">폴더를 누르면 들어가고, 위 경로를 누르면 올라갑니다</span><button type="button" class="btn btn-sm btn-outline-secondary" data-dismiss="modal">취소</button><button type="button" class="btn btn-sm btn-primary" id="fdOk" disabled>이 폴더로</button></div>'
 			+ '</div></div></div>');
 		// ⚙ 설정 창 위에 겹쳐 뜰 때: 뒤 배경을 설정 창 위로, 닫힌 뒤엔 설정 창이 계속 스크롤되게
-		$('#folderPick').on('shown.bs.modal', function() { $('.modal-backdrop').last().css('z-index', 1060); })
+		$('#folderPick').on('shown.bs.modal', function() { $('.modal-backdrop').last().css('z-index', 1077); })
 			.on('hidden.bs.modal', function() { if ($('.modal.show').length) $('body').addClass('modal-open'); });
 		$('#folderPick').on('click', '.pk-tabs button', function() { boFd.mode = $(this).data('mode'); boFd.parent = ''; $('#fdFind').val(''); boFdList(); });
 		$('#fdFind').on('keydown', function(e) {
@@ -97,13 +98,17 @@ function boFdList(q) {
 	$.post('/admin/my/driveFoldersData.do', { parent: boFd.parent, mode: boFd.mode, q: q || '', screen: boFd.screen }, function(res) {
 		if (res.error || res.googleError) { $('#fdList').empty().append(boGoogleErr($('<div class="ib-alert m-0">'), res.googleError || { msg: res.error }, function() { boFdList(q); })); return; }
 		boFd.path = res.path || [];
+		// 공유받은 폴더 안이면 '공유 문서함' 탭을 켠다
+		if (boFd.path.length) boFd.mode = boFd.path[0].id ? 'MY' : 'SHARED';
+		$('#folderPick .pk-tabs button').each(function() { $(this).attr('aria-pressed', $(this).data('mode') === boFd.mode); });
 		var $c = $('#fdCrumb').empty();
 		if (q) $c.append($('<b>').text('「' + q + '」 찾은 결과'));
 		else if (!boFd.path.length) $c.append($('<b>').text(boFd.mode === 'SHARED' ? '공유 문서함' : '내 드라이브'));
 		else boFd.path.forEach(function(x, i) {
 			if (i) $c.append($('<span class="text-muted">').text('›'));
 			if (i === boFd.path.length - 1) $c.append($('<b>').text(x.name));
-			else $c.append($('<button type="button">').text(x.name).on('click', function() { boFd.parent = x.id; boFdList(); }));
+			// '공유받은 폴더'(id 없음)를 누르면 공유 문서함 맨 위로
+			else $c.append($('<button type="button">').text(x.name).on('click', function() { if (x.id) boFd.parent = x.id; else { boFd.mode = 'SHARED'; boFd.parent = ''; } boFdList(); }));
 		});
 		var $l = $('#fdList').empty();
 		if (!res.result.length) $l.append($('<div class="pk-empty">').text(q ? '찾는 폴더가 없습니다.' : '하위 폴더가 없습니다.'));
