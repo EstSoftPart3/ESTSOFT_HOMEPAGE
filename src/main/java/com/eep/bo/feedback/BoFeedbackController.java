@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,6 +54,81 @@ public class BoFeedbackController {
 			mapper.insertFeedback(p);
 			return "OK";
 		});
+	}
+
+	/**
+	 * 홈페이지(사용자 화면) 피드백. 로그인 안 한 사람도 보낸다: EMPLY_ID 'GUEST', 이름·이메일(선택)은 내용 앞줄에 붙인다.
+	 * 도배 막기: 숨은 칸(HP)이 채워지면 버리고, IP 당 10분 5건·게스트 전체 하루 100건.
+	 */
+	@RequestMapping(value = "/eep/feedback/saveData.do", method = RequestMethod.POST)
+	public ModelAndView foSaveData(@RequestParam Map<String, Object> p, HttpSession session, HttpServletRequest req) {
+		return run(() -> {
+			if (!str(p, "HP").isEmpty()) {
+				return "OK"; // 봇: 받은 척만 한다
+			}
+			String content = str(p, "CONTENT");
+			require(!content.isEmpty() && content.length() <= 4000, "내용을 1~4000자로 적어 주세요.");
+			require(KINDS.contains(str(p, "KIND_CD")), "종류를 골라 주세요.");
+			String id = foLoginId(session);
+			if (id == null) {
+				require(GUEST_LIMIT.allow(clientIp(req), System.currentTimeMillis()), "잠시 뒤 다시 보내 주세요.");
+				String name = cut(str(p, "NAME"), 30), mail = cut(str(p, "MAIL"), 100);
+				require(mail.isEmpty() || mail.matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+"), "이메일 형식을 확인해 주세요.");
+				String who = (name.isEmpty() ? "이름 없음" : name) + (mail.isEmpty() ? "" : " · " + mail);
+				content = "[게스트] " + who + "\n" + content;
+				id = "GUEST";
+			}
+			p.put("CONTENT", cut(content, 4000));
+			p.put("SCREEN_NM", cut("홈페이지 · " + str(p, "SCREEN_NM"), 100));
+			p.put("SCREEN_URL", cut(str(p, "SCREEN_URL"), 300));
+			p.put("EMPLY_ID", id);
+			mapper.insertFeedback(p);
+			return "OK";
+		});
+	}
+
+	private static final GuestLimit GUEST_LIMIT = new GuestLimit();
+
+	/** shortcut: 서버 메모리에만 세므로 재시작하면 초기화된다, 스팸이 늘면 DB·캡차로 바꾼다 */
+	static final class GuestLimit {
+		private static final long WINDOW = 10 * 60 * 1000L, DAY = 24 * 60 * 60 * 1000L;
+		private final Map<String, java.util.Deque<Long>> byIp = new HashMap<>();
+		private final java.util.Deque<Long> all = new java.util.ArrayDeque<>();
+
+		synchronized boolean allow(String ip, long now) {
+			while (!all.isEmpty() && now - all.peekFirst() >= DAY) {
+				all.pollFirst();
+			}
+			byIp.values().removeIf(q -> { while (!q.isEmpty() && now - q.peekFirst() >= WINDOW) { q.pollFirst(); } return q.isEmpty(); });
+			java.util.Deque<Long> q = byIp.computeIfAbsent(ip, k -> new java.util.ArrayDeque<>());
+			if (q.size() >= 5 || all.size() >= 100) {
+				return false;
+			}
+			q.addLast(now);
+			all.addLast(now);
+			return true;
+		}
+	}
+
+	// cloudflared → nginx 를 거쳐 오므로 Cloudflare 가 붙인 실제 주소를 먼저 본다
+	private static String clientIp(HttpServletRequest req) {
+		String ip = req.getHeader("CF-Connecting-IP");
+		if (ip == null || ip.isEmpty()) {
+			String xff = req.getHeader("X-Forwarded-For");
+			ip = xff == null || xff.isEmpty() ? req.getRemoteAddr() : xff.split(",")[0].trim();
+		}
+		return ip;
+	}
+
+	@SuppressWarnings("unchecked")
+	private static String foLoginId(HttpSession session) {
+		try {
+			Map<String, Object> info = (Map<String, Object>) session.getAttribute("loginInfo");
+			List<Map<String, Object>> list = (List<Map<String, Object>>) info.get("loginInfo");
+			return (String) list.get(0).get("emplyId");
+		} catch (RuntimeException e) {
+			return null;
+		}
 	}
 
 	/** 전체 목록. 화면이 '내 피드백'을 걸러 보인다. 기획서 HTML 은 상세에서만 */
