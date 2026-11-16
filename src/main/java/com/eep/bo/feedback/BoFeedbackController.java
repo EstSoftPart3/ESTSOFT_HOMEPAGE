@@ -93,6 +93,32 @@ public class BoFeedbackController {
 		});
 	}
 
+	/** 기획서 코멘트: 로그에 쌓고 접수로 돌린다. 다음 처리(평일 10시·15시) 때 코멘트까지 반영해 기획서를 다시 만든다 */
+	@RequestMapping(value = "/admin/feedback/commentData.do", method = RequestMethod.POST)
+	public ModelAndView commentData(@RequestParam("FB_SQ") int fbSq, @RequestParam(value = "CONTENT", defaultValue = "") String content, HttpSession session) {
+		return run(() -> {
+			String id = loginId(session);
+			require(canAct(id), "슈퍼관리자·시스템 운영자만 코멘트를 남길 수 있습니다.");
+			String c = content.trim();
+			require(!c.isEmpty() && c.length() <= 4000, "코멘트를 1~4000자로 적어 주세요.");
+			Map<String, Object> q = one("FB_SQ", fbSq);
+			q.put("CONTENT", c);
+			q.put("EMPLY_ID", id);
+			require(mapper.insertComment(q) > 0, "반영·반려된 피드백에는 코멘트를 남길 수 없습니다.");
+			return "OK";
+		});
+	}
+
+	@RequestMapping(value = "/admin/feedback/logData.do", method = RequestMethod.POST)
+	public ModelAndView logData(@RequestParam("FB_SQ") int fbSq) {
+		return run(() -> mapper.selectLogs(one("FB_SQ", fbSq)));
+	}
+
+	@RequestMapping(value = "/admin/feedback/logSpecData.do", method = RequestMethod.POST)
+	public ModelAndView logSpecData(@RequestParam("LOG_SQ") int logSq) {
+		return run(() -> mapper.selectLogSpec(one("LOG_SQ", logSq)));
+	}
+
 	/** 상단 버튼 숫자(상태가 바뀌었는데 안 본 내 피드백)와 최신 업데이트 번호(메뉴 N 표시) */
 	@RequestMapping(value = "/admin/feedback/badgeData.do", method = RequestMethod.POST)
 	public ModelAndView badgeData(HttpSession session) {

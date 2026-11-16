@@ -12,9 +12,11 @@ import java.util.Properties;
  * 접속 정보는 src/main/resources/config/db.properties 에서 읽고 출력하지 않는다. PC 의 hosts 에 mariadb 가 운영 서버로 잡혀 있어야 한다.
  *
  * 실행(프로젝트 폴더에서): java -cp "tools;<mariadb-java-client.jar>" FbDb <명령>
- *   new                         접수(NEW) 피드백을 줄마다 출력: FB_SQ | 화면 | 종류 | 요청자 | 내용
+ *   new                         접수(NEW) 피드백을 줄마다 출력: FB_SQ | 화면 | 종류 | 요청자 | 내용 | 코멘트 수
+ *                               (코멘트가 있으면 이미 기획서가 있던 건을 관리자가 코멘트로 되돌린 것 → comments 로 읽어 모두 반영해 다시 만든다)
+ *   comments FB_SQ              그 피드백의 코멘트(오래된 것부터): 일시 | 누가 | 내용
  *   ing                         진행(ING) 피드백: FB_SQ | 화면 | 요청자 | 내용 | 개발 반영 내용
- *   spec FB_SQ 파일              파일의 @@PLAN·@@EST·@@HTML 을 기획서로 넣는다. 접수(NEW)면 검토 대기로, 검토 대기·보류·진행 중이면 기획서만 바꿈
+ *   spec FB_SQ 파일              파일의 @@PLAN·@@EST·@@HTML 을 기획서로 넣고 변경 로그에 남긴다. 접수(NEW)면 검토 대기로, 검토 대기·보류·진행 중이면 기획서만 바꿈
  *   update 파일                  업데이트 내역 1건 등록(@@TITLE @@SCREENS @@COMMIT @@FB_SQ @@CHANGED @@TESTS @@CAUTIONS @@HTML).
  *                               @@FB_SQ 가 있으면 그 피드백을 반영(DONE)으로 바꾸고 요청자 버튼에 숫자가 뜨게 한다
  * 파일은 UTF-8, '@@키' 줄 다음부터 다음 '@@' 줄 전까지가 값이다.
@@ -26,11 +28,12 @@ public class FbDb {
 		Class.forName("org.mariadb.jdbc.Driver");
 		try (Connection c = DriverManager.getConnection("jdbc:mariadb://mariadb:3306/est_eep_db?characterEncoding=UTF-8", p.getProperty("db.username"), p.getProperty("db.password"))) {
 			switch (a[0]) {
-				case "new": print(c, "SELECT F.FB_SQ, F.SCREEN_NM, F.KIND_CD, IFNULL(E.EMPLY_NM, F.EMPLY_ID), F.CONTENT FROM TB_EEP_FEEDBACK_M F LEFT JOIN TB_EEP_EMPLY_M E ON E.EMPLY_ID = F.EMPLY_ID WHERE F.STATUS_CD = 'NEW' ORDER BY F.FB_SQ", 5); break;
+				case "new": print(c, "SELECT F.FB_SQ, F.SCREEN_NM, F.KIND_CD, IFNULL(E.EMPLY_NM, F.EMPLY_ID), F.CONTENT, (SELECT COUNT(*) FROM TB_EEP_FEEDBACK_LOG L WHERE L.FB_SQ = F.FB_SQ AND L.LOG_CD = 'COMMENT') FROM TB_EEP_FEEDBACK_M F LEFT JOIN TB_EEP_EMPLY_M E ON E.EMPLY_ID = F.EMPLY_ID WHERE F.STATUS_CD = 'NEW' ORDER BY F.FB_SQ", 6); break;
+				case "comments": comments(c, Integer.parseInt(a[1])); break;
 				case "ing": print(c, "SELECT F.FB_SQ, F.SCREEN_NM, IFNULL(E.EMPLY_NM, F.EMPLY_ID), F.CONTENT, F.DEV_NOTE FROM TB_EEP_FEEDBACK_M F LEFT JOIN TB_EEP_EMPLY_M E ON E.EMPLY_ID = F.EMPLY_ID WHERE F.STATUS_CD = 'ING' ORDER BY F.FB_SQ", 5); break;
 				case "spec": spec(c, Integer.parseInt(a[1]), read(a[2])); break;
 				case "update": update(c, read(a[1])); break;
-				default: throw new IllegalArgumentException("명령: new | ing | spec FB_SQ 파일 | update 파일");
+				default: throw new IllegalArgumentException("명령: new | comments FB_SQ | ing | spec FB_SQ 파일 | update 파일");
 			}
 		}
 	}
@@ -46,11 +49,28 @@ public class FbDb {
 	}
 
 	static void spec(Connection c, int fbSq, Map<String, String> f) throws SQLException {
-		// 접수 건은 검토 대기로. 검토 대기·보류·진행 중 건은 상태를 두고 기획서만 바꾼다(피드백 화면의 '다시 만들기')
-		try (PreparedStatement s = c.prepareStatement("UPDATE TB_EEP_FEEDBACK_M SET PLAN_TXT = ?, EST_TXT = ?, SPEC_HTML = ?, STATUS_CD = IF(STATUS_CD = 'NEW', 'REVIEW', STATUS_CD) WHERE FB_SQ = ? AND STATUS_CD IN ('NEW', 'REVIEW', 'HOLD', 'ING')")) {
+		// 접수 건은 검토 대기로. 검토 대기·보류·진행 중 건은 상태를 두고 기획서만 바꾼다(피드백 화면의 '다시 만들기').
+		// 바뀐 기획서는 변경 로그(TB_EEP_FEEDBACK_LOG, SPEC)에도 남겨 피드백 화면의 '변경 로그' 탭에서 예전 것과 비교해 본다
+		c.setAutoCommit(false);
+		try (PreparedStatement s = c.prepareStatement("UPDATE TB_EEP_FEEDBACK_M SET PLAN_TXT = ?, EST_TXT = ?, SPEC_HTML = ?, STATUS_CD = IF(STATUS_CD = 'NEW', 'REVIEW', STATUS_CD) WHERE FB_SQ = ? AND STATUS_CD IN ('NEW', 'REVIEW', 'HOLD', 'ING')");
+				PreparedStatement l = c.prepareStatement("INSERT INTO TB_EEP_FEEDBACK_LOG (FB_SQ, LOG_CD, PLAN_TXT, EST_TXT, SPEC_HTML, EMPLY_ID) VALUES (?, 'SPEC', ?, ?, ?, 'CLAUDE')")) {
 			s.setString(1, f.get("PLAN")); s.setString(2, f.get("EST")); s.setString(3, f.get("HTML")); s.setInt(4, fbSq);
-			System.out.println("spec " + fbSq + " → " + s.executeUpdate());
+			int n = s.executeUpdate();
+			if (n == 1) {
+				l.setInt(1, fbSq); l.setString(2, f.get("PLAN")); l.setString(3, f.get("EST")); l.setString(4, f.get("HTML"));
+				l.executeUpdate();
+			}
+			c.commit();
+			System.out.println("spec " + fbSq + " → " + n);
+		} catch (SQLException e) {
+			c.rollback();
+			throw e;
 		}
+	}
+
+	/** 그 피드백의 코멘트(오래된 것부터): 일시 | 누가 | 내용. 기획서를 다시 만들 때 모두 반영한다 */
+	static void comments(Connection c, int fbSq) throws SQLException {
+		print(c, "SELECT DATE_FORMAT(L.REG_DT, '%m-%d %H:%i'), IFNULL(E.EMPLY_NM, L.EMPLY_ID), L.CONTENT FROM TB_EEP_FEEDBACK_LOG L LEFT JOIN TB_EEP_EMPLY_M E ON E.EMPLY_ID = L.EMPLY_ID WHERE L.FB_SQ = " + fbSq + " AND L.LOG_CD = 'COMMENT' ORDER BY L.LOG_SQ", 3);
 	}
 
 	static void update(Connection c, Map<String, String> f) throws SQLException {

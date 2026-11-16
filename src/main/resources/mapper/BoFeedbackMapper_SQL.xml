@@ -17,6 +17,7 @@
 		SELECT F.FB_SQ, F.SCREEN_NM, F.KIND_CD, F.CONTENT, F.EMPLY_ID, DATE_FORMAT(F.REG_DT, '%Y-%m-%d %H:%i') AS REG_DT
 			, F.STATUS_CD, F.PLAN_TXT, F.EST_TXT, F.DEV_NOTE, F.REJECT_REASON, F.ACT_EMPLY_ID, DATE_FORMAT(F.ACT_DT, '%Y-%m-%d') AS ACT_DT, F.UPD_SQ, F.SEEN_YN
 			, F.SPEC_HTML IS NOT NULL AS HAS_SPEC
+			, (SELECT COUNT(*) FROM TB_EEP_FEEDBACK_LOG L WHERE L.FB_SQ = F.FB_SQ) AS LOG_CNT
 			, <include refid="who"/>F.EMPLY_ID LIMIT 1) AS EMPLY_NM
 			, <include refid="who"/>F.ACT_EMPLY_ID LIMIT 1) AS ACT_NM
 		FROM TB_EEP_FEEDBACK_M F
@@ -33,6 +34,23 @@
 			, ACT_EMPLY_ID = #{ACT_EMPLY_ID}, ACT_DT = NOW(), SEEN_YN = IF(EMPLY_ID = #{ACT_EMPLY_ID}, 'Y', 'N')
 		WHERE FB_SQ = #{FB_SQ} AND STATUS_CD &lt;&gt; 'DONE'
 	</update>
+
+	<!-- 코멘트: 로그에 쌓고 접수로 돌린다(다음 처리 때 코멘트까지 반영해 기획서를 다시 만듦). 반영·반려 건은 안 받는다 -->
+	<insert id="insertComment" parameterType="hashMap">
+		INSERT INTO TB_EEP_FEEDBACK_LOG (FB_SQ, LOG_CD, CONTENT, EMPLY_ID)
+		SELECT FB_SQ, 'COMMENT', #{CONTENT}, #{EMPLY_ID} FROM TB_EEP_FEEDBACK_M WHERE FB_SQ = #{FB_SQ} AND STATUS_CD NOT IN ('DONE', 'REJECT');
+		UPDATE TB_EEP_FEEDBACK_M SET STATUS_CD = 'NEW' WHERE FB_SQ = #{FB_SQ} AND STATUS_CD NOT IN ('DONE', 'REJECT')
+	</insert>
+
+	<select id="selectLogs" parameterType="hashMap" resultType="hashMap">
+		SELECT L.LOG_SQ, L.LOG_CD, L.CONTENT, L.PLAN_TXT, L.EST_TXT, L.SPEC_HTML IS NOT NULL AS HAS_SPEC, L.EMPLY_ID, DATE_FORMAT(L.REG_DT, '%Y-%m-%d %H:%i') AS REG_DT
+			, <include refid="who"/>L.EMPLY_ID LIMIT 1) AS EMPLY_NM
+		FROM TB_EEP_FEEDBACK_LOG L WHERE L.FB_SQ = #{FB_SQ} ORDER BY L.LOG_SQ DESC
+	</select>
+
+	<select id="selectLogSpec" parameterType="hashMap" resultType="hashMap">
+		SELECT LOG_SQ, FB_SQ, SPEC_HTML, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%i') AS REG_DT FROM TB_EEP_FEEDBACK_LOG WHERE LOG_SQ = #{LOG_SQ} AND LOG_CD = 'SPEC'
+	</select>
 
 	<select id="countUnseen" parameterType="hashMap" resultType="int">
 		SELECT COUNT(*) FROM TB_EEP_FEEDBACK_M WHERE EMPLY_ID = #{EMPLY_ID} AND SEEN_YN = 'N'
