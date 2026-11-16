@@ -38,4 +38,9 @@ public interface BoBatchService {
 
 	/** 이력서 드라이브로 그 관리자의 내 연동을 쓴다 */
 	void setDriveOwner(int icalSq, String emplyId);
+
+	/** 내 연동(시스템 관리자)의 면접 일정 설정: {ICAL_SQ, AUTO_YN, CAL_ID, CAL_NM, LEGACY_ICAL, FOLDER_MASK}. 없으면 빈 맵 */
+	Map<String, Object> interviewSource();
+
+	void saveInterviewSource(String calId, String calName, String folder);
 }

@@ -139,7 +139,7 @@
         <i class="fas fa-user-circle bo-user-icon" aria-hidden="true"></i>
         <div class="bo-user-info"><b><c:out value="${loginInfo.loginInfo[0].emplyNm}"/></b><small><c:out value="${loginInfo.loginInfo[0].emplyId}"/></small></div>
 <%-- boGoogle(서비스 → 계정 메일)은 boLoggerInterceptor 가 넣는다 --%>
-        <c:if test="${superUser and not empty boGoogle}"><button type="button" class="bo-user-btn" title="내 연동 · 구글 앱 설정" aria-label="내 연동" onclick="location.href='/admin/my/openGoogleLink.do';"><i class="fas fa-link" aria-hidden="true"></i></button></c:if>
+        <c:if test="${superUser}"><button type="button" class="bo-user-btn" title="내 연동 · 구글 앱 설정" aria-label="내 연동" onclick="location.href='/admin/my/openGoogleLink.do';"><i class="fas fa-link" aria-hidden="true"></i></button></c:if>
         <button type="button" class="bo-user-btn" title="비밀번호 변경" aria-label="비밀번호 변경" onclick="location.href='/eep/account/changePassword.do';"><i class="fas fa-key" aria-hidden="true"></i></button>
         <button type="button" class="bo-user-btn bo-logout" title="로그아웃" aria-label="로그아웃" onclick="logout();"><i class="fas fa-sign-out-alt" aria-hidden="true"></i></button>
       </div>

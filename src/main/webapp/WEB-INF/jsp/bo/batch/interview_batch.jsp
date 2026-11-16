@@ -22,41 +22,18 @@
 
 					<div class="cal-panel">
 						<div class="cal-panel-head">
-							<span><i class="fas fa-cog"></i> 가져오기 설정</span>
+							<span><i class="fas fa-cog"></i> 가져오기</span>
 							<button type="button" id="runBtn" class="btn btn-sm btn-dark" onclick="runNow();">지금 실행</button>
 						</div>
-						<div class="table-responsive">
-							<table class="table table-sm cal-table mb-0">
-								<thead>
-									<tr><th scope="col">선택</th><th scope="col">이름</th><th scope="col">iCal 캘린더</th><th scope="col">이력서 폴더</th><th scope="col">구글 계정</th><th scope="col">자동 09:00</th><th scope="col">삭제</th></tr>
-								</thead>
-								<tbody id="icalBody"></tbody>
-							</table>
-						</div>
-						<div class="cal-panel-body">
-							<div class="form-row">
-								<div class="col-md-3 mb-2">
-									<label for="icalNm">이름</label>
-									<input type="text" id="icalNm" class="form-control form-control-sm" maxlength="100" autocomplete="off">
-								</div>
-								<div class="col-md-5 mb-2">
-									<label for="icalUrl">iCal 비공개 주소</label>
-									<input type="text" id="icalUrl" class="form-control form-control-sm" data-secret="1" autocomplete="off">
-								</div>
-								<div class="col-md-4 mb-2">
-									<label for="icalFolder">이력서 폴더 주소</label>
-									<input type="text" id="icalFolder" class="form-control form-control-sm" autocomplete="off">
-								</div>
-								<div class="col-md-4 mb-2">
-									<label for="driveAccount">이력서 드라이브 (회사 공용 연결)</label>
-									<input type="text" id="driveAccount" class="form-control form-control-sm" readonly>
-								</div>
-								<div class="col-md-3 mb-2 d-flex align-items-end">
-									<button type="button" class="btn btn-sm btn-dark flex-fill" onclick="saveAll();">저장</button>
-									<button type="button" class="btn btn-sm btn-outline-secondary flex-fill ml-1" onclick="newSet();">새로 추가</button>
-								</div>
+						<%-- 읽을 캘린더·이력서 폴더는 시스템 관리자가 🔗 내 연동에서 한 번 정한다. 여기서는 보기·자동 실행·지금 실행만 --%>
+						<div class="cal-panel-body" id="icalBody">
+							<div class="d-flex flex-wrap align-items-center" style="gap:6px 18px">
+								<span><b>면접 캘린더</b> <span id="srcCal">-</span></span>
+								<span><b>이력서 폴더</b> <span id="srcFolder">-</span></span>
+								<span><b>공용 드라이브</b> <span id="srcDrive">-</span></span>
+								<label class="mb-0"><input type="checkbox" id="srcAuto" disabled> 자동 09:00·면접 10분 전</label>
 							</div>
-							<small class="text-muted">배치는 회사 공용 드라이브 연결로 이력서를 읽습니다. 연결은 시스템 관리자가 왼쪽 계정 아래에서 합니다.<code id="driveRedirect" hidden></code></small>
+							<small class="text-muted d-block mt-1">캘린더·이력서 폴더는 시스템 관리자가 🔗 내 연동의 「신입면접 배치가 읽을 곳」에서 정합니다.<c:if test="${superUser}"> <a href="/admin/my/openGoogleLink.do">설정하러 가기</a></c:if></small>
 						</div>
 					</div>
 
@@ -105,35 +82,18 @@
 	<script>
 	var STATUS = { OK: ['성공', 'badge-success'], WARN: ['일부 실패', 'badge-warning'], FAIL: ['실패', 'badge-danger'] };
 	var RESULT = { INSERT: ['추가', 'badge-success'], UPDATE: ['수정', 'badge-info'], SAME: ['변경 없음', 'badge-secondary'], EXCL: ['제외', 'badge-light'], SKIP: ['실패', 'badge-danger'] };
-	var sets = [], selectedSq = null, drive = {};
-	var MASKED = '#icalUrl, #icalFolder, #driveClientId, #driveClientSecret';
+	var selectedSq = null;
 
 	$(function() {
-		$.when($.getJSON('/admin/batch/driveStatusData.do'), $.getJSON('/admin/batch/icalListData.do')).done(function(status, list) {
-			drive = status[0].drive;
-			$('#driveRedirect').text(status[0].redirectUri);
-			renderIcal(list[0].list);
-		}).fail(function() { emptyRow('#icalBody', 7, '설정을 불러오지 못했습니다.'); });
+		$.getJSON('/admin/batch/icalListData.do', function(res) { renderSource(res.list); })
+			.fail(function() { $('#srcCal').text('설정을 불러오지 못했습니다.'); });
 		$.getJSON('/admin/batch/interviewBatchLogData.do', function(res) {
 			renderLog(res.list);
 			var pre = res.pre || {};
 			$('#preStatus').text('스케줄러 확인 ' + (pre.lastCheck || '대기 중') + ' · 오늘 면접 ' + ((pre.todayTimes || []).join(', ') || '없음') + ' (각 10분 전 실행)');
 		})
 			.fail(function() { emptyRow('#logBody', 12, '이력을 불러오지 못했습니다.'); });
-
-		// 가려진 값은 누르면 비우고, 아무것도 안 넣고 나오면 다시 가려 보여 준다. 그대로 두면 저장해도 바뀌지 않는다
-		$(MASKED).on('focus', function() {
-			if (this.value && this.value === $(this).data('mask')) this.value = '';
-			if ($(this).data('secret')) $(this).addClass('secret-typing');
-		}).on('blur', function() {
-			if (!this.value) { this.value = $(this).data('mask') || ''; $(this).removeClass('secret-typing'); }
-		});
-
-		var result = /[?&]drive=(\w+)/.exec(location.search);
-		if (result) {
-			alert({ ok: '이 줄의 이력서 드라이브를 내 연동 계정으로 정했습니다.' }[result[1]] || '연결하지 못했습니다.');
-			history.replaceState(null, '', location.pathname);
-		}
+		$('#srcAuto').on('change', function() { setAuto(selectedSq, this.checked); });
 	});
 
 	function emptyRow(body, cols, text) {
@@ -145,69 +105,15 @@
 		return $('<span class="badge">').addClass(b[1]).text(b[0]);
 	}
 
-	function setMasked(selector, mask) {
-		$(selector).data('mask', mask || '').val(mask || '').removeClass('secret-typing');
+	// 면접 일정 세트는 하나(첫 줄). 사용자 입력이 들어가므로 text() 로 넣는다
+	function renderSource(list) {
+		var r = (list || [])[0];
+		selectedSq = r ? r.ICAL_SQ : null;
+		$('#srcCal').text(r ? (r.ICAL_MASK ? r.ICAL_NM + ' (예전 iCal)' : r.ICAL_NM) : '미설정');
+		$('#srcFolder').text(r && r.FOLDER_MASK || '미설정');
+		$('#srcDrive').text(r && r.DRIVE_CONNECTED ? (r.DRIVE_ACCOUNT || '연결됨') : '미연결');
+		$('#srcAuto').prop('disabled', !r).prop('checked', !!r && r.AUTO_YN === 'Y');
 	}
-
-	// 고른 줄의 저장값을 입력 칸에 가려서 보여 준다
-	function fillForm() {
-		var r = sets.filter(function(s) { return s.ICAL_SQ === selectedSq; })[0] || {};
-		$('#icalNm').val(r.ICAL_NM || '');
-		setMasked('#icalUrl', r.ICAL_MASK);
-		setMasked('#icalFolder', r.FOLDER_MASK);
-		setMasked('#driveClientId', drive.clientMask);
-		setMasked('#driveClientSecret', drive.secretMask);
-		$('#driveAccount').val(r.DRIVE_CONNECTED ? (r.DRIVE_ACCOUNT || '연결됨') : '연결 안 됨');
-	}
-
-	// 사용자 입력과 일정 제목이 들어가므로 모두 text() 로 넣는다
-	function renderIcal(list) {
-		sets = list || [];
-		if (!sets.some(function(s) { return s.ICAL_SQ === selectedSq; })) selectedSq = sets.length ? sets[0].ICAL_SQ : null;
-		fillForm();
-		if (!sets.length) return emptyRow('#icalBody', 7, '등록된 설정이 없습니다. 아래 칸을 입력하고 저장해 주세요.');
-		var $body = $('#icalBody').empty();
-		sets.forEach(function(r) {
-			var $radio = $('<input type="radio" name="icalSel">').attr('aria-label', r.ICAL_NM + ' 선택').prop('checked', r.ICAL_SQ === selectedSq)
-				.on('change', function() { selectedSq = r.ICAL_SQ; fillForm(); });
-			var $auto = $('<input type="checkbox">').attr('aria-label', r.ICAL_NM + ' 자동 실행').prop('checked', r.AUTO_YN === 'Y')
-				.on('change', function() { setAuto(r.ICAL_SQ, this.checked); });
-			var $del = $('<button type="button" class="btn btn-xs btn-outline-danger">삭제</button>').on('click', function() { removeIcal(r); });
-			var $account = r.DRIVE_CONNECTED ? $('<span>').text(r.DRIVE_ACCOUNT || '연결됨') : $('<span class="badge badge-warning">').text('연결 필요');
-			$body.append($('<tr>').append($('<td>').append($radio), $('<td class="cal-title">').text(r.ICAL_NM), $('<td>').text(r.ICAL_MASK),
-				$('<td>').text(r.FOLDER_MASK || '-'), $('<td>').append($account), $('<td>').append($auto), $('<td>').append($del)));
-		});
-	}
-
-	function newSet() {
-		selectedSq = null;
-		$('input[name=icalSel]').prop('checked', false);
-		fillForm();
-		$('#icalNm').focus();
-	}
-
-	function changed(selector) {
-		var $el = $(selector), value = $el.val();
-		return value === $el.data('mask') ? '' : value;
-	}
-
-	function saveAll() {
-		var data = { name: $('#icalNm').val(), url: changed('#icalUrl'), folder: changed('#icalFolder'), clientId: changed('#driveClientId'), clientSecret: changed('#driveClientSecret') };
-		if (selectedSq) data.icalSq = selectedSq;
-		$.post('/admin/batch/saveIcalData.do', data, function(res) {
-			if (res.error) return alert(res.error);
-			drive = res.drive;
-			if (!selectedSq && res.list.length) selectedSq = res.list[res.list.length - 1].ICAL_SQ;
-			renderIcal(res.list);
-			alert('저장했습니다.');
-		}, 'json').fail(function() { alert('저장에 실패했습니다.'); });
-	}
-
-	function connectDrive() {
-		if (!selectedSq) return alert('새 설정은 먼저 저장한 뒤 연결해 주세요.');
-		location.href = '/admin/batch/driveStart.do?icalSq=' + selectedSq;
-	}
-
 	function renderLog(list) {
 		if (!list || !list.length) return emptyRow('#logBody', 12, '아직 실행 이력이 없습니다.');
 		var $body = $('#logBody').empty();
@@ -243,7 +149,7 @@
 	}
 
 	function runNow() {
-		if (!selectedSq) return alert('실행할 줄을 선택해 주세요.');
+		if (!selectedSq) return alert('면접 캘린더가 정해지지 않았습니다. 시스템 관리자가 🔗 내 연동에서 정해 주세요.');
 		var $btn = $('#runBtn').prop('disabled', true).text('실행 중...');
 		$.post('/admin/batch/runInterviewBatchData.do', { icalSq: selectedSq }, function(res) {
 			if (res.error) return alert(res.error);
@@ -253,17 +159,11 @@
 	}
 
 	function setAuto(sq, auto) {
-		$.post('/admin/batch/autoIcalData.do', { icalSq: sq, auto: auto }, function(res) { renderIcal(res.list); }, 'json')
+		$.post('/admin/batch/autoIcalData.do', { icalSq: sq, auto: auto }, function(res) { renderSource(res.list); }, 'json')
 			.fail(function() {
 				alert('변경에 실패했습니다.');
-				$.getJSON('/admin/batch/icalListData.do', function(res) { renderIcal(res.list); });
+				$.getJSON('/admin/batch/icalListData.do', function(res) { renderSource(res.list); });
 			});
-	}
-
-	function removeIcal(r) {
-		if (!confirm(r.ICAL_NM + ' 설정을 삭제할까요? 구글 계정 연결도 함께 지워지고, 지난 실행 이력은 그대로 남습니다.')) return;
-		$.post('/admin/batch/deleteIcalData.do', { icalSq: r.ICAL_SQ }, function(res) { renderIcal(res.list); }, 'json')
-			.fail(function() { alert('삭제에 실패했습니다.'); });
 	}
 	</script>
 </body>

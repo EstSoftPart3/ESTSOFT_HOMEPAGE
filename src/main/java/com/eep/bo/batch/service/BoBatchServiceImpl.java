@@ -58,6 +58,9 @@ public class BoBatchServiceImpl implements BoBatchService {
 	@Autowired
 	private GoogleLinkService googleLink;
 
+	@Autowired
+	private com.eep.bo.calendar.service.GoogleCalendarApi calendarApi;
+
 	private final RestTemplate rest;
 	private volatile LocalDateTime lastPreRunCheck;
 
@@ -182,13 +185,8 @@ public class BoBatchServiceImpl implements BoBatchService {
 		if (url == null) {
 			throw new IllegalStateException("자동 실행으로 지정한 세트가 없습니다.");
 		}
-		String ics = new String(rest.getForObject(URI.create(url), byte[].class), StandardCharsets.UTF_8);
-		// 주소가 잘못돼 다른 페이지가 오면 '일정 0건 성공'으로 보이지 않게 한다
-		if (!ics.contains("BEGIN:VCALENDAR")) {
-			throw new IllegalStateException("iCal 형식의 응답이 아닙니다. 비공개 주소를 확인해 주세요.");
-		}
 		String from = week[0].toString(), to = week[1].toString();
-		for (Map<String, String> event : InterviewCalendarParser.parseIcs(ics)) {
+		for (Map<String, String> event : readEvents(url, week)) {
 			String date = event.get("DATE");
 			if (date == null || date.compareTo(from) < 0 || date.compareTo(to) > 0) {
 				continue;
@@ -232,6 +230,34 @@ public class BoBatchServiceImpl implements BoBatchService {
 				detail.put("REASON", "면접관리 저장 실패");
 			}
 		}
+	}
+
+	/**
+	 * 면접 일정. ICAL_URL 칸에 예전 iCal 비공개 주소가 있으면 그것을, 아니면 그 칸의 구글 캘린더 ID 를 회사 공용 캘린더 연결로 읽는다.
+	 * 둘 다 parseIcs 와 같은 {UID, TITLE, STATUS, ALL_DAY, DATE, TIME} 로 맞춘다(UID 는 iCalUID 라 예전에 넣은 면접과 이어진다)
+	 */
+	private List<Map<String, String>> readEvents(String source, LocalDate[] week) {
+		if (source.startsWith(ICAL_PREFIX)) {
+			String ics = new String(rest.getForObject(URI.create(source), byte[].class), StandardCharsets.UTF_8);
+			// 주소가 잘못돼 다른 페이지가 오면 '일정 0건 성공'으로 보이지 않게 한다
+			if (!ics.contains("BEGIN:VCALENDAR")) {
+				throw new IllegalStateException("iCal 형식의 응답이 아닙니다. 비공개 주소를 확인해 주세요.");
+			}
+			return InterviewCalendarParser.parseIcs(ics);
+		}
+		String token = googleLink.accessToken(GoogleLinkService.COMPANY, GoogleLinkService.CALENDAR);
+		List<Map<String, String>> events = new ArrayList<>();
+		for (Map<String, Object> r : calendarApi.events(token, source, week[0], week[1])) {
+			Map<String, String> e = new HashMap<>();
+			String start = (String) r.get("START_DT"); // yyyy-MM-dd HH:mm:ss (서울)
+			e.put("UID", (String) r.get("ICAL_UID"));
+			e.put("TITLE", (String) r.get("EVT_TITLE"));
+			e.put("ALL_DAY", (String) r.get("ALL_DAY_YN"));
+			e.put("DATE", start.substring(0, 10));
+			if (!"Y".equals(r.get("ALL_DAY_YN"))) e.put("TIME", start.substring(11, 16));
+			events.add(e);
+		}
+		return events;
 	}
 
 	/** 면접 행마다 드라이브의 년도/월/일/이름 폴더에서 이력서를 찾아 빈 칸을 채운다. 결과는 실행 상세의 RESUME_NOTE 에 남긴다 */
@@ -385,7 +411,9 @@ public class BoBatchServiceImpl implements BoBatchService {
 		List<Map<String, Object>> list = new ArrayList<>();
 		for (Map<String, Object> row : BoBatchDao.IcalList()) {
 			// 비공개 주소와 토큰은 화면으로 내보내지 않는다
-			row.put("ICAL_MASK", InterviewCalendarParser.maskIcalUrl((String) row.remove("ICAL_URL")));
+			// 공용 캘린더 연결로 바꾼 뒤에는 이 칸이 캘린더 ID 라 가릴 것이 없다(ICAL_MASK 는 예전 iCal 일 때만)
+			String src = (String) row.remove("ICAL_URL");
+			row.put("ICAL_MASK", src != null && src.startsWith(ICAL_PREFIX) ? InterviewCalendarParser.maskIcalUrl(src) : null);
 			row.put("DRIVE_CONNECTED", "Y".equals(row.remove("DRIVE_LINKED")));
 			row.put("FOLDER_MASK", InterviewCalendarParser.maskMiddle((String) row.remove("DRIVE_FOLDER_ID")));
 			list.add(row);
@@ -451,6 +479,39 @@ public class BoBatchServiceImpl implements BoBatchService {
 
 	private static boolean validClient(String clientId, String secret) {
 		return clientId != null && clientId.endsWith(CLIENT_ID_SUFFIX) && secret != null && secret.startsWith("GOCSPX-");
+	}
+
+	@Override
+	public Map<String, Object> interviewSource() {
+		List<Map<String, Object>> rows = BoBatchDao.IcalList();
+		Map<String, Object> out = new HashMap<>();
+		if (rows.isEmpty()) return out;
+		Map<String, Object> r = rows.get(0);
+		String src = (String) r.get("ICAL_URL");
+		out.put("ICAL_SQ", r.get("ICAL_SQ"));
+		out.put("AUTO_YN", r.get("AUTO_YN"));
+		out.put("CAL_NM", r.get("ICAL_NM"));
+		// 예전 iCal 주소면 캘린더 ID 가 아니다(목록에서 다시 고르게 한다)
+		out.put("CAL_ID", src == null || src.startsWith(ICAL_PREFIX) ? null : src);
+		out.put("LEGACY_ICAL", src != null && src.startsWith(ICAL_PREFIX));
+		out.put("FOLDER_MASK", InterviewCalendarParser.maskMiddle((String) r.get("DRIVE_FOLDER_ID")));
+		return out;
+	}
+
+	/** 면접 일정은 한 세트(첫 줄)만 쓴다. 캘린더는 회사 공용 캘린더 연결에서 고른 ID, 폴더는 비우면 그대로 둔다 */
+	@Override
+	public void saveInterviewSource(String calId, String calName, String folder) {
+		String id = calId == null ? "" : calId.trim(), nm = calName == null || calName.trim().isEmpty() ? "면접일정" : calName.trim();
+		if (id.isEmpty() || id.length() > 500 || id.startsWith("http")) throw new IllegalArgumentException("면접 캘린더를 목록에서 골라 주세요.");
+		String folderText = folder == null ? "" : folder.trim(), folderId = null;
+		if (!folderText.isEmpty()) {
+			Matcher m = FOLDER_ID.matcher(folderText);
+			if (!m.matches()) throw new IllegalArgumentException("이력서 폴더 주소를 확인해 주세요.");
+			folderId = m.group(1);
+		}
+		List<Map<String, Object>> rows = BoBatchDao.IcalList();
+		Integer sq = rows.isEmpty() ? null : ((Number) rows.get(0).get("ICAL_SQ")).intValue();
+		BoBatchDao.IcalSave(sq, nm.length() > 100 ? nm.substring(0, 100) : nm, id, folderId);
 	}
 
 	@Override

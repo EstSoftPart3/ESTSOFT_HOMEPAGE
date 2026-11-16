@@ -34,6 +34,8 @@ public class BoMyController {
 	private com.eep.bo.system.service.BoSystemService systemService;
 	@Autowired
 	private com.eep.bo.batch.service.BoBatchService batch;
+	@Autowired
+	private com.eep.bo.calendar.service.GoogleCalendarApi calendarApi;
 
 	@RequestMapping("/admin/my/openGoogleLink.do")
 	public ModelAndView openGoogleLink() {
@@ -138,6 +140,33 @@ public class BoMyController {
 		try {
 			batch.saveDriveConf(clientId, clientSecret);
 			return json("result", batch.driveStatus());
+		} catch (IllegalArgumentException e) {
+			return json("error", e.getMessage());
+		}
+	}
+
+	// ── 신입면접 배치가 읽을 면접 캘린더·이력서 폴더. 회사 공용 캘린더 연결의 캘린더 목록에서 고른다. 시스템 관리자만 ──
+
+	@RequestMapping(value = "/admin/my/interviewSourceData.do", method = RequestMethod.POST)
+	public ModelAndView interviewSourceData() {
+		if (!superUser()) return json("error", "시스템 관리자만 볼 수 있습니다.");
+		ModelAndView mv = json("result", batch.interviewSource());
+		try {
+			mv.addObject("calendars", calendarApi.calendarList(link.accessToken(GoogleLinkService.COMPANY, GoogleLinkService.CALENDAR)));
+		} catch (GoogleLinkService.NeedLink e) {
+			mv.addObject("calendars", new ArrayList<Object>()); // 캘린더 미연결: 화면이 '먼저 연결' 안내
+		} catch (RestClientException e) {
+			mv.addObject("calendarError", "캘린더 목록을 불러오지 못했습니다.");
+		}
+		return mv;
+	}
+
+	@RequestMapping(value = "/admin/my/saveInterviewSourceData.do", method = RequestMethod.POST)
+	public ModelAndView saveInterviewSourceData(@RequestParam(value = "calId", defaultValue = "") String calId, @RequestParam(value = "calName", defaultValue = "") String calName, @RequestParam(value = "folder", defaultValue = "") String folder) {
+		if (!superUser()) return json("error", "시스템 관리자만 고칠 수 있습니다.");
+		try {
+			batch.saveInterviewSource(calId, calName, folder);
+			return json("result", batch.interviewSource());
 		} catch (IllegalArgumentException e) {
 			return json("error", e.getMessage());
 		}

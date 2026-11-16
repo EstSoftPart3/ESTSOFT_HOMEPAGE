@@ -108,6 +108,8 @@ public class GoogleCalendarApi {
 		Map<String, Object> row = new HashMap<>();
 		row.put("CAL_ID", calId);
 		row.put("GCAL_EVT_ID", item.get("id"));
+		// 면접 배치는 예전 iCal UID 로 면접을 찾으므로 같은 값(iCalUID)도 넘긴다
+		row.put("ICAL_UID", item.get("iCalUID"));
 		row.put("EVT_TITLE", cut((String) item.get("summary"), 500));
 		row.put("EVT_DESC", item.get("description"));
 		row.put("EVT_LOC", cut((String) item.get("location"), 500));
