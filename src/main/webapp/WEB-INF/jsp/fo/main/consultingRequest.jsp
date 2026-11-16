@@ -27,9 +27,7 @@
                     <h1 class="display-4 mb-3 animated slideInDown"> <span class="menu" style="font-weight: 700;"><b>컨설팅</b></h1>
                     
                     <p class="animated slideInDown IBM">
-                    	저희 이에스티소프트는 성실함과 책임감으로 무장하고 있으며,
-                    	<br>
-						프로젝트 진행 시 소통이 뛰어난 진정한 전문가 그룹입니다.
+                    	업무 분석부터 시스템 구축·운영까지 고객과 함께 고민합니다.
 					</p>
 					
 					<nav aria-label="breadcrumb animated slideInDown">
@@ -65,30 +63,44 @@
                             <div class="col-12">
                                 <div class="form-floating">
                                     <input type="text" class="form-control" id="subject" placeholder="Subject">
-                                    <label for="subject">제목</label>
+                                    <label for="subject">제목 *</label>
                                 </div>
                             </div>
                             <div class="col-12">
                                 <div class="form-floating">
                                     <input type="text" class="form-control" id="name" placeholder="Your Name">
-                                    <label for="name">문의자명(기업명)</label>
+                                    <label for="name">문의자명(기업명) *</label>
                                 </div>
                             </div>
                             <div class="col-12">
                                 <div class="form-floating">
                                     <input type="email" class="form-control" id="email" placeholder="Your Email">
-                                    <label for="email">이메일</label>
+                                    <label for="email">이메일 *</label>
                                 </div>
                             </div>
                             
                             <div class="col-12">
                                 <div class="form-floating">
                                     <textarea class="form-control" placeholder="Leave a message here" id="message" style="height: 250px"></textarea>
-                                    <label for="message">문의내용</label>
+                                    <label for="message">문의 내용 *</label>
                                 </div>
                             </div>
+                            <%-- 사람에게 안 보이는 칸: 봇이 채우면 서버가 버린다 --%>
+                            <input type="text" id="hp" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;">
+                            <div class="col-12 text-start">
+                                <div class="fo-consent">
+                                    <b>개인정보 수집·이용 안내</b>
+                                    <ul>
+                                        <li>수집 항목: 문의자명(기업명), 이메일</li>
+                                        <li>이용 목적: 컨설팅 문의 확인과 답변</li>
+                                        <li>보관 기간: 답변을 마친 뒤 지체 없이 파기</li>
+                                        <li>동의하지 않을 수 있으며, 이 경우 문의를 보낼 수 없습니다.</li>
+                                    </ul>
+                                </div>
+                                <label class="mt-2"><input type="checkbox" id="agree"> [필수] 개인정보 수집·이용에 동의합니다</label>
+                            </div>
                             <div class="col-12">
-                                <button class="btn btn-secondary btn-sm" type="button">문의하기</button>
+                                <button class="btn btn-primary px-5" type="button" id="sendBtn" onclick="fn_consult();">문의 보내기</button>
                             </div>
                         </div>
                     </form>
@@ -106,6 +118,20 @@
 
     
     <%@ include file="/WEB-INF/include/footer.jspf" %>
+    <script>
+    function fn_consult() {
+    	var d = { subject: $('#subject').val(), name: $('#name').val(), email: $('#email').val(), message: $('#message').val(), hp: $('#hp').val(), agree: $('#agree').is(':checked') ? 'Y' : '' };
+    	if (!$.trim(d.subject) || !$.trim(d.name) || !$.trim(d.email) || !$.trim(d.message)) { bootbox.alert('* 표시한 칸을 모두 적어 주세요.'); return; }
+    	if (!d.agree) { bootbox.alert('개인정보 수집·이용에 동의해 주세요.'); return; }
+    	var $b = $('#sendBtn').prop('disabled', true);
+    	$.post('/eep/consultRequest.do', d).done(function (res) {
+    		$b.prop('disabled', false);
+    		if (res.error) { bootbox.alert(res.error); return; }
+    		$('#subject,#name,#email,#message').val(''); $('#agree').prop('checked', false);
+    		bootbox.alert('문의가 접수되었습니다. 확인 후 이메일로 연락드리겠습니다.');
+    	}).fail(function () { $b.prop('disabled', false); bootbox.alert('보내지 못했습니다. 잠시 뒤 다시 시도해 주세요.'); });
+    }
+    </script>
     
 </body>
 

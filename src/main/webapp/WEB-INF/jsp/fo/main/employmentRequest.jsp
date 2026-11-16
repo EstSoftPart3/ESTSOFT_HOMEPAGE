@@ -27,9 +27,7 @@
                     <h1 class="display-4 mb-3 animated slideInDown menu" style="font-weight: 700;">입사지원</h1>
                     
                     <p class="animated slideInDown IBM">
-                    	저희 이에스티소프트는 성실함과 책임감으로 무장하고 있으며,
-                    	<br>
-						프로젝트 진행 시 소통이 뛰어난 진정한 전문가 그룹입니다.
+                    	함께 성장할 개발자를 기다립니다.
 					</p>
 					
 					<nav aria-label="breadcrumb animated slideInDown">
@@ -64,31 +62,30 @@
                             <div class="col-12">
                                 <div class="form-floating">
                                     <input type="text" class="form-control" id="name" placeholder="name" autocomplete="off" value="">
-                                    <label for="name">성명</label>
+                                    <label for="name">성명 *</label>
                                 </div>
                             </div>
                             <div class="col-12">
                                 <div class="form-floating">
                                     <input type="text" class="form-control" id="handphone" placeholder="handphone" autocomplete="off" value="">
-                                    <label for="handphone">휴대폰</label>
+                                    <label for="handphone">휴대폰 *</label>
                                 </div>
                             </div>
                             <div class="col-12">
                                 <div class="form-floating">
                                     <input type="email" class="form-control" id="email" placeholder="email" autocomplete="off" value="">
-                                    <label for="email">이메일</label>
+                                    <label for="email">이메일 *</label>
                                 </div>
                             </div>
                             
                             <div class="col-12">
                                 <div class="form-floating">
                                     <textarea class="form-control" placeholder="Leave a message here" id="content" style="height: 250px"></textarea>
-                                    <label for="content">자기소개(간략히)</label>
+                                    <label for="content">자기소개(간략히) *</label>
                                 </div>
                             </div>
                             <div class="col-12">
-                            	※ 개인정보 수집 및 이용동의
-                            	<input type="checkbox" id="box1">
+                            	<label><input type="checkbox" id="box1"> [필수] 개인정보 수집·이용에 동의합니다 (아래 내용)</label>
                             </div>
                              <div class="col-12">
                                 <div class="form-floating">
@@ -139,7 +136,7 @@
                             </div>
                             
                             <div class="col-12">
-                                <button class="btn btn-secondary btn-lg" type="button" onclick="fn_sendmail();">입사지원</button>
+                                <button class="btn btn-primary px-5" type="button" onclick="fn_sendmail();">입사지원</button>
                             </div>
                         </div>
                     </form>
@@ -187,7 +184,7 @@
     		} else {
     			
     			
-    			 if (!confirm("확인버튼을 누르면 입사지원이 완료 됩니다. 확인버튼을 클릭 후 잠시만 기달려주세요.")) {
+    			 if (!confirm("확인버튼을 누르면 입사지원이 완료 됩니다. 확인버튼을 클릭 후 잠시만 기다려 주세요.")) {
     				 	return false;
     			 } else {
    			    	var params = {
@@ -202,7 +199,7 @@
    	    				type: "post",
    	    				data: params,
    	    				success: function(data){
-   	    					alert("입시지원 되었습니다. 감사합니다.");
+   	    					alert("입사지원 되었습니다. 감사합니다.");
    	    		    		$("#name").val('');
    	    		    		$("#handphone").val('');
    	    		    		$("#email").val('');

@@ -93,7 +93,7 @@ th, td {
         <div class="container py-5">
             
             <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
-                <h1 class="display-6">Community</h1>
+                <h1 class="display-6" style="font-weight:800;">커뮤니티</h1>
                 <p class= "fs-5 mb-5"></p>
             </div>
             
@@ -104,26 +104,26 @@ th, td {
                         <img class="img-fluid flex-shrink-0" src="img/icon-7.png" alt="">
                         <div class="ps-4">
                             
-                               <h5 class="mb-3 Gugi">NOTICE</h5>
+                               <h5 class="mb-3" style="font-weight:700;">공지사항</h5>
                               
-                              <table class="table table-bordered" style="border-color:#ced4da">
-								   	<thead style="background-color:#efefef">
+                              <table class="table fo-table">
+								   	<thead>
 								   		<tr align="center">
 											<th>제목</th>
 											<th>등록일</th>
 										</tr>
 									</thead>
-									<tbody style="font-weight:bold;">
+									<tbody>
 										<c:choose>
 											<c:when test="${ fn:length(noticeData.mainNoticeBoardInfo) == 0 }">
 												<tr>
-													<td colspan="2">조회 결과가 없습니다</td>
+													<td colspan="2" style="color:#8a949c;">아직 글이 없습니다</td>
 												</tr>
 											</c:when>
 											<c:otherwise>
 												<c:forEach var="noticeData" items="${noticeData.mainNoticeBoardInfo}">
-												<tr style="text-align:center;background-color:#ffffff">
-													<td>
+												<tr>
+													<td class="td-title">
 														<a style="text-decoration:none" 
 														   href="javascript:${noticeData.blindYn eq 'Y' ? 'void' : 'noticeBoardList'}(${noticeData.brdSq})">
 															<c:out value="${noticeData.brdTtl}" />
@@ -148,26 +148,26 @@ th, td {
                         <img class="img-fluid flex-shrink-0" src="img/icon-7.png" alt="">
                         <div class="ps-4">
                             
-                               <h5 class="mb-3 Gugi">TECHNOLOGY</h5>
+                               <h5 class="mb-3" style="font-weight:700;">기술문의</h5>
                               
-                              <table class="table table-bordered" style="border-color:#ced4da">
-								   	<thead style="background-color:#efefef">
+                              <table class="table fo-table">
+								   	<thead>
 								   		<tr align="center">
 											<th>제목</th>
 											<th>등록일</th>
 										</tr>
 									</thead>
-									<tbody style="font-weight:bold;">
+									<tbody>
 										<c:choose>
 											<c:when test="${ fn:length(technologyData.mainTechnologyBoardInfo) == 0 }">
 												<tr>
-													<td colspan="2">조회 결과가 없습니다</td>
+													<td colspan="2" style="color:#8a949c;">아직 글이 없습니다</td>
 												</tr>
 											</c:when>
 											<c:otherwise>
 												<c:forEach var="technologyData" items="${technologyData.mainTechnologyBoardInfo}">
-												<tr style="text-align:center;background-color:#ffffff">
-													<td>
+												<tr>
+													<td class="td-title">
 														<a style="text-decoration:none" 
 														   href="javascript:${technologyData.blindYn eq 'Y' ? 'void' : 'technologyBoardList'}(${technologyData.brdSq})">
 															<c:out value="${technologyData.brdTtl}" />
@@ -192,26 +192,26 @@ th, td {
                         <img class="img-fluid flex-shrink-0" src="img/icon-7.png" alt="">
                         <div class="ps-4">
                             
-                               <h5 class="mb-3 Gugi">EDUCATION</h5>
+                               <h5 class="mb-3" style="font-weight:700;">교육일정</h5>
                               
-                               <table class="table table-bordered" style="border-color:#ced4da">
-								   	<thead style="background-color:#efefef">
+                               <table class="table fo-table">
+								   	<thead>
 								   		<tr align="center">
 											<th>제목</th>
 											<th>등록일</th>
 										</tr>
 									</thead>
-									<tbody style="font-weight:bold;">
+									<tbody>
 										<c:choose>
 											<c:when test="${ fn:length(educationData.mainEducationBoardInfo) == 0 }">
 												<tr>
-													<td colspan="2">조회 결과가 없습니다</td>
+													<td colspan="2" style="color:#8a949c;">아직 글이 없습니다</td>
 												</tr>
 											</c:when>
 											<c:otherwise>
 												<c:forEach var="educationData" items="${educationData.mainEducationBoardInfo}">
-												<tr style="text-align:center;background-color:#ffffff">
-													<td>
+												<tr>
+													<td class="td-title">
 														<a style="text-decoration:none" 
 														   href="javascript:${educationData.blindYn eq 'Y' ? 'void' : 'educationBoardList'}(${educationData.brdSq})">
 															<c:out value="${educationData.brdTtl}" />

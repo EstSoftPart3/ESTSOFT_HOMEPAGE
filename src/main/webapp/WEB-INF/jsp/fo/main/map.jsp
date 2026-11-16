@@ -28,9 +28,7 @@
                 <div class="col-lg-6">
                     <h1 class="display-4 mb-3 animated slideInDown menu" style="font-weight: 700;">고객센터</h1>
                      <p class="animated slideInDown IBM">
-                    	저희 이에스티소프트는 성실함과 책임감으로 무장하고 있으며,
-                    	<br>
-						프로젝트 진행 시 소통이 뛰어난 진정한 전문가 그룹입니다.
+                    	자주 묻는 질문과 오시는 길을 안내합니다.
 					</p>
 					
 					<nav aria-label="breadcrumb animated slideInDown">

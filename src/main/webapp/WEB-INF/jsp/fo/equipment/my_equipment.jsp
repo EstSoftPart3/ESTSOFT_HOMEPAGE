@@ -23,7 +23,7 @@
     		<ul id="signList" class="list-group"></ul>
     	</div>
     	<div class="table-responsive">
-    		<table class="table align-middle">
+    		<table class="table fo-table align-middle">
     			<thead><tr><th>장비번호</th><th>구분</th><th>모델</th><th>대여일</th><th id="auditHead" hidden></th></tr></thead>
     			<tbody id="list"><tr><td colspan="4" class="text-center text-muted py-4">불러오는 중입니다.</td></tr></tbody>
     		</table>
@@ -56,7 +56,7 @@
     		$('#signArea').prop('hidden', !Object.keys(groups).length);
     		if (!rows.length) { $body.append('<tr><td colspan="4" class="text-center text-muted py-4">대여 중인 장비가 없습니다.</td></tr>'); return; }
     		rows.forEach(function(r) {
-    			var $tr = $('<tr>').append($('<td class="eq-no">').text(r.EQP_NO)).append($('<td>').text(TYPE[r.TYPE_CD] || r.TYPE_CD)).append($('<td>').text(r.MODEL_NM || '')).append($('<td>').text(r.START_DT || ''));
+    			var $tr = $('<tr>').append($('<td class="eq-no">').text(r.EQP_NO)).append($('<td>').append($('<span class="fo-pill">').text(TYPE[r.TYPE_CD] || r.TYPE_CD))).append($('<td>').text(r.MODEL_NM || '')).append($('<td>').text(r.START_DT || ''));
     			if (audit.length) $tr.append($('<td>').append(answer(r)));
     			$body.append($tr);
     		});

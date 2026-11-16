@@ -32,6 +32,51 @@
     <link href="/resources/fo/css/style.css" rel="stylesheet">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.8.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+    <style>
+    	/* ── 사용자 화면 공통 모양(2026-11-16 UI/UX 점검): 글꼴 한 벌, 주 색 청록, 메뉴, 표, 모바일 ── */
+    	body, h1, h2, h3, h4, h5, h6, .Gugi, .IBM, .bootbox, button, input, select, textarea { font-family: "Pretendard Variable", Pretendard, "Malgun Gothic", sans-serif !important; }
+    	body { -webkit-font-smoothing: antialiased; letter-spacing: -.1px; word-break: keep-all; overflow-wrap: break-word; }
+    	.IBM { font-weight: 400; }
+    	.hero-header h1, h1.display-3, h1.display-6 { font-weight: 700 !important; letter-spacing: -.5px; }
+    	/* 소개 문장의 강제 줄바꿈은 넓은 화면에서만 */
+    	@media (max-width: 767px) { .IBM br, .page-intro br { display: none; } .display-1, .display-2, .display-3, .display-4 { font-size: 2.2rem; } .hero-header .py-5 { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; } }
+    	/* 메뉴: ≡ 버튼을 진하게, 피드백은 아이콘, 로그인은 청록 버튼, 내 메뉴는 둥근 버튼 */
+    	.navbar-light .navbar-toggler { border: 1px solid rgba(17,17,17,.25); padding: 6px 10px; }
+    	.navbar-light .navbar-toggler-icon { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23111' stroke-linecap='round' stroke-width='2.4' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e"); }
+    	.fo-login { align-self: center; background: #0b6e8a; color: #fff !important; border-radius: 999px; padding: 6px 18px !important; font-weight: 700; margin-left: 8px; }
+    	.fo-login:hover { background: #095a71; }
+    	.fo-user { align-self: center; border: 1px solid rgba(17,17,17,.15); border-radius: 999px; padding: 6px 14px !important; font-weight: 600; margin-left: 8px; }
+    	.fo-user:hover, .show > .fo-user { border-color: #0b6e8a; color: #0b6e8a !important; }
+    	@media (min-width: 992px) { .fo-fb { align-self: center; } }
+    	@media (max-width: 991px) { .fo-login, .fo-user, .fo-fb { align-self: flex-start; display: inline-block; margin: 6px 0; } .navbar-brand img { height: 56px !important; } }
+    	/* 주 버튼·링크·입력칸 초점: 청록 */
+    	.btn-primary { background-color: #0b6e8a; border-color: #0b6e8a; }
+    	.btn-primary:hover, .btn-primary:focus, .btn-primary:active { background-color: #095a71 !important; border-color: #095a71 !important; }
+    	.btn-outline-primary { color: #0b6e8a; border-color: #0b6e8a; } .btn-outline-primary:hover { background: #0b6e8a; border-color: #0b6e8a; color: #fff; }
+    	.form-control:focus, .form-select:focus { border-color: #0b6e8a; box-shadow: 0 0 0 .2rem rgba(11,110,138,.15); }
+    	.modal-content { border: 0; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.18); }
+    	/* 소개 영역의 바로가기 링크: 밑줄 대신 청록 굵은 글씨 */
+    	.hero-header .breadcrumb a { color: #0b6e8a; font-weight: 700; text-decoration: none; }
+    	.hero-header .breadcrumb a:hover { text-decoration: underline; }
+    	/* 자주하는 질문: 열린 질문은 형광 하늘색 대신 흰 바탕·청록 글씨 */
+    	.accordion-item { border: 1px solid #e3e7ea !important; border-radius: 10px !important; margin-bottom: 8px; overflow: hidden; }
+    	.accordion-button, .accordion-button.collapsed { background: #fff !important; color: #1d2327 !important; font-weight: 600; box-shadow: none !important; }
+    	.accordion-button:not(.collapsed) { color: #0b6e8a !important; border-bottom: 1px solid #edf0f2; }
+    	.accordion-body { color: #3d464d; line-height: 1.7; }
+    	/* 목록 표: 머리글 옅은 회색, 줄 경계 옅게, 제목 칸은 왼쪽 정렬(.td-title) */
+    	.fo-table { width: 100%; font-size: 14px; border-collapse: collapse; background: #fff; }
+    	.table.fo-table > thead > tr > th { background: #f7f9fa; color: #4a545c; font-weight: 600; font-size: 13px; padding: 10px 12px; border-bottom: 1px solid #e3e7ea; text-align: center; }
+    	.table.fo-table > tbody > tr > td { padding: 10px 12px; border-bottom: 1px solid #edf0f2; text-align: center; vertical-align: middle; }
+    	.table.fo-table > tbody > tr:hover > td { background: #f1f9fb; }
+    	.table.fo-table > tbody > tr > td.td-title { text-align: left; }
+    	.fo-table a { color: #1d2327; text-decoration: none; } .fo-table a:hover { color: #0b6e8a; text-decoration: underline; }
+    	/* 개인정보 수집·이용 안내 상자(문의·입사지원) */
+    	.fo-consent { border: 1px solid #e3e7ea; border-radius: 10px; background: #fafbfc; padding: 12px 14px; font-size: 13px; color: #4a545c; }
+    	.fo-consent ul { margin: 6px 0 0; padding-left: 18px; }
+    	.fo-pill { display: inline-block; padding: 0 8px; border-radius: 10px; font-size: 11px; font-weight: 700; background: #dff3f9; color: #0b6e8a; white-space: nowrap; }
+    	.fo-new { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 999px; background: #e0a800; color: #111; font-size: 10px; font-weight: 700; line-height: 15px; vertical-align: middle; }
+    </style>
     <style>
     	/* 표 머리글 틀고정: 위 메뉴(sticky-top) 바로 아래에 붙는다. 머리글 줄 배경색(thead 인라인)을 칸이 이어받는다(부트스트랩 칸 배경보다 우선) */
     	:where(.table) > :where(thead) { background-color: #fff; }

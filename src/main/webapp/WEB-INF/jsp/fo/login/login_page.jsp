@@ -21,7 +21,17 @@
   <link rel="stylesheet" href="/resources/bo/dist/css/adminlte.min.css">
   <!-- Google Font: Source Sans Pro -->
   <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <style>
+    body, button, input { font-family: "Pretendard Variable", Pretendard, "Malgun Gothic", sans-serif; }
+    .login-box .card { border: 0; border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.08); }
+    .login-logo b { font-weight: 700; color: #111; letter-spacing: -.3px; }
+    .login-box .input-group .form-control { height: 42px; }
+    .login-box .input-group-text { background: #fff; color: #8a949c; }
+    .login-box .btn-primary { background: #0b6e8a; border-color: #0b6e8a; border-radius: 8px; height: 44px; font-weight: 700; margin-top: 10px; }
+    .login-box .btn-primary:hover { background: #095a71; border-color: #095a71; }
+    .login-type { border-radius: 8px !important; }
+    .icheck-primary > input:first-child:checked + label::before { background-color: #0b6e8a !important; border-color: #0b6e8a !important; }
     .join-line { border-top:1px solid #dde4ea; margin:14px 0 0; padding-top:12px; text-align:center; font-size:14px; color:#5a6670; }
     .join-line a { color:#0b6e8a; font-weight:600; text-decoration:underline; text-underline-offset:2px; }
     .login-type { display:flex; border:1px solid #ced4da; border-radius:4px; overflow:hidden; margin-bottom:16px; }
@@ -51,15 +61,15 @@
       </div>
       <form action="#" method="post">
         <div class="input-group mb-3">
-          <input type="email" class="form-control" id="emplyId"  placeholder="Admin Id" value="<c:out value='${savedId}'/>">
+          <input type="email" class="form-control" id="emplyId"  placeholder="아이디" aria-label="아이디" autocomplete="username" value="<c:out value='${savedId}'/>">
           <div class="input-group-append">
             <div class="input-group-text">
-              <span class="fas fa-envelope"></span>
+              <span class="fas fa-user"></span>
             </div>
           </div>
         </div>
         <div class="input-group mb-3">
-          <input type="password" class="form-control" id="emplyPw" placeholder="Password">
+          <input type="password" class="form-control" id="emplyPw" placeholder="비밀번호" aria-label="비밀번호" autocomplete="current-password">
           <div class="input-group-append">
             <div class="input-group-text">
               <span class="fas fa-lock"></span>
@@ -67,7 +77,7 @@
           </div>
         </div>
         <div class="row">
-          <div class="col-8">
+          <div class="col-12 d-flex" style="gap: 16px;">
             <div class="icheck-primary">
               <input type="checkbox" id="saveId" ${empty savedId ? '' : 'checked'}>
               <label for="saveId" style="font-weight:normal; font-size:14px;">아이디 저장</label>
@@ -78,8 +88,8 @@
             </div>
           </div>
           <!-- /.col -->
-          <div class="col-4">
-            <button type="button" class="btn btn-primary btn-block" onclick="memberLogin();">Login In</button>
+          <div class="col-12">
+            <button type="button" class="btn btn-primary btn-block" onclick="memberLogin();">로그인</button>
           </div>
           <!-- /.col -->
         </div>

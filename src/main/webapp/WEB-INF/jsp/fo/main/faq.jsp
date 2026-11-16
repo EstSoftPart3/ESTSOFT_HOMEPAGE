@@ -28,9 +28,7 @@
                 <div class="col-lg-6">
                     <h1 class="display-4 mb-3 animated slideInDown menu" style="font-weight: 700;">고객센터</h1>
                      <p class="animated slideInDown IBM">
-                    	저희 이에스티소프트는 성실함과 책임감으로 무장하고 있으며,
-                    	<br>
-						프로젝트 진행 시 소통이 뛰어난 진정한 전문가 그룹입니다.
+                    	자주 묻는 질문과 오시는 길을 안내합니다.
 					</p>
 					
 					<nav aria-label="breadcrumb animated slideInDown">
@@ -66,13 +64,13 @@
                             <h2 class="accordion-header" id="headingOne">
                                 <button class="accordion-button" type="button" data-bs-toggle="collapse"
                                     data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-                                    	Q.컨설팅 의뢰는 어떻게 하나요?
+                                    	Q. 컨설팅 의뢰는 어떻게 하나요?
                                 </button>
                             </h2>
                             <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne"
                                 data-bs-parent="#accordionExample">
                                 <div class="accordion-body" style="padding-left:20px;">
-                                   	A.컨설팅 의뢰는 상단 메뉴 컨설팅에서 컨설팅 의뢰를 해주시면 담당직원이 유선으로 연락드립니다.
+                                   	상단 메뉴 컨설팅 › 컨설팅 문의에 남겨 주시면 담당 직원이 연락드립니다.
                                 </div>
                             </div>
                         </div>
@@ -81,13 +79,13 @@
                             <h2 class="accordion-header" id="headingTwo">
                                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
                                     data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-                                    	Q.신입사원(프로그램머) 대상 교육이 있을까요?
+                                    	Q. 신입사원(프로그래머) 대상 교육이 있을까요?
                                 </button>
                             </h2>
                             <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo"
                                 data-bs-parent="#accordionExample">
                                 <div class="accordion-body" style="padding-left:20px;">
-                                   A.On the Job Training(OJT)를 기본 2주간 진행 하고 있으며, 사원별 Case By Case Training을 하고 있습니다.
+                                   On the Job Training(OJT)를 기본 2주간 진행 하고 있으며, 사원별 Case By Case Training을 하고 있습니다.
                                 </div>
                             </div>
                         </div>
@@ -96,13 +94,13 @@
                             <h2 class="accordion-header" id="headingThree">
                                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
                                     data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-                                    Q.SI란 무엇인가요?
+                                    Q. SI란 무엇인가요?
                                 </button>
                             </h2>
                             <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree"
                                 data-bs-parent="#accordionExample">
                                 <div class="accordion-body" style="padding-left:20px;">
-                                    A.SI이란, 기업의 가치를 극대화시키는 정보시스템의 통합 구축으로 시스템의 기획 및 설계, 최적의 하드웨어 선정에서 발주 및 조달, 사용자의 필요에 맞춘 응용 소프트웨어의 개발, 시스템의 유지·보수 등을 포함한 시스템통합(system integration) 구축을 말합니다..
+                                    SI란, 기업의 가치를 극대화시키는 정보시스템의 통합 구축으로 시스템의 기획 및 설계, 최적의 하드웨어 선정에서 발주 및 조달, 사용자의 필요에 맞춘 응용 소프트웨어의 개발, 시스템의 유지·보수 등을 포함한 시스템통합(system integration) 구축을 말합니다.
                                 </div>
                             </div>
                         </div>

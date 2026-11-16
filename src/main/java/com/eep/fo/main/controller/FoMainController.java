@@ -468,6 +468,50 @@ public class FoMainController extends BaseController {
 		
 		return "redirect:/eep/mainPage.do";
 	}
-	
-	
+
+	private static final com.eep.bo.feedback.BoFeedbackController.GuestLimit CONSULT_LIMIT = new com.eep.bo.feedback.BoFeedbackController.GuestLimit();
+
+	/** 컨설팅 문의: 입사지원과 같은 받는 주소로 글 메일을 보낸다. 개인정보 동의 필수, 도배 막기는 피드백과 같은 규칙 */
+	@RequestMapping(value = "/eep/consultRequest.do", method = RequestMethod.POST)
+	public ModelAndView consultRequest(@RequestParam Map<String, Object> p, javax.servlet.http.HttpServletRequest req) {
+		ModelAndView mv = new ModelAndView("jsonView");
+		String subject = val(p, "subject", 100), name = val(p, "name", 50), email = val(p, "email", 100), message = val(p, "message", 4000);
+		String err = null;
+		if (!val(p, "hp", 10).isEmpty()) {
+			mv.addObject("result", "OK"); // 봇: 받은 척만 한다
+			return mv;
+		} else if (subject.isEmpty() || name.isEmpty() || message.isEmpty()) {
+			err = "제목·문의자명·문의 내용을 적어 주세요.";
+		} else if (!email.matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")) {
+			err = "이메일 형식을 확인해 주세요.";
+		} else if (!"Y".equals(val(p, "agree", 1))) {
+			err = "개인정보 수집·이용에 동의해 주세요.";
+		} else if (!CONSULT_LIMIT.allow(com.eep.bo.feedback.BoFeedbackController.clientIp(req), System.currentTimeMillis())) {
+			err = "잠시 뒤 다시 보내 주세요.";
+		}
+		if (err != null) {
+			mv.addObject("error", err);
+			return mv;
+		}
+		try {
+			MimeMessage msg = mailSender.createMimeMessage();
+			MimeMessageHelper h = new MimeMessageHelper(msg, false, "UTF-8");
+			h.setTo("est.part2@gmail.com"); // 입사지원(sendmail)과 같은 받는 주소
+			h.setReplyTo(email);
+			h.setSubject("(주)이에스티소프트 홈페이지 컨설팅 문의 [" + name + "] " + subject);
+			h.setText("문의자명(기업명): " + name + "\n이메일: " + email + "\n제목: " + subject + "\n\n" + message + "\n\n(개인정보 수집·이용 동의함)", false);
+			mailSender.send(msg);
+			mv.addObject("result", "OK");
+		} catch (Exception e) {
+			System.out.println("CONSULT_MAIL_ERROR " + e);
+			mv.addObject("error", "보내지 못했습니다. 잠시 뒤 다시 시도해 주세요.");
+		}
+		return mv;
+	}
+
+	private static String val(Map<String, Object> p, String k, int max) {
+		Object v = p.get(k);
+		String s = v == null ? "" : String.valueOf(v).trim();
+		return s.length() > max ? s.substring(0, max) : s;
+	}
 }

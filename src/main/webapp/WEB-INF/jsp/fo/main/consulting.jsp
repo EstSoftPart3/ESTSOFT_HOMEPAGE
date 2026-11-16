@@ -27,9 +27,7 @@
                     <h1 class="display-4 mb-3 animated slideInDown"> <span class="menu" style="font-weight: 700;"><b>컨설팅</b></h1>
                     
                     <p class="animated slideInDown IBM">
-                    	저희 이에스티소프트는 성실함과 책임감으로 무장하고 있으며,
-                    	<br>
-						프로젝트 진행 시 소통이 뛰어난 진정한 전문가 그룹입니다.
+                    	업무 분석부터 시스템 구축·운영까지 고객과 함께 고민합니다.
 					</p>
 					
 					<nav aria-label="breadcrumb animated slideInDown">

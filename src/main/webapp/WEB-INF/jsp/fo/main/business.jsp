@@ -26,9 +26,7 @@
                 <div class="col-lg-6">
                     <h1 class="display-4 mb-3 animated slideInDown menu" style="font-weight: 700;">사업분야</h1>
                     <p class="animated slideInDown IBM">
-                    	저희 이에스티소프트는 성실함과 책임감으로 무장하고 있으며,
-                    	<br>
-						프로젝트 진행 시 소통이 뛰어난 진정한 전문가 그룹입니다.
+                    	기업의 IT 시스템을 기획부터 구축·운영까지 책임집니다.
 					</p>
                 </div>
                 <div class="col-lg-6 animated fadeIn">

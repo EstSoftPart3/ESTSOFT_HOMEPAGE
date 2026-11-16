@@ -52,11 +52,12 @@
             </div>
 
 			<%-- 피드백: 로그인 안 한 사람도 보낸다(fo-feedback.js) --%>
-			<a href="javascript:void(0)" id="foFbBtn" ${sessionScope.loginInfo.loginInfo[0] != null ? 'data-login' : ''} class="nav-item nav-link" title="불편·오류·새 기능을 알려 주세요"><i class="far fa-comment-dots"></i> 피드백</a>
+			<a href="javascript:void(0)" id="foFbBtn" ${sessionScope.loginInfo.loginInfo[0] != null ? 'data-login' : ''} class="nav-item nav-link fo-fb" title="피드백 — 불편·오류·새 기능을 알려 주세요" aria-label="피드백"><i class="far fa-comment-dots fa-lg"></i><span class="d-lg-none"> 피드백</span></a>
 			<c:if test="${sessionScope.loginInfo.loginInfo[0] != null}">
             	<div class="nav-item dropdown">
-	             	<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown"><i class="fa fa-network-wired"></i> <b>${loginInfo.loginInfo[0].emplyNm}</b>(${loginInfo.loginInfo[0].emplyId})님 안녕하세요</a>
+	             	<a href="#" class="nav-link dropdown-toggle fo-user" data-bs-toggle="dropdown" title="${loginInfo.loginInfo[0].emplyNm}(${loginInfo.loginInfo[0].emplyId})님 안녕하세요"><i class="far fa-user-circle"></i> ${loginInfo.loginInfo[0].emplyNm}님</a>
 	             	<div class="dropdown-menu dropdown-menu-end shadow-sm m-0">
+					<div class="dropdown-header">${loginInfo.loginInfo[0].emplyNm}(${loginInfo.loginInfo[0].emplyId})님 안녕하세요</div>
 					<c:if test="${sessionScope.emplyAuthCheck == '2'}">
 						<%-- 관리자 계정: 홈페이지/관리자 화면 전환 토글은 이 메뉴 안에 --%>
 						<div class="mode-switch mx-3 my-2" role="group" aria-label="화면 전환">
@@ -67,13 +68,14 @@
 					</c:if>
 	                     <a class="dropdown-item" href="/eep/equipment/myEquipment.do"><i class="fa fa-laptop"></i> 내 장비</a>
 		                     <a class="dropdown-item" href="/eep/account/changePassword.do"><i class="fa fa-key"></i> 비밀번호 변경</a>
-	                     <a class="dropdown-item" style="color: red;" href="javascript:logout()"><i class="fa fa-paper-plane"></i> 로그아웃</a>
+	                     <div class="dropdown-divider"></div>
+	                     <a class="dropdown-item text-danger" href="javascript:logout()"><i class="fa fa-sign-out-alt"></i> 로그아웃</a>
 	                 </div>
             	</div>
             </c:if>
             
             <c:if test="${sessionScope.loginInfo.loginInfo[0] == null}">
-             <a href="/eep/login/loginPage.do" class="nav-item nav-link" style="color: lightblue;"><b>LOGIN</b></a>
+             <a href="/eep/login/loginPage.do" class="nav-item nav-link fo-login">로그인</a>
             </c:if>
 
         </div>

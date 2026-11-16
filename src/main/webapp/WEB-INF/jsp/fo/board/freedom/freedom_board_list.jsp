@@ -57,9 +57,7 @@
                 <div class="col-lg-6">
                     <h1 class="display-4 mb-3 animated slideInDown">EST COMMUNITY</h1>
                      <p class="animated slideInDown IBM">
-                    	저희 이에스티소프트는 성실함과 책임감으로 무장하고 있으며,
-                    	<br>
-						프로젝트 진행 시 소통이 뛰어난 진정한 전문가 그룹입니다.
+                    	공지사항·자유게시판·기술문의·교육일정으로 직원 소식을 나누는 공간입니다.
 					</p>
 					
 					<nav aria-label="breadcrumb animated slideInDown">
@@ -101,7 +99,7 @@
     <div class="container-xxl py-5 menu">
         <div class="container">
             <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
-                <h1 class="display-3" style="font-size:20px;">자유게시판 리스트</h1>
+                <h1 class="display-3" style="font-size:22px;font-weight:800;">자유게시판</h1>
             </div>
            <table style="width:100%;max-width: 900px;" align="center">	
            	<tr>
@@ -125,7 +123,7 @@
            	</tr>
            </table>
            
-           <table class="table table-bordered" style="max-width: 900px;border-color:#ced4da" align="center" id="board">
+           <table class="table fo-table" style="max-width: 900px;" align="center" id="board">
 		  	<thead>
 		  		<tr class="theadTh">
 					<th class="text-center">번호</th>

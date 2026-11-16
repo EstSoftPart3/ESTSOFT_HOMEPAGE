@@ -90,12 +90,12 @@ public class BoFeedbackController {
 	private static final GuestLimit GUEST_LIMIT = new GuestLimit();
 
 	/** shortcut: 서버 메모리에만 세므로 재시작하면 초기화된다, 스팸이 늘면 DB·캡차로 바꾼다 */
-	static final class GuestLimit {
+	public static final class GuestLimit {
 		private static final long WINDOW = 10 * 60 * 1000L, DAY = 24 * 60 * 60 * 1000L;
 		private final Map<String, java.util.Deque<Long>> byIp = new HashMap<>();
 		private final java.util.Deque<Long> all = new java.util.ArrayDeque<>();
 
-		synchronized boolean allow(String ip, long now) {
+		public synchronized boolean allow(String ip, long now) {
 			while (!all.isEmpty() && now - all.peekFirst() >= DAY) {
 				all.pollFirst();
 			}
@@ -111,7 +111,7 @@ public class BoFeedbackController {
 	}
 
 	// cloudflared → nginx 를 거쳐 오므로 Cloudflare 가 붙인 실제 주소를 먼저 본다
-	private static String clientIp(HttpServletRequest req) {
+	public static String clientIp(HttpServletRequest req) {
 		String ip = req.getHeader("CF-Connecting-IP");
 		if (ip == null || ip.isEmpty()) {
 			String xff = req.getHeader("X-Forwarded-For");

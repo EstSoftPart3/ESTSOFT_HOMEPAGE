@@ -27,9 +27,7 @@
                     <h1 class="display-4 mb-3 animated slideInDown menu" style="font-weight: 700;">채용정보</h1>
                     
                     <p class="animated slideInDown IBM">
-                    	저희 이에스티소프트는 성실함과 책임감으로 무장하고 있으며,
-                    	<br>
-						프로젝트 진행 시 소통이 뛰어난 진정한 전문가 그룹입니다.
+                    	함께 성장할 개발자를 기다립니다.
 					</p>
 					
 					<nav aria-label="breadcrumb animated slideInDown">
