@@ -3,7 +3,9 @@
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_head.jspf"%>
 <style>
 	.fl-chks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 14px; }
-	.fl-split { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); border-top: 1px solid rgba(17,17,17,.08); }
+	.fl-split { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 6fr); border-top: 1px solid rgba(17,17,17,.08); }
+	.fl-sec .ml-auto { font-weight: 400; }
+	.fl-spec { width: 100%; height: 50vh; min-height: 280px; border: 1px solid rgba(17,17,17,.12); border-radius: 8px; background: #fff; }
 	.fl-split > div + div { border-left: 1px solid rgba(17,17,17,.08); }
 	#flBody tr { cursor: pointer; } #flBody tr.sel td { background: #eef9fc; }
 	.fl-detail { padding: 12px 14px; }
@@ -54,6 +56,7 @@
 	function load(keep) {
 		hrPost('/admin/feedback/listData.do', {}, function(res) {
 			data = res.result;
+			specCache = {};
 			if (!keep) { var q = /[?&]FB_SQ=(\d+)/.exec(location.search); if (q) pick = +q[1]; }
 			render();
 		});
@@ -83,14 +86,23 @@
 		var st = BO_FB.status(), open = f.STATUS_CD !== 'DONE' && f.STATUS_CD !== 'REJECT';
 		$d.append($('<h4>').text('#' + f.FB_SQ).append($('<span class="fb-pill">').addClass(BO_FB.tone[f.STATUS_CD] || '').text(st[f.STATUS_CD])));
 		$d.append($('<div class="small text-muted">').text([f.EMPLY_NM || f.EMPLY_ID, f.REG_DT, f.SCREEN_NM, BO_FB.kind()[f.KIND_CD]].filter(Boolean).join(' · ')));
-		// 탭: 요청·기획서 / 변경 로그(코멘트·기획서가 바뀐 기록). 건수는 0 이면 안 붙인다
+		// 탭: 요청·기획서(기획서 바로 보기) / 개발 내용(바꿀 것·개발 반영 내용 글) / 변경 로그. 건수는 0 이면 안 붙인다
 		var $tabs = $('<div class="fl-tabs" role="tablist">').appendTo($d);
-		[['MAIN', '요청·기획서'], ['LOG', '변경 로그' + (Number(f.LOG_CNT) ? '(' + f.LOG_CNT + ')' : '')]].forEach(function(t) {
+		[['MAIN', '요청·기획서'], ['DEV', '개발 내용'], ['LOG', '변경 로그' + (Number(f.LOG_CNT) ? '(' + f.LOG_CNT + ')' : '')]].forEach(function(t) {
 			$('<button type="button" role="tab">').attr('aria-selected', dtab === t[0]).toggleClass('on', dtab === t[0]).text(t[1]).on('click', function() { dtab = t[0]; detail(f); }).appendTo($tabs);
 		});
 		if (dtab === 'LOG') { logTab($d, f); return; }
+		if (dtab === 'DEV') { devTab($d, f); return; }
 		$d.append('<div class="fl-sec">요청 내용</div>').append($('<div class="fl-box">').text(f.CONTENT));
-		if (f.PLAN_TXT) $d.append($('<div class="fl-sec">').text('기획서 · 바꿀 것' + (f.EST_TXT ? ' (예상 ' + f.EST_TXT + ')' : ''))).append($('<div class="fl-box">').text(f.PLAN_TXT));
+		// 기획서는 팝업 없이 그 자리에. 크게 보기는 칸 오른쪽 위
+		var $sec = $('<div class="fl-sec d-flex align-items-center">').text('기획서').append(f.EST_TXT ? $('<span class="ml-2 small">').text('· 예상 ' + f.EST_TXT) : '').appendTo($d);
+		if (f.HAS_SPEC == 1) {
+			$sec.append($('<button type="button" class="btn btn-sm btn-outline-secondary ml-auto py-0" id="flBig">⤢ 기획서 크게 보기</button>').on('click', function() { BO_SPEC(f.FB_SQ); }));
+			var $frame = $('<div class="text-muted small">불러오는 중…</div>').appendTo($d);
+			specOf(f.FB_SQ, function(html) { $frame.replaceWith($('<iframe class="fl-spec" sandbox title="기획서">').attr('srcdoc', html || '')); });
+		} else {
+			$d.append($('<div class="fl-box text-muted">').text(f.STATUS_CD === 'NEW' ? '기획서는 평일 오전 10시·오후 3시에 만들어집니다. 바로 필요하면 아래 요청문을 복사해 Claude 에 붙여 넣으세요.' : '기획서가 없습니다.'));
+		}
 		// 코멘트: 남기면 접수로 돌아가고, 다음 처리 때 코멘트까지 반영해 기획서를 다시 만든다
 		if (data.canAct && open) {
 			var $c = $('<textarea class="form-control form-control-sm enter-send" rows="2" maxlength="4000" aria-label="기획서 코멘트" placeholder="기획서에 더하거나 바꿀 점 · Enter 남기기, Shift+Enter 줄바꿈">');
@@ -103,10 +115,7 @@
 			$d.append($('<div class="fl-sec">').text('코멘트')).append($c).append($('<div class="d-flex align-items-center mt-1">')
 				.append($('<span class="small text-muted mr-auto">').text('남기면 접수로 돌아가고, 평일 10시·15시에 코멘트까지 반영해 기획서를 다시 만들어요.')).append($send));
 		}
-		if (f.HAS_SPEC == 1) $d.append($('<button type="button" class="btn btn-sm btn-outline-secondary mt-2 mr-1">기획서 크게 보기</button>').on('click', function() { BO_SPEC(f.FB_SQ); }));
-		else if (f.STATUS_CD === 'NEW') $d.append('<div class="small text-muted mt-2">기획서는 평일 오전 10시·오후 3시에 만들어집니다. 바로 필요하면 아래 요청문을 복사해 Claude 에 붙여 넣으세요.</div>');
 		if (data.canAct && f.STATUS_CD !== 'DONE' && f.STATUS_CD !== 'REJECT') $d.append($('<button type="button" class="btn btn-sm btn-outline-primary mt-2" id="flCopy">').text(f.HAS_SPEC == 1 ? '📋 기획서 다시 만들기 요청문 복사' : '📋 기획서 요청문 복사').on('click', function() { copyPrompt(f); }));
-		if (f.DEV_NOTE) $d.append('<div class="fl-sec">개발 반영 내용</div>').append($('<div class="fl-box">').text(f.DEV_NOTE));
 		if (f.STATUS_CD === 'REJECT' && f.REJECT_REASON) $d.append('<div class="fl-sec">반려 사유</div>').append($('<div class="fl-box">').text(f.REJECT_REASON));
 		if (f.STATUS_CD === 'DONE' && f.UPD_SQ) $d.append($('<button type="button" class="btn btn-sm btn-outline-primary mt-2">업데이트 내역 보기</button>').on('click', function() { BO_UPDATE(f.UPD_SQ); }));
 		// 진행·보류·반려는 슈퍼관리자·시스템 운영자에게만(서버도 같은 검사)
@@ -120,6 +129,21 @@
 					ask(f, 'ING', '개발 반영 내용', '이대로 개발합니다. 기획서의 바꿀 것이 미리 채워져 있으니 더하거나 빼 주세요.', f.DEV_NOTE || f.PLAN_TXT || f.CONTENT);
 				})));
 		}
+	}
+
+	// 기획서 HTML 은 목록에 없어 고를 때 한 번 불러온다(목록을 다시 불러오면 비움)
+	var specCache = {};
+	function specOf(sq, done) {
+		if (sq in specCache) return done(specCache[sq]);
+		hrPost('/admin/feedback/detailData.do', { FB_SQ: sq }, function(res) { specCache[sq] = res.result ? res.result.SPEC_HTML : ''; if (pick === sq) done(specCache[sq]); });
+	}
+
+	// 개발 내용: 개발자·Claude 가 보는 글(바꿀 것·예상 시간, 진행할 때 적은 개발 반영 내용)
+	function devTab($d, f) {
+		$d.append($('<div class="fl-sec">').text('바꿀 것' + (f.EST_TXT ? ' (예상 ' + f.EST_TXT + ')' : '')))
+			.append($('<div class="fl-box">').toggleClass('text-muted', !f.PLAN_TXT).text(f.PLAN_TXT || '아직 기획서가 없습니다.'));
+		$d.append('<div class="fl-sec">개발 반영 내용 (진행할 때 적은 것)</div>')
+			.append($('<div class="fl-box">').toggleClass('text-muted', !f.DEV_NOTE).text(f.DEV_NOTE || '아직 진행 전입니다.'));
 	}
 
 	// 변경 로그: 코멘트(누가·언제·내용)와 기획서 작성·변경(예상 시간·바꿀 것, 그때 기획서 보기)
