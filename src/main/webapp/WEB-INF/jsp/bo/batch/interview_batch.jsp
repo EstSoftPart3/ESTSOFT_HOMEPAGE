@@ -16,6 +16,7 @@
 	.ib-act { margin-left: auto; }
 	.ib-alert { background: #fdeaea; color: #8a1c1c; border-radius: 8px; padding: 8px 12px; font-size: 13px; margin: 2px 0 6px 36px; }
 	.ib-alert a { font-weight: 700; }
+	.ib-alert ol { font-size: 12.5px; } .ib-alert li { margin-bottom: 2px; }
 	.ib-saved { color: #17692f; font-size: 12px; font-weight: 700; }
 	/* 고르기 창 */
 	.pk-list { border: 1px solid rgba(17,17,17,.12); border-radius: 8px; max-height: 50vh; overflow-y: auto; }
@@ -187,21 +188,33 @@
 
 	// ── 시스템 관리자: 캘린더·폴더 고르기. 고르면 바로 저장 ──
 
-	// 구글 오류 안내 { code, msg, url } → 그 줄 아래 빨간 칸
-	function showErr(sel, err) {
-		var $e = $(sel).empty().prop('hidden', !err);
-		if (!err) return;
-		$e.text(err.msg + ' ');
-		if (err.url) $e.append($('<a target="_blank" rel="noopener">').attr('href', err.url).text('켜러 가기 ↗'));
-		else if (err.code === 'NOLINK' || err.code === 'EXPIRED' || err.code === 'SCOPE') $e.append($('<a>').attr('href', '/admin/my/openGoogleLink.do?back=/admin/batch/openInterviewBatch.do').text('내 연동에서 연결 ›'));
+	// 구글 오류 안내 { code, msg, url } → 빨간 칸 내용. API 꺼짐이면 켜는 순서까지. 바깥 줄과 고르기 창이 같이 쓴다
+	function errBody($e, err, retry) {
+		$e.empty().append($('<div>').text(err.msg));
+		if (err.code === 'API_OFF') {
+			var $ol = $('<ol class="mb-1 mt-1 pl-3">').appendTo($e);
+			$ol.append($('<li>').append('앱 키를 만든 구글 계정(연결 계정과 다를 수 있음)으로 ')
+				.append($('<a target="_blank" rel="noopener">').attr('href', err.url).text('켜러 가기 ↗')).append(' 를 누릅니다.'));
+			$ol.append($('<li>').text('맨 위 프로젝트 이름이 앱 키를 만든 프로젝트인지 확인합니다(내 연동 1단계 앱 키 앞부분 = 콘솔 「사용자 인증 정보」의 클라이언트 ID).'));
+			$ol.append($('<li>').text('파란 「사용」 버튼을 누릅니다. 결제 정보는 필요 없습니다. 「관리」가 보이면 이미 켜진 것이니 프로젝트를 다시 확인합니다.'));
+			$ol.append($('<li>').text('1~2분 뒤 아래 「다시 시도」를 누릅니다.'));
+		} else if (err.code === 'NOLINK' || err.code === 'EXPIRED' || err.code === 'SCOPE') {
+			$e.append($('<a>').attr('href', '/admin/my/openGoogleLink.do?back=/admin/batch/openInterviewBatch.do').text('내 연동에서 연결 ›'));
+		}
+		if (retry) $e.append($('<div class="mt-1">').append($('<button type="button" class="btn btn-sm btn-outline-danger">').text('다시 시도').on('click', retry)));
+		return $e;
+	}
+	function showErr(sel, err, retry) {
+		var $e = $(sel).prop('hidden', !err);
+		if (err) errBody($e, err, retry); else $e.empty();
 	}
 
 	function loadSource(then) {
 		$.post('/admin/my/interviewSourceData.do', function(res) {
 			if (res.error) return showErr('#calErr', { msg: res.error });
 			src = res;
-			showErr('#calErr', res.calendarError);
-			showErr('#folderErr', res.folderError);
+			showErr('#calErr', res.calendarError, function() { loadSource(); });
+			showErr('#folderErr', res.folderError, function() { loadSource(); });
 			if (res.folderPath && res.folderPath.length) {
 				var p = res.folderPath, $v = $('#srcFolder').empty().attr('class', 'ib-v');
 				$v.append($('<span class="p">').text(p.slice(0, -1).map(function(x) { return x.name; }).concat(['']).join(' › '))).append(document.createTextNode(p[p.length - 1].name));
@@ -235,7 +248,7 @@
 		$('#calPick').modal('show');
 		$('#calList').html('<div class="pk-empty">불러오는 중입니다.</div>');
 		loadSource(function() {
-			if (src.calendarError) { $('#calList').html('<div class="pk-empty">').find('.pk-empty').text(src.calendarError.msg); return; }
+			if (src.calendarError) { $('#calList').empty().append(errBody($('<div class="ib-alert m-0">'), src.calendarError, openCalPick)); return; }
 			drawCals();
 		});
 	}
@@ -271,7 +284,7 @@
 		$('.pk-tabs button').each(function() { $(this).attr('aria-pressed', $(this).data('mode') === fd.mode); });
 		$('#fdList').html('<div class="pk-empty">불러오는 중입니다.</div>');
 		$.post('/admin/my/driveFoldersData.do', { parent: fd.parent, mode: fd.mode, q: q || '' }, function(res) {
-			if (res.error || res.googleError) { $('#fdList').html('<div class="pk-empty">').find('.pk-empty').text((res.googleError || {}).msg || res.error); return; }
+			if (res.error || res.googleError) { $('#fdList').empty().append(errBody($('<div class="ib-alert m-0">'), res.googleError || { msg: res.error }, function() { listFolders(q); })); return; }
 			fd.path = res.path || [];
 			drawCrumb(q);
 			var $l = $('#fdList').empty();
