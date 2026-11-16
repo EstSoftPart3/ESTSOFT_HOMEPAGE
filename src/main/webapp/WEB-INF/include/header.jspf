@@ -48,7 +48,12 @@
     	.fo-login:hover { background: #095a71; }
     	.fo-user { align-self: center; border: 1px solid rgba(17,17,17,.15); border-radius: 999px; padding: 6px 14px !important; font-weight: 600; margin-left: 8px; }
     	.fo-user:hover, .show > .fo-user { border-color: #0b6e8a; color: #0b6e8a !important; }
-    	@media (min-width: 992px) { .fo-fb { align-self: center; } }
+    	@media (min-width: 992px) {
+    		.fo-fb, .fo-user-wrap { align-self: center; }
+    		/* 내 메뉴는 버튼 오른쪽 끝에 맞춰 펼친다(화면 밖으로 잘리지 않게) */
+    		.fo-user-wrap .dropdown-menu { left: auto !important; right: 0 !important; min-width: 240px; }
+    	}
+    	.fo-user-wrap .dropdown-header { white-space: nowrap; color: #5f6b75; font-size: 12.5px; }
     	@media (max-width: 991px) { .fo-login, .fo-user, .fo-fb { align-self: flex-start; display: inline-block; margin: 6px 0; } .navbar-brand img { height: 56px !important; } }
     	/* 주 버튼·링크·입력칸 초점: 청록 */
     	.btn-primary { background-color: #0b6e8a; border-color: #0b6e8a; }

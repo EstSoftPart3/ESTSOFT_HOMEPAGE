@@ -54,7 +54,7 @@
 			<%-- 피드백: 로그인 안 한 사람도 보낸다(fo-feedback.js) --%>
 			<a href="javascript:void(0)" id="foFbBtn" ${sessionScope.loginInfo.loginInfo[0] != null ? 'data-login' : ''} class="nav-item nav-link fo-fb" title="피드백 — 불편·오류·새 기능을 알려 주세요" aria-label="피드백"><i class="far fa-comment-dots fa-lg"></i><span class="d-lg-none"> 피드백</span></a>
 			<c:if test="${sessionScope.loginInfo.loginInfo[0] != null}">
-            	<div class="nav-item dropdown">
+            	<div class="nav-item dropdown fo-user-wrap">
 	             	<a href="#" class="nav-link dropdown-toggle fo-user" data-bs-toggle="dropdown" title="${loginInfo.loginInfo[0].emplyNm}(${loginInfo.loginInfo[0].emplyId})님 안녕하세요"><i class="far fa-user-circle"></i> ${loginInfo.loginInfo[0].emplyNm}님</a>
 	             	<div class="dropdown-menu dropdown-menu-end shadow-sm m-0">
 					<div class="dropdown-header">${loginInfo.loginInfo[0].emplyNm}(${loginInfo.loginInfo[0].emplyId})님 안녕하세요</div>
