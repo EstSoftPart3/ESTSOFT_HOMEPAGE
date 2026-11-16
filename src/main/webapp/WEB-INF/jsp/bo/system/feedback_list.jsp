@@ -21,8 +21,9 @@
 	.fl-detail h4 { font-size: 15px; margin: 0 0 4px; display: flex; gap: 8px; align-items: center; }
 	.fl-sec { font-size: 12px; font-weight: 700; color: #5f6b75; margin: 12px 0 4px; }
 	.fl-box { border: 1px solid rgba(17,17,17,.1); border-radius: 8px; padding: 8px 10px; white-space: pre-wrap; font-size: 13px; background: #fafbfc; }
-	.fl-acts { display: flex; gap: 6px; justify-content: flex-end; align-items: center; margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(17,17,17,.08); }
-	.fl-acts .lock { margin-right: auto; font-size: 11.5px; color: #5f6b75; }
+	.fl-head { display: flex; align-items: flex-start; gap: 12px; }
+	.fl-acts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; align-items: center; margin-left: auto; }
+	.fl-acts .lock { font-size: 11.5px; color: #5f6b75; }
 	.fl-tabs { display: flex; gap: 4px; margin: 10px 0 2px; border-bottom: 1px solid rgba(17,17,17,.1); }
 	.fl-tabs button { border: 0; background: none; padding: 5px 12px; font-size: 13px; font-weight: 700; color: #5f6b75; border-bottom: 2px solid transparent; margin-bottom: -1px; }
 	.fl-tabs button.on { color: #0b6e8a; border-bottom-color: #0b6e8a; }
@@ -132,8 +133,21 @@
 		var $d = $('#flDetail').empty();
 		if (!f) { $d.append('<div class="text-muted">왼쪽에서 피드백을 고르세요.</div>'); return; }
 		var st = BO_FB.status(), open = f.STATUS_CD !== 'DONE' && f.STATUS_CD !== 'REJECT';
-		$d.append($('<h4>').text('#' + f.FB_SQ).append($('<span class="fb-pill">').addClass(BO_FB.tone[f.STATUS_CD] || '').text(st[f.STATUS_CD])));
-		$d.append($('<div class="small text-muted">').text([f.EMPLY_NM || f.EMPLY_ID, f.REG_DT, f.SCREEN_NM, BO_FB.kind()[f.KIND_CD]].filter(Boolean).join(' · ')));
+		// 머리: 왼쪽 번호·상태·요청자, 오른쪽 위 진행·보류·반려(어느 탭에서나, 가이드 버튼과 안 겹치게)
+		var $head = $('<div class="fl-head">').appendTo($d), $ttl = $('<div>').appendTo($head);
+		$ttl.append($('<h4>').text('#' + f.FB_SQ).append($('<span class="fb-pill">').addClass(BO_FB.tone[f.STATUS_CD] || '').text(st[f.STATUS_CD])));
+		$ttl.append($('<div class="small text-muted">').text([f.EMPLY_NM || f.EMPLY_ID, f.REG_DT, f.SCREEN_NM, BO_FB.kind()[f.KIND_CD]].filter(Boolean).join(' · ')));
+		// 진행·보류·반려는 슈퍼관리자·시스템 운영자에게만(서버도 같은 검사)
+		if (data.canAct && f.STATUS_CD !== 'DONE') {
+			$head.append($('<div class="fl-acts">').append('<span class="lock" title="슈퍼관리자·시스템 운영자만">🔒</span>')
+				.append($('<button type="button" class="btn btn-sm btn-outline-danger">반려</button>').on('click', function() { ask(f, 'REJECT', '반려 사유', '왜 진행하지 않는지 적어 주세요. 요청자의 피드백 창에 그대로 보입니다.', ''); }))
+				.append($('<button type="button" class="btn btn-sm btn-outline-secondary">보류</button>').prop('disabled', f.STATUS_CD === 'HOLD').on('click', function() {
+					bootbox.confirm('이 피드백을 보류할까요? 나중에 다시 진행하거나 반려할 수 있습니다.', function(ok) { if (ok) act(f, 'HOLD', ''); });
+				}))
+				.append($('<button type="button" class="btn btn-sm btn-primary">진행</button>').prop('disabled', f.STATUS_CD === 'ING').on('click', function() {
+					ask(f, 'ING', '개발 반영 내용', '이대로 개발합니다. 기획서의 바꿀 것이 미리 채워져 있으니 더하거나 빼 주세요.', f.DEV_NOTE || f.PLAN_TXT || f.CONTENT);
+				})));
+		}
 		// 탭: 요청·기획서(기획서 바로 보기) / 개발 내용(바꿀 것·개발 반영 내용 글) / 코멘트(반영 여부) / 변경 로그(기획서 변경만). 건수는 0 이면 안 붙인다
 		function cnt(n) { return Number(n) ? '(' + n + ')' : ''; }
 		var $tabs = $('<div class="fl-tabs" role="tablist">').appendTo($d);
@@ -158,17 +172,6 @@
 		if (data.canAct && f.STATUS_CD !== 'DONE' && f.STATUS_CD !== 'REJECT') $d.append($('<button type="button" class="btn btn-sm btn-outline-primary mt-2" id="flCopy">').text(f.HAS_SPEC == 1 ? '📋 기획서 다시 만들기 요청문 복사' : '📋 기획서 요청문 복사').on('click', function() { copyPrompt(f); }));
 		if (f.STATUS_CD === 'REJECT' && f.REJECT_REASON) $d.append('<div class="fl-sec">반려 사유</div>').append($('<div class="fl-box">').text(f.REJECT_REASON));
 		if (f.STATUS_CD === 'DONE' && f.UPD_SQ) $d.append($('<button type="button" class="btn btn-sm btn-outline-primary mt-2">업데이트 내역 보기</button>').on('click', function() { BO_UPDATE(f.UPD_SQ); }));
-		// 진행·보류·반려는 슈퍼관리자·시스템 운영자에게만(서버도 같은 검사)
-		if (data.canAct && f.STATUS_CD !== 'DONE') {
-			$d.append($('<div class="fl-acts">').append('<span class="lock">🔒 슈퍼관리자·시스템 운영자만</span>')
-				.append($('<button type="button" class="btn btn-sm btn-outline-danger">반려</button>').on('click', function() { ask(f, 'REJECT', '반려 사유', '왜 진행하지 않는지 적어 주세요. 요청자의 피드백 창에 그대로 보입니다.', ''); }))
-				.append($('<button type="button" class="btn btn-sm btn-outline-secondary">보류</button>').prop('disabled', f.STATUS_CD === 'HOLD').on('click', function() {
-					bootbox.confirm('이 피드백을 보류할까요? 나중에 다시 진행하거나 반려할 수 있습니다.', function(ok) { if (ok) act(f, 'HOLD', ''); });
-				}))
-				.append($('<button type="button" class="btn btn-sm btn-primary">진행</button>').prop('disabled', f.STATUS_CD === 'ING').on('click', function() {
-					ask(f, 'ING', '개발 반영 내용', '이대로 개발합니다. 기획서의 바꿀 것이 미리 채워져 있으니 더하거나 빼 주세요.', f.DEV_NOTE || f.PLAN_TXT || f.CONTENT);
-				})));
-		}
 	}
 
 	// 기획서 HTML 은 목록에 없어 고를 때 한 번 불러온다(목록을 다시 불러오면 비움)
