@@ -33,16 +33,22 @@
 		['MONTH', '이번 달', function(u) { return u.DEPLOY_DT.substr(0, 7) === moment().format('YYYY-MM'); }]];
 
 	$(function() {
+		load(true);
+		$('#chks').on('click', 'button', function() { view = $(this).data('v'); render(); });
+	});
+	// 탭을 다시 열면 새로 불러온다(bo-tabs.js)
+	window.addEventListener('bo-tab-shown', function() { load(false); });
+
+	function load(first) {
 		hrPost('/admin/update/listData.do', {}, function(res) {
 			list = res.result || [];
 			// 이 화면을 열면 메뉴의 N 을 지운다(맨 위 창에서도)
 			if (list.length) { BO_UPDATE_SEEN(list[0].UPD_SQ); try { window.top.$('aside .fb-new').remove(); } catch (e) {} }
 			render();
-			var q = /[?&]UPD_SQ=(\d+)/.exec(location.search);
+			var q = first && /[?&]UPD_SQ=(\d+)/.exec(location.search);
 			if (q) BO_UPDATE(+q[1]);
 		});
-		$('#chks').on('click', 'button', function() { view = $(this).data('v'); render(); });
-	});
+	}
 
 	function render() {
 		$('#chks').empty().append(VIEWS.map(function(v) {

@@ -169,6 +169,8 @@
 		} else {
 			frameOf(t).classList.add('on');
 			document.body.classList.add('bo-in-frame');
+			// 탭이 다시 보이면 그 화면에 알린다. 열 때마다 새로 불러올 화면(피드백 등)만 'bo-tab-shown' 을 받아 다시 읽는다
+			try { t.frame.contentWindow.dispatchEvent(new Event('bo-tab-shown')); } catch (e) {}
 		}
 		history.replaceState(null, '', t.url);
 		markMenu(t.url);

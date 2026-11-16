@@ -45,6 +45,8 @@
 	$(function() {
 		load();
 	});
+	// 탭을 다시 열면 새로 불러온다(bo-tabs.js). 고른 피드백은 그대로
+	window.addEventListener('bo-tab-shown', function() { load(true); });
 
 	function load(keep) {
 		hrPost('/admin/feedback/listData.do', {}, function(res) {
