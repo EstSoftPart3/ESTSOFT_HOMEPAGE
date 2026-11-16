@@ -9,6 +9,9 @@
 	.fl-split > .fl-handle { border: 0; background: #f1f3f5; cursor: col-resize; display: grid; place-items: center; touch-action: none; }
 	.fl-handle::before { content: ''; width: 3px; height: 34px; border-radius: 2px; background: #b9c3ca; }
 	.fl-handle:hover, .fl-handle:focus { background: #e3eef2; outline: none; } .fl-handle:hover::before, .fl-handle:focus::before { background: #0b6e8a; }
+	/* 코멘트·변경 로그의 내용 칸은 잘리지 않게 여러 줄로(쓴 줄바꿈 그대로). 공통 표 규칙(한 줄·말줄임)보다 우선 */
+	#flDetail td.fl-wrap { white-space: pre-wrap !important; word-break: break-word; min-width: 240px; width: 100%; vertical-align: top; }
+	#flDetail .tbl-scroll td { vertical-align: top; }
 	.fl-dragging, .fl-dragging * { user-select: none; } .fl-dragging iframe { pointer-events: none; }
 	.fl-sec .ml-auto { font-weight: 400; }
 	.fl-spec { width: 100%; height: 50vh; min-height: 280px; border: 1px solid rgba(17,17,17,.12); border-radius: 8px; background: #fff; }
@@ -212,9 +215,9 @@
 					var s = l.APPLIED_SQ ? spec(Number(l.APPLIED_SQ)) : null, $st = $('<td>');
 					if (s) $st.append($('<span class="fb-pill ok">').text('✔ 반영됨 ' + s.REG_DT.substr(5, 5))).append(' ').append($('<button type="button" class="btn btn-link btn-sm p-0">').text('그때 기획서').on('click', function() { oldSpec(s); }));
 					else $st.append($('<span class="fb-pill warn">').text('⏳ 반영 대기'));
-					$tr.append($('<td>').text(l.EMPLY_NM || l.EMPLY_ID)).append($('<td>').append($('<span class="td-cut">').attr('title', l.CONTENT).text(l.CONTENT.replace(/\s+/g, ' ')))).append($st);
+					$tr.append($('<td>').text(l.EMPLY_NM || l.EMPLY_ID)).append($('<td class="fl-wrap">').append($('<span>').text(l.CONTENT))).append($st);
 				} else {
-					$tr.append($('<td>').text(l.EST_TXT || '')).append($('<td>').append($('<span class="td-cut">').attr('title', l.PLAN_TXT || '').text(String(l.PLAN_TXT || '').replace(/\s+/g, ' '))))
+					$tr.append($('<td>').text(l.EST_TXT || '')).append($('<td class="fl-wrap">').append($('<span>').text(l.PLAN_TXT || '')))
 						.append($('<td>').append(l.HAS_SPEC == 1 ? $('<button type="button" class="btn btn-link btn-sm p-0">').text('그때 기획서').on('click', function() { oldSpec(l); }) : ''));
 				}
 				$b.append($tr);
