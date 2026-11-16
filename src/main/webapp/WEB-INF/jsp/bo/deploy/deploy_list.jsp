@@ -181,6 +181,7 @@
 	</div>
 
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
+	<script src="/resources/common/staff-career.js?v=20261116"></script>
 
 	<script>
 	var COLS = [['STAFF_NM', '성명'], ['EMP_TYPE_CD', '형태'], ['HOME_AREA', '거주지역'], ['WORK_AREA', '근무지역'], ['SALE_PARTNER_NM', '매출처'], ['BUY_PARTNER_NM', '매입처'], ['SALE_PRICE', '매출단가', true], ['COST_PRICE', '계약단가', true],
@@ -1094,12 +1095,9 @@
 	// 수습은 정규로 보고 겹치는 형태 이름은 한 번만
 	function typesText(types) { return types.map(function(t) { return typeName(t === 'PROBATION' ? 'REGULAR' : t); }).filter(function(v, i, a) { return a.indexOf(v) === i; }).join('·'); }
 	function prjCount(sq) { return Number(staffOf(sq).PRJ_CNT || 0) + mergeDeps(depsOf(sq), 'START_DT', 'END_DT').length; }
+	// 서버가 직접 입력한 이력과 사내 투입을 합쳐 최근순으로 준다(직원관리 수행이력 탭과 같은 내용)
 	function prjLoad(sq) {
-		if (!prjCache[sq]) prjCache[sq] = $.post('/admin/deploy/projectHistoryData.do', { STAFF_SQ: sq }).then(function(res) {
-			var items = res.result || [];
-			return items.filter(function(it) { return it.SRC !== 'DEPLOY'; }).concat(mergeDeps(items.filter(function(it) { return it.SRC === 'DEPLOY'; }), 'START', 'END'))
-				.sort(function(a, b) { return (!b.END) - (!a.END) || String(b.START).localeCompare(String(a.START)); });
-		});
+		if (!prjCache[sq]) prjCache[sq] = $.post('/admin/deploy/projectHistoryData.do', { STAFF_SQ: sq }).then(function(res) { return res.result || []; });
 		return prjCache[sq];
 	}
 	function tokens(v) { return String(v || '').split(/[,/·\n]+/).map(function(t) { return $.trim(t); }).filter(Boolean); }
@@ -1110,17 +1108,7 @@
 		return Object.keys(c).sort(function(a, b) { return c[b] - c[a]; }).map(function(k) { return [k, c[k]]; });
 	}
 	function ymDot(v) { return v ? String(v).substring(0, 7).replace('-', '.') : ''; }
-	function months(it) {
-		var s = moment(String(it.START).substring(0, 7) + '-01'), e = it.END ? moment(String(it.END).substring(0, 7) + '-01') : moment().startOf('month');
-		var m = e.diff(s, 'months') + 1;
-		return m > 0 ? (m >= 12 ? Math.floor(m / 12) + '년 ' : '') + (m % 12 ? m % 12 + '개월' : '') : '';
-	}
-	function career(items) {
-		var first = items.map(function(i) { return String(i.START || ''); }).filter(Boolean).sort()[0];
-		if (!first) return '';
-		var m = moment().diff(moment(first.substring(0, 7) + '-01'), 'months');
-		return '경력 ' + (m >= 12 ? Math.floor(m / 12) + '년 ' : '') + (m % 12) + '개월';
-	}
+	function career(items) { var c = scCareer(items); return c ? '경력 ' + c : ''; }
 
 	function prjBtn(sq, name) {
 		var n = prjCount(sq), $b = $('<button type="button" class="dp-prj">').toggleClass('zero', !n).attr('aria-label', name + ' 프로젝트 이력 ' + n + '건').text('📂 ' + n);
@@ -1135,7 +1123,7 @@
 				var recent = items[0];
 				return '<div class="dp-card sm"><div class="dp-card-top">많이 쓴 기술<span>프로젝트 ' + items.length + '건 · ' + dpEsc(career(items)) + '</span></div>'
 					+ (rows || '<div class="dp-sec"><div><span class="dp-mute">수행이력에 입력된 기술이 없습니다</span></div></div>')
-					+ (recent ? '<div class="dp-sec"><div><span class="dp-mute">최근 ' + dpEsc([recent.CLIENT_NM, recent.PRJ_NM].filter(Boolean).join(' ')) + ' (' + ymDot(recent.START) + '~' + (ymDot(recent.END) || '진행중') + ') · 클릭하면 전체</span></div></div>' : '') + '</div>';
+					+ (recent ? '<div class="dp-sec"><div><span class="dp-mute">최근 ' + dpEsc([recent.CLIENT_NM, recent.PRJ_NM].filter(Boolean).join(' ')) + ' (' + ymDot(recent.START_YM) + '~' + (ymDot(recent.END_YM) || '진행중') + ') · 클릭하면 전체</span></div></div>' : '') + '</div>';
 			});
 		});
 		return $b;
@@ -1144,37 +1132,12 @@
 	function prjPopup(sq, name) {
 		prjLoad(sq).then(function(items) {
 			var $box = $('<div>');
-			var top = [];
-			['LANG_NM', 'FRAMEWORK_NM', 'DBMS_NM', 'OS_NM', 'TOOL_NM', 'ETC_NM'].forEach(function(c) { top = top.concat(skillCount(items, c)); });
-			top.sort(function(a, b) { return b[1] - a[1]; });
-			if (top.length) $box.append($('<div class="mb-3">').append('<span class="dp-mute small mr-2">많이 쓴 기술</span>').append(top.slice(0, 10).map(function(t) { return $('<span class="prj-sk">').text(t[0] + ' ').append($('<em>').text(t[1])); })));
-			items.forEach(function(it) {
-				var now = !it.END && !moment(String(it.START)).isAfter(today), plan = moment(String(it.START)).isAfter(today);
-				var $it = $('<div class="prj-item">').toggleClass('now', now).toggleClass('plan', plan);
-				var $h = $('<div class="prj-head">').append($('<span class="t">').text(it.PRJ_NM || '(프로젝트명 없음)'));
-				if (it.CLIENT_NM) $h.append($('<span class="dp-pill rent">').text(it.CLIENT_NM));
-				if (it.ROLE_NM || it.EMP_TYPE_CD) $h.append($('<span class="dp-pill">').text(it.ROLE_NM || (it.TYPES ? typesText(it.TYPES) : typeName(it.EMP_TYPE_CD))));
-				$h.append($('<span class="prj-src">').text(it.SRC === 'DEPLOY' ? '사내 투입' : '수행이력'));
-				$h.append($('<span class="when">').text(ymDot(it.START) + ' ~ ' + (it.END ? ymDot(it.END) : plan ? '예정' : '진행중')).append($('<span>').text(months(it))));
-				$it.append($h);
-				$it.append($('<div class="prj-meta">').append('<div class="k">업무단</div>').append($('<div>').text(it.WORK_NM || '—'))
-					.append('<div class="k">근무지역</div>').append($('<div>').text(it.WORK_AREA || '—')));
-				if (it.SRC === 'PRJ') {
-					var $env = $('<table class="prj-env">').append('<thead><tr><th class="grp" colspan="2">개발분야</th><th class="grp" colspan="7">개발환경</th></tr></thead>');
-					$env.find('thead').append($('<tr>').append(ENV_COLS.map(function(c) { return $('<th>').text(c[1]); })));
-					$env.append($('<tbody>').append($('<tr>').append(ENV_COLS.map(function(c) {
-						var t = tokens(it[c[0]]);
-						return $('<td>').append(t.length ? t.map(function(x) { return $('<span class="prj-tag">').text(x); }) : $('<span class="dp-mute">').text('—'));
-					}))));
-					$it.append($env);
-				}
-				$box.append($it);
-			});
-			if (!items.length) $box.append('<div class="text-muted py-3">프로젝트 이력이 없습니다. 인사카드의 영업정보/수행이력 탭에서 입력할 수 있습니다.</div>');
+			if (items.length) scStack($('<div class="mb-3">').appendTo($box), items);
+			scTable($box, items, { empty: '프로젝트 이력이 없습니다. 직원관리 인사카드의 수행이력 탭에서 입력할 수 있습니다.' });
+			$box.append($('<div class="small mt-2">').append($('<a target="_blank" rel="noopener">').attr('href', '/admin/staff/openStaffList.do?STAFF_SQ=' + sq).text('인사카드에서 수행이력 고치기')));
 			dpInfo(name + ' · 프로젝트 이력 ' + items.length + '건' + (career(items) ? ' · ' + career(items) : ''), $box);
 		});
 	}
-
 	// ── 타임라인: 지난 5달 ~ 앞으로 6달 ──
 
 	function renderTimeline(list) {

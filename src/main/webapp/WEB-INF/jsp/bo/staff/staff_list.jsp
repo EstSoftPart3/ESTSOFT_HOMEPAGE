@@ -37,18 +37,36 @@
 	.st-grid .hr-cell, .st-skill .hr-cell { overflow-wrap: anywhere; }
 	.st-skill { padding: 3px 0; border-bottom: 1px solid rgba(17,17,17,.06); }
 	.st-skill .hr-card-label { flex-basis: 96px; }
-	.st-tag { display: inline-block; font-size: 11px; line-height: 16px; padding: 1px 8px; border-radius: 10px; background: #e3f6fb; color: #0b6e8a; margin: 1px 4px 1px 0; max-width: 100%; overflow-wrap: anywhere; }
-	.st-env { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 1px 6px; }
-	.st-env-label { color: #888; font-size: 11px; line-height: 20px; }
 	.st-prj td { vertical-align: top; overflow-wrap: break-word; }
 	.st-item td { white-space: pre-line; }
 	.st-act { background: none; border: 0; padding: 0 4px; color: #888; }
 	.st-act:hover, .st-act:focus { color: #0b6e8a; }
 	.st-unset { color: #b7791f; }
-	.st-prj-del { background: none; border: 0; padding: 0 4px; color: #888; }
-	.st-prj-del:hover, .st-prj-del:focus { color: #c0392b; }
 	.st-dl { color: #0b6e8a; padding: 0 3px; font-size: 11px; cursor: pointer; }
 	.st-group { font-size: 12px; font-weight: 700; color: #666; margin: 8px 0 6px; padding-top: 8px; border-top: 1px solid rgba(17,17,17,.08); }
+	/* 인사카드 탭 공통 톤: 제목 달린 카드, 작은 회색 이름표 위에 값 */
+	.st-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 14px; align-items: start; }
+	.st-card { border: 1px solid #e3e8ee; border-radius: 10px; padding: 14px 16px; background: #fff; min-width: 0; }
+	.st-card.wide { grid-column: 1 / -1; }
+	.st-card > .hr-section:first-child { margin: 0 0 10px; padding: 0; border: 0; font-size: 14px; }
+	.st-card .st-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 14px; }
+	.st-card .hr-card-row { flex-direction: column; gap: 0; margin: 0; }
+	.st-card .hr-card-label, .st-card .st-grid .hr-card-label, .st-card .st-skill .hr-card-label { flex: none; font-size: 11.5px; color: #6b7785; line-height: 16px; }
+	.st-card .hr-card-row .hr-cell { font-size: 13px; padding: 0; min-height: 20px; }
+	.st-card .st-skill { border: 0; padding: 0; margin-bottom: 10px; }
+	.st-card .st-secret { width: 100%; }
+	.st-hero { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; margin-bottom: 12px; }
+	.st-stat { background: #f4f6f9; border-radius: 10px; padding: 8px 14px; }
+	.st-stat small { display: block; color: #6b7785; font-size: 12px; } .st-stat b { font-size: 17px; }
+	.st-hero .st-btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-left: auto; }
+	.st-dirty { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border: 1px solid #f0d9a8; background: #fffaf0; border-radius: 10px; padding: 9px 14px; margin-bottom: 12px; font-size: 13px; }
+	.st-bulk { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #e8f6fa; border-radius: 8px; padding: 6px 12px; margin-bottom: 8px; font-size: 13px; }
+	.st-log { font-size: 12.5px; } .st-log td { padding: 4px 8px; border-bottom: 1px solid #eef1f4; vertical-align: top; }
+	.st-pick { display: grid; grid-template-columns: 92px 1fr; gap: 8px 10px; align-items: start; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e3e8ee; font-size: 13px; }
+	.st-pick .k { color: #6b7785; padding-top: 5px; }
+	.st-pick .sc-chip { padding: 3px 11px; font-size: 12.5px; }
+	.st-pick input.st-add { display: inline-block; width: 110px; height: 26px; font-size: 12px; padding: 0 8px; vertical-align: middle; border-radius: 999px; }
+	.st-docbar { height: 6px; border-radius: 3px; background: #e8edf2; overflow: hidden; margin-bottom: 10px; } .st-docbar i { display: block; height: 100%; background: #1d7a4a; }
 	#copyToast { position: fixed; right: 18px; bottom: 18px; z-index: 2000; background: #222; color: #fff; font-size: 12px; padding: 6px 12px; border-radius: 6px; display: none; }
 </style>
 
@@ -170,24 +188,71 @@
 		</div>
 	</div>
 
-	<div class="modal fade" id="prjModal" tabindex="-1" role="dialog" aria-labelledby="prjTitle" aria-hidden="true">
-		<div class="modal-dialog modal-lg" role="document">
+	<div class="modal fade" id="scModal" tabindex="-1" role="dialog" aria-labelledby="scTitle" aria-hidden="true">
+		<div class="modal-dialog modal-xl" role="document">
 			<div class="modal-content">
 				<div class="modal-header">
-					<h5 class="modal-title" id="prjTitle">프로젝트 수행이력</h5>
+					<h5 class="modal-title" id="scTitle">수행이력</h5>
 					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
 				</div>
-				<form id="prjForm" onsubmit="savePrj(); return false;">
-					<input type="hidden" name="STAFF_SQ"><input type="hidden" name="PRJ_SQ">
+				<form id="scForm" onsubmit="saveCareer(false); return false;">
 					<div class="modal-body">
-						<div class="form-row" id="prjMain"></div>
-						<div class="st-group">개발분야 (선택)</div>
-						<div class="form-row" id="prjArea"></div>
-						<div class="st-group">개발환경 (선택, 쉼표로 구분)</div>
-						<div class="form-row" id="prjEnv"></div>
+						<div class="form-row">
+							<div class="col-md-6 mb-2"><label for="scPRJ_NM">프로젝트명(업무명) *</label><input id="scPRJ_NM" class="form-control form-control-sm" maxlength="300" required></div>
+							<div class="col-md-3 mb-2"><label for="scCLIENT_NM">고객사</label><input id="scCLIENT_NM" class="form-control form-control-sm" maxlength="200" list="scClients" autocomplete="off"><datalist id="scClients"></datalist></div>
+							<div class="col-md-3 mb-2"><label for="scCOMPANY_NM">근무회사</label><input id="scCOMPANY_NM" class="form-control form-control-sm" maxlength="200" list="scCompanies" autocomplete="off"><datalist id="scCompanies"></datalist></div>
+							<div class="col-md-3 mb-2"><label for="scSTART_YM">시작월 *</label><input type="month" id="scSTART_YM" class="form-control form-control-sm" required></div>
+							<div class="col-md-3 mb-2"><label for="scEND_YM">종료월 *</label><input type="month" id="scEND_YM" class="form-control form-control-sm">
+								<div class="form-check mt-1"><input type="checkbox" class="form-check-input" id="scOngoing"><label class="form-check-label small" for="scOngoing">진행중</label></div></div>
+							<div class="col-md-3 mb-2"><label for="scWORK_NM">업무단</label><input id="scWORK_NM" class="form-control form-control-sm" maxlength="500"></div>
+							<div class="col-md-3 mb-2"><label for="scWORK_AREA">근무지</label><input id="scWORK_AREA" class="form-control form-control-sm" maxlength="200"></div>
+						</div>
+						<div class="small text-muted" id="scDeployNote" hidden>투입현황에 등록된 건이라 프로젝트명·고객사·기간은 투입현황에서 고칩니다. 여기서는 업무단·역할·개발환경을 보탭니다.</div>
+						<div class="st-pick" id="scPick"></div>
+						<div class="small text-muted mt-2">칩을 누르면 켜지고 다시 누르면 꺼집니다. 목록에 없는 값은 「＋ 직접 입력」 칸에 적고 Enter. 한 번 넣은 값은 다음부터 칩으로 나옵니다.
+							<button type="button" class="btn btn-link btn-sm p-0" id="scCopyPrev">이전 프로젝트의 개발환경 복사</button></div>
 					</div>
-					<div class="modal-footer"><button type="submit" class="btn btn-sm btn-primary">저장</button></div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-sm btn-outline-danger mr-auto" id="scDelete">삭제</button>
+						<button type="button" class="btn btn-sm btn-outline-secondary" id="scSaveMore">저장하고 하나 더 추가</button>
+						<button type="submit" class="btn btn-sm btn-primary">저장</button>
+					</div>
 				</form>
+			</div>
+		</div>
+	</div>
+
+	<div class="modal fade" id="scVerModal" tabindex="-1" role="dialog" aria-labelledby="scVerTitle" aria-hidden="true">
+		<div class="modal-dialog modal-xl" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="scVerTitle">수행이력 버전</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
+				</div>
+				<div class="modal-body">
+					<p class="small text-muted mb-2">「새 버전으로 저장」을 누를 때만 버전이 생깁니다. <b>보기</b>는 그 버전의 수행이력을 읽기 전용으로 보여 주고, <b>이 버전으로</b>는 작업 중 내용을 그 버전으로 바꿉니다(옛 버전은 지워지지 않습니다).</p>
+					<div class="table-responsive"><table class="table table-sm mb-0" data-nosort><thead><tr><th>버전</th><th>저장한 때</th><th>저장한 사람</th><th>프로젝트</th><th>직전 버전과 달라진 점</th><th><span class="sr-only">관리</span></th></tr></thead><tbody id="scVerBody"></tbody></table></div>
+					<div id="scVerView" class="mt-3"></div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="modal fade" id="scImpModal" tabindex="-1" role="dialog" aria-labelledby="scImpTitle" aria-hidden="true">
+		<div class="modal-dialog modal-xl" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="scImpTitle">워드에서 수행이력 가져오기</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
+				</div>
+				<div class="modal-body">
+					<p class="small text-muted mb-2">이력카드 워드(.docx)의 <b>SKILL INVENTORY</b> 표를 읽어 지금 수행이력과 비교합니다. 「선택한 줄 반영」을 눌러야 저장됩니다. 같은 프로젝트는 프로젝트명과 시작월로 판단하고, 있는 프로젝트는 워드에 적힌 칸만 덮어씁니다.</p>
+					<label for="scImpFile" class="sr-only">이력카드 워드 파일</label>
+					<input type="file" id="scImpFile" accept=".docx" class="form-control-file mb-2">
+					<div id="scImpSum" class="small mb-2"></div>
+					<div class="table-responsive" style="max-height:52vh;"><table class="table table-sm mb-0" data-nosort><thead><tr><th style="width:30px;"><span class="sr-only">선택</span></th><th>상태</th><th>참여기간</th><th>프로젝트명</th><th>고객사</th><th>역할</th><th>언어</th><th>DBMS</th><th>달라진 점</th></tr></thead><tbody id="scImpBody"></tbody></table></div>
+				</div>
+				<div class="modal-footer"><button type="button" class="btn btn-sm btn-primary" id="scImpApply" disabled>선택한 줄 반영</button></div>
 			</div>
 		</div>
 	</div>
@@ -210,24 +275,22 @@
 	<div id="copyToast" role="status" aria-live="polite"></div>
 
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
+	<script src="/resources/common/staff-career.js?v=20261116"></script>
 
 	<script>
 	// 공통코드 HR_STAFF_STATUS 의 이름·순서. 코드가 없을 때만 기본값
 	var STATUS = hrCodeMap('HR_STAFF_STATUS');
 	if ($.isEmptyObject(STATUS)) STATUS = { WORK: '재직', LEFT: '퇴사', WAIT: '대기' };
-	// 인사카드 탭: [이름, 그 탭에 그릴 SECTIONS 이름]. 영업정보/수행이력과 서류는 따로 그린다
-	var CARD_TABS = [['기초정보', ['기초정보', '일자', '계좌(기업)', '비상연락망', '기타']], ['학력/교육', ['학력', '병역', '교육·자격']], ['영업정보/수행이력', []], ['서류', []], ['메모', []], ['보유 장비', []], ['🔒 시크릿', []]];
+	// 인사카드 탭: [이름, 그 탭에 그릴 SECTIONS 이름]. 영업정보·수행이력·서류·메모·보유 장비·시크릿은 따로 그린다
+	var CARD_TABS = [['기초정보', ['기초정보', '일자', '계좌(기업)', '비상연락망', '기타']], ['학력/교육', ['학력', '병역', '교육·자격']], ['영업정보', []], ['수행이력', []], ['서류', []], ['메모', []], ['보유 장비', []], ['🔒 시크릿', []]];
+	var TAB = { SALES: 2, CAREER: 3, DOCS: 4, MEMO: 5, EQP: 6, SECRET: 7 };
 	var CAN_SECRET = false; // 슈퍼관리자만. 아니면 시크릿 탭을 그리지 않는다(서버도 같은 검사)
 	var SALES_TERMS = ['GRADE_NM', 'REAL_CAREER', 'WISH_PRICE', 'SCORE', 'GAPIL_YN', 'AUTO_APLY_YN', 'WISH_LOC'];
-	var SALES_SKILLS = ['SK_LANG', 'SK_BE', 'SK_FE', 'SK_FW', 'SK_DB', 'SK_IDE', 'SK_VCS', 'SK_OS'];
-	var SALES_TEXTS = ['WORK_DOMAIN', 'EXPERTISE'], SALES_ETC = ['REPORT', 'ETC1', 'ETC2'];
-	var PRJ_ENV = [['MACHINE_NM', '기종'], ['OS_NM', 'O.S'], ['LANG_NM', '언어'], ['DBMS_NM', 'DBMS'], ['TOOL_NM', 'TOOL'], ['FRAMEWORK_NM', 'FRAMEWORK'], ['ETC_NM', '기타']];
-	var PRJ_MAIN = [['PRJ_NM', '프로젝트명(업무명) *', 6], ['CLIENT_NM', '고객사 *', 3], ['ROLE_NM', '역할 *', 3, { values: { '': '선택', '운영': '운영', '개발': '개발', '운영/개발': '운영/개발' } }],
-		['START_YM', '시작월 *', 3, 'month'], ['END_YM', '종료월 *', 3, 'month'], ['WORK_NM', '업무단 *', 6]];
-	var PRJ_AREA = [['IND_NM', '산업', 6], ['APP_NM', '응용', 6]];
-	var PRJ_ENV_FIELDS = PRJ_ENV.map(function(e) { return [e[0], e[1], e[0] === 'ETC_NM' ? 6 : 3]; });
-	var PRJ_ALL = PRJ_MAIN.concat(PRJ_AREA, PRJ_ENV_FIELDS);
-	var cardTab = 0, prjs = null; // prjs: { sq, list }
+	var SALES_TEXTS = ['WORK_DOMAIN', 'EXPERTISE', 'REPORT', 'ETC1', 'ETC2'];
+	// 수행이력 입력 창에서 칩으로 고르는 칸
+	var SC_PICKS = [['ROLE_NM', '역할'], ['IND_NM', '산업'], ['APP_NM', '응용'], ['LANG_NM', '언어'], ['FRAMEWORK_NM', '프레임워크'], ['DBMS_NM', 'DBMS'], ['TOOL_NM', 'TOOL'], ['OS_NM', 'O.S'], ['MACHINE_NM', '기종'], ['ETC_NM', '기타']];
+	var SC_TEXTS = ['PRJ_NM', 'CLIENT_NM', 'COMPANY_NM', 'START_YM', 'END_YM', 'WORK_NM', 'WORK_AREA'];
+	var cardTab = 0, career = null; // career: { sq, d: 서버 상태(items·ver·dirty·logs·chips), pick: 골라 보는 기술 }
 	var EDU_TYPE = { list: [['', '선택']].concat(['검정고시', '고등학교(인문계)', '고등학교(실업계)', '대학교(2~3년제)', '대학교(4년제)', '사이버·방통대·학점은행제', '대학원(석사)', '대학원(박사)'].map(function(k) { return [k, k]; })) };
 	var EDU_STATE = { list: [['', '선택'], ['졸업', '졸업'], ['재학', '재학'], ['휴학', '휴학'], ['수료', '수료'], ['중퇴', '중퇴']] };
 	// 여러 건 섹션. cols: [칸, 이름, 입력 종류, 필수], base: 기존 인사카드 칸(cols 순서). 기존 칸의 건은 기존 칸에, 추가한 건은 항목 표에 저장한다
@@ -255,8 +318,7 @@
 		['비상연락망', [['EMG_REL1', '관계1'], ['EMG_TEL1', '연락처1'], ['EMG_REL2', '관계2'], ['EMG_TEL2', '연락처2']]],
 		['기타', [['PREV_CAREER', '이전경력'], ['HOBBY', '취미'], ['LANG_SKILL', '외국어'], ['SPECIALTY', '특기']]],
 		['영업 정보', [['GRADE_NM', '등급'], ['REAL_CAREER', '실경력'], ['WISH_PRICE', '희망단가'], ['SCORE', '점수'], ['GAPIL_YN', '가필여부'], ['AUTO_APLY_YN', '자동지원여부'],
-			['SK_FE', 'F/E'], ['SK_BE', 'B/E'], ['WORK_DOMAIN', '업무·도메인'], ['WISH_LOC', '희망 위치'], ['SK_LANG', '언어·스크립트'], ['SK_FW', '프레임워크'],
-			['SK_DB', 'DB'], ['SK_IDE', 'IDE·에디터'], ['SK_VCS', '형상관리'], ['SK_OS', '운영체제'], ['EXPERTISE', '전문분야'], ['REPORT', 'Report'], ['ETC1', '기타1'], ['ETC2', '기타2']]]
+			['WORK_DOMAIN', '업무·도메인'], ['WISH_LOC', '희망 위치'], ['EXPERTISE', '전문분야'], ['REPORT', 'Report'], ['ETC1', '기타1'], ['ETC2', '기타2'], ['SK_EXTRA', '추가 기술 (직접 입력)']]]
 	];
 	var LABELS = {};
 	SECTIONS.forEach(function(s) { s[1].forEach(function(f) { LABELS[f[0]] = f[1]; }); });
@@ -275,13 +337,8 @@
 		$('#sortSel, .st-filter').on('change', render);
 		hrBuildFields('#newFields', [['STAFF_NM', '성명 *', 6], ['STATUS_CD', '재직 상태', 6, { values: STATUS }], ['ORG_NM', '소속', 4], ['DEPT_NM', '부서', 4],
 			['POSITION_NM', '직급', 4], ['PHONE', '전화번호', 6], ['JOIN_DT', '입사일자', 6, 'date']]);
-		$('#cardModal').on('hidden.bs.modal', function() { opened = null; revealed = {}; docs = null; prjs = null; items = null; cardTab = 0; render(); });
-		hrBuildFields('#prjMain', PRJ_MAIN);
-		hrBuildFields('#prjArea', PRJ_AREA);
-		hrBuildFields('#prjEnv', PRJ_ENV_FIELDS);
-		PRJ_MAIN.forEach(function(f) { $('#f_' + f[0]).prop('required', true); });
-		$('#f_END_YM').after('<div class="form-check mt-1"><input type="checkbox" class="form-check-input" id="prjOngoing" name="ONGOING_YN" value="Y"><label class="form-check-label small" for="prjOngoing">진행중</label></div>');
-		$('#prjOngoing').on('change', syncOngoing);
+		$('#cardModal').on('hidden.bs.modal', function() { opened = null; revealed = {}; docs = null; career = null; items = null; cardTab = 0; render(); });
+		careerInit();
 		// 인사카드 위에 뜬 창을 닫아도 인사카드 스크롤이 유지되게 한다
 		$(document).on('hidden.bs.modal', function() { if ($('.modal.show').length) $('body').addClass('modal-open'); });
 		loadDrive();
@@ -514,8 +571,8 @@
 
 	// 탭 이름 뒤 건수. 0건이면 붙이지 않는다
 	function cardTabLabel(r, i) {
-		var n = i === 2 ? (prjs && prjs.sq === r.STAFF_SQ ? prjs.list.length : r.PRJ_CNT) : i === 4 ? r.MEMO_CNT : i === 5 ? r.EQP_CNT : 0;
-		if (i === 3) { var miss = missingDocs(r).length; return CARD_TABS[i][0] + (miss ? '(미제출 ' + miss + ')' : ''); }
+		var n = i === TAB.CAREER ? (career && career.sq === r.STAFF_SQ && career.d ? career.d.items.length : r.PRJ_CNT) : i === TAB.MEMO ? r.MEMO_CNT : i === TAB.EQP ? r.EQP_CNT : 0;
+		if (i === TAB.DOCS) { var miss = missingDocs(r).length; return CARD_TABS[i][0] + (miss ? '(미제출 ' + miss + ')' : ''); }
 		return CARD_TABS[i][0] + (n ? '(' + n + ')' : '');
 	}
 
@@ -533,15 +590,19 @@
 		var $b = $('#cardBody').empty();
 		var $tabs = $('<ul class="nav nav-tabs mb-3" role="tablist">').appendTo($b), $p = $('<div role="tabpanel">').appendTo($b);
 		CARD_TABS.forEach(function(t, i) {
-			if (i === 6 && !CAN_SECRET) return;
+			if (i === TAB.SECRET && !CAN_SECRET) return;
 			$('<li class="nav-item">').append($('<button type="button" class="nav-link" role="tab">').toggleClass('active', i === cardTab).attr('aria-selected', i === cardTab)
 				.text(cardTabLabel(r, i))
 				.on('click', function() { cardTab = i; paintCard(); $('#cardBody .nav-link.active').focus(); })).appendTo($tabs);
 		});
+		// 모든 탭이 같은 모양: 제목 달린 카드 안에 작은 이름표 + 값, 여러 건은 표
+		var $cards = $('<div class="st-cards">').appendTo($p);
+		function card(wide) { return $('<div class="st-card">').toggleClass('wide', !!wide).appendTo($cards); }
 		SECTIONS.filter(function(s) { return CARD_TABS[cardTab][1].indexOf(s[0]) >= 0; }).forEach(function(s) {
-			if (LISTS[s[0]]) { itemSection($p, r, LISTS[s[0]]); return; }
-			$p.append(sectionHead(r, s[0], s[1]));
-			var $g = $('<div class="st-grid">').appendTo($p);
+			var $c = card();
+			if (LISTS[s[0]]) { itemSection($c, r, LISTS[s[0]]); return; }
+			$c.append(sectionHead(r, s[0], s[1]));
+			var $g = $('<div class="st-grid">').appendTo($c);
 			s[1].forEach(function(f) {
 				var $row = $('<div class="hr-card-row">').append($('<div class="hr-card-label">').text(f[1])).appendTo($g);
 				if (f[2] === 'secret') $row.append(secretCell(r, f[0]));
@@ -549,30 +610,36 @@
 			});
 			if (s[0] === '일자') $g.append($('<div class="hr-card-row">').append($('<div class="hr-card-label">').text('근속')).append($('<div class="hr-cell">').text(tenure(r) || '-')));
 		});
-		if (cardTab === 2) salesTab($p, r);
-		if (cardTab === 3) {
-			$p.append($('<div class="hr-section d-flex align-items-center">').append('서류&nbsp;')
-				.append($('<span class="small text-muted font-weight-normal">').text('(미제출 ' + missingDocs(r).length + '건 · 파일은 구글 드라이브)'))
+		if ((cardTab === TAB.SALES || cardTab === TAB.CAREER) && (!career || career.sq !== r.STAFF_SQ)) loadCareer(r.STAFF_SQ);
+		if (cardTab === TAB.SALES) salesTab(card, r);
+		if (cardTab === TAB.CAREER) careerTab(card(true), r);
+		if (cardTab === TAB.DOCS) {
+			var $dc = card(true), miss = missingDocs(r).length;
+			$dc.append($('<div class="hr-section d-flex align-items-center">').append('서류&nbsp;')
+				.append($('<span class="small text-muted font-weight-normal">').text((DOCS.length - miss) + ' / ' + DOCS.length + ' 제출 · 파일은 구글 드라이브'))
 				.append($('<button type="button" class="btn btn-sm btn-outline-primary ml-auto">').html('<i class="fab fa-google-drive"></i> 드라이브에서 찾기').on('click', openScan)));
-			var $d = $('<div>').appendTo($p);
+			$dc.append($('<div class="st-docbar">').append($('<i>').css('width', Math.round((DOCS.length - miss) / DOCS.length * 100) + '%')));
+			var $d = $('<div>').appendTo($dc);
 			DOCS.forEach(function(d) { $d.append(docRow(r, d)); });
 		}
 		if (!docs || docs.sq !== r.STAFF_SQ) loadDocs(r.STAFF_SQ);
-		if (cardTab === 4) hrMemoFeed($('<div>').appendTo($p), MEMO_API, r.STAFF_SQ, function() { load(refreshCardTabs); });
-		if (cardTab === 6 && CAN_SECRET) secretTab($p, r);
-		if (cardTab === 5) {
-			var $eq = $('<div id="staffEquipment">').appendTo($p);
+		if (cardTab === TAB.MEMO) {
+			var $mc = card(true).append('<div class="hr-section">메모</div>');
+			hrMemoFeed($('<div>').appendTo($mc), MEMO_API, r.STAFF_SQ, function() { load(refreshCardTabs); });
+		}
+		if (cardTab === TAB.SECRET && CAN_SECRET) secretTab(card(true), r);
+		if (cardTab === TAB.EQP) {
+			var $eq = $('<div id="staffEquipment">').appendTo(card(true));
 			loadEquipment(r.STAFF_SQ, function(list) {
 				$eq.empty().append($('<div class="hr-section">').text('대여 중인 장비 ' + list.length + '대'));
 				if (!list.length) { $eq.append('<div class="small text-muted">대여 중인 장비가 없습니다.</div>'); return; }
 				var $b = $('<tbody>');
-				list.forEach(function(e) { $b.append($('<tr>').append($('<td>').text(e.EQP_NO), $('<td>').text(EQ_TYPE[e.TYPE_CD] || e.TYPE_CD), $('<td>').text(e.MODEL_NM || '-'), $('<td>').text(e.START_DT || '-'), $('<td>').text(e.PURPOSE_NM || '-'))); });
-				$eq.append($('<div class="table-responsive">').append($('<table class="table table-sm cal-table st-prj mb-0">')
+				list.forEach(function(e) { $b.append($('<tr>').append($('<td>').text(e.EQP_NO), $('<td>').append($('<span class="sc-pill">').text(EQ_TYPE[e.TYPE_CD] || e.TYPE_CD)), $('<td>').text(e.MODEL_NM || '-'), $('<td>').text(e.START_DT || '-'), $('<td>').text(e.PURPOSE_NM || '-'))); });
+				$eq.append($('<div class="table-responsive">').append($('<table class="sc-table" data-nosort>')
 					.append('<thead><tr><th>장비번호</th><th>구분</th><th>모델</th><th>대여일</th><th>용도</th></tr></thead>').append($b)));
 			});
 		}
 	}
-
 	// 계정관리 계정 카드의 시크릿 탭과 같은 스위치·설명. 바로 저장된다
 	function secretTab($p, r) {
 		var $box = $('<div>').appendTo($p).append('<div class="small text-muted">불러오는 중…</div>');
@@ -595,31 +662,24 @@
 		hrPost('/admin/equipment/staffEquipmentData.do', { STAFF_SQ: sq }, function(res) { done(res.result || []); });
 	}
 
-	// ── 영업정보/수행이력 탭 ──
-	function tags($el, v) {
-		String(v || '').split(',').map($.trim).filter(Boolean).forEach(function(t) { $el.append($('<span class="st-tag">').text(t)); });
-		return $el;
-	}
-
+	// ── 영업정보 탭: 기술 스택은 수행이력에서 자동으로 모은다 ──
 	function salesGrid($p, r, fields) {
 		var $g = $('<div class="st-grid">').appendTo($p);
 		fields.forEach(function(f) { $g.append($('<div class="hr-card-row">').append($('<div class="hr-card-label">').text(LABELS[f])).append(editable($('<div>'), r, f))); });
 	}
 
-	function salesRows($p, r, fields, paint) {
-		fields.forEach(function(f) { $p.append($('<div class="hr-card-row st-skill">').append($('<div class="hr-card-label">').text(LABELS[f])).append(editable($('<div>'), r, f, null, paint))); });
-	}
-
-	function salesTab($p, r) {
-		function head(title, fields, type) { $p.append(sectionHead(r, title, fields.map(function(f) { return [f, LABELS[f], type]; }))); }
-		head('영업 조건', SALES_TERMS);
-		salesGrid($p, r, SALES_TERMS);
-		head('기술 스택', SALES_SKILLS, 'textarea');
-		salesRows($p, r, SALES_SKILLS, tags);
-		head('업무·기타', SALES_TEXTS.concat(SALES_ETC), 'textarea');
-		salesRows($p, r, SALES_TEXTS);
-		salesGrid($p, r, SALES_ETC);
-		prjSection($p, r);
+	function salesTab(card, r) {
+		function head($c, title, fields, type) { $c.append(sectionHead(r, title, fields.map(function(f) { return [f, LABELS[f], type]; }))); }
+		var $st = card(true).append($('<div class="hr-section">').append('기술 스택&nbsp;').append('<span class="small text-muted font-weight-normal">수행이력에서 자동 계산 · 숫자는 프로젝트 수 · 칩을 누르면 그 프로젝트만 봅니다</span>'));
+		var d = career && career.sq === r.STAFF_SQ ? career.d : null;
+		if (!d) $st.append('<div class="small text-muted">불러오는 중…</div>');
+		else scStack($st, d.items, function(t) { career.pick = t; cardTab = TAB.CAREER; paintCard(); });
+		var $terms = card();
+		head($terms, '영업 조건', SALES_TERMS);
+		salesGrid($terms, r, SALES_TERMS);
+		var texts = SALES_TEXTS.concat(['SK_EXTRA']), $etc = card();
+		head($etc, '업무·기타', texts, 'textarea');
+		texts.forEach(function(f) { $etc.append($('<div class="hr-card-row st-skill">').append($('<div class="hr-card-label">').text(LABELS[f])).append(editable($('<div>'), r, f))); });
 	}
 
 	// ── 탭 안의 수정 팝업과 여러 건 항목 ──
@@ -726,62 +786,235 @@
 		});
 	}
 
-	function prjSection($p, r) {
-		var list = prjs && prjs.sq === r.STAFF_SQ ? prjs.list : null;
-		$p.append($('<div class="hr-section d-flex align-items-center">').append('프로젝트 수행이력&nbsp;').append($('<span class="small text-muted font-weight-normal">').text(list ? list.length + '건' : ''))
-			.append($('<button type="button" class="btn btn-sm btn-outline-primary ml-auto">').html('<i class="fas fa-plus"></i> 이력 추가').on('click', function() { openPrj(null); })));
-		if (!list) { loadPrjs(r.STAFF_SQ); return; }
-		if (!list.length) { $p.append('<div class="small text-muted">등록된 수행이력이 없습니다.</div>'); return; }
-		var $t = $('<table class="table table-sm cal-table st-prj mb-0">').append('<thead><tr><th style="width:120px;">참여기간</th><th style="width:170px;">프로젝트명(업무명)</th><th style="width:90px;">고객사</th><th style="width:130px;">업무단</th><th style="width:70px;">역할</th><th style="width:100px;">개발분야</th><th style="min-width:260px;">개발환경</th><th style="width:30px;"><span class="sr-only">삭제</span></th></tr></thead>');
-		var $body = $('<tbody>').appendTo($t);
-		list.forEach(function(x) {
-			var $env = $('<div class="st-env">');
-			PRJ_ENV.forEach(function(e) { if (x[e[0]]) $env.append($('<div class="st-env-label">').text(e[1])).append(tags($('<div>'), x[e[0]])); });
-			$body.append($('<tr>').append($('<td>').text(x.START_YM + ' ~ ' + (x.END_YM || '진행중')))
-				.append($('<td>').append($('<button type="button" class="st-name">').attr('title', '눌러서 수정').text(x.PRJ_NM).on('click', function() { openPrj(x); })))
-				.append($('<td>').text(x.CLIENT_NM)).append($('<td>').text(x.WORK_NM)).append($('<td>').text(x.ROLE_NM))
-				.append($('<td>').append($('<div>').text(x.IND_NM ? '산업 ' + x.IND_NM : '')).append($('<div>').text(x.APP_NM ? '응용 ' + x.APP_NM : '')))
-				.append($('<td>').append($env))
-				.append($('<td>').append($('<button type="button" class="st-prj-del">').attr('aria-label', x.PRJ_NM + ' 삭제').html('&times;').on('click', function() { deletePrj(x); }))));
+	// ── 수행이력 탭 (서버가 원본. 「새 버전으로 저장」을 눌러야 버전이 생긴다) ──
+	var SC_ACT = { ADD: '추가', EDIT: '수정', DEL: '삭제', VERSION: '버전', RESTORE: '되돌림', IMPORT: '가져오기' };
+	var SC_LOCKED = ['PRJ_NM', 'CLIENT_NM', 'START_YM', 'END_YM']; // 사내 투입 줄은 투입현황을 따른다
+	var scEdit = null, scImp = null; // 고치는 줄 { PRJ_SQ, DEPLOY_SQ } / 워드에서 읽은 줄 { name, rows }
+
+	function loadCareer(sq) {
+		hrPost('/admin/staff/careerData.do', { STAFF_SQ: sq }, function(res) {
+			career = { sq: sq, d: res.result, pick: career && career.sq === sq ? career.pick : null };
+			var r = find(sq);
+			if (r) r.PRJ_CNT = career.d.items.length;
+			if (String(opened) === String(sq) && (cardTab === TAB.SALES || cardTab === TAB.CAREER)) paintCard();
 		});
-		$p.append($('<div class="table-responsive">').append($t));
 	}
 
-	function loadPrjs(sq) {
-		hrPost('/admin/staff/staffPrjData.do', { STAFF_SQ: sq }, function(res) {
-			prjs = { sq: sq, list: res.list || [] };
-			if (String(opened) === String(sq) && cardTab === 2) paintCard();
+	function careerTab($c, r) {
+		var d = career && career.sq === r.STAFF_SQ ? career.d : null, sq = r.STAFF_SQ;
+		if (!d) { $c.append('<div class="small text-muted">불러오는 중…</div>'); return; }
+		function stat(k, v) { return $('<div class="st-stat">').append($('<small>').text(k)).append($('<b>').text(v)); }
+		function btn(cls, html, fn) { return $('<button type="button" class="btn btn-sm">').addClass(cls).html(html).on('click', fn); }
+		var $save = btn('btn-primary', '💾 새 버전으로 저장', function() { saveVersion(sq); }).prop('disabled', !d.dirty).attr('title', d.dirty ? '' : '최신 버전과 같아 저장할 것이 없습니다');
+		$c.append($('<div class="st-hero">')
+			.append(stat('총 경력', scCareer(d.items) || '-')).append(stat('프로젝트', d.items.length + '건'))
+			.append(stat('버전', d.ver ? 'v' + d.ver.VER_NO : '없음'))
+			.append($('<div class="st-btns">')
+				.append(btn('btn-outline-primary', '<i class="fas fa-plus"></i> 이력 추가', function() { openCareer(null); }))
+				.append($save)
+				.append(btn('btn-outline-secondary', '🕘 버전', function() { openVersions(sq); }))
+				.append(btn('btn-outline-secondary', '📄 워드 받기', function() { careerWord(sq, ''); }))
+				.append(btn('btn-outline-secondary', '<i class="fab fa-google-drive"></i> 워드 올리기', function() { careerWordDrive(sq); }))
+				.append(btn('btn-outline-secondary', '⤒ 워드 가져오기', function() { openImport(); }))));
+		if (d.dirty) $c.append($('<div class="st-dirty" role="status">').append($('<b>').text('작업 중')).append($('<span>').text(d.dirty + ' · 아직 버전으로 저장하지 않았습니다' + (d.ver ? ' (최신 v' + d.ver.VER_NO + ' · ' + d.ver.REG_DT + ')' : ''))));
+		if (career.pick) $c.append($('<div class="st-bulk">').append($('<span>').text('「' + career.pick + '」 를 쓴 프로젝트만 보는 중'))
+			.append(btn('btn-link p-0', '전체 보기', function() { career.pick = null; paintCard(); })));
+
+		// 줄을 체크하면 나오는 일괄 처리 띠
+		var $field = $('<select class="form-control form-control-sm" style="width:auto;" aria-label="한 번에 넣을 항목">'), $val = $('<input class="form-control form-control-sm" style="width:200px;" list="scBulkList" aria-label="넣을 값 (쉼표로 여러 개)" placeholder="값 (쉼표로 여러 개)">');
+		var $list = $('<datalist id="scBulkList">'), $n = $('<b>');
+		SC_PICKS.forEach(function(p) { $field.append($('<option>').val(p[0]).text(p[1])); });
+		function fillList() { $list.empty(); (d.chips[$field.val()] || []).forEach(function(v) { $list.append($('<option>').val(v)); }); }
+		$field.val('LANG_NM').on('change', fillList);
+		fillList();
+		function picked() { return $c.find('.sc-chk:checked').map(function() { return this.value; }).get(); }
+		var $bulk = $('<div class="st-bulk">').prop('hidden', true).append($n).append('<span>에</span>').append($field).append($val).append($list)
+			.append(btn('btn-primary', '한 번에 넣기', function() {
+				hrPost('/admin/staff/bulkCareerData.do', { STAFF_SQ: sq, PRJ_SQS: picked().join(','), FIELD: $field.val(), VALUES: $val.val() }, function() { toast('넣었습니다'); loadCareer(sq); });
+			}))
+			.append(btn('btn-outline-danger ml-auto', '선택 삭제', function() { deleteCareer(sq, picked(), picked().length + '건'); })).appendTo($c);
+		$c.on('change', '.sc-chk', function() { var n = picked().length; $bulk.prop('hidden', !n); $n.text(n + '건'); });
+
+		var shown = career.pick ? d.items.filter(function(it) { return scEnv.some(function(e) { return scTokens(it[e[0]]).indexOf(career.pick) >= 0; }) || scTokens(it.IND_NM).concat(scTokens(it.ROLE_NM)).indexOf(career.pick) >= 0; }) : d.items;
+		scTable($c, shown, { check: true, pick: career.pick, edit: function(it) { openCareer(it); }, copy: function(it) { openCareer(it, true); }, fill: function(it) { openCareer(it); },
+			del: function(it) { deleteCareer(sq, [it.PRJ_SQ], it.PRJ_NM); }, empty: '프로젝트 이력이 없습니다. 「이력 추가」 나 「워드 가져오기」 로 시작하세요.' });
+
+		if (d.logs.length) {
+			var $lb = $('<tbody>');
+			d.logs.forEach(function(l) { $lb.append($('<tr>').append($('<td class="text-nowrap text-muted">').text(l.REG_DT), $('<td class="text-nowrap">').append($('<span class="sc-pill">').text(SC_ACT[l.ACT_CD] || l.ACT_CD)), $('<td>').text([l.PRJ_NM, l.DETAIL].filter(Boolean).join(' · ')), $('<td class="text-nowrap text-muted">').text(l.REG_EMPLY_ID || ''))); });
+			$c.append($('<details class="mt-3">').append($('<summary class="small text-muted">').text('최근 변경 ' + d.logs.length + '건')).append($('<table class="st-log w-100 mt-1" data-nosort>').append($lb)));
+		}
+	}
+
+	function deleteCareer(sq, prjSqs, label) {
+		bootbox.confirm(label + ' 수행이력을 삭제할까요? 저장해 둔 버전이 있으면 「🕘 버전」 에서 되돌릴 수 있습니다.', function(ok) {
+			if (ok) hrPost('/admin/staff/deleteCareerData.do', { STAFF_SQ: sq, PRJ_SQS: prjSqs.join(',') }, function() { toast('삭제했습니다'); loadCareer(sq); });
 		});
+	}
+
+	function saveVersion(sq) {
+		hrPost('/admin/staff/saveCareerVersionData.do', { STAFF_SQ: sq }, function(res) { toast('v' + res.result + ' 로 저장했습니다'); loadCareer(sq); });
+	}
+
+	function careerWord(sq, verNo) {
+		if (!verNo && career && career.d && career.d.dirty && career.d.ver) toast('최신 버전(v' + career.d.ver.VER_NO + ') 기준입니다. 작업 중 내용은 새 버전으로 저장한 뒤 받으세요');
+		location.href = '/admin/staff/careerWord.do?STAFF_SQ=' + sq + (verNo ? '&VER_NO=' + verNo : '');
+	}
+
+	function careerWordDrive(sq) {
+		toast('드라이브에 올리는 중…');
+		hrPost('/admin/staff/careerWordDriveData.do', { STAFF_SQ: sq }, function() { toast('드라이브 폴더에 이력카드 워드를 올렸습니다 (이전에 올린 것은 바꿈)'); });
+	}
+
+	// ── 칩으로 넣는 입력 창 ──
+	function careerInit() {
+		$('#scOngoing').on('change', syncOngoing);
+		$('#scSaveMore').on('click', function() { if ($('#scForm')[0].reportValidity()) saveCareer(true); });
+		$('#scDelete').on('click', function() { $('#scModal').modal('hide'); deleteCareer(opened, [scEdit.PRJ_SQ], $('#scPRJ_NM').val()); });
+		$('#scCopyPrev').on('click', copyPrevEnv);
+		$('#scPick').on('click', '.sc-chip', function() { $(this).toggleClass('on').attr('aria-pressed', $(this).hasClass('on')); })
+			.on('keydown', '.st-add', function(e) {
+				if (e.key !== 'Enter') return;
+				e.preventDefault(); // 폼이 저장되지 않게
+				var $in = $(this);
+				scTokens($in.val()).forEach(function(v) { pickChip($in.closest('[data-col]'), v, true); });
+				$in.val('');
+			});
+		$('#scImpFile').on('change', readImport);
+		$('#scImpApply').on('click', applyImport);
 	}
 
 	function syncOngoing() {
-		var on = $('#prjOngoing').prop('checked');
-		$('#f_END_YM').prop({ disabled: on, required: !on });
-		if (on) $('#f_END_YM').val('');
+		var on = $('#scOngoing').prop('checked'), locked = !!(scEdit && scEdit.DEPLOY_SQ);
+		$('#scEND_YM').prop({ disabled: on || locked, required: !on });
+		if (on) $('#scEND_YM').val('');
 	}
 
-	function openPrj(x) {
-		hrFillForm('#prjForm', PRJ_ALL, x || {});
-		$('#prjForm [name=STAFF_SQ]').val(opened);
-		$('#prjForm [name=PRJ_SQ]').val(x ? x.PRJ_SQ : '');
-		$('#prjOngoing').prop('checked', !!x && !x.END_YM);
+	// 있는 칩이면 켜고, 없으면 만들어 켠다
+	function pickChip($row, v, on) {
+		var $chip = $row.find('.sc-chip').filter(function() { return $(this).text() === v; });
+		if (!$chip.length) $chip = $('<button type="button" class="sc-chip gray">').text(v).insertBefore($row.find('.st-add'));
+		if (on) $chip.addClass('on');
+		$chip.attr('aria-pressed', $chip.hasClass('on'));
+	}
+
+	function openCareer(it, copy) {
+		var d = career.d, x = it || {}, deploy = !copy && x.SRC === 'DEPLOY';
+		scEdit = { PRJ_SQ: copy ? '' : (x.PRJ_SQ || ''), DEPLOY_SQ: deploy ? x.DEPLOY_SQ : '' };
+		SC_TEXTS.forEach(function(f) { $('#sc' + f).val(x[f] || '').prop('disabled', deploy && SC_LOCKED.indexOf(f) >= 0); });
+		$('#scOngoing').prop('checked', !!it && !x.END_YM).prop('disabled', deploy);
 		syncOngoing();
-		$('#prjTitle').text('프로젝트 수행이력 ' + (x ? '수정' : '추가'));
-		$('#prjModal').modal('show');
+		$('#scDeployNote').prop('hidden', !deploy);
+		$('#scClients').empty().append((d.chips.CLIENT_NM || []).map(function(v) { return $('<option>').val(v); }));
+		$('#scCompanies').empty().append((d.chips.COMPANY_NM || []).map(function(v) { return $('<option>').val(v); }));
+		var $p = $('#scPick').empty();
+		SC_PICKS.forEach(function(p) {
+			var $row = $('<div>').attr('data-col', p[0]).append($('<input class="form-control st-add" placeholder="＋ 직접 입력">').attr('aria-label', p[1] + ' 직접 입력'));
+			$p.append($('<span class="k">').text(p[1])).append($row);
+			(d.chips[p[0]] || []).forEach(function(v) { pickChip($row, v, false); });
+			scTokens(x[p[0]]).forEach(function(v) { pickChip($row, v, true); });
+		});
+		$('#scDelete').prop('hidden', !scEdit.PRJ_SQ || deploy);
+		$('#scSaveMore').prop('hidden', !!it && !copy);
+		$('#scTitle').text('수행이력 ' + (!it ? '추가' : copy ? '복제' : deploy ? '개발환경 입력' : '수정'));
+		$('#scModal').modal('show');
 	}
 
-	function savePrj() {
-		var sq = opened;
-		hrPost('/admin/staff/saveStaffPrjData.do', $('#prjForm').serialize(), function() {
-			$('#prjModal').modal('hide');
+	// 지금 고치는 줄 말고, 개발환경이 있는 가장 최근 프로젝트 것을 켠다
+	function copyPrevEnv() {
+		var prev = career.d.items.filter(function(it) { return !(scEdit.PRJ_SQ && String(it.PRJ_SQ) === String(scEdit.PRJ_SQ)) && scEnv.some(function(e) { return it[e[0]]; }); })[0];
+		if (!prev) { toast('개발환경이 입력된 다른 프로젝트가 없습니다'); return; }
+		scEnv.forEach(function(e) { scTokens(prev[e[0]]).forEach(function(v) { pickChip($('#scPick [data-col=' + e[0] + ']'), v, true); }); });
+		toast(prev.PRJ_NM + ' 의 개발환경을 켰습니다');
+	}
+
+	function saveCareer(more) {
+		var sq = opened, data = { STAFF_SQ: sq, PRJ_SQ: scEdit.PRJ_SQ, DEPLOY_SQ: scEdit.DEPLOY_SQ, ONGOING_YN: $('#scOngoing').prop('checked') ? 'Y' : 'N' };
+		SC_TEXTS.forEach(function(f) { data[f] = $.trim($('#sc' + f).val()); });
+		$('#scPick [data-col]').each(function() {
+			// 적어 두고 Enter 를 안 누른 값도 넣는다
+			data[$(this).attr('data-col')] = $(this).find('.sc-chip.on').map(function() { return $(this).text(); }).get().concat(scTokens($(this).find('.st-add').val())).join(', ');
+		});
+		hrPost('/admin/staff/saveCareerData.do', data, function() {
 			toast('수행이력을 저장했습니다');
-			loadPrjs(sq);
+			if (more) {
+				// 방금 넣은 값이 칩으로 나오게 다시 읽은 뒤 빈 창을 연다
+				hrPost('/admin/staff/careerData.do', { STAFF_SQ: sq }, function(res) { career = { sq: sq, d: res.result, pick: null }; paintCard(); openCareer(null); });
+				return;
+			}
+			$('#scModal').modal('hide');
+			loadCareer(sq);
 		});
 	}
 
-	function deletePrj(x) {
-		bootbox.confirm(x.PRJ_NM + ' 수행이력을 삭제할까요? 되돌릴 수 없습니다.', function(ok) {
-			if (ok) hrPost('/admin/staff/deleteStaffPrjData.do', { STAFF_SQ: x.STAFF_SQ, PRJ_SQ: x.PRJ_SQ }, function() { loadPrjs(x.STAFF_SQ); });
+	// ── 버전 창 ──
+	function openVersions(sq) {
+		$('#scVerView').empty();
+		var $b = $('#scVerBody').empty();
+		hrPost('/admin/staff/careerVersionsData.do', { STAFF_SQ: sq }, function(res) {
+			var list = res.result || [];
+			list.forEach(function(v, i) {
+				function b(text, fn) { return $('<button type="button" class="btn btn-sm btn-outline-secondary mr-1">').text(text).attr('aria-label', 'v' + v.VER_NO + ' ' + text).on('click', fn); }
+				$b.append($('<tr>').append($('<td>').append($('<b>').text('v' + v.VER_NO)).append(i === 0 ? ' <span class="sc-pill in">최신</span>' : ''), $('<td class="text-nowrap">').text(v.REG_DT), $('<td>').text(v.REG_EMPLY_ID || ''), $('<td>').text(v.PRJ_CNT + '건'), $('<td>').text(v.SUMMARY || ''),
+					$('<td class="text-nowrap text-right">').append(b('보기', function() { viewVersion(sq, v.VER_NO); })).append(b('워드', function() { careerWord(sq, v.VER_NO); })).append(b('이 버전으로', function() { restoreVersion(sq, v.VER_NO); }))));
+			});
+			if (!list.length) boEmpty($b, '저장한 버전이 없습니다. 수행이력 탭에서 「새 버전으로 저장」 을 누르면 생깁니다.');
+			$('#scVerModal').modal('show');
+		});
+	}
+
+	function viewVersion(sq, verNo) {
+		hrPost('/admin/staff/careerVersionData.do', { STAFF_SQ: sq, VER_NO: verNo }, function(res) {
+			scTable($('#scVerView').empty().append($('<div class="hr-section">').text('v' + verNo + ' 의 수행이력 (읽기 전용)')), res.result || [], {});
+		});
+	}
+
+	function restoreVersion(sq, verNo) {
+		bootbox.confirm('작업 중 내용을 v' + verNo + ' 로 바꿀까요? 저장하지 않은 작업 중 내용은 사라집니다. 사내 투입에서 온 프로젝트명·기간은 투입현황 그대로입니다.', function(ok) {
+			if (ok) hrPost('/admin/staff/restoreCareerData.do', { STAFF_SQ: sq, VER_NO: verNo }, function() { $('#scVerModal').modal('hide'); toast('v' + verNo + ' 내용으로 되돌렸습니다'); loadCareer(sq); });
+		});
+	}
+
+	// ── 워드 가져오기 ──
+	var SC_IMP = { NEW: ['추가', 'in'], DIFF: ['다름', 'warn'], SAME: ['같음', ''] };
+	function openImport() {
+		scImp = null;
+		$('#scImpFile').val('');
+		$('#scImpSum').text('');
+		$('#scImpBody').empty();
+		$('#scImpApply').prop('disabled', true);
+		$('#scImpModal').modal('show');
+	}
+
+	function readImport() {
+		var file = this.files[0];
+		if (!file) return;
+		var fd = new FormData();
+		fd.append('STAFF_SQ', opened);
+		fd.append('file', file);
+		$('#scImpSum').text('읽는 중…');
+		$.ajax({ url: '/admin/staff/importCareerPreviewData.do', type: 'POST', data: fd, processData: false, contentType: false }).done(function(res) {
+			if (res.error) { $('#scImpSum').text(res.error); return; }
+			scImp = { name: file.name, rows: res.result || [] };
+			var n = { NEW: 0, DIFF: 0, SAME: 0 }, $b = $('#scImpBody').empty();
+			scImp.rows.forEach(function(x, i) {
+				n[x.STATE]++;
+				$b.append($('<tr>').append($('<td>').append($('<input type="checkbox" class="sc-imp">').val(i).prop({ checked: x.STATE !== 'SAME', disabled: x.STATE === 'SAME' }).attr('aria-label', x.PRJ_NM + ' 반영')),
+					$('<td>').append($('<span class="sc-pill">').addClass(SC_IMP[x.STATE][1]).text(SC_IMP[x.STATE][0])), $('<td class="text-nowrap">').text(x.START_YM + ' ~ ' + (x.END_YM || '진행중')), $('<td>').text(x.PRJ_NM), $('<td>').text(x.CLIENT_NM || ''),
+					$('<td>').text(x.ROLE_NM || ''), $('<td>').text(x.LANG_NM || ''), $('<td>').text(x.DBMS_NM || ''), $('<td class="small text-muted">').text(x.CHANGED || '')));
+			});
+			$('#scImpSum').text(file.name + ' · ' + scImp.rows.length + '건 읽음 — 추가 ' + n.NEW + ' · 다름 ' + n.DIFF + ' · 같음 ' + n.SAME);
+			$('#scImpApply').prop('disabled', !(n.NEW + n.DIFF));
+		}).fail(function() { $('#scImpSum').text('파일을 읽지 못했습니다. 다시 시도해 주세요.'); });
+	}
+
+	function applyImport() {
+		var sq = opened, picked = $('#scImpBody .sc-imp:checked').map(function() { return scImp.rows[this.value]; }).get();
+		if (!picked.length) { toast('반영할 줄을 골라 주세요'); return; }
+		hrPost('/admin/staff/importCareerData.do', { STAFF_SQ: sq, ROWS: JSON.stringify(picked), FILE_NM: scImp.name }, function(res) {
+			$('#scImpModal').modal('hide');
+			toast(res.result + '건을 반영했습니다');
+			loadCareer(sq);
 		});
 	}
 

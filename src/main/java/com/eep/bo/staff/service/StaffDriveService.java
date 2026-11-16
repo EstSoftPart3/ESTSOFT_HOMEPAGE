@@ -265,6 +265,18 @@ public class StaffDriveService {
 		throw new IllegalArgumentException("연결된 서류를 찾지 못했습니다.");
 	}
 
+	/** 시스템이 만든 이력카드 워드를 사람 폴더에 올린다. 같은 이름의 이전 파일만 지워 최신 한 개를 둔다. 사람이 올린 원본 워드는 건드리지 않는다 */
+	public Map<String, Object> uploadCareerWord(Object staffSq, byte[] data) {
+		Map<String, Object> staff = staff(staffSq);
+		String token = token();
+		String folder = personFolder(staff, token), name = str(staff.get("STAFF_NM")) + "_이력카드(시스템).docx";
+		List<String> old = new ArrayList<>();
+		for (Map<String, Object> f : drive.children(folder, token)) if (name.equals(f.get("name"))) old.add(str(f.get("id")));
+		Map<String, Object> file = drive.upload(name, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", data, folder, token);
+		for (String id : old) drive.delete(id, token); // 새 파일이 올라간 뒤에 지운다
+		return file;
+	}
+
 	public void unlink(Object staffSq, Object docSq) {
 		Map<String, Object> p = one("STAFF_SQ", staffSq);
 		p.put("DOC_SQ", docSq);

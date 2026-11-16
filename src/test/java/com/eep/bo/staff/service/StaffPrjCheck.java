@@ -1,35 +1,76 @@
 package com.eep.bo.staff.service;
 
+import java.io.ByteArrayInputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
- * 프로젝트에 JUnit 이 없어 main 으로 확인한다.
+ * 프로젝트에 JUnit 이 없어 main 으로 확인한다. 값은 모두 가짜다.
  * 실행: java -cp "target/classes;target/test-classes;target/est_eep/WEB-INF/lib/*" com.eep.bo.staff.service.StaffPrjCheck
  */
 public class StaffPrjCheck {
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
+		// 입력값 다듬기
 		Map<String, Object> ok = valid();
 		ok.put("PRJ_NM", "  포털 구축 ");
-		BoStaffService.checkPrj(ok);
-		check("포털 구축".equals(ok.get("PRJ_NM")) && "".equals(ok.get("ETC_NM")), "값 다듬기");
-
+		ok.put("LANG_NM", "Java,  JSP\nJava");
+		Map<String, Object> row = StaffCareerService.clean(ok);
+		check("포털 구축".equals(row.get("PRJ_NM")) && "Java, JSP".equals(row.get("LANG_NM")) && row.get("ETC_NM") == null, "값 다듬기·여러 값 합치기");
 		Map<String, Object> ongoing = valid();
 		ongoing.remove("END_YM");
 		ongoing.put("ONGOING_YN", "Y");
-		BoStaffService.checkPrj(ongoing);
-		check(ongoing.get("END_YM") == null, "진행중이면 종료월 없음");
-
-		for (String f : new String[] { "PRJ_NM", "CLIENT_NM", "ROLE_NM", "START_YM", "WORK_NM", "END_YM" }) {
-			Map<String, Object> m = valid();
-			m.put(f, " ");
-			rejected(m, f + " 빈 값");
-		}
-		rejected(with("ROLE_NM", "PM"), "없는 역할");
+		check(StaffCareerService.clean(ongoing).get("END_YM") == null, "진행중이면 종료월 없음");
+		rejected(with("PRJ_NM", " "), "프로젝트명 없음");
 		rejected(with("START_YM", "2024-13"), "없는 달");
+		rejected(with("END_YM", ""), "종료월 없음");
 		rejected(with("END_YM", "2023-12"), "종료월이 시작월보다 빠름");
-		BoStaffService.checkPrj(with("END_YM", "2024-01"));
+		check("PL, 분석, 개발".equals(StaffCareerService.clean(with("ROLE_NM", "PL,분석, 개발")).get("ROLE_NM")), "역할 여러 개");
+
+		// 사내 투입 묶기: 같은 고객사·프로젝트가 이어지면 한 줄, 떨어지면 따로
+		List<Map<String, Object>> groups = StaffCareerService.mergeDeploys(Arrays.asList(dep(1, "가은행", "포털", "2025-03-03", "2025-05-31"), dep(2, "가은행", "포털", "2025-06-01", null),
+				dep(3, "나공단", "민원", "2023-01-02", "2023-06-30"), dep(4, "나공단", "민원", "2024-01-02", "2024-03-31")));
+		check(groups.size() == 3, "투입 묶음 3개: " + groups.size());
+		check(groups.get(0).get("END_DT") == null && ((List<?>) groups.get(0).get("SQS")).size() == 2, "이어지는 투입은 한 줄·진행중");
+
+		// 합치기: 투입에 보탠 줄은 그 투입 줄에 붙고, 이름·기간은 투입현황을 따른다
+		Map<String, Object> linked = prj(10, "옛 이름", "2020-01", "2020-02", "Java");
+		linked.put("DEPLOY_SQ", 2);
+		List<Map<String, Object>> items = StaffCareerService.merge(new ArrayList<>(Arrays.asList(linked, prj(11, "보험 고도화", "2017-11", "2018-04", "Java, Oracle"))), groups);
+		check(items.size() == 4, "합친 줄 4개: " + items.size());
+		Map<String, Object> top = items.get(0);
+		check("포털".equals(top.get("PRJ_NM")) && "2025-03".equals(top.get("START_YM")) && top.get("END_YM") == null && "Java".equals(top.get("LANG_NM")) && "DEPLOY".equals(top.get("SRC")), "진행중 투입이 맨 위·보탠 개발환경 유지");
+		check("PRJ".equals(items.get(3).get("SRC")) && "보험 고도화".equals(items.get(3).get("PRJ_NM")), "직접 입력한 줄은 최근순 뒤");
+
+		// 버전 비교: 같으면 null(버전 안 올라감), 다르면 요약
+		List<Map<String, Object>> snap = StaffCareerService.parse(StaffCareerService.json(StaffCareerService.snapshot(items)));
+		check(StaffCareerService.diff(snap, items) == null, "저장한 그대로면 바뀐 것 없음");
+		List<Map<String, Object>> changed = new ArrayList<>(items);
+		Map<String, Object> edited = new HashMap<>(items.get(3));
+		edited.put("ROLE_NM", "PL, 개발");
+		changed.set(3, edited);
+		changed.add(prj(12, "새 프로젝트", "2026-01", "2026-03", ""));
+		String diff = StaffCareerService.diff(snap, changed);
+		check(diff != null && diff.contains("추가 1") && diff.contains("수정 1") && !diff.contains("삭제"), "달라진 점 요약: " + diff);
+		check(StaffCareerService.diff(snap, changed.subList(0, 3)).contains("삭제 1"), "삭제 요약");
+		edited.put("ROLE_NM", items.get(3).get("ROLE_NM"));
+		check(StaffCareerService.diff(snap, changed.subList(0, 4)) == null, "고쳤다가 되돌리면 바뀐 것 없음");
+		check(StaffCareerService.changes(items.get(3), with(items.get(3), "TOOL_NM", "Eclipse")).equals("TOOL +Eclipse"), "달라진 칸 글");
+
+		// 워드: 만든 파일을 다시 읽으면 같은 프로젝트가 나온다
+		Map<String, String> info = new HashMap<>();
+		info.put("성명", "홍길동");
+		byte[] docx = StaffCareerWord.build(info, Collections.<String[]> emptyList(), Collections.<String[]> emptyList(), Collections.<String[]> emptyList(), items);
+		List<Map<String, Object>> read = StaffCareerWord.parse(new ByteArrayInputStream(docx));
+		check(read.size() == items.size(), "워드 왕복 줄 수: " + read.size());
+		Map<String, Object> first = read.get(0); // 워드는 오래된 것부터
+		check("보험 고도화".equals(first.get("PRJ_NM")) && "2017-11".equals(first.get("START_YM")) && "2018-04".equals(first.get("END_YM")) && "Java, Oracle".equals(first.get("LANG_NM")), "워드 왕복 값: " + first);
+		check("".equals(read.get(read.size() - 1).get("END_YM")), "워드의 '현재'는 진행중");
+
 		Map<String, Object> edu = item("EDU", "대학교(4년제)", " 가나대 ");
 		edu.put("C5", "졸업");
 		BoStaffService.checkItem(edu);
@@ -52,22 +93,47 @@ public class StaffPrjCheck {
 		Map<String, Object> m = new HashMap<>();
 		m.put("PRJ_NM", "포털");
 		m.put("CLIENT_NM", "샘플은행");
-		m.put("ROLE_NM", "운영/개발");
+		m.put("ROLE_NM", "개발");
 		m.put("START_YM", "2024-01");
 		m.put("END_YM", "2024-03");
-		m.put("WORK_NM", "유지보수");
 		return m;
 	}
 
 	private static Map<String, Object> with(String k, String v) {
-		Map<String, Object> m = valid();
+		return with(valid(), k, v);
+	}
+
+	private static Map<String, Object> with(Map<String, Object> base, String k, String v) {
+		Map<String, Object> m = new HashMap<>(base);
 		m.put(k, v);
+		return m;
+	}
+
+	private static Map<String, Object> dep(int sq, String client, String prj, String start, String end) {
+		Map<String, Object> m = new HashMap<>();
+		m.put("DEPLOY_SQ", sq);
+		m.put("CLIENT_NM", client);
+		m.put("PRJ_NM", prj);
+		m.put("START_DT", start);
+		m.put("END_DT", end);
+		return m;
+	}
+
+	private static Map<String, Object> prj(int sq, String name, String start, String end, String lang) {
+		Map<String, Object> m = new HashMap<>();
+		m.put("PRJ_SQ", sq);
+		m.put("PRJ_NM", name);
+		m.put("CLIENT_NM", "샘플");
+		m.put("ROLE_NM", "개발");
+		m.put("START_YM", start);
+		m.put("END_YM", end);
+		m.put("LANG_NM", lang);
 		return m;
 	}
 
 	private static void rejected(Map<String, Object> m, String label) {
 		try {
-			BoStaffService.checkPrj(m);
+			StaffCareerService.clean(m);
 		} catch (IllegalArgumentException e) {
 			return;
 		}

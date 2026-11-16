@@ -1,0 +1,253 @@
+package com.eep.bo.staff.service;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+
+/**
+ * 워드 이력카드(개인이력카드 + SKILL INVENTORY). 가져오기는 표를 읽고, 만들기는 같은 양식으로 새로 쓴다. DB·네트워크를 쓰지 않는다.
+ * 만들기는 칸 합치기를 POI(가벼운 스키마)로 쓰기 어려워 document.xml 을 직접 써서 zip 으로 묶는다.
+ * shortcut: 양식의 글꼴·칸 너비는 비슷하게 맞춘 것이라 원본과 완전히 같지는 않다. 틀이 달라져야 하면 양식 파일을 채우는 방식으로 바꾼다.
+ */
+public final class StaffCareerWord {
+
+	private static final Pattern PERIOD = Pattern.compile("((?:19|20)\\d{2})\\s*[.\\-/년]\\s*(\\d{1,2})[^~\\d]*~\\s*(?:((?:19|20)\\d{2})\\s*[.\\-/년]\\s*(\\d{1,2}))?");
+	/** SKILL INVENTORY 한 줄의 칸 순서 */
+	private static final String[] CELLS = { "PRJ_NM", "PERIOD", "CLIENT_NM", "COMPANY_NM", "IND_NM", "APP_NM", "ROLE_NM", "MACHINE_NM", "OS_NM", "LANG_NM", "DBMS_NM", "TOOL_NM", "FRAMEWORK_NM", "ETC_NM" };
+
+	private StaffCareerWord() {
+	}
+
+	// ── 가져오기 ──
+
+	/** 표 줄 가운데 둘째 칸이 '2010.03 ~ 2012.10' 같은 기간이고 칸이 13개 이상인 줄을 프로젝트로 읽는다(표가 쪽마다 나뉘어 있어도 된다) */
+	public static List<Map<String, Object>> parse(InputStream in) throws IOException {
+		List<Map<String, Object>> out = new ArrayList<>();
+		try (XWPFDocument doc = new XWPFDocument(in)) {
+			for (XWPFTable t : doc.getTables()) {
+				for (XWPFTableRow r : t.getRows()) {
+					List<XWPFTableCell> cells = r.getTableCells();
+					if (cells.size() < 13) continue;
+					Map<String, Object> row = parseRow(cells);
+					if (row != null) out.add(row);
+				}
+			}
+		}
+		return out;
+	}
+
+	private static Map<String, Object> parseRow(List<XWPFTableCell> cells) {
+		Matcher m = PERIOD.matcher(text(cells.get(1), " "));
+		if (!m.find()) return null;
+		Map<String, Object> row = new LinkedHashMap<>();
+		for (int i = 0; i < CELLS.length && i < cells.size(); i++) {
+			String c = CELLS[i];
+			if ("PERIOD".equals(c)) {
+				row.put("START_YM", m.group(1) + "-" + pad(m.group(2)));
+				row.put("END_YM", m.group(3) == null ? "" : m.group(3) + "-" + pad(m.group(4)));
+			} else if ("ROLE_NM".equals(c)) {
+				row.put(c, join(text(cells.get(i), "\n").split("[\\s,/]+"))); // 역할은 한 낱말씩
+			} else if (StaffCareerService.MULTI.contains(c)) {
+				row.put(c, join(text(cells.get(i), "\n").split("[,\\n]")));
+			} else {
+				row.put(c, text(cells.get(i), " ").replaceAll("\\s+", " ").trim());
+			}
+		}
+		return row.get("PRJ_NM").toString().isEmpty() ? null : row;
+	}
+
+	private static String text(XWPFTableCell cell, String sep) {
+		StringBuilder b = new StringBuilder();
+		for (XWPFParagraph p : cell.getParagraphs()) b.append(b.length() > 0 ? sep : "").append(p.getText());
+		return b.toString();
+	}
+
+	private static String join(String[] parts) {
+		Set<String> out = new LinkedHashSet<>();
+		for (String p : parts) if (!p.trim().isEmpty()) out.add(p.trim());
+		return String.join(", ", out);
+	}
+
+	private static String pad(String mm) {
+		return mm.length() == 1 ? "0" + mm : mm;
+	}
+
+	// ── 만들기 ──
+
+	/**
+	 * @param info 개인이력카드 칸: 성명, 주민번호(가린 값), 소속회사, 부서, 직위, 병역, 기술등급, 주소, 언어, DBMS, TOOL
+	 * @param schools {학교, 학과, 졸업년월}, careers {회사, 기간, 직위, 담당업무}, trainings {교육명, 시작, 종료, 기관}
+	 */
+	public static byte[] build(Map<String, String> info, List<String[]> schools, List<String[]> careers, List<String[]> trainings, List<Map<String, Object>> items) {
+		StringBuilder b = new StringBuilder();
+		b.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>");
+		b.append(title("개 인 이 력 카 드"));
+		int[] w4 = { 1400, 3400, 1400, 3400 };
+		b.append(table(w4, row(h("성 명"), c(info.get("성명")), h("주민번호"), c(info.get("주민번호"))), row(h("소속회사"), c(info.get("소속회사")), h("직 위"), c(info.get("직위"))),
+				row(h("부 서"), c(info.get("부서")), h("기술등급"), c(info.get("기술등급"))), row(h("병 역"), c(info.get("병역")), h("주 소"), c(info.get("주소")))));
+		b.append(gap());
+		b.append(table(new int[] { 3400, 3000, 1600, 1600 }, rows(row(h("최 종 학 력"), h("학 과 명"), h("졸업년월"), h("소재지")), schools, 4, 2)));
+		b.append(gap());
+		b.append(table(new int[] { 1600, 8000 }, row(h("기 술 명"), h("가 용 기 술")), row(h("언 어"), c(info.get("언어"))), row(h("DBMS"), c(info.get("DBMS"))), row(h("TOOL"), c(info.get("TOOL")))));
+		b.append(gap());
+		b.append(table(new int[] { 2800, 2400, 1400, 3000 }, rows(row(h("근무회사명"), h("기 간"), h("직 위"), h("담당업무")), careers, 4, 3)));
+		b.append(gap());
+		b.append(table(new int[] { 3800, 1600, 1600, 2600 }, rows(row(h("교육명"), h("시작일"), h("종료일"), h("기관")), trainings, 4, 2)));
+		// 여기까지 세로 쪽, 다음부터 가로 쪽
+		b.append("<w:p><w:pPr><w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/><w:pgMar w:top=\"1134\" w:right=\"1134\" w:bottom=\"1134\" w:left=\"1134\" w:header=\"720\" w:footer=\"720\" w:gutter=\"0\"/></w:sectPr></w:pPr></w:p>");
+		b.append(title("SKILL INVENTORY"));
+		int[] ws = { 2300, 1100, 1300, 1100, 700, 700, 900, 700, 700, 1300, 1000, 1200, 1300, 600 };
+		List<String> rs = new ArrayList<>();
+		rs.add(row(hv("프로젝트명 (업무명)", true), hv("참여기간", true), hv("고객사", true), hv("근무회사", true), hs("개발분야", 2), hv("역할", true), hs("개발환경", 7)));
+		rs.add(row(hv("", false), hv("", false), hv("", false), hv("", false), h("산업"), h("응용"), hv("", false), h("기종"), h("O.S"), h("언어"), h("DBMS"), h("TOOL"), h("FRAME WORK"), h("기타")));
+		for (int i = items.size() - 1; i >= 0; i--) { // 워드 양식은 오래된 것부터
+			Map<String, Object> it = items.get(i);
+			String end = s(it.get("END_YM"));
+			rs.add(row(c(s(it.get("PRJ_NM"))), c(s(it.get("START_YM")).replace('-', '.') + "\n~\n" + (end.isEmpty() ? "현재" : end.replace('-', '.'))), c(s(it.get("CLIENT_NM"))), c(s(it.get("COMPANY_NM"))),
+					c(lines(it.get("IND_NM"))), c(lines(it.get("APP_NM"))), c(lines(it.get("ROLE_NM"))), c(lines(it.get("MACHINE_NM"))), c(lines(it.get("OS_NM"))), c(lines(it.get("LANG_NM"))),
+					c(lines(it.get("DBMS_NM"))), c(lines(it.get("TOOL_NM"))), c(lines(it.get("FRAMEWORK_NM"))), c(lines(it.get("ETC_NM")))));
+		}
+		b.append(table(ws, rs.toArray(new String[0])));
+		b.append("<w:sectPr><w:pgSz w:w=\"16838\" w:h=\"11906\" w:orient=\"landscape\"/><w:pgMar w:top=\"1134\" w:right=\"850\" w:bottom=\"1134\" w:left=\"850\" w:header=\"720\" w:footer=\"720\" w:gutter=\"0\"/></w:sectPr>");
+		b.append("</w:body></w:document>");
+		return zip(b.toString());
+	}
+
+	private static String[] rows(String head, List<String[]> data, int cols, int min) {
+		List<String> out = new ArrayList<>();
+		out.add(head);
+		for (int i = 0; i < Math.max(min, data.size()); i++) {
+			String[] cells = new String[cols];
+			for (int k = 0; k < cols; k++) cells[k] = c(i < data.size() && k < data.get(i).length ? data.get(i)[k] : "");
+			out.add(row(cells));
+		}
+		return out.toArray(new String[0]);
+	}
+
+	private static String lines(Object v) {
+		return String.join("\n", StaffCareerService.tokens(s(v)));
+	}
+
+	private static String title(String t) {
+		return "<w:p><w:pPr><w:jc w:val=\"center\"/><w:spacing w:after=\"160\"/></w:pPr><w:r><w:rPr>" + font() + "<w:b/><w:sz w:val=\"36\"/></w:rPr><w:t>" + esc(t) + "</w:t></w:r></w:p>";
+	}
+
+	private static String gap() {
+		return "<w:p><w:pPr><w:spacing w:after=\"0\"/></w:pPr></w:p>";
+	}
+
+	private static String font() {
+		return "<w:rFonts w:ascii=\"맑은 고딕\" w:eastAsia=\"맑은 고딕\" w:hAnsi=\"맑은 고딕\"/>";
+	}
+
+	/** 칸은 {머리글 여부, 가로 합침 수, 세로 합침(시작 R·이어짐 C·없음 N), 글} 을 \u0001 로 이어 둔 것. 너비는 표의 칸 너비를 차례로 쓴다 */
+	private static String cell(boolean head, int span, char vmerge, String text) {
+		return (head ? "H" : "D") + "\u0001" + span + "\u0001" + vmerge + "\u0001" + (text == null ? "" : text);
+	}
+
+	private static String h(String t) {
+		return cell(true, 1, 'N', t);
+	}
+
+	private static String hs(String t, int span) {
+		return cell(true, span, 'N', t);
+	}
+
+	private static String hv(String t, boolean start) {
+		return cell(true, 1, start ? 'R' : 'C', t);
+	}
+
+	private static String c(String t) {
+		return cell(false, 1, 'N', t);
+	}
+
+	private static String row(String... cells) {
+		return String.join("\u0002", cells);
+	}
+
+	private static String table(int[] widths, String... rows) {
+		StringBuilder b = new StringBuilder("<w:tbl><w:tblPr><w:tblW w:w=\"0\" w:type=\"auto\"/><w:jc w:val=\"center\"/><w:tblBorders>");
+		for (String side : new String[] { "top", "left", "bottom", "right", "insideH", "insideV" }) b.append("<w:").append(side).append(" w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"000000\"/>");
+		b.append("</w:tblBorders><w:tblLayout w:type=\"fixed\"/></w:tblPr><w:tblGrid>");
+		for (int w : widths) b.append("<w:gridCol w:w=\"").append(w).append("\"/>");
+		b.append("</w:tblGrid>");
+		for (String r : rows) {
+			b.append("<w:tr><w:trPr><w:cantSplit/></w:trPr>");
+			int col = 0;
+			for (String cell : r.split("\u0002", -1)) {
+				String[] p = cell.split("\u0001", -1);
+				int span = Integer.parseInt(p[1]), w = 0;
+				for (int i = 0; i < span && col + i < widths.length; i++) w += widths[col + i];
+				col += span;
+				b.append("<w:tc><w:tcPr><w:tcW w:w=\"").append(w).append("\" w:type=\"dxa\"/>");
+				if (span > 1) b.append("<w:gridSpan w:val=\"").append(span).append("\"/>");
+				if (p[2].charAt(0) == 'R') b.append("<w:vMerge w:val=\"restart\"/>");
+				if (p[2].charAt(0) == 'C') b.append("<w:vMerge/>");
+				if ("H".equals(p[0])) b.append("<w:shd w:val=\"clear\" w:color=\"auto\" w:fill=\"FFFF00\"/>");
+				b.append("<w:vAlign w:val=\"center\"/></w:tcPr>");
+				String[] ls = p[3].split("\n", -1);
+				for (String line : ls) {
+					b.append("<w:p><w:pPr><w:jc w:val=\"center\"/><w:spacing w:before=\"20\" w:after=\"20\"/></w:pPr><w:r><w:rPr>").append(font()).append("H".equals(p[0]) ? "<w:b/>" : "")
+							.append("<w:sz w:val=\"16\"/></w:rPr><w:t xml:space=\"preserve\">").append(esc(line)).append("</w:t></w:r></w:p>");
+				}
+				b.append("</w:tc>");
+			}
+			b.append("</w:tr>");
+		}
+		return b.append("</w:tbl>").toString();
+	}
+
+	private static String esc(String s) {
+		StringBuilder b = new StringBuilder();
+		for (char ch : s.toCharArray()) {
+			if (ch == '&') b.append("&amp;");
+			else if (ch == '<') b.append("&lt;");
+			else if (ch == '>') b.append("&gt;");
+			else if (ch == '"') b.append("&quot;");
+			else if (ch >= 0x20 || ch == '\t') b.append(ch); // XML 에 못 쓰는 제어문자는 버린다
+		}
+		return b.toString();
+	}
+
+	private static byte[] zip(String documentXml) {
+		try (ByteArrayOutputStream out = new ByteArrayOutputStream(); ZipOutputStream z = new ZipOutputStream(out)) {
+			put(z, "[Content_Types].xml", "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">"
+					+ "<Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/>"
+					+ "<Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/></Types>");
+			put(z, "_rels/.rels", "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">"
+					+ "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/></Relationships>");
+			put(z, "word/document.xml", documentXml);
+			z.finish();
+			return out.toByteArray();
+		} catch (IOException e) {
+			throw new IllegalStateException(e);
+		}
+	}
+
+	private static void put(ZipOutputStream z, String name, String body) throws IOException {
+		z.putNextEntry(new ZipEntry(name));
+		z.write(body.getBytes(StandardCharsets.UTF_8));
+		z.closeEntry();
+	}
+
+	private static String s(Object o) {
+		return o == null ? "" : o.toString();
+	}
+}

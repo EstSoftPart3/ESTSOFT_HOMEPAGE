@@ -21,9 +21,6 @@ import common.util.RrnCipher;
 public class BoStaffService {
 
 	private static final List<String> STATUS_CODES = Arrays.asList("WORK", "LEFT", "WAIT");
-	private static final List<String> PRJ_ROLES = Arrays.asList("운영", "개발", "운영/개발");
-	private static final String[] PRJ_OPTIONAL = { "IND_NM", "APP_NM", "MACHINE_NM", "OS_NM", "LANG_NM", "DBMS_NM", "TOOL_NM", "FRAMEWORK_NM", "ETC_NM" };
-	private static final String YM = "\\d{4}-(0[1-9]|1[0-2])";
 	private static final List<String> EDU_KINDS = Arrays.asList("검정고시", "고등학교(인문계)", "고등학교(실업계)", "대학교(2~3년제)", "대학교(4년제)", "사이버·방통대·학점은행제", "대학원(석사)", "대학원(박사)");
 	private static final List<String> EDU_STATES = Arrays.asList("졸업", "재학", "휴학", "수료", "중퇴");
 	/** 항목 -> 필수 칸 {컬럼, 이름} */
@@ -48,7 +45,7 @@ public class BoStaffService {
 			"DOC_EDU", "DOC_NEP", "DOC_PRIV", "DOC_CRIME", "DOC_MIL",
 			"EMG_REL1", "EMG_TEL1", "EMG_REL2", "EMG_TEL2", "PREV_CAREER", "HOBBY", "LANG_SKILL", "SPECIALTY",
 			"SCORE", "GAPIL_YN", "AUTO_APLY_YN", "GRADE_NM", "REAL_CAREER", "WISH_PRICE", "SK_FE", "SK_BE", "WORK_DOMAIN", "WISH_LOC",
-			"ETC1", "SK_LANG", "REPORT", "SK_FW", "SK_DB", "SK_IDE", "SK_VCS", "ETC2", "EXPERTISE", "SK_OS", "EMPLY_ID"));
+			"ETC1", "SK_LANG", "REPORT", "SK_FW", "SK_DB", "SK_IDE", "SK_VCS", "ETC2", "EXPERTISE", "SK_OS", "SK_EXTRA", "EMPLY_ID"));
 
 	@Autowired
 	private BoStaffMapper BoStaffMapper;
@@ -189,57 +186,6 @@ public class BoStaffService {
 		}
 		if ("EDU".equals(item) && !str(param, "C5").isEmpty() && !EDU_STATES.contains(param.get("C5"))) {
 			throw new IllegalArgumentException("학력 상태 값이 올바르지 않습니다.");
-		}
-	}
-
-	public List<Map<String, Object>> prjList(Map<String, Object> param) {
-		return BoStaffMapper.selectStaffPrjList(param);
-	}
-
-	public void prjSave(Map<String, Object> param) {
-		checkPrj(param);
-		if (str(param, "PRJ_SQ").isEmpty()) {
-			BoStaffMapper.insertStaffPrj(param);
-		} else {
-			BoStaffMapper.updateStaffPrj(param);
-		}
-	}
-
-	public void prjDelete(Map<String, Object> param) {
-		BoStaffMapper.deleteStaffPrj(param);
-	}
-
-	/** 필수 항목과 기간을 확인하고 값을 다듬는다. 진행중이면 END_YM 은 null */
-	static void checkPrj(Map<String, Object> param) {
-		String[][] required = { { "PRJ_NM", "프로젝트명" }, { "CLIENT_NM", "고객사" }, { "ROLE_NM", "역할" }, { "START_YM", "시작월" }, { "WORK_NM", "업무단" } };
-		for (String[] r : required) {
-			String v = str(param, r[0]).trim();
-			if (v.isEmpty()) {
-				throw new IllegalArgumentException(r[1] + "을(를) 입력해 주세요.");
-			}
-			param.put(r[0], v);
-		}
-		if (!PRJ_ROLES.contains(param.get("ROLE_NM"))) {
-			throw new IllegalArgumentException("역할 값이 올바르지 않습니다.");
-		}
-		String start = (String) param.get("START_YM");
-		if (!start.matches(YM)) {
-			throw new IllegalArgumentException("시작월은 yyyy-MM 형식으로 입력해 주세요.");
-		}
-		if ("Y".equals(param.get("ONGOING_YN"))) {
-			param.put("END_YM", null);
-		} else {
-			String end = str(param, "END_YM").trim();
-			if (!end.matches(YM)) {
-				throw new IllegalArgumentException("종료월을 선택하거나 진행중을 체크해 주세요.");
-			}
-			if (end.compareTo(start) < 0) {
-				throw new IllegalArgumentException("종료월이 시작월보다 빠릅니다.");
-			}
-			param.put("END_YM", end);
-		}
-		for (String f : PRJ_OPTIONAL) {
-			param.put(f, str(param, f).trim());
 		}
 	}
 

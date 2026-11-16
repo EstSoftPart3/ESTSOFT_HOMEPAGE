@@ -39,6 +39,9 @@ public class BoDeployService {
 	private StaffDriveService staffDrive;
 
 	@Autowired
+	private com.eep.bo.staff.service.StaffCareerService career;
+
+	@Autowired
 	private GoogleDriveApi drive;
 
 	@Value("${staff.drive.root:}")
@@ -335,38 +338,7 @@ public class BoDeployService {
 
 	/** 사내 투입 건과 인사카드 수행이력을 합쳐 최신 순으로. 진행 중이 맨 위 */
 	public List<Map<String, Object>> projectHistory(Object staffSq, boolean canPay) {
-		List<Map<String, Object>> out = new ArrayList<>();
-		Map<String, Object> q = new HashMap<>();
-		q.put("STAFF_SQ", staffSq);
-		for (Map<String, Object> r : mapper.selectStaffPrjs(q)) {
-			r.put("SRC", "PRJ");
-			r.put("START", r.get("START_YM"));
-			r.put("END", r.get("END_YM"));
-			out.add(r);
-		}
-		for (Map<String, Object> d : mapper.selectDeployList()) {
-			if (!String.valueOf(staffSq).equals(String.valueOf(d.get("STAFF_SQ")))) {
-				continue;
-			}
-			Map<String, Object> r = new HashMap<>();
-			r.put("SRC", "DEPLOY");
-			r.put("PRJ_NM", d.get("PRJ_NM"));
-			r.put("CLIENT_NM", d.get("CLIENT_NM"));
-			r.put("WORK_AREA", d.get("WORK_AREA"));
-			r.put("EMP_TYPE_CD", d.get("EMP_TYPE_CD"));
-			r.put("GRADE_CD", d.get("GRADE_CD"));
-			r.put("START", d.get("START_DT"));
-			r.put("END", d.get("END_DT"));
-			if (canPay) {
-				r.put("SALE_PRICE", d.get("SALE_PRICE"));
-			}
-			out.add(r);
-		}
-		out.sort((a, b) -> {
-			int open = Boolean.compare(b.get("END") == null, a.get("END") == null);
-			return open != 0 ? open : String.valueOf(b.get("START")).compareTo(String.valueOf(a.get("START")));
-		});
-		return out;
+		return career.items(staffSq); // 인사카드 수행이력 탭과 같은 내용(같은 프로젝트의 이어지는 투입은 한 줄)
 	}
 
 	public void deleteDeploy(Map<String, Object> p) {

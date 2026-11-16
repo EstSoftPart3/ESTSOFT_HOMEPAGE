@@ -27,6 +27,8 @@ import com.eep.bo.deploy.service.SecretFilter;
 import com.eep.bo.member.service.BoMemberService;
 import com.eep.bo.member.service.BoMemberService.Actor;
 import com.eep.bo.staff.service.BoStaffService;
+import com.eep.bo.staff.service.StaffCareerService;
+import com.eep.bo.staff.service.StaffCareerWord;
 import com.eep.bo.staff.service.StaffDriveService;
 import com.eep.bo.system.service.BoSystemService;
 
@@ -42,6 +44,9 @@ public class BoStaffController {
 
 	@Autowired
 	private StaffDriveService StaffDriveService;
+
+	@Autowired
+	private StaffCareerService career;
 
 	@Autowired
 	private BoMemberService memberService;
@@ -148,6 +153,7 @@ public class BoStaffController {
 	@RequestMapping(value = "/admin/staff/deleteStaffData.do", method = RequestMethod.POST)
 	public ModelAndView deleteStaffData(@RequestParam Map<String, Object> param) {
 		BoStaffService.delete(param);
+		career.deleteAll(param.get("STAFF_SQ"));
 		return json("result", "OK");
 	}
 
@@ -223,28 +229,94 @@ public class BoStaffController {
 		response.getOutputStream().write(data);
 	}
 
-	// ── 프로젝트 수행이력 ──
+	// ── 수행이력 (입력 오류는 inputError 가 JSON 오류로 돌려준다) ──
 
-	@RequestMapping(value = "/admin/staff/staffPrjData.do", method = RequestMethod.POST)
-	public ModelAndView staffPrjData(@RequestParam Map<String, Object> param) {
-		return json("list", BoStaffService.prjList(param));
+	@RequestMapping(value = "/admin/staff/careerData.do", method = RequestMethod.POST)
+	public ModelAndView careerData(@RequestParam("STAFF_SQ") int staffSq) {
+		return json("result", career.state(staffSq));
 	}
 
-	@RequestMapping(value = "/admin/staff/saveStaffPrjData.do", method = RequestMethod.POST)
-	public ModelAndView saveStaffPrjData(@RequestParam Map<String, Object> param, HttpSession session) {
-		try {
-			param.put("UPDT_EMPLY_ID", loginId(session));
-			BoStaffService.prjSave(param);
-			return json("result", "OK");
-		} catch (IllegalArgumentException e) {
-			return json("error", e.getMessage());
-		}
-	}
-
-	@RequestMapping(value = "/admin/staff/deleteStaffPrjData.do", method = RequestMethod.POST)
-	public ModelAndView deleteStaffPrjData(@RequestParam Map<String, Object> param) {
-		BoStaffService.prjDelete(param);
+	@RequestMapping(value = "/admin/staff/saveCareerData.do", method = RequestMethod.POST)
+	public ModelAndView saveCareerData(@RequestParam Map<String, Object> param, HttpSession session) {
+		career.save(param, loginId(session));
 		return json("result", "OK");
+	}
+
+	@RequestMapping(value = "/admin/staff/deleteCareerData.do", method = RequestMethod.POST)
+	public ModelAndView deleteCareerData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("PRJ_SQS") String prjSqs, HttpSession session) {
+		career.delete(staffSq, StaffCareerService.tokens(prjSqs), loginId(session));
+		return json("result", "OK");
+	}
+
+	@RequestMapping(value = "/admin/staff/bulkCareerData.do", method = RequestMethod.POST)
+	public ModelAndView bulkCareerData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("PRJ_SQS") String prjSqs, @RequestParam("FIELD") String field,
+			@RequestParam("VALUES") String values, HttpSession session) {
+		career.bulkAdd(staffSq, StaffCareerService.tokens(prjSqs), field, values, loginId(session));
+		return json("result", "OK");
+	}
+
+	@RequestMapping(value = "/admin/staff/saveCareerVersionData.do", method = RequestMethod.POST)
+	public ModelAndView saveCareerVersionData(@RequestParam("STAFF_SQ") int staffSq, HttpSession session) {
+		return json("result", career.saveVersion(staffSq, loginId(session)));
+	}
+
+	@RequestMapping(value = "/admin/staff/careerVersionsData.do", method = RequestMethod.POST)
+	public ModelAndView careerVersionsData(@RequestParam("STAFF_SQ") int staffSq) {
+		return json("result", career.versions(staffSq));
+	}
+
+	@RequestMapping(value = "/admin/staff/careerVersionData.do", method = RequestMethod.POST)
+	public ModelAndView careerVersionData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("VER_NO") String verNo) {
+		return json("result", career.versionItems(staffSq, verNo));
+	}
+
+	@RequestMapping(value = "/admin/staff/restoreCareerData.do", method = RequestMethod.POST)
+	public ModelAndView restoreCareerData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("VER_NO") String verNo, HttpSession session) {
+		career.restore(staffSq, verNo, loginId(session));
+		return json("result", "OK");
+	}
+
+	/** 워드를 읽어 지금 내용과 비교만 한다(저장하지 않음) */
+	@RequestMapping(value = "/admin/staff/importCareerPreviewData.do", method = RequestMethod.POST)
+	public ModelAndView importCareerPreviewData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("file") MultipartFile file) throws IOException {
+		Upload.check(file, "docx");
+		List<Map<String, Object>> rows;
+		try {
+			rows = StaffCareerWord.parse(file.getInputStream());
+		} catch (RuntimeException e) {
+			throw new IllegalArgumentException("워드 파일을 읽지 못했습니다. .docx 형식인지 확인해 주세요.");
+		}
+		if (rows.isEmpty()) throw new IllegalArgumentException("SKILL INVENTORY 표에서 프로젝트를 찾지 못했습니다.");
+		return json("result", career.importPreview(staffSq, rows));
+	}
+
+	@RequestMapping(value = "/admin/staff/importCareerData.do", method = RequestMethod.POST)
+	public ModelAndView importCareerData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("ROWS") String rows, @RequestParam(value = "FILE_NM", required = false) String fileNm, HttpSession session) {
+		return json("result", career.importApply(staffSq, StaffCareerService.parse(rows), fileNm, loginId(session)));
+	}
+
+	/** 회사 양식 워드 내려받기. VER_NO 가 없으면 최신 버전 */
+	@RequestMapping(value = "/admin/staff/careerWord.do", method = RequestMethod.GET)
+	public void careerWord(@RequestParam("STAFF_SQ") int staffSq, @RequestParam(value = "VER_NO", required = false) String verNo, HttpServletResponse response, HttpSession session) throws IOException {
+		byte[] data;
+		try {
+			data = career.word(staffSq, verNo);
+		} catch (IllegalArgumentException e) {
+			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+			response.setContentType("text/plain; charset=UTF-8");
+			response.getWriter().write(e.getMessage());
+			return;
+		}
+		System.out.println("STAFF_CAREER_WORD by=" + loginId(session) + " staff=" + staffSq + " ver=" + verNo);
+		response.setContentType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+		response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + java.net.URLEncoder.encode(career.wordName(staffSq), "UTF-8").replace("+", "%20"));
+		response.setContentLength(data.length);
+		response.getOutputStream().write(data);
+	}
+
+	@RequestMapping(value = "/admin/staff/careerWordDriveData.do", method = RequestMethod.POST)
+	public ModelAndView careerWordDriveData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam(value = "VER_NO", required = false) String verNo) {
+		return drive(() -> StaffDriveService.uploadCareerWord(staffSq, career.word(staffSq, verNo)));
 	}
 
 	// ── 학력·교육·비상연락 추가 건 ──
