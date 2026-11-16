@@ -74,6 +74,20 @@
 		last = { box: box, key: key, idx: idx };
 	});
 })();
+// 구글을 쓰는 기능이 '[연동 필요:DRIVE] …' 오류를 주면 내 연동으로 보낸다. 연결하고 나면 지금 화면으로 돌아온다
+function boNeedLink(msg) {
+	var m = /^\[연동 필요:(\w+)\]\s*/.exec(msg || '');
+	if (!m) return false;
+	bootbox.hideAll(); // 화면이 먼저 띄운 같은 오류 알림은 닫고 안내 하나만
+	bootbox.alert(msg.replace(m[0], ''), function() {
+		location.href = '/admin/my/openGoogleLink.do?need=1&svc=' + m[1] + '&back=' + encodeURIComponent(location.pathname + location.search);
+	});
+	return true;
+}
+$(document).ajaxComplete(function(e, xhr) {
+	var r = xhr.responseJSON;
+	if (r && typeof r.error === 'string' && !xhr.boNeedLinkDone) { xhr.boNeedLinkDone = true; boNeedLink(r.error); }
+});
 // 메모 입력: Enter 는 등록, Shift+Enter 는 줄바꿈. 한글 조합 중 Enter(isComposing)는 넘긴다(크롬은 조합 확정 뒤 Enter 를 한 번 더 보낸다)
 $(document).on('keydown', 'textarea.enter-send, textarea.bootbox-input-textarea', function(e) {
 	if (e.key !== 'Enter' || e.shiftKey || e.originalEvent.isComposing) return;

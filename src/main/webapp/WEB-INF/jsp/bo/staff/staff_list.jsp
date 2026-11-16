@@ -1173,12 +1173,11 @@
 	function loadDrive() {
 		$.post('/admin/staff/staffDriveStatusData.do', function(res) {
 			var d = res.drive || {}, $s = $('#driveStatus').empty().append('<i class="fab fa-google-drive"></i> ');
-			if (d.connected) $s.append(document.createTextNode('서류 드라이브: ' + (d.account || '연결됨') + ' '));
-			else $s.append(document.createTextNode('서류 드라이브 미연결 '));
-			$s.append($('<a href="/admin/staff/driveStart.do">').text(d.connected ? '다시 연결' : '드라이브 연결'));
+			// 서류는 지금 로그인한 관리자의 내 연동 드라이브로 올리고 읽는다
+			if (d.connected) $s.append(document.createTextNode('내 드라이브: ' + (d.account || '연결됨') + ' '));
+			else $s.append(document.createTextNode('내 드라이브 미연결 '));
+			$s.append($('<a>').attr('href', '/admin/my/openGoogleLink.do?svc=DRIVE&back=' + encodeURIComponent(location.pathname)).text(d.connected ? '내 연동' : '내 연동에서 연결'));
 		});
-		var m = /[?&]drive=(\w+)/.exec(location.search);
-		if (m) bootbox.alert({ ok: '구글 드라이브를 연결했습니다.', fail: '드라이브 연결에 실패했습니다. 다시 시도해 주세요.', noclient: '구글 OAuth 클라이언트가 설정되지 않았습니다. 업무툴 > 캘린더 설정에서 먼저 넣어 주세요.' }[m[1]] || m[1]);
 	}
 
 	// 가린 값 + 원문 보기(눈). 원문을 연 뒤에 누르면 원문으로 고칠 수 있다

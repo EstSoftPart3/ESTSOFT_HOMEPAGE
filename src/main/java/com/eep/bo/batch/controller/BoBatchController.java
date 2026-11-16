@@ -1,38 +1,29 @@
 package com.eep.bo.batch.controller;
 
 import java.util.Map;
-import java.util.UUID;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.client.RestClientException;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.eep.bo.batch.service.BoBatchService;
-import com.eep.bo.staff.controller.BoStaffController;
-import com.eep.bo.staff.service.StaffDriveService;
+import com.eep.bo.my.BoMyController;
+import com.eep.bo.my.GoogleLinkService;
 
 @Controller
 public class BoBatchController {
-
-	private static final Logger log = LoggerFactory.getLogger(BoBatchController.class);
-	private static final String SS_DRIVE_STATE = "driveState";
-	private static final String SS_DRIVE_ICAL = "driveIcalSq";
 
 	@Autowired
 	private BoBatchService BoBatchService;
 
 	@Autowired
-	private StaffDriveService StaffDriveService;
+	private GoogleLinkService link;
 
 	/**
 	 * 배치 - 신입면접 Controller
@@ -113,58 +104,22 @@ public class BoBatchController {
 		return mv;
 	}
 
-	// 구글 승인 화면으로 보낸다. 끝나면 driveCallback 으로 돌아온다
+	/** 이 iCal 의 이력서 드라이브를 누른 관리자의 내 연동으로 정한다. 연동이 없으면 내 연동에서 연결하고 돌아오게 한다 */
 	@RequestMapping("/admin/batch/driveStart.do")
-	public String driveStart(@RequestParam("icalSq") int icalSq, HttpServletRequest request, HttpSession session) {
-		String state = UUID.randomUUID().toString();
-		String url = BoBatchService.driveAuthUrl(redirectUri(request), state);
-		if (url == null) {
-			return "redirect:/admin/batch/openInterviewBatch.do?drive=noclient";
+	public String driveStart(@RequestParam("icalSq") int icalSq) {
+		String me = GoogleLinkService.currentUser();
+		if (!link.linked(me, GoogleLinkService.DRIVE)) {
+			return "redirect:/admin/my/openGoogleLink.do?svc=DRIVE&need=1&back=" + BACK;
 		}
-		session.setAttribute(SS_DRIVE_STATE, state);
-		session.setAttribute(SS_DRIVE_ICAL, icalSq);
-		return "redirect:" + url;
+		BoBatchService.setDriveOwner(icalSq, me);
+		return "redirect:/admin/batch/openInterviewBatch.do?drive=ok";
 	}
 
-	@RequestMapping("/admin/batch/driveCallback.do")
-	public String driveCallback(@RequestParam Map<String, Object> param, HttpServletRequest request, HttpSession session) {
-		// 직원관리 서류용 연결도 같은 콘솔 리디렉션 URI 로 돌아온다
-		Object staffState = session.getAttribute(BoStaffController.SS_STAFF_DRIVE_STATE);
-		if (staffState != null) {
-			session.removeAttribute(BoStaffController.SS_STAFF_DRIVE_STATE);
-			if (!staffState.equals(param.get("state")) || param.get("code") == null) {
-				return "redirect:/admin/staff/openStaffList.do?drive=fail";
-			}
-			try {
-				boolean ok = StaffDriveService.connect(redirectUri(request), (String) param.get("code"));
-				return "redirect:/admin/staff/openStaffList.do?drive=" + (ok ? "ok" : "fail");
-			} catch (RestClientException e) {
-				log.error("직원서류 드라이브 연결 실패: {}", e.getClass().getSimpleName());
-				return "redirect:/admin/staff/openStaffList.do?drive=fail";
-			}
-		}
-		Object state = session.getAttribute(SS_DRIVE_STATE);
-		Object icalSq = session.getAttribute(SS_DRIVE_ICAL);
-		session.removeAttribute(SS_DRIVE_STATE);
-		session.removeAttribute(SS_DRIVE_ICAL);
-		// state 가 다르면 이 세션이 시작한 승인이 아니다(CSRF)
-		if (state == null || icalSq == null || !state.equals(param.get("state")) || param.get("code") == null) {
-			return "redirect:/admin/batch/openInterviewBatch.do?drive=fail";
-		}
-		try {
-			boolean ok = BoBatchService.connectDrive((Integer) icalSq, redirectUri(request), (String) param.get("code"));
-			return "redirect:/admin/batch/openInterviewBatch.do?drive=" + (ok ? "ok" : "fail");
-		} catch (RestClientException e) {
-			log.error("드라이브 연결 실패: {}", e.getClass().getSimpleName());
-			return "redirect:/admin/batch/openInterviewBatch.do?drive=fail";
-		}
-	}
+	private static final String BACK = "/admin/batch/openInterviewBatch.do";
 
-	/** 구글 콘솔에 등록한 리디렉션 URI 와 글자까지 같아야 한다. 프록시가 https 를 전달하지 않아 운영 도메인은 https 로 고정한다 */
+	/** 구글 콘솔에 등록해야 하는 리디렉션 URI(내 연동) */
 	public static String redirectUri(HttpServletRequest request) {
-		String host = request.getHeader("Host");
-		String proto = host != null && host.startsWith("localhost") ? request.getScheme() : "https";
-		return proto + "://" + host + "/admin/batch/driveCallback.do";
+		return BoMyController.redirectUri(request);
 	}
 
 	private static ModelAndView json(String key, Object value) {

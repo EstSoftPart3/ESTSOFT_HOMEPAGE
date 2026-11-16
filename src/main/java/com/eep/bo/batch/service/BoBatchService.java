@@ -36,9 +36,6 @@ public interface BoBatchService {
 
 	void saveDriveConf(String clientId, String clientSecret);
 
-	/** 클라이언트 설정이 올바르지 않으면 null */
-	String driveAuthUrl(String redirectUri, String state);
-
-	/** @return refresh token 을 받아 그 세트에 저장했으면 true */
-	boolean connectDrive(int icalSq, String redirectUri, String code);
+	/** 이력서 드라이브로 그 관리자의 내 연동을 쓴다 */
+	void setDriveOwner(int icalSq, String emplyId);
 }

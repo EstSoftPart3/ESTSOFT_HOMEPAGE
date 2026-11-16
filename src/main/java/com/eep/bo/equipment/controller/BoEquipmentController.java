@@ -202,7 +202,7 @@ public class BoEquipmentController {
 		} catch (DataIntegrityViolationException e) {
 			mv.addObject("error", "이미 사용 중인 번호이거나 이미 처리된 건입니다. 입력이 너무 길어도 저장되지 않습니다.");
 		} catch (HttpStatusCodeException e) {
-			mv.addObject("error", "구글 드라이브 처리에 실패했습니다. (" + e.getStatusCode().value() + ") 직원관리의 드라이브 연결과 폴더 권한을 확인해 주세요.");
+			mv.addObject("error", "구글 드라이브 처리에 실패했습니다. (" + e.getStatusCode().value() + ") 내 연동의 드라이브 연결과 내 구글 계정의 폴더 권한을 확인해 주세요.");
 		} catch (Exception e) {
 			System.out.println("EQUIPMENT_ERROR " + e.getClass().getSimpleName());
 			mv.addObject("error", "처리하지 못했습니다. (" + e.getClass().getSimpleName() + ")");

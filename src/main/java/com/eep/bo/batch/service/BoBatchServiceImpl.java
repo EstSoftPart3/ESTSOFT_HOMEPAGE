@@ -30,6 +30,7 @@ import org.springframework.web.client.RestTemplate;
 import com.eep.bo.batch.dao.BoBatchDao;
 import com.eep.bo.calendar.dao.BoCalendarDao;
 import com.eep.bo.calendar.service.BoCalendarServiceImpl;
+import com.eep.bo.my.GoogleLinkService;
 
 @Service
 public class BoBatchServiceImpl implements BoBatchService {
@@ -53,6 +54,9 @@ public class BoBatchServiceImpl implements BoBatchService {
 
 	@Autowired
 	private GoogleDriveApi GoogleDriveApi;
+
+	@Autowired
+	private GoogleLinkService googleLink;
 
 	private final RestTemplate rest;
 	private volatile LocalDateTime lastPreRunCheck;
@@ -241,15 +245,18 @@ public class BoBatchServiceImpl implements BoBatchService {
 		if (targets.isEmpty()) {
 			return;
 		}
-		Map<String, String> conf = BoCalendarDao.ConfMap();
-		String refresh = (String) target.get("DRIVE_TOKEN"), root = (String) target.get("DRIVE_FOLDER_ID");
-		if (!hasText(refresh) || !hasText(root)) {
+		// 사람 없이 도는 배치라 iCal 에서 '연결'을 누른 관리자(DRIVE_OWNER)의 내 연동을 쓴다
+		String owner = (String) target.get("DRIVE_OWNER"), root = (String) target.get("DRIVE_FOLDER_ID");
+		if (!hasText(owner) || !hasText(root)) {
 			targets.forEach(d -> d.put("RESUME_NOTE", hasText(root) ? "드라이브 미연결" : "이력서 폴더 미설정"));
 			return;
 		}
 		String token;
 		try {
-			token = GoogleDriveApi.accessToken(conf.get(BoCalendarServiceImpl.CONF_CLIENT_ID), conf.get(BoCalendarServiceImpl.CONF_CLIENT_SECRET), refresh);
+			token = googleLink.accessToken(owner, GoogleLinkService.DRIVE);
+		} catch (GoogleLinkService.NeedLink e) {
+			targets.forEach(d -> d.put("RESUME_NOTE", "연결한 관리자(" + owner + ")의 내 연동 드라이브가 없음 - 다시 연결해 주세요"));
+			return;
 		} catch (Exception e) {
 			log.error("드라이브 인증 실패: {}", InterviewCalendarParser.cleanError(e));
 			targets.forEach(d -> d.put("RESUME_NOTE", "드라이브 인증 실패 - 다시 연결해 주세요"));
@@ -379,7 +386,7 @@ public class BoBatchServiceImpl implements BoBatchService {
 		for (Map<String, Object> row : BoBatchDao.IcalList()) {
 			// 비공개 주소와 토큰은 화면으로 내보내지 않는다
 			row.put("ICAL_MASK", InterviewCalendarParser.maskIcalUrl((String) row.remove("ICAL_URL")));
-			row.put("DRIVE_CONNECTED", hasText(row.remove("DRIVE_TOKEN")));
+			row.put("DRIVE_CONNECTED", "Y".equals(row.remove("DRIVE_LINKED")));
 			row.put("FOLDER_MASK", InterviewCalendarParser.maskMiddle((String) row.remove("DRIVE_FOLDER_ID")));
 			list.add(row);
 		}
@@ -447,22 +454,8 @@ public class BoBatchServiceImpl implements BoBatchService {
 	}
 
 	@Override
-	public String driveAuthUrl(String redirectUri, String state) {
-		Map<String, String> conf = BoCalendarDao.ConfMap();
-		String clientId = conf.get(BoCalendarServiceImpl.CONF_CLIENT_ID);
-		return validClient(clientId, conf.get(BoCalendarServiceImpl.CONF_CLIENT_SECRET)) ? GoogleDriveApi.authUrl(clientId, redirectUri, state) : null;
-	}
-
-	@Override
-	public boolean connectDrive(int icalSq, String redirectUri, String code) {
-		Map<String, String> conf = BoCalendarDao.ConfMap();
-		Map<String, Object> tokens = GoogleDriveApi.exchangeCode(conf.get(BoCalendarServiceImpl.CONF_CLIENT_ID), conf.get(BoCalendarServiceImpl.CONF_CLIENT_SECRET), redirectUri, code);
-		String refresh = (String) tokens.get("refresh_token");
-		if (!hasText(refresh)) {
-			return false;
-		}
-		BoBatchDao.IcalDrive(icalSq, refresh, GoogleDriveApi.accountEmail((String) tokens.get("access_token")));
-		return true;
+	public void setDriveOwner(int icalSq, String emplyId) {
+		BoBatchDao.IcalDrive(icalSq, emplyId);
 	}
 
 	@Override

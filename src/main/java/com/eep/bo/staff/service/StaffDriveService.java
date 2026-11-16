@@ -15,8 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.eep.bo.batch.service.GoogleDriveApi;
-import com.eep.bo.calendar.dao.BoCalendarDao;
-import com.eep.bo.calendar.service.BoCalendarServiceImpl;
+import com.eep.bo.my.GoogleLinkService;
 import com.eep.mapper.BoStaffMapper;
 
 import common.util.RrnCipher;
@@ -28,8 +27,6 @@ import common.util.RrnCipher;
 @Service
 public class StaffDriveService {
 
-	static final String CONF_TOKEN = "STAFF_DRIVE_TOKEN";		// refresh token (RrnCipher 암호문)
-	static final String CONF_ACCOUNT = "STAFF_DRIVE_ACCOUNT";
 	static final String DOCS_FOLDER = "00. 입사관련서류";
 	private static final long MAX_BYTES = 20L * 1024 * 1024;
 	private static final Pattern READABLE = Pattern.compile("^(image/|application/pdf)");
@@ -51,7 +48,7 @@ public class StaffDriveService {
 	@Autowired
 	private GoogleDriveApi drive;
 	@Autowired
-	private BoCalendarDao confDao;
+	private GoogleLinkService link;
 	@Autowired
 	private BoStaffMapper mapper;
 	@Autowired
@@ -59,40 +56,18 @@ public class StaffDriveService {
 
 	// ── 연결 ──
 
+	/** 지금 관리자의 내 연동 드라이브 상태 */
 	public Map<String, Object> status() {
-		Map<String, String> conf = confDao.ConfMap();
+		String me = GoogleLinkService.currentUser();
 		Map<String, Object> s = new HashMap<>();
-		s.put("connected", hasText(conf.get(CONF_TOKEN)));
-		s.put("account", conf.get(CONF_ACCOUNT));
-		s.put("clientReady", hasText(conf.get(BoCalendarServiceImpl.CONF_CLIENT_ID)) && hasText(conf.get(BoCalendarServiceImpl.CONF_CLIENT_SECRET)));
+		s.put("connected", link.linked(me, GoogleLinkService.DRIVE));
+		s.put("account", link.account(me, GoogleLinkService.DRIVE));
 		return s;
 	}
 
-	public String authUrl(String redirectUri, String state) {
-		Map<String, String> conf = confDao.ConfMap();
-		String id = conf.get(BoCalendarServiceImpl.CONF_CLIENT_ID);
-		return hasText(id) ? drive.authUrl(id, redirectUri, state, GoogleDriveApi.WRITE_SCOPE) : null;
-	}
-
-	public boolean connect(String redirectUri, String code) {
-		Map<String, String> conf = confDao.ConfMap();
-		Map<String, Object> tokens = drive.exchangeCode(conf.get(BoCalendarServiceImpl.CONF_CLIENT_ID), conf.get(BoCalendarServiceImpl.CONF_CLIENT_SECRET), redirectUri, code);
-		String refresh = (String) tokens.get("refresh_token");
-		if (!hasText(refresh)) {
-			return false;
-		}
-		confDao.ConfSave(CONF_TOKEN, RrnCipher.encrypt(refresh));
-		confDao.ConfSave(CONF_ACCOUNT, drive.accountEmail((String) tokens.get("access_token")));
-		return true;
-	}
-
+	/** 요청한 관리자의 내 연동 드라이브. 없으면 NeedLink(→ 내 연동으로 안내). 장비·거래처·연구일지도 이것을 쓴다 */
 	public String token() {
-		Map<String, String> conf = confDao.ConfMap();
-		String stored = conf.get(CONF_TOKEN);
-		if (!hasText(stored)) {
-			throw new IllegalArgumentException("구글 드라이브가 연결되지 않았습니다. 직원관리 위쪽의 '드라이브 연결'을 먼저 눌러 주세요.");
-		}
-		return drive.accessToken(conf.get(BoCalendarServiceImpl.CONF_CLIENT_ID), conf.get(BoCalendarServiceImpl.CONF_CLIENT_SECRET), RrnCipher.decrypt(stored));
+		return link.accessToken(GoogleLinkService.DRIVE);
 	}
 
 	private String root() {

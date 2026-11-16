@@ -72,7 +72,8 @@ function hrMemoBtn(api, sq, cnt, title, changed) {
 
 function hrPost(url, data, done, failed) {
 	$.post(url, data, function(res) {
-		if (res.error) { bootbox.alert(res.error); if (failed) failed(); return; }
+		// [연동 필요:…] 는 include_bottom 의 boNeedLink 가 안내하고 내 연동으로 보낸다
+		if (res.error) { if (res.error.indexOf('[연동 필요:') !== 0) bootbox.alert(res.error); if (failed) failed(); return; }
 		// 교육종료·중도이탈 전에 반납할 장비가 있으면 목록으로 확인받고 반납 승인(RETURN_YN=Y)을 붙여 다시 보낸다
 		if (res.needReturn) {
 			hrConfirmReturn(res.needReturn, function() {

@@ -114,9 +114,9 @@ public class BoSystemService {
 			return copy;
 		}
 
-		/** 어떤 메뉴에도 속하지 않은 /admin 주소는 슈퍼관리자만 연다 */
+		/** 어떤 메뉴에도 속하지 않은 /admin 주소는 슈퍼관리자만 연다. /admin/my/ 는 자기 것만 다루는 개인 화면이라 누구나 */
 		public boolean allows(String path) {
-			if (superUser || HOME.equals(path)) {
+			if (superUser || HOME.equals(path) || path.startsWith("/admin/my/")) {
 				return true;
 			}
 			for (Map<String, Object> m : items) {

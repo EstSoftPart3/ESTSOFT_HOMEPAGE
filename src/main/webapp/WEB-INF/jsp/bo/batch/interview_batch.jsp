@@ -56,11 +56,11 @@
 									<input type="text" id="driveClientSecret" class="form-control form-control-sm" data-secret="1" autocomplete="off">
 								</div>
 								<div class="col-md-4 mb-2">
-									<label for="driveAccount">연결된 구글 계정</label>
+									<label for="driveAccount">이력서 드라이브 (연결한 관리자의 내 연동)</label>
 									<div class="input-group input-group-sm">
 										<input type="text" id="driveAccount" class="form-control" readonly>
 										<div class="input-group-append">
-											<button type="button" id="driveConnect" class="btn btn-outline-dark" onclick="connectDrive();">연결</button>
+											<button type="button" id="driveConnect" class="btn btn-outline-dark" onclick="connectDrive();">내 연동으로 연결</button>
 										</div>
 									</div>
 								</div>
@@ -69,7 +69,7 @@
 									<button type="button" class="btn btn-sm btn-outline-secondary flex-fill ml-1" onclick="newSet();">새로 추가</button>
 								</div>
 							</div>
-							<small class="text-muted">리디렉션 URI: <code id="driveRedirect"></code> · 클라이언트 ID와 시크릿은 모든 줄에 공통 적용됩니다.</small>
+							<small class="text-muted">구글 콘솔 리디렉션 URI: <code id="driveRedirect"></code> · 클라이언트 ID와 시크릿은 모든 내 연동에 공통 적용됩니다. 배치는 '내 연동으로 연결'을 누른 관리자의 드라이브로 이력서를 읽습니다.</small>
 						</div>
 					</div>
 
@@ -144,7 +144,7 @@
 
 		var result = /[?&]drive=(\w+)/.exec(location.search);
 		if (result) {
-			alert({ ok: '구글 드라이브를 연결했습니다.', noclient: '클라이언트 ID와 시크릿을 먼저 저장해 주세요.' }[result[1]] || '구글 드라이브 연결에 실패했습니다. 클라이언트 ID, 시크릿과 리디렉션 URI를 확인해 주세요.');
+			alert({ ok: '이 줄의 이력서 드라이브를 내 연동 계정으로 정했습니다.' }[result[1]] || '연결하지 못했습니다.');
 			history.replaceState(null, '', location.pathname);
 		}
 	});
@@ -171,7 +171,7 @@
 		setMasked('#driveClientId', drive.clientMask);
 		setMasked('#driveClientSecret', drive.secretMask);
 		$('#driveAccount').val(r.DRIVE_CONNECTED ? (r.DRIVE_ACCOUNT || '연결됨') : '연결 안 됨');
-		$('#driveConnect').text(r.DRIVE_CONNECTED ? '다시 연결' : '연결');
+		$('#driveConnect').text(r.DRIVE_CONNECTED ? '내 연동으로 바꾸기' : '내 연동으로 연결');
 	}
 
 	// 사용자 입력과 일정 제목이 들어가므로 모두 text() 로 넣는다

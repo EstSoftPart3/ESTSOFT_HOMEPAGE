@@ -234,7 +234,7 @@ public class BoEquipmentService {
 		if (data.length > MAX_FILE) throw new IllegalArgumentException("20MB 이하 파일만 올릴 수 있습니다.");
 		String token = staffDrive.token();
 		List<Map<String, Object>> roots = drive.search("mimeType = '" + GoogleDriveApi.FOLDER + "' and trashed = false and name = '" + FOLDER_ROOT + "'", token);
-		if (roots.isEmpty()) throw new IllegalArgumentException("드라이브 연결 계정에서 '" + FOLDER_ROOT + "' 폴더를 찾지 못했습니다. 폴더 편집 권한을 확인해 주세요.");
+		if (roots.isEmpty()) throw new IllegalArgumentException("내 연동 드라이브 계정에서 '" + FOLDER_ROOT + "' 폴더를 찾지 못했습니다. 내 구글 계정에 그 폴더 편집 권한이 있는지 확인해 주세요.");
 		String parent = (String) roots.get(0).get("id"), folder = drive.childFolderId(parent, sub, token);
 		if (folder == null) folder = drive.createFolder(sub, parent, token);
 		return drive.upload(name == null || name.isEmpty() ? "file" : name, mime == null || mime.isEmpty() ? "application/octet-stream" : mime, data, folder, token);

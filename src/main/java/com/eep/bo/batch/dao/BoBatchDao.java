@@ -111,10 +111,9 @@ public class BoBatchDao {
 		return icalSq == null ? BoBatchMapper.insertIcal(param) : BoBatchMapper.updateIcal(param);
 	}
 
-	public int IcalDrive(int icalSq, String token, String account) {
+	public int IcalDrive(int icalSq, String owner) {
 		Map<String, Object> param = sq("ICAL_SQ", icalSq);
-		param.put("DRIVE_TOKEN", token);
-		param.put("DRIVE_ACCOUNT", account);
+		param.put("DRIVE_OWNER", owner);
 		return BoBatchMapper.updateIcalDrive(param);
 	}
 

@@ -3,9 +3,7 @@ package com.eep.bo.staff.controller;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
@@ -22,7 +20,6 @@ import org.springframework.web.multipart.MultipartFile;
 import com.common.upload.Upload;
 import org.springframework.web.servlet.ModelAndView;
 
-import com.eep.bo.batch.controller.BoBatchController;
 import com.eep.bo.deploy.service.SecretFilter;
 import com.eep.bo.member.service.BoMemberService;
 import com.eep.bo.member.service.BoMemberService.Actor;
@@ -159,18 +156,6 @@ public class BoStaffController {
 
 	// ── 서류 첨부(구글 드라이브) ──
 
-	/** 구글 승인 화면으로 보낸다. 돌아오는 곳은 콘솔에 등록된 /admin/batch/driveCallback.do 이고, 세션 표시를 보고 이쪽 연결로 처리한다 */
-	@RequestMapping("/admin/staff/driveStart.do")
-	public String driveStart(HttpServletRequest request, HttpSession session) {
-		String state = UUID.randomUUID().toString();
-		String url = StaffDriveService.authUrl(BoBatchController.redirectUri(request), state);
-		if (url == null) {
-			return "redirect:/admin/staff/openStaffList.do?drive=noclient";
-		}
-		session.setAttribute(SS_STAFF_DRIVE_STATE, state);
-		return "redirect:" + url;
-	}
-
 	@RequestMapping(value = "/admin/staff/staffDriveStatusData.do", method = RequestMethod.POST)
 	public ModelAndView staffDriveStatusData() {
 		return json("drive", StaffDriveService.status());
@@ -215,6 +200,10 @@ public class BoStaffController {
 	public void downloadStaffDoc(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("DOC_SQ") int docSq, HttpServletResponse response, HttpSession session) throws IOException {
 		ModelAndView mv = drive(() -> StaffDriveService.download(staffSq, docSq));
 		Object error = mv.getModel().get("error");
+		if (error != null && error.toString().startsWith("[연동 필요:")) {
+			response.sendRedirect("/admin/my/openGoogleLink.do?need=1&svc=DRIVE");
+			return;
+		}
 		if (error != null) {
 			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
 			response.setContentType("text/plain; charset=UTF-8");
@@ -343,8 +332,6 @@ public class BoStaffController {
 		return json("result", "OK");
 	}
 
-	public static final String SS_STAFF_DRIVE_STATE = "staffDriveState";
-
 	private interface DriveCall {
 		Object run() throws Exception;
 	}
@@ -357,8 +344,8 @@ public class BoStaffController {
 			return json("error", e.getMessage());
 		} catch (HttpStatusCodeException e) {
 			int code = e.getStatusCode().value();
-			return json("error", code == 401 || code == 403 ? "구글 드라이브 권한이 없습니다. '드라이브 연결'을 다시 하거나, 연결 계정에 '2. 인사관리' 폴더 편집 권한이 있는지 확인해 주세요. (" + code + ")"
-					: code == 404 ? "드라이브에서 파일이나 폴더를 찾지 못했습니다. (404)" : "구글 드라이브 처리에 실패했습니다. (" + code + ")");
+			return json("error", code == 401 || code == 403 ? "구글 드라이브 권한이 없습니다. 내 연동에서 드라이브를 다시 연결하거나, 내 구글 계정에 '2. 인사관리' 폴더 편집 권한이 있는지 확인해 주세요. (" + code + ")"
+					: code == 404 ? "드라이브에서 파일이나 폴더를 찾지 못했습니다. 내 구글 계정에 '2. 인사관리' 폴더가 공유돼 있는지 확인해 주세요. (404)" : "구글 드라이브 처리에 실패했습니다. (" + code + ")");
 		} catch (Exception e) {
 			System.out.println("STAFF_DRIVE_ERROR " + e.getClass().getSimpleName());
 			return json("error", "구글 드라이브 처리에 실패했습니다. (" + e.getClass().getSimpleName() + ")");

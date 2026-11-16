@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 계정별 구글 연동. 표는 sql/google_link.sql -->
+<mapper namespace="com.eep.mapper.BoGoogleLinkMapper">
+
+	<select id="selectLinks" parameterType="hashMap" resultType="hashMap">
+		SELECT SERVICE_CD, ACCOUNT, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%i') AS REG_DT FROM TB_EEP_GOOGLE_LINK_R WHERE EMPLY_ID = #{EMPLY_ID}
+	</select>
+
+	<select id="selectRefresh" parameterType="hashMap" resultType="string">
+		SELECT REFRESH_ENC FROM TB_EEP_GOOGLE_LINK_R WHERE EMPLY_ID = #{EMPLY_ID} AND SERVICE_CD = #{SERVICE_CD}
+	</select>
+
+	<insert id="saveLink" parameterType="hashMap">
+		INSERT INTO TB_EEP_GOOGLE_LINK_R (EMPLY_ID, SERVICE_CD, REFRESH_ENC, ACCOUNT, REG_DT) VALUES (#{EMPLY_ID}, #{SERVICE_CD}, #{REFRESH_ENC}, #{ACCOUNT}, NOW())
+		ON DUPLICATE KEY UPDATE REFRESH_ENC = VALUES(REFRESH_ENC), ACCOUNT = VALUES(ACCOUNT), REG_DT = NOW()
+	</insert>
+
+	<delete id="deleteLink" parameterType="hashMap">
+		DELETE FROM TB_EEP_GOOGLE_LINK_R WHERE EMPLY_ID = #{EMPLY_ID} AND SERVICE_CD = #{SERVICE_CD}
+	</delete>
+</mapper>

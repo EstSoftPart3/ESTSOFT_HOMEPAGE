@@ -1,12 +1,9 @@
 package com.eep.bo.calendar.controller;
 
 import java.time.LocalDate;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,17 +20,16 @@ import org.springframework.web.util.UriUtils;
 import com.eep.bo.calendar.service.BoCalendarService;
 import com.eep.bo.calendar.service.BoCalendarServiceImpl;
 import com.eep.bo.calendar.service.GoogleCalendarApi;
+import com.eep.bo.my.GoogleLinkService;
 
 @Controller
 public class BoCalendarController {
 
-	// 구글 액세스 토큰과 로그인 왕복 중 상태는 세션에만 둔다
-	private static final String SS_TOKEN = "gcalToken";
-	private static final String SS_STATE = "gcalState";
-	private static final String SS_PENDING = "gcalPending";
-
 	@Autowired
 	private BoCalendarService BoCalendarService;
+
+	@Autowired
+	private GoogleLinkService link;
 
 	@Autowired
 	private GoogleCalendarApi GoogleCalendarApi;
@@ -51,7 +47,7 @@ public class BoCalendarController {
 		String clientId = conf.get(BoCalendarServiceImpl.CONF_CLIENT_ID);
 		mv.addObject("clientId", clientId);
 		mv.addObject("confReady", notEmpty(clientId) && notEmpty(conf.get(BoCalendarServiceImpl.CONF_CLIENT_SECRET)));
-		mv.addObject("googleLogin", session.getAttribute(SS_TOKEN) != null);
+		mv.addObject("googleLogin", link.linked(GoogleLinkService.currentUser(), GoogleLinkService.CALENDAR));
 		mv.addObject("categories", BoCalendarServiceImpl.CATEGORIES);
 		mv.addObject("subCategories", BoCalendarServiceImpl.SUB_CATEGORIES);
 		return mv;
@@ -78,51 +74,32 @@ public class BoCalendarController {
 		return json("result", "OK");
 	}
 
-	// 구글 로그인 시작. 끝나면 조회하려던 조건으로 페이지에 돌아온다
+	// 구글 연결은 내 연동에서 한다. 연결하고 나면 조회하려던 조건으로 이 페이지에 돌아온다
 	@RequestMapping("/admin/calendar/oauthStart.do")
-	public String oauthStart(@RequestParam Map<String, Object> param, HttpServletRequest request, HttpSession session) {
-		String clientId = BoCalendarService.ConfMap().get(BoCalendarServiceImpl.CONF_CLIENT_ID);
-		if (!notEmpty(clientId)) {
-			return "redirect:/admin/calendar/openCalendarSync.do";
-		}
-		String state = UUID.randomUUID().toString();
-		session.setAttribute(SS_STATE, state);
-		session.setAttribute(SS_PENDING, new HashMap<>(param));
-		return "redirect:" + GoogleCalendarApi.authUrl(clientId, redirectUri(request), state);
-	}
-
-	@RequestMapping("/admin/calendar/oauthCallback.do")
-	@SuppressWarnings("unchecked")
-	public String oauthCallback(@RequestParam Map<String, Object> param, HttpServletRequest request, HttpSession session) throws Exception {
-		Object state = session.getAttribute(SS_STATE);
-		session.removeAttribute(SS_STATE);
-		// state 가 다르면 이 세션이 시작한 로그인이 아니다(CSRF)
-		if (state == null || !state.equals(param.get("state")) || param.get("code") == null) {
-			return "redirect:/admin/calendar/openCalendarSync.do?gerr=1";
-		}
-		Map<String, String> conf = BoCalendarService.ConfMap();
-		String token = GoogleCalendarApi.exchangeCode(conf.get(BoCalendarServiceImpl.CONF_CLIENT_ID),
-				conf.get(BoCalendarServiceImpl.CONF_CLIENT_SECRET), redirectUri(request), (String) param.get("code"));
-		session.setAttribute(SS_TOKEN, token);
-
-		Map<String, Object> pending = (Map<String, Object>) session.getAttribute(SS_PENDING);
-		session.removeAttribute(SS_PENDING);
-		StringBuilder back = new StringBuilder("redirect:/admin/calendar/openCalendarSync.do?auto=1");
-		if (pending != null) {
-			for (String key : new String[] { "fromDt", "toDt", "calId" }) {
-				if (pending.get(key) != null) {
-					back.append('&').append(key).append('=').append(UriUtils.encodeQueryParam((String) pending.get(key), "UTF-8"));
-				}
+	public String oauthStart(@RequestParam Map<String, Object> param) throws Exception {
+		StringBuilder back = new StringBuilder("/admin/calendar/openCalendarSync.do?auto=1");
+		for (String key : new String[] { "fromDt", "toDt", "calId" }) {
+			if (param.get(key) != null) {
+				back.append('&').append(key).append('=').append(UriUtils.encodeQueryParam((String) param.get(key), "UTF-8"));
 			}
 		}
-		return back.toString();
+		return "redirect:/admin/my/openGoogleLink.do?svc=CALENDAR&need=1&back=" + UriUtils.encodeQueryParam(back.toString(), "UTF-8");
 	}
 
-	// 로그인한 구글 계정의 캘린더 목록
+	/** 내 연동 캘린더의 액세스 토큰. 없거나 끊겼으면 null(화면이 내 연동으로 보낸다) */
+	private String token() {
+		try {
+			return link.accessToken(GoogleLinkService.CALENDAR);
+		} catch (GoogleLinkService.NeedLink e) {
+			return null;
+		}
+	}
+
+	// 내 연동 구글 계정의 캘린더 목록
 	@RequestMapping("/admin/calendar/calendarListData.do")
 	@ResponseBody
 	public ModelAndView calendarListData(HttpSession session) {
-		String token = (String) session.getAttribute(SS_TOKEN);
+		String token = token();
 		if (token == null) {
 			return json("needLogin", true);
 		}
@@ -137,7 +114,7 @@ public class BoCalendarController {
 	@RequestMapping("/admin/calendar/fetchEventsData.do")
 	@ResponseBody
 	public ModelAndView fetchEventsData(@RequestParam Map<String, Object> param, HttpSession session) {
-		String token = (String) session.getAttribute(SS_TOKEN);
+		String token = token();
 		if (token == null) {
 			return json("needLogin", true);
 		}
@@ -201,23 +178,13 @@ public class BoCalendarController {
 
 	// 토큰 만료·권한 없음이면 다시 로그인하게 한다
 	private ModelAndView googleError(HttpClientErrorException e, HttpSession session) {
-		if (e.getStatusCode() == HttpStatus.UNAUTHORIZED) {
-			session.removeAttribute(SS_TOKEN);
+		if (e.getStatusCode() == HttpStatus.UNAUTHORIZED || e.getStatusCode() == HttpStatus.FORBIDDEN) {
 			return json("needLogin", true);
 		}
 		if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
 			return json("error", "캘린더를 찾을 수 없습니다. 캘린더를 다시 선택해 주세요.");
 		}
 		return json("error", "구글 캘린더 호출 실패: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
-	}
-
-	/** 구글 콘솔에 등록한 리디렉션 URI 와 글자까지 같아야 한다. 프록시 뒤면 X-Forwarded-Proto 를 따른다 */
-	private static String redirectUri(HttpServletRequest request) {
-		String proto = request.getHeader("X-Forwarded-Proto");
-		if (!notEmpty(proto)) {
-			proto = request.getScheme();
-		}
-		return proto + "://" + request.getHeader("Host") + "/admin/calendar/oauthCallback.do";
 	}
 
 	@SuppressWarnings("unchecked")
