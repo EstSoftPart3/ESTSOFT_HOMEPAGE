@@ -169,7 +169,7 @@ public class BoFeedbackController {
 		});
 	}
 
-	/** 기획서 코멘트: 로그에 쌓고 접수로 돌린다. 다음 처리(평일 10시·15시) 때 코멘트까지 반영해 기획서를 다시 만든다 */
+	/** 기획서 코멘트: 로그에 쌓고 접수로 돌린다. 다음 처리(평일 9시 30분·11시·14시·16시) 때 코멘트까지 반영해 기획서를 다시 만든다 */
 	@RequestMapping(value = "/admin/feedback/commentData.do", method = RequestMethod.POST)
 	public ModelAndView commentData(@RequestParam("FB_SQ") int fbSq, @RequestParam(value = "CONTENT", defaultValue = "") String content, HttpSession session) {
 		return run(() -> {

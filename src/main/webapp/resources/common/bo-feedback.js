@@ -49,7 +49,7 @@
 	// ── 피드백 기획서 ──
 	window.BO_SPEC = function (fbSq) {
 		post('/admin/feedback/detailData.do', { FB_SQ: fbSq }, function (f) {
-			if (!f || !f.SPEC_HTML) { bootbox.alert('아직 기획서가 없습니다. 평일 오전 10시·오후 3시에 만들어집니다.'); return; }
+			if (!f || !f.SPEC_HTML) { bootbox.alert('아직 기획서가 없습니다. 평일 오전 9시 30분·11시, 오후 2시·4시에 만들어집니다.'); return; }
 			bootbox.dialog({ title: '기획서 — ' + esc(String(f.CONTENT).substring(0, 60)), message: specFrame(f.SPEC_HTML, '70vh'), size: 'xl', onEscape: true, backdrop: true });
 		});
 	};

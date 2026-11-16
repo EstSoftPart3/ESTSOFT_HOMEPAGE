@@ -23,7 +23,7 @@
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-header d-flex align-items-center">
 					<h3 class="card-title bTitle"><b>피드백</b></h3>
-					<span class="small text-muted ml-3">위 💬 피드백 버튼으로 남긴 글 · 평일 오전 10시·오후 3시에 Claude 가 기획서를 붙여 '검토 대기'로 둡니다(코멘트를 남긴 건은 다시 만듦)</span>
+					<span class="small text-muted ml-3">위 💬 피드백 버튼으로 남긴 글 · 평일 오전 9시 30분·11시, 오후 2시·4시에 Claude 가 기획서를 붙여 '검토 대기'로 둡니다(코멘트를 남긴 건은 다시 만듦)</span>
 				</div>
 				<div class="card-body">
 					<div class="cal-panel">
@@ -101,7 +101,7 @@
 			var $frame = $('<div class="text-muted small">불러오는 중…</div>').appendTo($d);
 			specOf(f.FB_SQ, function(html) { $frame.replaceWith($('<iframe class="fl-spec" sandbox title="기획서">').attr('srcdoc', html || '')); });
 		} else {
-			$d.append($('<div class="fl-box text-muted">').text(f.STATUS_CD === 'NEW' ? '기획서는 평일 오전 10시·오후 3시에 만들어집니다. 바로 필요하면 아래 요청문을 복사해 Claude 에 붙여 넣으세요.' : '기획서가 없습니다.'));
+			$d.append($('<div class="fl-box text-muted">').text(f.STATUS_CD === 'NEW' ? '기획서는 평일 오전 9시 30분·11시, 오후 2시·4시에 만들어집니다. 바로 필요하면 아래 요청문을 복사해 Claude 에 붙여 넣으세요.' : '기획서가 없습니다.'));
 		}
 		// 코멘트: 남기면 접수로 돌아가고, 다음 처리 때 코멘트까지 반영해 기획서를 다시 만든다
 		if (data.canAct && open) {
@@ -113,7 +113,7 @@
 			});
 			$c.on('enter-send', function() { if (!$send.prop('disabled')) $send.click(); });
 			$d.append($('<div class="fl-sec">').text('코멘트')).append($c).append($('<div class="d-flex align-items-center mt-1">')
-				.append($('<span class="small text-muted mr-auto">').text('남기면 접수로 돌아가고, 평일 10시·15시에 코멘트까지 반영해 기획서를 다시 만들어요.')).append($send));
+				.append($('<span class="small text-muted mr-auto">').text('남기면 접수로 돌아가고, 평일 9시 30분·11시·14시·16시에 코멘트까지 반영해 기획서를 다시 만들어요.')).append($send));
 		}
 		if (data.canAct && f.STATUS_CD !== 'DONE' && f.STATUS_CD !== 'REJECT') $d.append($('<button type="button" class="btn btn-sm btn-outline-primary mt-2" id="flCopy">').text(f.HAS_SPEC == 1 ? '📋 기획서 다시 만들기 요청문 복사' : '📋 기획서 요청문 복사').on('click', function() { copyPrompt(f); }));
 		if (f.STATUS_CD === 'REJECT' && f.REJECT_REASON) $d.append('<div class="fl-sec">반려 사유</div>').append($('<div class="fl-box">').text(f.REJECT_REASON));
