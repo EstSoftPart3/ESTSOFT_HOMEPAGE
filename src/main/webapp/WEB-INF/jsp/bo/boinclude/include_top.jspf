@@ -92,6 +92,8 @@
   	.fb-list { max-height: 45vh; overflow-y: auto; }
   	.fb-it { border: 1px solid rgba(17,17,17,.1); border-radius: 8px; padding: 7px 10px; margin-bottom: 6px; font-size: 13px; }
   	.fb-who { display: flex; gap: 8px; align-items: center; font-size: 11.5px; color: #5f6b75; } .fb-who .fb-pill { margin-left: auto; }
+  	.fb-it.hl { border-color: #e0a800; background: #fffaeb; } .fb-who .fb-pill + .fb-pill { margin-left: 0; }
+  	.fb-sum { margin-top: 6px; border-top: 1px dashed #e8d7a6; padding-top: 6px; } .fb-sum ul { margin: 2px 0 6px; padding-left: 18px; } .fb-k { font-size: 11.5px; font-weight: 700; color: #5f6b75; }
   	.fb-txt { white-space: pre-wrap; } .fb-why { color: #a32020; font-size: 12px; white-space: pre-wrap; } .fb-mute { color: #8a949c; }
   	.fb-meta { color: #5f6b75; font-size: 12px; margin-bottom: 8px; }
   	.fb-req { border: 1px solid #f0d58a; background: #fffaeb; border-radius: 8px; padding: 7px 12px; font-size: 12.5px; margin-bottom: 10px; } .fb-req b { color: #7a5600; }

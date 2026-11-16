@@ -169,15 +169,17 @@ public class BoFeedbackController {
 		});
 	}
 
-	/** 기획서 코멘트: 로그에 쌓고 접수로 돌린다. 다음 처리(평일 9시 30분·11시·14시·16시) 때 코멘트까지 반영해 기획서를 다시 만든다 */
+	/** 기획서 코멘트(슈퍼관리자·시스템 운영자, 요청자 본인): 로그에 쌓고 접수로 돌린다. 다음 처리(평일 9시 30분·11시·14시·16시) 때 코멘트까지 반영해 기획서를 다시 만든다 */
 	@RequestMapping(value = "/admin/feedback/commentData.do", method = RequestMethod.POST)
 	public ModelAndView commentData(@RequestParam("FB_SQ") int fbSq, @RequestParam(value = "CONTENT", defaultValue = "") String content, HttpSession session) {
 		return run(() -> {
 			String id = loginId(session);
-			require(canAct(id), "슈퍼관리자·시스템 운영자만 코멘트를 남길 수 있습니다.");
-			String c = content.trim();
-			require(!c.isEmpty() && c.length() <= 4000, "코멘트를 1~4000자로 적어 주세요.");
 			Map<String, Object> q = one("FB_SQ", fbSq);
+			Map<String, Object> f = mapper.selectFeedback(q);
+			require(f != null, "피드백을 찾지 못했습니다.");
+			require(canAct(id) || id.equals(f.get("EMPLY_ID")), "요청자 본인·슈퍼관리자·시스템 운영자만 의견을 남길 수 있습니다.");
+			String c = content.trim();
+			require(!c.isEmpty() && c.length() <= 4000, "의견을 1~4000자로 적어 주세요.");
 			q.put("CONTENT", c);
 			q.put("EMPLY_ID", id);
 			require(mapper.insertComment(q) > 0, "반영·반려된 피드백에는 코멘트를 남길 수 없습니다.");

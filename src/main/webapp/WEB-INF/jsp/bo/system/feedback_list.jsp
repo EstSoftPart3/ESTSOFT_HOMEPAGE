@@ -140,7 +140,8 @@
 		[['MAIN', '요청·기획서'], ['DEV', '개발 내용'], ['CMT', '코멘트' + cnt(f.CMT_CNT)], ['LOG', '변경 로그' + cnt(f.SPEC_CNT)]].forEach(function(t) {
 			$('<button type="button" role="tab">').attr('aria-selected', dtab === t[0]).toggleClass('on', dtab === t[0]).text(t[1]).on('click', function() { dtab = t[0]; detail(f); }).appendTo($tabs);
 		});
-		if (dtab === 'CMT') { logTab($d, f, 'COMMENT'); if (data.canAct && open) commentBox($d, f); return; }
+		var canCmt = (data.canAct || f.EMPLY_ID === data.me) && open; // 요청자 본인도(서버도 같은 검사)
+		if (dtab === 'CMT') { logTab($d, f, 'COMMENT'); if (canCmt) commentBox($d, f); return; }
 		if (dtab === 'LOG') { logTab($d, f, 'SPEC'); return; }
 		if (dtab === 'DEV') { devTab($d, f); return; }
 		$d.append('<div class="fl-sec">요청 내용</div>').append($('<div class="fl-box">').text(f.CONTENT));
@@ -153,7 +154,7 @@
 		} else {
 			$d.append($('<div class="fl-box text-muted">').text(f.STATUS_CD === 'NEW' ? '기획서는 평일 오전 9시 30분·11시, 오후 2시·4시에 만들어집니다. 바로 필요하면 아래 요청문을 복사해 Claude 에 붙여 넣으세요.' : '기획서가 없습니다.'));
 		}
-		if (data.canAct && open) commentBox($d, f);
+		if (canCmt) commentBox($d, f);
 		if (data.canAct && f.STATUS_CD !== 'DONE' && f.STATUS_CD !== 'REJECT') $d.append($('<button type="button" class="btn btn-sm btn-outline-primary mt-2" id="flCopy">').text(f.HAS_SPEC == 1 ? '📋 기획서 다시 만들기 요청문 복사' : '📋 기획서 요청문 복사').on('click', function() { copyPrompt(f); }));
 		if (f.STATUS_CD === 'REJECT' && f.REJECT_REASON) $d.append('<div class="fl-sec">반려 사유</div>').append($('<div class="fl-box">').text(f.REJECT_REASON));
 		if (f.STATUS_CD === 'DONE' && f.UPD_SQ) $d.append($('<button type="button" class="btn btn-sm btn-outline-primary mt-2">업데이트 내역 보기</button>').on('click', function() { BO_UPDATE(f.UPD_SQ); }));
@@ -215,7 +216,7 @@
 					var s = l.APPLIED_SQ ? spec(Number(l.APPLIED_SQ)) : null, $st = $('<td>');
 					if (s) $st.append($('<span class="fb-pill ok">').text('✔ 반영됨 ' + s.REG_DT.substr(5, 5))).append(' ').append($('<button type="button" class="btn btn-link btn-sm p-0">').text('그때 기획서').on('click', function() { oldSpec(s); }));
 					else $st.append($('<span class="fb-pill warn">').text('⏳ 반영 대기'));
-					$tr.append($('<td>').text(l.EMPLY_NM || l.EMPLY_ID)).append($('<td class="fl-wrap">').append($('<span>').text(l.CONTENT))).append($st);
+					$tr.append($('<td>').text(l.EMPLY_NM || l.EMPLY_ID).append(l.BY_REQ == 1 ? $('<span class="fb-pill ml-1">').text('요청자') : '')).append($('<td class="fl-wrap">').append($('<span>').text(l.CONTENT))).append($st);
 				} else {
 					$tr.append($('<td>').text(l.EST_TXT || '')).append($('<td class="fl-wrap">').append($('<span>').text(l.PLAN_TXT || '')))
 						.append($('<td>').append(l.HAS_SPEC == 1 ? $('<button type="button" class="btn btn-link btn-sm p-0">').text('그때 기획서').on('click', function() { oldSpec(l); }) : ''));

@@ -52,7 +52,7 @@ public class FbDb {
 		// 접수 건은 검토 대기로. 검토 대기·보류·진행 중 건은 상태를 두고 기획서만 바꾼다(피드백 화면의 '다시 만들기').
 		// 바뀐 기획서는 변경 로그(TB_EEP_FEEDBACK_LOG, SPEC)에도 남겨 피드백 화면의 '변경 로그' 탭에서 예전 것과 비교해 본다
 		c.setAutoCommit(false);
-		try (PreparedStatement s = c.prepareStatement("UPDATE TB_EEP_FEEDBACK_M SET PLAN_TXT = ?, EST_TXT = ?, SPEC_HTML = ?, STATUS_CD = IF(STATUS_CD = 'NEW', 'REVIEW', STATUS_CD) WHERE FB_SQ = ? AND STATUS_CD IN ('NEW', 'REVIEW', 'HOLD', 'ING')");
+		try (PreparedStatement s = c.prepareStatement("UPDATE TB_EEP_FEEDBACK_M SET PLAN_TXT = ?, EST_TXT = ?, SPEC_HTML = ?, STATUS_CD = IF(STATUS_CD = 'NEW', 'REVIEW', STATUS_CD), SEEN_YN = 'N' WHERE FB_SQ = ? AND STATUS_CD IN ('NEW', 'REVIEW', 'HOLD', 'ING')");
 				PreparedStatement l = c.prepareStatement("INSERT INTO TB_EEP_FEEDBACK_LOG (FB_SQ, LOG_CD, PLAN_TXT, EST_TXT, SPEC_HTML, EMPLY_ID) VALUES (?, 'SPEC', ?, ?, ?, 'CLAUDE')")) {
 			s.setString(1, f.get("PLAN")); s.setString(2, f.get("EST")); s.setString(3, f.get("HTML")); s.setInt(4, fbSq);
 			int n = s.executeUpdate();
@@ -70,7 +70,7 @@ public class FbDb {
 
 	/** 그 피드백의 코멘트(오래된 것부터): 일시 | 누가 | 내용. 기획서를 다시 만들 때 모두 반영한다 */
 	static void comments(Connection c, int fbSq) throws SQLException {
-		print(c, "SELECT DATE_FORMAT(L.REG_DT, '%m-%d %H:%i'), IFNULL(E.EMPLY_NM, L.EMPLY_ID), L.CONTENT FROM TB_EEP_FEEDBACK_LOG L LEFT JOIN TB_EEP_EMPLY_M E ON E.EMPLY_ID = L.EMPLY_ID WHERE L.FB_SQ = " + fbSq + " AND L.LOG_CD = 'COMMENT' ORDER BY L.LOG_SQ", 3);
+		print(c, "SELECT DATE_FORMAT(L.REG_DT, '%m-%d %H:%i'), CONCAT(IFNULL(E.EMPLY_NM, L.EMPLY_ID), IF(L.EMPLY_ID = (SELECT F.EMPLY_ID FROM TB_EEP_FEEDBACK_M F WHERE F.FB_SQ = L.FB_SQ), '(요청자)', '')), L.CONTENT FROM TB_EEP_FEEDBACK_LOG L LEFT JOIN TB_EEP_EMPLY_M E ON E.EMPLY_ID = L.EMPLY_ID WHERE L.FB_SQ = " + fbSq + " AND L.LOG_CD = 'COMMENT' ORDER BY L.LOG_SQ", 3);
 	}
 
 	static void update(Connection c, Map<String, String> f) throws SQLException {

@@ -86,10 +86,33 @@
 					.append($('<span>').text([f.REG_DT, f.SCREEN_NM, kind[f.KIND_CD] || f.KIND_CD].filter(Boolean).join(' · '))).append($st))
 					.append($('<div class="fb-txt">').text(f.CONTENT));
 				if (f.STATUS_CD === 'REJECT' && f.REJECT_REASON) $it.append($('<div class="fb-why">').text('반려 사유: ' + f.REJECT_REASON));
+				var open = f.STATUS_CD !== 'DONE' && f.STATUS_CD !== 'REJECT';
 				if (f.STATUS_CD === 'DONE' && f.UPD_SQ) $it.append($('<button type="button" class="btn btn-link btn-sm p-0">').text('→ 업데이트 내역 보기').on('click', function () { BO_UPDATE(f.UPD_SQ); }));
+				else if (f.HAS_SPEC == 1 && open && f.EMPLY_ID === me) mySpec($it, f);
 				else if (f.HAS_SPEC == 1) $it.append($('<button type="button" class="btn btn-link btn-sm p-0">').text('기획서 보기').on('click', function () { BO_SPEC(f.FB_SQ); }));
+				else if (f.STATUS_CD === 'NEW' && f.EMPLY_ID === me) $it.append($('<div class="fb-mute small">').text('기획서는 평일 9시 30분·11시·14시·16시에 만들어집니다.'));
 				$list.append($it);
 			});
+		}
+		// 내 피드백에 기획서가 붙었으면: 예상 시간·바꿀 것 요약, 기획서 보기, 의견(남기면 접수로 돌아가 다시 만든다)
+		function mySpec($it, f) {
+			$it.addClass('hl').find('.fb-who .fb-pill').after($('<span class="fb-pill warn">').text('📄 기획서 나옴'));
+			var plan = String(f.PLAN_TXT || '').split('\n').filter(function (l) { return $.trim(l); });
+			var $s = $('<div class="fb-sum">').appendTo($it);
+			$s.append($('<div class="fb-k">').text((f.EST_TXT ? '예상 ' + f.EST_TXT + ' · ' : '') + '바꿀 것'));
+			if (plan.length) $s.append(lines(plan.slice(0, 3).join('\n')).append(plan.length > 3 ? $('<li class="fb-mute">').text('외 ' + (plan.length - 3) + '개 — 기획서에서 보기') : ''));
+			$s.append($('<button type="button" class="btn btn-sm btn-outline-primary py-0">').text('📄 기획서 보기').on('click', function () { BO_SPEC(f.FB_SQ); }));
+			var $c = $('<textarea class="form-control form-control-sm enter-send mt-2" rows="2" maxlength="4000" aria-label="기획서 의견" placeholder="이 기획서에 의견 남기기 · 맞아요 / 이렇게 바꿔 주세요 · Enter 보내기">');
+			var $go = $('<button type="button" class="btn btn-sm btn-primary py-0">의견 보내기</button>').on('click', function () {
+				if (!$.trim($c.val())) { $c.focus(); return; }
+				$go.prop('disabled', true);
+				$.post('/admin/feedback/commentData.do', { FB_SQ: f.FB_SQ, CONTENT: $c.val() }).done(function (res) {
+					if (res.error) { $go.prop('disabled', false); bootbox.alert(res.error); return; }
+					load();
+				}).fail(function () { $go.prop('disabled', false); });
+			});
+			$c.on('enter-send', function () { if (!$go.prop('disabled')) $go.click(); });
+			$s.append($c).append($('<div class="d-flex align-items-center mt-1">').append($('<span class="fb-mute small mr-auto">').text('남기면 접수로 돌아가고, 다음 처리 때 의견까지 반영해 기획서를 다시 만들어요.')).append($go));
 		}
 		function load() { post('/admin/feedback/listData.do', {}, function (r) { data = r; draw(); }); }
 
