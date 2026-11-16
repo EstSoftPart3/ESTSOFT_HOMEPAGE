@@ -57,7 +57,7 @@
 						<summary>관리자 설정 안내 (구글 클라우드 콘솔, 처음 한 번)</summary>
 						<ol class="mt-2">
 							<li>console.cloud.google.com → 지금 쓰는 프로젝트 → <b>API 및 서비스 → 사용자 인증 정보</b> → 쓰고 있는 OAuth 클라이언트</li>
-							<li>「승인된 리디렉션 URI」에 <code id="glRedirect"></code> 를 추가하고 저장</li>
+							<li>「승인된 리디렉션 URI」에 <code id="glRedirect"></code> 가 있는지 확인(예전부터 등록된 주소, 없으면 추가하고 저장)</li>
 							<li><b>OAuth 동의 화면 → 대상</b>: 게시 상태가 '테스트'면 연결할 직원 구글 메일을 「테스트 사용자」에 추가(최대 100명). 전 직원이 쓰려면 「앱 게시」</li>
 							<li><b>API 라이브러리</b>에서 Google Drive API · Google Calendar API 가 「사용」인지 확인</li>
 							<li>클라이언트 ID·시크릿은 <a href="/admin/batch/openInterviewBatch.do">배치 &gt; 신입면접</a> 화면에서 넣습니다(모든 내 연동 공통)</li>
@@ -96,7 +96,7 @@
 	function skip(v) { try { if (v === undefined) return localStorage.getItem(SKIP_KEY) === '1'; localStorage.setItem(SKIP_KEY, v ? '1' : '0'); } catch (e) { return false; } }
 
 	$(function() {
-		$('#glRedirect').text(location.origin.replace(/^http:/, 'https:') + '/admin/my/googleCallback.do');
+		$('#glRedirect').text(location.origin.replace(/^http:/, 'https:') + '/admin/batch/driveCallback.do');
 		if (q.get('need') && SVC[focusSvc]) $('#glNeed').prop('hidden', false).text(SVC[focusSvc].nm + ' 연동이 필요한 기능입니다. 아래에서 연결하면 하던 화면으로 돌아갑니다.');
 		var msg = { ok: '연결했습니다.', fail: '연결하지 못했습니다. 다시 시도해 주세요.', denied: '구글에서 연결을 취소했습니다.',
 			scope: '구글 동의 화면에서 권한 체크가 빠져 연결하지 않았습니다. 다시 연결하면서 권한 항목을 체크해 주세요.',

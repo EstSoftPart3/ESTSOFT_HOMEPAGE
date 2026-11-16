@@ -114,9 +114,10 @@ public class BoSystemService {
 			return copy;
 		}
 
-		/** 어떤 메뉴에도 속하지 않은 /admin 주소는 슈퍼관리자만 연다. /admin/my/ 는 자기 것만 다루는 개인 화면이라 누구나 */
+		/** 어떤 메뉴에도 속하지 않은 /admin 주소는 슈퍼관리자만 연다. /admin/my/ 는 자기 것만 다루는 개인 화면이라 누구나.
+		 *  /admin/batch/driveCallback.do 는 구글 콘솔에 등록된 내 연동 복귀 주소라 누구나(BoMyController) */
 		public boolean allows(String path) {
-			if (superUser || HOME.equals(path) || path.startsWith("/admin/my/")) {
+			if (superUser || HOME.equals(path) || path.startsWith("/admin/my/") || "/admin/batch/driveCallback.do".equals(path)) {
 				return true;
 			}
 			for (Map<String, Object> m : items) {

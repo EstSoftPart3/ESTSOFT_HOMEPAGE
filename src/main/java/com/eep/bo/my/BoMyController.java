@@ -19,7 +19,7 @@ import org.springframework.web.servlet.ModelAndView;
 
 /**
  * 내 연동(/admin/my). 메뉴 권한과 상관없이 로그인한 관리자 누구나 자기 연동만 다룬다(BoSystemService.Access).
- * 구글 콘솔의 승인된 리디렉션 URI 에 https://www.estsw.co.kr/admin/my/googleCallback.do 가 있어야 한다.
+ * 구글 콘솔의 승인된 리디렉션 URI 는 예전부터 등록된 https://www.estsw.co.kr/admin/batch/driveCallback.do 를 그대로 쓴다.
  */
 @Controller
 public class BoMyController {
@@ -66,7 +66,8 @@ public class BoMyController {
 		return "redirect:" + url;
 	}
 
-	@RequestMapping("/admin/my/googleCallback.do")
+	// 구글 콘솔에 이미 등록된 /admin/batch/driveCallback.do 로 돌아온다(새 URI 등록 없이). 이 주소는 BoSystemService.Access 가 모두에게 연다
+	@RequestMapping({ "/admin/batch/driveCallback.do", "/admin/my/googleCallback.do" })
 	public String googleCallback(@RequestParam Map<String, Object> param, HttpServletRequest request, HttpSession session) {
 		Object state = session.getAttribute(SS_STATE), svc = session.getAttribute(SS_SERVICE), back = session.getAttribute(SS_BACK);
 		session.removeAttribute(SS_STATE);
@@ -101,7 +102,7 @@ public class BoMyController {
 	public static String redirectUri(HttpServletRequest request) {
 		String host = request.getHeader("Host");
 		String proto = host != null && host.startsWith("localhost") ? request.getScheme() : "https";
-		return proto + "://" + host + "/admin/my/googleCallback.do";
+		return proto + "://" + host + "/admin/batch/driveCallback.do";
 	}
 
 	private static ModelAndView json(String key, Object value) {

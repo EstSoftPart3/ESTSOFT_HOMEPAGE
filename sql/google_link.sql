@@ -1,6 +1,7 @@
 -- 계정별 구글 연동(내 연동). 2026-11-16
 -- 캘린더 가져오기·직원 서류·장비 첨부·거래처 서류 읽기·연구일지 PDF 는 요청한 관리자의 연동으로, 면접 배치는 iCal 에서 '연결'을 누른 관리자의 연동으로 동작한다.
 -- 예전 연결(회사 공용 드라이브 STAFF_DRIVE_*, iCal 별 DRIVE_TOKEN)은 모두 지워 각자 다시 연결하게 한다.
+-- 구글 콘솔 복귀 주소는 예전부터 등록된 /admin/batch/driveCallback.do 를 그대로 쓴다.
 -- 되돌리기: DROP TABLE TB_EEP_GOOGLE_LINK_R; ALTER TABLE TB_EEP_BATCH_ICAL_M DROP COLUMN DRIVE_OWNER; (예전 토큰은 되살아나지 않으니 예전 앱으로 돌리면 다시 연결)
 CREATE TABLE IF NOT EXISTS TB_EEP_GOOGLE_LINK_R (
 	  EMPLY_ID    varchar(50)  NOT NULL
