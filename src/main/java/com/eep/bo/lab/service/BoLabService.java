@@ -34,6 +34,7 @@ import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.util.HtmlUtils;
 
 import com.eep.bo.batch.service.GoogleDriveApi;
+import com.eep.bo.my.DriveConfService;
 import com.eep.bo.staff.service.StaffDriveService;
 import com.eep.mapper.BoLabMapper;
 
@@ -57,6 +58,8 @@ public class BoLabService {
 	private GoogleDriveApi drive;
 	@Autowired
 	private StaffDriveService driveConnection;
+	@Autowired
+	private DriveConfService driveConf;
 	@Autowired
 	private DataSource dataSource;
 	@Autowired
@@ -409,14 +412,17 @@ public class BoLabService {
 	public synchronized String publish(Object sq, Map<String, Object> login) {
 		Map<String, Object> j = journal(sq);
 		if (!CLOSED.equals(j.get("STATUS_CD"))) throw new IllegalArgumentException("마감한 일지만 올릴 수 있습니다.");
-		String name = j.get("YM") + " 월간연구일지_" + j.get("PRJ_NM");
+		Map<String, String> nv = new HashMap<>();
+		nv.put("연월", str(j.get("YM")));
+		nv.put("과제명", str(j.get("PRJ_NM")));
+		String name = DriveConfService.render(driveConf.get("LAB", "FILE"), nv), sub = driveConf.get("LAB", "SUB");
 		byte[] pdf = null;
 		try {
 			String token = driveConnection.token();
 			if (!hasText(str(j.get("PDF_FILE_ID")))) {
 				String parent = str(j.get("DRIVE_FOLDER_ID"));
-				String folder = drive.childFolderId(parent, JOURNAL_FOLDER, token);
-				if (folder == null) folder = drive.createFolder(JOURNAL_FOLDER, parent, token);
+				String folder = drive.childFolderId(parent, sub, token);
+				if (folder == null) folder = drive.createFolder(sub, parent, token);
 				Map<String, Object> withSign = key(sq);
 				withSign.put("WITH_SIGN", "Y");
 				pdf = drive.htmlToPdf(name, pdfHtml(j, mapper.selectJournalSteps(withSign), mapper.selectJournalHistory(key(sq))), token);

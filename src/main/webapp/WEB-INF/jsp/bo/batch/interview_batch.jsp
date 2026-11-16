@@ -47,14 +47,6 @@
 									<label for="icalFolder">이력서 폴더 주소</label>
 									<input type="text" id="icalFolder" class="form-control form-control-sm" autocomplete="off">
 								</div>
-								<div class="col-md-3 mb-2">
-									<label for="driveClientId">OAuth 클라이언트 ID</label>
-									<input type="text" id="driveClientId" class="form-control form-control-sm" autocomplete="off">
-								</div>
-								<div class="col-md-2 mb-2">
-									<label for="driveClientSecret">클라이언트 시크릿</label>
-									<input type="text" id="driveClientSecret" class="form-control form-control-sm" data-secret="1" autocomplete="off">
-								</div>
 								<div class="col-md-4 mb-2">
 									<label for="driveAccount">이력서 드라이브 (연결한 관리자의 내 연동)</label>
 									<div class="input-group input-group-sm">
@@ -69,7 +61,7 @@
 									<button type="button" class="btn btn-sm btn-outline-secondary flex-fill ml-1" onclick="newSet();">새로 추가</button>
 								</div>
 							</div>
-							<small class="text-muted">구글 콘솔 리디렉션 URI: <code id="driveRedirect"></code> · 클라이언트 ID와 시크릿은 모든 내 연동에 공통 적용됩니다. 배치는 '내 연동으로 연결'을 누른 관리자의 드라이브로 이력서를 읽습니다.</small>
+							<small class="text-muted">배치는 '내 연동으로 연결'을 누른 관리자의 드라이브로 이력서를 읽습니다. 구글 앱(클라이언트 ID·시크릿)은 슈퍼관리자가 🔗 내 연동 화면에서 설정합니다.<code id="driveRedirect" hidden></code></small>
 						</div>
 					</div>
 

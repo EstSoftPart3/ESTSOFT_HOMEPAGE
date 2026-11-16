@@ -173,4 +173,12 @@
 		SELECT STATUS_CD FROM TB_EEP_HR_TRAINEE_M WHERE TRN_SQ = #{TRN_SQ}
 	</select>
 
+	<!-- 드라이브 교육생 폴더 이름용. TRN_SQ 가 있으면 교육생, 없으면 INTV_SQ 의 면접자 이름 -->
+	<select id="selectPersonName" parameterType="hashMap" resultType="string">
+		<choose>
+			<when test="TRN_SQ != null and TRN_SQ != ''">SELECT TRN_NM FROM TB_EEP_HR_TRAINEE_M WHERE TRN_SQ = #{TRN_SQ}</when>
+			<otherwise>SELECT APLY_NM FROM TB_EEP_HR_INTV_M WHERE INTV_SQ = #{INTV_SQ}</otherwise>
+		</choose>
+	</select>
+
 </mapper>

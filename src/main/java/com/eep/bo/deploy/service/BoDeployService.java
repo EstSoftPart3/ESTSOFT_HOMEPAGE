@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.eep.bo.batch.service.GoogleDriveApi;
+import com.eep.bo.my.DriveConfService;
 import com.eep.bo.staff.service.StaffDriveService;
 import com.eep.mapper.BoDeployMapper;
 
@@ -44,8 +45,8 @@ public class BoDeployService {
 	@Autowired
 	private GoogleDriveApi drive;
 
-	@Value("${staff.drive.root:}")
-	private String driveRoot;
+	@Autowired
+	private DriveConfService driveConf;
 
 	// ── 공통 ──
 
@@ -467,7 +468,8 @@ public class BoDeployService {
 	}
 
 	private String ocr(String fileName, String fileType, byte[] data) {
-		require(driveRoot != null && !driveRoot.isEmpty(), "구글 드라이브 설정이 없습니다.");
+		String driveRoot = driveConf.get("PARTNER", "TEMP");
+		require(driveRoot != null && !driveRoot.isEmpty(), "매출·매입처 ⚙ 드라이브 설정에서 임시 폴더를 먼저 정해 주세요.");
 		String token = staffDrive.token();
 		String id = (String) drive.upload("거래처-임시-" + fileName, fileType, data, driveRoot, token).get("id");
 		try {

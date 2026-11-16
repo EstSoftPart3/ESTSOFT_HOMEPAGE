@@ -179,6 +179,7 @@
 	<datalist id="purposes"><option value="프로젝트"><option value="부트캠프"><option value="연구용"><option value="재택근무용"><option value="교육용"><option value="서버용"></datalist>
 
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
+	<script>$(function() { hrDriveGear('EQUIP'); }); // 드라이브 폴더·파일 이름 규칙 ⚙</script>
 
 	<script>
 	var TYPE = hrCodeMap('EQP_TYPE');

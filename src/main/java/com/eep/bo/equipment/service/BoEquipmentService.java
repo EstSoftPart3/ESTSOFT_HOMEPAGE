@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.eep.bo.batch.service.GoogleDriveApi;
+import com.eep.bo.my.DriveConfService;
 import com.eep.bo.staff.service.StaffDriveService;
 import com.eep.mapper.BoEquipmentMapper;
 import com.eep.mapper.BoStaffMapper;
@@ -44,7 +45,6 @@ public class BoEquipmentService {
 	private static final Pattern IMAGE = Pattern.compile("^data:image/(png|jpeg);base64,[A-Za-z0-9+/=]+$");
 	private static final long MAX_FILE = 20L * 1024 * 1024;
 	private static final int MAX_IMAGE = 700 * 1024;
-	private static final String FOLDER_ROOT = "3. 장비 관리", FOLDER_SIGN = "03. 대여증서", FOLDER_RECEIPT = "01. 구매영수증", FOLDER_ETC = "04. 장비첨부";
 
 	/** 기존 장비대여증서 양식의 법령 인용과 동의 문구 원문 */
 	static final String LAW_TEXT = "형법 [시행 2010.10.16] [법률 제10259호, 2010. 4.15, 일부개정]\n"
@@ -63,6 +63,8 @@ public class BoEquipmentService {
 	private GoogleDriveApi drive;
 	@Autowired
 	private StaffDriveService staffDrive;
+	@Autowired
+	private DriveConfService driveConf;
 
 	private TransactionTemplate tx;
 
@@ -214,7 +216,7 @@ public class BoEquipmentService {
 
 	public void uploadFile(Object eqpSq, String doc, String name, String mime, byte[] data, String loginId) {
 		if (!"RECEIPT".equals(doc) && !"ETC".equals(doc)) throw new IllegalArgumentException("첨부 종류가 올바르지 않습니다.");
-		Map<String, Object> file = upload(name, mime, data, "RECEIPT".equals(doc) ? FOLDER_RECEIPT : FOLDER_ETC);
+		Map<String, Object> file = upload(name, mime, data, driveConf.get("EQUIP", "RECEIPT".equals(doc) ? "RECEIPT" : "ETC"));
 		Map<String, Object> p = one("EQP_SQ", eqpSq);
 		p.put("DOC_CD", doc);
 		p.put("FILE_ID", file.get("id"));
@@ -228,16 +230,23 @@ public class BoEquipmentService {
 		mapper.deleteFile(param);
 	}
 
-	/** 직원 서류와 같은 드라이브 연결을 쓴다. 폴더는 연결 계정이 볼 수 있는 '3. 장비 관리' 아래에 둔다 */
+	/** 요청한 관리자의 내 연동 드라이브로 올린다. 폴더·이름은 장비대장 ⚙(DriveConfService EQUIP) */
 	private Map<String, Object> upload(String name, String mime, byte[] data, String sub) {
 		if (data == null || data.length == 0) throw new IllegalArgumentException("파일이 비어 있습니다.");
 		if (data.length > MAX_FILE) throw new IllegalArgumentException("20MB 이하 파일만 올릴 수 있습니다.");
-		String token = staffDrive.token();
-		List<Map<String, Object>> roots = drive.search("mimeType = '" + GoogleDriveApi.FOLDER + "' and trashed = false and name = '" + FOLDER_ROOT + "'", token);
-		if (roots.isEmpty()) throw new IllegalArgumentException("내 연동 드라이브 계정에서 '" + FOLDER_ROOT + "' 폴더를 찾지 못했습니다. 내 구글 계정에 그 폴더 편집 권한이 있는지 확인해 주세요.");
+		String token = staffDrive.token(), rootName = driveConf.get("EQUIP", "ROOT");
+		List<Map<String, Object>> roots = drive.search("mimeType = '" + GoogleDriveApi.FOLDER + "' and trashed = false and name = '" + rootName.replace("\\", "\\\\").replace("'", "\\'") + "'", token);
+		if (roots.isEmpty()) throw new IllegalArgumentException("내 연동 드라이브 계정에서 '" + rootName + "' 폴더를 찾지 못했습니다. 내 구글 계정에 그 폴더 편집 권한이 있는지 확인해 주세요.");
 		String parent = (String) roots.get(0).get("id"), folder = drive.childFolderId(parent, sub, token);
 		if (folder == null) folder = drive.createFolder(sub, parent, token);
-		return drive.upload(name == null || name.isEmpty() ? "file" : name, mime == null || mime.isEmpty() ? "application/octet-stream" : mime, data, folder, token);
+		String original = name == null || name.isEmpty() ? "file" : name;
+		int dot = original.lastIndexOf('.');
+		Map<String, String> v = new java.util.HashMap<>();
+		v.put("원래이름", dot > 0 ? original.substring(0, dot) : original);
+		v.put("올린날짜", java.time.LocalDate.now().toString().replace("-", ""));
+		String stored = DriveConfService.render(driveConf.get("EQUIP", "FILE"), v);
+		stored = (stored.isEmpty() ? v.get("원래이름") : stored) + (dot > 0 ? original.substring(dot) : "");
+		return drive.upload(stored, mime == null || mime.isEmpty() ? "application/octet-stream" : mime, data, folder, token);
 	}
 
 	// ── 전수조사 ──
@@ -336,7 +345,7 @@ public class BoEquipmentService {
 
 	public void uploadSigned(String group, String name, String mime, byte[] data, String loginId, String ip) {
 		groupRows(group);
-		Map<String, Object> file = upload(name, mime, data, FOLDER_SIGN);
+		Map<String, Object> file = upload(name, mime, data, driveConf.get("EQUIP", "SIGN"));
 		Map<String, Object> p = one("RENT_GROUP", group);
 		p.put("SIGN_TP", "UPLOAD");
 		p.put("FILE_ID", file.get("id"));

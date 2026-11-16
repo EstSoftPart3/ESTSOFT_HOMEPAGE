@@ -49,6 +49,8 @@ public class BoHrServiceImpl implements BoHrService {
 	private BoEquipmentMapper eqpMapper;
 	@Autowired
 	private BoStaffService staffService;
+	@Autowired
+	private com.eep.bo.staff.service.StaffDriveService staffDrive;
 
 	private TransactionTemplate tx;
 
@@ -90,11 +92,23 @@ public class BoHrServiceImpl implements BoHrService {
 
 	@Override
 	public boolean TraineeFromIntv(Map<String, Object> param) {
-		return tx.execute(s -> {
+		boolean ok = tx.execute(s -> {
 			if (BoHrDao.TraineeFromIntv(param) == 0) return false;
 			staffMapper.insertWaitFromTrainee(param); // 교육진행중으로 들어오므로 대기 카드를 만든다(INTV_SQ 로 찾음)
 			return true;
 		});
+		// 드라이브 '1. 대기자 관리/(0000.00.00) 이름'. 실패해도 등록은 그대로, 안내 문구만 돌려준다
+		if (ok) param.put("DRIVE_NOTE", staffDrive.traineeCreated(hrMapper.selectPersonName(param)));
+		return ok;
+	}
+
+	/** 교육생 상태가 바뀐 뒤 드라이브 폴더: 새 교육생이면 대기자 관리에 만들고, 교육종료·중도이탈이면 퇴사자 관리로 옮긴다 */
+	private void traineeDrive(Map<String, Object> param, String from, String to) {
+		if (to.equals(from)) return;
+		String name = hrMapper.selectPersonName(param);
+		if (name == null) return;
+		if (from == null && "ING".equals(to)) param.put("DRIVE_NOTE", staffDrive.traineeCreated(name));
+		else if ("END".equals(to) || "DROP".equals(to)) param.put("DRIVE_NOTE", staffDrive.traineeLeft(name));
 	}
 
 	@Override
@@ -120,6 +134,7 @@ public class BoHrServiceImpl implements BoHrService {
 			syncStaff(param.get("TRN_SQ"), from, str(param, "STATUS_CD"), param);
 			return null;
 		});
+		traineeDrive(param, from, str(param, "STATUS_CD"));
 	}
 
 	@Override
@@ -159,6 +174,7 @@ public class BoHrServiceImpl implements BoHrService {
 			syncStaff(param.get("TRN_SQ"), from, value, param);
 			return null;
 		});
+		traineeDrive(param, from, value);
 	}
 
 	/** 교육생 상태가 바뀌면 직원관리 대기 카드를 맞춘다. 교육종료·중도이탈은 대기 카드의 대여 장비를 반납하고, 중도이탈은 대기 카드를 지운다 */

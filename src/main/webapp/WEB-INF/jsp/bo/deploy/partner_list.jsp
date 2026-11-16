@@ -106,6 +106,7 @@
 	</div>
 
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
+	<script>$(function() { hrDriveGear('PARTNER'); }); // 드라이브 폴더·파일 이름 규칙 ⚙</script>
 
 	<script>
 	var BIZ = [['PARTNER_NM', '상호 *', 3], ['BIZ_NO', '사업자등록번호', 3], ['CEO_NM', '대표자', 3], ['OPEN_DT', '개업일', 3, 'date'], ['ADDR', '사업장 주소', 6], ['BIZ_TYPE', '업태', 3], ['BIZ_ITEM', '종목', 3], ['USE_YN', '사용', 3, { values: { Y: '사용', N: '사용 중지' } }]];

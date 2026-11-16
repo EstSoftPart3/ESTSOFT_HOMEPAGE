@@ -130,8 +130,13 @@ public class BoStaffController {
 	public ModelAndView saveStaffFieldData(@RequestParam Map<String, Object> param, HttpSession session) {
 		try {
 			param.put("UPDT_EMPLY_ID", loginId(session));
+			// 재직 상태가 바뀌면 드라이브 사람 폴더도 옮긴다(퇴사 → 퇴사자 관리, 대기 → 재직은 교육생 폴더 이동, 재입사는 새 폴더)
+			boolean status = "STATUS_CD".equals(param.get("FIELD"));
+			String before = status ? String.valueOf(BoStaffService.one(param.get("STAFF_SQ")).get("STATUS_CD")) : null;
 			BoStaffService.fieldSave(param);
-			return json("result", "OK");
+			ModelAndView mv = json("result", "OK");
+			if (status) mv.addObject("driveNote", StaffDriveService.statusChanged(param.get("STAFF_SQ"), before, String.valueOf(param.get("VALUE"))));
+			return mv;
 		} catch (IllegalArgumentException e) {
 			return json("error", e.getMessage());
 		}
@@ -141,7 +146,11 @@ public class BoStaffController {
 	public ModelAndView insertStaffData(@RequestParam Map<String, Object> param, HttpSession session) {
 		try {
 			param.put("UPDT_EMPLY_ID", loginId(session));
-			return json("STAFF_SQ", BoStaffService.insert(param));
+			Object sq = BoStaffService.insert(param);
+			ModelAndView mv = json("STAFF_SQ", sq);
+			// 직원 등록 때 드라이브 사람 폴더를 바로 만든다(대기 카드면 대기자 관리, 프리랜서는 계약직 관리)
+			mv.addObject("driveNote", "WAIT".equals(param.get("STATUS_CD")) ? null : StaffDriveService.staffCreated(sq));
+			return mv;
 		} catch (IllegalArgumentException e) {
 			return json("error", e.getMessage());
 		}

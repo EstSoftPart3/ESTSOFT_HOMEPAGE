@@ -70,10 +70,63 @@ function hrMemoBtn(api, sq, cnt, title, changed) {
 		});
 }
 
+// ── 화면별 드라이브 설정 ⚙ (회사 공통, 서버 DriveConfService). 그 화면 권한이 있는 사람에게만 버튼이 생긴다 ──
+function hrDriveGear(screen) {
+	$.post('/admin/my/driveConfData.do', { screen: screen }, function(res) {
+		if (!res || !res.result) return;
+		var $b = $('<button type="button" class="btn btn-sm btn-outline-secondary hr-drive-gear ml-auto">').html('<i class="fas fa-cog" aria-hidden="true"></i> 드라이브 설정')
+			.on('click', function() { hrDriveConf(screen); });
+		$('.content-wrapper .card-header').first().addClass('d-flex align-items-center').append($b);
+	});
+}
+
+function hrDriveConf(screen) {
+	hrPost('/admin/my/driveConfData.do', { screen: screen }, function(res) {
+		var $f = $('<div>');
+		res.result.fields.forEach(function(f) {
+			var id = 'dc_' + f.KEY;
+			var $in = $('<input class="form-control form-control-sm" autocomplete="off">').attr({ id: id, name: f.KEY, maxlength: 300 }).val(f.VALUE)
+				.attr('placeholder', f.KIND === 'folder' ? (f.DEFAULT || '드라이브 폴더 주소를 붙여넣기') : '기본: ' + (f.DEFAULT || '(없음)'));
+			var $g = $('<div class="form-group mb-2">').append($('<label class="small font-weight-bold mb-1">').attr('for', id).text(f.LABEL)).append($in);
+			if (f.TOKENS) {
+				var $chips = $('<div class="mt-1">');
+				f.TOKENS.split(',').forEach(function(t) {
+					$chips.append($('<button type="button" class="btn btn-xs btn-outline-info mr-1">').text(t).attr('aria-label', f.LABEL + '에 ' + t + ' 넣기').on('click', function() {
+						var el = $in[0], s = el.selectionStart == null ? el.value.length : el.selectionStart;
+						if (!el.value) el.value = f.DEFAULT;
+						else el.value = el.value.slice(0, s) + t + el.value.slice(el.selectionEnd == null ? s : el.selectionEnd);
+						el.focus();
+					}));
+				});
+				$g.append($chips);
+			}
+			$f.append($g);
+		});
+		$f.append('<div class="small text-muted">빈 칸은 기본값을 씁니다. 바꾸면 새로 올리거나 옮기는 것부터 적용되고, 이미 있는 파일·폴더는 그대로입니다. 회사 공통 설정이라 누가 올려도 같은 규칙을 씁니다.</div>');
+		bootbox.dialog({ title: res.result.title + ' · 드라이브 설정', message: $f, size: 'large', onEscape: true, buttons: {
+			cancel: { label: '취소', className: 'btn-sm btn-outline-secondary' },
+			ok: { label: '저장', className: 'btn-sm btn-primary', callback: function() {
+				var data = { screen: screen };
+				$f.find('input[name]').each(function() { data[this.name] = this.value; });
+				hrPost('/admin/my/saveDriveConfData.do', data, function() { bootbox.hideAll(); hrToast('드라이브 설정을 저장했습니다.'); });
+				return false;
+			} }
+		} });
+	});
+}
+
+// 오른쪽 아래에 잠깐 뜨는 알림(드라이브 폴더 처리 결과 등)
+function hrToast(msg) {
+	var $t = $('#hrToast');
+	if (!$t.length) $t = $('<div id="hrToast" role="status" aria-live="polite">').css({ position: 'fixed', right: '18px', bottom: '18px', zIndex: 2000, background: '#222', color: '#fff', fontSize: '13px', padding: '8px 14px', borderRadius: '6px', maxWidth: '420px', display: 'none' }).appendTo('body');
+	$t.text(msg).stop(true, true).fadeIn(100).delay(4000).fadeOut(400);
+}
+
 function hrPost(url, data, done, failed) {
 	$.post(url, data, function(res) {
 		// [연동 필요:…] 는 include_bottom 의 boNeedLink 가 안내하고 내 연동으로 보낸다
 		if (res.error) { if (res.error.indexOf('[연동 필요:') !== 0) bootbox.alert(res.error); if (failed) failed(); return; }
+		if (res.driveNote) hrToast(res.driveNote); // 드라이브 폴더 만들기·옮기기 결과
 		// 교육종료·중도이탈 전에 반납할 장비가 있으면 목록으로 확인받고 반납 승인(RETURN_YN=Y)을 붙여 다시 보낸다
 		if (res.needReturn) {
 			hrConfirmReturn(res.needReturn, function() {

@@ -67,7 +67,7 @@ public class BoHrController {
 		if (!BoHrService.TraineeFromIntv(param)) {
 			return json("error", "이미 교육생으로 등록된 면접자입니다.");
 		}
-		return json("result", "OK");
+		return withNote(json("result", "OK"), param);
 	}
 
 	@RequestMapping(value = "/admin/hr/traineeListData.do", method = RequestMethod.POST)
@@ -82,7 +82,7 @@ public class BoHrController {
 		try {
 			param.put("UPDT_EMPLY_ID", loginId(session));
 			BoHrService.TraineeSave(param);
-			return json("result", "OK");
+			return withNote(json("result", "OK"), param);
 		} catch (BoHrService.NeedReturn e) {
 			return json("needReturn", e.rents);
 		} catch (IllegalArgumentException e) {
@@ -95,7 +95,7 @@ public class BoHrController {
 		try {
 			param.put("UPDT_EMPLY_ID", loginId(session));
 			BoHrService.TraineeFieldSave(param);
-			return json("result", "OK");
+			return withNote(json("result", "OK"), param);
 		} catch (BoHrService.NeedReturn e) {
 			return json("needReturn", e.rents);
 		} catch (IllegalArgumentException e) {
@@ -146,6 +146,12 @@ public class BoHrController {
 	private static ModelAndView json(String key, Object value) {
 		ModelAndView mv = new ModelAndView("jsonView");
 		mv.addObject(key, value);
+		return mv;
+	}
+
+	/** 드라이브 폴더 처리 안내(서비스가 param 의 DRIVE_NOTE 에 남긴 것). 화면은 hrPost 가 알림으로 보인다 */
+	private static ModelAndView withNote(ModelAndView mv, Map<String, Object> param) {
+		if (param.get("DRIVE_NOTE") != null) mv.addObject("driveNote", param.get("DRIVE_NOTE"));
 		return mv;
 	}
 }

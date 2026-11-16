@@ -275,6 +275,7 @@
 	<div id="copyToast" role="status" aria-live="polite"></div>
 
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
+	<script>$(function() { hrDriveGear('STAFF'); }); // 드라이브 폴더·파일 이름 규칙 ⚙</script>
 	<script src="/resources/common/staff-career.js?v=20261116"></script>
 
 	<script>

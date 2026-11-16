@@ -28,6 +28,12 @@ public class BoMyController {
 
 	@Autowired
 	private GoogleLinkService link;
+	@Autowired
+	private DriveConfService driveConf;
+	@Autowired
+	private com.eep.bo.system.service.BoSystemService systemService;
+	@Autowired
+	private com.eep.bo.batch.service.BoBatchService batch;
 
 	@RequestMapping("/admin/my/openGoogleLink.do")
 	public ModelAndView openGoogleLink() {
@@ -86,6 +92,54 @@ public class BoMyController {
 			return fail + "fail";
 		}
 		return back != null ? "redirect:" + back : "redirect:/admin/my/openGoogleLink.do?svc=" + svc + "&result=ok";
+	}
+
+	// ── 화면별 드라이브 설정(각 화면 ⚙). 그 화면을 열 수 있는 사람만 보고 고친다 ──
+
+	@RequestMapping(value = "/admin/my/driveConfData.do", method = RequestMethod.POST)
+	public ModelAndView driveConfData(@RequestParam("screen") String screen) {
+		try {
+			canEdit(screen);
+			return json("result", driveConf.view(screen));
+		} catch (IllegalArgumentException e) {
+			return json("error", e.getMessage());
+		}
+	}
+
+	@RequestMapping(value = "/admin/my/saveDriveConfData.do", method = RequestMethod.POST)
+	public ModelAndView saveDriveConfData(@RequestParam("screen") String screen, @RequestParam Map<String, Object> param) {
+		try {
+			canEdit(screen);
+			driveConf.save(screen, param);
+			return json("result", "OK");
+		} catch (IllegalArgumentException e) {
+			return json("error", e.getMessage());
+		}
+	}
+
+	private void canEdit(String screen) {
+		if (!systemService.access(GoogleLinkService.currentUser()).allows(DriveConfService.page(screen))) {
+			throw new IllegalArgumentException("이 화면의 드라이브 설정을 고칠 권한이 없습니다.");
+		}
+	}
+
+	// ── 구글 앱(OAuth 클라이언트) 설정. 슈퍼관리자만. 저장 검사는 예전 배치 화면 것 그대로 ──
+
+	@RequestMapping(value = "/admin/my/googleClientData.do", method = RequestMethod.POST)
+	public ModelAndView googleClientData() {
+		if (!systemService.access(GoogleLinkService.currentUser()).superUser) return json("error", "슈퍼관리자만 볼 수 있습니다.");
+		return json("result", batch.driveStatus());
+	}
+
+	@RequestMapping(value = "/admin/my/saveGoogleClientData.do", method = RequestMethod.POST)
+	public ModelAndView saveGoogleClientData(@RequestParam(value = "clientId", defaultValue = "") String clientId, @RequestParam(value = "clientSecret", defaultValue = "") String clientSecret) {
+		if (!systemService.access(GoogleLinkService.currentUser()).superUser) return json("error", "슈퍼관리자만 고칠 수 있습니다.");
+		try {
+			batch.saveDriveConf(clientId, clientSecret);
+			return json("result", batch.driveStatus());
+		} catch (IllegalArgumentException e) {
+			return json("error", e.getMessage());
+		}
 	}
 
 	@RequestMapping(value = "/admin/my/googleUnlinkData.do", method = RequestMethod.POST)

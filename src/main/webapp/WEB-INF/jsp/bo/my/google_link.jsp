@@ -46,17 +46,15 @@
 					<div id="glNeed" class="gl-need" hidden></div>
 					<div id="glCards" class="gl-cards"></div>
 					<c:if test="${superUser}">
-					<details class="gl-admin mt-4">
-						<summary>관리자 설정 안내 (구글 클라우드 콘솔, 처음 한 번)</summary>
-						<ol class="mt-2">
-							<li>console.cloud.google.com → 지금 쓰는 프로젝트 → <b>API 및 서비스 → 사용자 인증 정보</b> → 쓰고 있는 OAuth 클라이언트</li>
-							<li>「승인된 리디렉션 URI」에 <code id="glRedirect"></code> 가 있는지 확인(예전부터 등록된 주소, 없으면 추가하고 저장)</li>
-							<li><b>OAuth 동의 화면 → 대상</b>: 게시 상태가 '테스트'면 연결할 직원 구글 메일을 「테스트 사용자」에 추가(최대 100명). 전 직원이 쓰려면 「앱 게시」</li>
-							<li><b>API 라이브러리</b>에서 Google Drive API · Google Calendar API 가 「사용」인지 확인</li>
-							<li>클라이언트 ID·시크릿은 <a href="/admin/batch/openInterviewBatch.do">배치 &gt; 신입면접</a> 화면에서 넣습니다(모든 내 연동 공통)</li>
-							<li>직원 서류·연구일지는 각자 계정으로 같은 회사 폴더에 올리므로, 연결하는 사람의 구글 계정에 '2. 인사관리' 등 폴더 편집 권한이 있어야 합니다</li>
-						</ol>
-					</details>
+					<div class="gl-admin mt-4" id="glClient">
+						<div class="font-weight-bold mb-2">구글 앱 설정 · 슈퍼관리자만</div>
+						<div class="form-row" style="max-width:780px">
+							<div class="col-md-6 mb-2"><label for="glClientId" class="small font-weight-bold mb-1">OAuth 클라이언트 ID</label><input id="glClientId" class="form-control form-control-sm" autocomplete="off"></div>
+							<div class="col-md-4 mb-2"><label for="glClientSecret" class="small font-weight-bold mb-1">클라이언트 시크릿</label><input id="glClientSecret" class="form-control form-control-sm" autocomplete="off"></div>
+							<div class="col-md-2 mb-2 d-flex align-items-end"><button type="button" class="btn btn-sm btn-primary btn-block" id="glClientSave">저장</button></div>
+						</div>
+						<div class="small text-muted">비운 칸은 지금 값을 그대로 둡니다. 구글 콘솔 리디렉션 URI: <code id="glRedirect"></code> · 앱이 '테스트' 상태면 연결할 사람의 구글 메일을 「테스트 사용자」에 넣어야 합니다. 폴더·파일 이름 규칙은 각 화면의 ⚙ 드라이브 설정에서 정합니다.</div>
+					</div>
 					</c:if>
 				</div>
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
@@ -85,6 +83,14 @@
 	$(function() {
 		// 도움말 가이드는 '연결이 안 되나요?'를 누를 때만. 기능 화면에서 넘어왔으면 그 서비스, 아니면 드라이브
 		$('#glHelp').on('click', function() { guide(SVC[focusSvc] ? focusSvc : 'DRIVE'); });
+		// 구글 앱 설정(슈퍼관리자): 저장값은 가려서 안내문으로만 보여 준다
+		if ($('#glClient').length) {
+			var client = function(d) { $('#glClientId').val('').attr('placeholder', d.clientMask || '미설정'); $('#glClientSecret').val('').attr('placeholder', d.secretMask || '미설정'); };
+			hrPost('/admin/my/googleClientData.do', {}, function(res) { client(res.result); });
+			$('#glClientSave').on('click', function() {
+				hrPost('/admin/my/saveGoogleClientData.do', { clientId: $('#glClientId').val(), clientSecret: $('#glClientSecret').val() }, function(res) { client(res.result); hrToast('구글 앱 설정을 저장했습니다.'); });
+			});
+		}
 		$('#glRedirect').text(location.origin.replace(/^http:/, 'https:') + '/admin/batch/driveCallback.do');
 		if (q.get('need') && SVC[focusSvc]) $('#glNeed').prop('hidden', false).text(SVC[focusSvc].nm + ' 연동이 필요한 기능입니다. 아래에서 연결하면 하던 화면으로 돌아갑니다.');
 		var msg = { ok: '연결했습니다.', fail: '연결하지 못했습니다. 다시 시도해 주세요.', denied: '구글에서 연결을 취소했습니다.',

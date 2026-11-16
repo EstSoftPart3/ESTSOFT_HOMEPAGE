@@ -74,6 +74,12 @@
 		last = { box: box, key: key, idx: idx };
 	});
 })();
+// 왼쪽 계정 아래 구글 연동 줄의 '해제'
+function boGoogleOff(svc, nm) {
+	bootbox.confirm(nm + ' 연결을 해제할까요? 이 연결을 쓰는 기능은 다시 연결할 때까지 동작하지 않습니다.', function(ok) {
+		if (ok) $.post('/admin/my/googleUnlinkData.do', { svc: svc }, function() { location.reload(); });
+	});
+}
 // 구글을 쓰는 기능이 '[연동 필요:DRIVE] …' 오류를 주면 내 연동으로 보낸다. 연결하고 나면 지금 화면으로 돌아온다
 function boNeedLink(msg) {
 	var m = /^\[연동 필요:(\w+)\]\s*/.exec(msg || '');

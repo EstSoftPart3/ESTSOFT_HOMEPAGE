@@ -46,6 +46,9 @@ public class boLoggerInterceptor extends HandlerInterceptorAdapter {
 	@Autowired
 	private SecretFilter secretFilter;
 
+	@Autowired
+	private com.eep.bo.my.GoogleLinkService googleLink;
+
 	@SuppressWarnings("unchecked")
 	private static String loginId(Object loginInfo) {
 		List<Map<String, Object>> list = (List<Map<String, Object>>) ((Map<String, Object>) loginInfo).get("loginInfo");
@@ -121,6 +124,10 @@ public class boLoggerInterceptor extends HandlerInterceptorAdapter {
 		}
 		request.setAttribute("boMenus", access.tree);
 		request.setAttribute("superUser", access.superUser);
+		// 왼쪽 계정 아래 구글 연동 줄(include_left): 서비스 → 연결한 계정 메일
+		Map<String, String> google = new java.util.HashMap<>();
+		for (Map<String, Object> l : googleLink.links(loginId(obj))) google.put(String.valueOf(l.get("SERVICE_CD")), l.get("ACCOUNT") == null ? "연결됨" : String.valueOf(l.get("ACCOUNT")));
+		request.setAttribute("boGoogle", google);
 
 		if (log.isDebugEnabled()) {
 			log.debug(

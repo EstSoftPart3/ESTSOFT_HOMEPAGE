@@ -87,6 +87,24 @@ public class GoogleDriveApi {
 		return multipart("{\"name\":" + jsonStr(name) + ",\"parents\":[" + jsonStr(parentId) + "]}", mimeType, data, token);
 	}
 
+	/** PATCH 는 기본 요청기가 못 보내 Apache HttpClient 요청기로 따로 둔다 */
+	private final RestTemplate patchRest = new RestTemplate(new org.springframework.http.client.HttpComponentsClientHttpRequestFactory());
+
+	/** 폴더·파일을 다른 폴더로 옮기고 name 이 있으면 이름도 바꾼다 */
+	@SuppressWarnings("unchecked")
+	public void move(String fileId, String newParentId, String name, String token) {
+		List<String> parents = (List<String>) file(fileId, token).get("parents");
+		StringBuilder url = new StringBuilder(API_URL + "/files/" + enc(fileId) + "?supportsAllDrives=true&fields=id");
+		if (newParentId != null && (parents == null || !parents.contains(newParentId))) {
+			url.append("&addParents=").append(enc(newParentId));
+			if (parents != null && !parents.isEmpty()) url.append("&removeParents=").append(enc(String.join(",", parents)));
+		}
+		HttpHeaders headers = auth(token);
+		headers.set("Content-Type", "application/json; charset=UTF-8");
+		byte[] body = (name == null ? "{}" : "{\"name\":" + jsonStr(name) + "}").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+		patchRest.exchange(URI.create(url.toString()), HttpMethod.PATCH, new HttpEntity<byte[]>(body, headers), Map.class);
+	}
+
 	/** 파일을 바로 지운다(휴지통을 거치지 않는다) */
 	public void delete(String fileId, String token) {
 		rest.exchange(URI.create(API_URL + "/files/" + enc(fileId) + "?supportsAllDrives=true"), HttpMethod.DELETE, new HttpEntity<Void>(auth(token)), Void.class);

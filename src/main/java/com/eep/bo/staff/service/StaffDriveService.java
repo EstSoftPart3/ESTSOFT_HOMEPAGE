@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.eep.bo.batch.service.GoogleDriveApi;
+import com.eep.bo.my.DriveConfService;
 import com.eep.bo.my.GoogleLinkService;
 import com.eep.mapper.BoStaffMapper;
 
@@ -22,12 +23,12 @@ import common.util.RrnCipher;
 
 /**
  * 직원 서류를 구글 드라이브 '2. 인사관리' 폴더에 올리고, 글자를 읽어 인사카드 빈 칸을 채운다.
- * 폴더: 2. 인사관리 / <구분 폴더> / (yyyy.MM.dd) 성명 / 00. 입사관련서류 / 성명_서류명.확장자
+ * 폴더: 2. 인사관리 / <구분 폴더> / (yyyy.MM.dd) 성명 / 00. 입사관련서류 / 성명_서류명.확장자 — 이름은 모두 직원관리 ⚙(DriveConfService STAFF) 로 바꿀 수 있다.
+ * 단계가 바뀌면 폴더를 만들고 옮긴다: 교육생 → 1. 대기자 관리 '(0000.00.00) 이름', 중도이탈 → 퇴사자 관리, 직원 등록 → 소속 구분 폴더 '(입사일) 이름', 퇴사 → 퇴사자 관리, 재입사 → 새 폴더.
  */
 @Service
 public class StaffDriveService {
 
-	static final String DOCS_FOLDER = "00. 입사관련서류";
 	private static final long MAX_BYTES = 20L * 1024 * 1024;
 	private static final Pattern READABLE = Pattern.compile("^(image/|application/pdf)");
 	private static final java.util.Set<String> PARSEABLE = new java.util.HashSet<>(java.util.Arrays.asList("DOC_BANK", "DOC_ID", "DOC_REG", "DOC_GRAD", "DOC_MIL"));
@@ -41,14 +42,12 @@ public class StaffDriveService {
 		for (String[] x : d) DOC_NAMES.put(x[0], x[1]);
 	}
 
-	/** 구글드라이브 '2. 인사관리' 폴더 ID. 공개 저장소라 config/db.properties 에 둔다 */
-	@Value("${staff.drive.root:}")
-	private String rootId;
-
 	@Autowired
 	private GoogleDriveApi drive;
 	@Autowired
 	private GoogleLinkService link;
+	@Autowired
+	private DriveConfService conf;
 	@Autowired
 	private BoStaffMapper mapper;
 	@Autowired
@@ -70,11 +69,13 @@ public class StaffDriveService {
 		return link.accessToken(GoogleLinkService.DRIVE);
 	}
 
+	/** 최상위 '2. 인사관리' 폴더(직원관리 ⚙, 기본은 db.properties staff.drive.root) */
 	private String root() {
-		if (!hasText(rootId)) {
-			throw new IllegalArgumentException("db.properties 의 staff.drive.root 가 비어 있습니다.");
+		String id = conf.get("STAFF", "ROOT");
+		if (!hasText(id)) {
+			throw new IllegalArgumentException("직원관리 ⚙ 드라이브 설정에서 최상위 폴더를 먼저 정해 주세요.");
 		}
-		return rootId;
+		return id;
 	}
 
 	// ── 폴더 ──
@@ -85,12 +86,12 @@ public class StaffDriveService {
 		if (hasText(saved)) {
 			return saved;
 		}
-		String name = str(staff.get("STAFF_NM"));
+		String name = str(staff.get("STAFF_NM")), left = conf.get("STAFF", "LEFT");
+		boolean isLeft = "LEFT".equals(str(staff.get("STATUS_CD")));
 		List<Map<String, Object>> groups = new ArrayList<>();
-		for (Map<String, Object> f : drive.children(root(), token)) {
-			if (GoogleDriveApi.FOLDER.equals(f.get("mimeType")) && str(f.get("name")).matches("^\\d+\\.\\s.*관리$")) {
-				groups.add(f);
-			}
+		for (Map<String, Object> g : groups(token)) {
+			// 재입사한 사람이 퇴사자 관리의 예전 폴더를 다시 잡지 않게, 퇴사자 폴더는 퇴사 상태일 때만 찾는다
+			if (!left.equals(g.get("name")) || isLeft) groups.add(g);
 		}
 		String id = null;
 		if (!groups.isEmpty()) {
@@ -100,24 +101,39 @@ public class StaffDriveService {
 			id = pickPersonFolder(drive.search(q.toString(), token), name, str(staff.get("JOIN_DT")));
 		}
 		if (id == null) {
-			String group = groupFolderName(str(staff.get("STATUS_CD")), str(staff.get("ORG_NM")));
-			String groupId = null;
-			for (Map<String, Object> g : groups) if (group.equals(g.get("name"))) groupId = str(g.get("id"));
-			if (groupId == null) {
-				groupId = drive.createFolder(group, root(), token);
-			}
-			id = drive.createFolder(personFolderName(name, str(staff.get("JOIN_DT"))), groupId, token);
+			// 대기(교육생) 카드는 입사 전이라 '(0000.00.00) 이름'
+			String folderName = "WAIT".equals(str(staff.get("STATUS_CD"))) ? traineeName(name) : personName(staff);
+			id = drive.createFolder(folderName, groupId(groupFolderName(str(staff.get("STATUS_CD")), str(staff.get("ORG_NM"))), token), token);
 		}
+		saveFolder(staff.get("STAFF_SQ"), id);
+		return id;
+	}
+
+	/** 최상위 아래 '…관리' 구분 폴더들 */
+	private List<Map<String, Object>> groups(String token) {
+		List<Map<String, Object>> groups = new ArrayList<>();
+		for (Map<String, Object> f : drive.children(root(), token)) {
+			if (GoogleDriveApi.FOLDER.equals(f.get("mimeType")) && str(f.get("name")).endsWith("관리")) groups.add(f);
+		}
+		return groups;
+	}
+
+	/** 이름이 같은 구분 폴더 ID. 없으면 만든다 */
+	private String groupId(String group, String token) {
+		for (Map<String, Object> g : groups(token)) if (group.equals(g.get("name"))) return str(g.get("id"));
+		return drive.createFolder(group, root(), token);
+	}
+
+	private void saveFolder(Object staffSq, String id) {
 		Map<String, Object> p = new HashMap<>();
-		p.put("STAFF_SQ", staff.get("STAFF_SQ"));
+		p.put("STAFF_SQ", staffSq);
 		p.put("DRIVE_FOLDER_ID", id);
 		mapper.updateStaffFolder(p);
-		return id;
 	}
 
 	/** 이름이 '(yyyy.MM.dd) 성명' 으로 시작하는 폴더. 입사일이 같은 것을 먼저 고른다 */
 	static String pickPersonFolder(List<Map<String, Object>> folders, String name, String joinDt) {
-		String exact = personFolderName(name, joinDt), any = null;
+		String exact = "(" + dot(joinDt) + ") " + name, any = null;
 		Pattern p = Pattern.compile("^\\(\\d{4}\\.\\d{2}\\.\\d{2}\\)\\s*" + Pattern.quote(name) + "(?![가-힣]).*");
 		for (Map<String, Object> f : folders) {
 			String n = str(f.get("name"));
@@ -127,27 +143,130 @@ public class StaffDriveService {
 		return any;
 	}
 
-	static String personFolderName(String name, String joinDt) {
-		String d = joinDt != null && joinDt.matches("\\d{4}-\\d{2}-\\d{2}") ? joinDt.replace('-', '.') : LocalDate.now().toString().replace('-', '.');
-		return "(" + d + ") " + name;
+	static String dot(String date) {
+		return date != null && date.matches("\\d{4}-\\d{2}-\\d{2}") ? date.replace('-', '.') : LocalDate.now().toString().replace('-', '.');
 	}
 
-	/** 새로 만들 사람 폴더의 구분 폴더. 엑셀 소속 기준 */
-	static String groupFolderName(String status, String org) {
-		if ("LEFT".equals(status)) return "4. 퇴사자 관리";
-		if (org.matches("정규직|반정규")) return "2. 정규직 관리";
-		if (org.matches("계약직|인턴|알바")) return "3. 계약직 관리";
+	/** 직원 폴더 이름(⚙ 규칙, 기본 '({입사일}) {성명}') */
+	private String personName(Map<String, Object> staff) {
+		Map<String, String> v = new HashMap<>();
+		v.put("성명", str(staff.get("STAFF_NM")));
+		v.put("입사일", dot(str(staff.get("JOIN_DT"))));
+		return DriveConfService.render(conf.get("STAFF", "PERSON"), v);
+	}
+
+	private String traineeName(String name) {
+		Map<String, String> v = new HashMap<>();
+		v.put("성명", name);
+		return DriveConfService.render(conf.get("STAFF", "TRAINEE"), v);
+	}
+
+	/** 새로 만들 사람 폴더의 구분 폴더. 인사카드 소속 기준. 정규·계약·퇴사는 ⚙ 이름, 영업지원·외부인원은 그대로 */
+	String groupFolderName(String status, String org) {
+		if ("LEFT".equals(status)) return conf.get("STAFF", "LEFT");
+		if ("WAIT".equals(status)) return conf.get("STAFF", "WAIT");
+		if (org.matches("정규직|반정규")) return conf.get("STAFF", "REG");
+		if (org.matches("계약직|인턴|알바") || org.startsWith("프리")) return conf.get("STAFF", "CON");
 		if (org.equals("영업")) return "7. 영업지원 관리";
 		return "5. 외부인원 관리";
 	}
 
 	private String docsFolder(String personId, String token) {
+		String docs = conf.get("STAFF", "DOCS");
 		for (Map<String, Object> f : drive.children(personId, token)) {
-			if (GoogleDriveApi.FOLDER.equals(f.get("mimeType")) && DOCS_FOLDER.equals(f.get("name"))) return str(f.get("id"));
+			if (GoogleDriveApi.FOLDER.equals(f.get("mimeType")) && docs.equals(f.get("name"))) return str(f.get("id"));
 		}
-		return drive.createFolder(DOCS_FOLDER, personId, token);
+		return drive.createFolder(docs, personId, token);
 	}
 
+	// ── 단계가 바뀔 때 폴더 만들기·옮기기. 드라이브가 안 돼도 업무 처리는 막지 않고 안내 문구만 돌려준다(null 이면 할 말 없음) ──
+
+	/** 면접자 → 교육생: 대기자 관리에 '(0000.00.00) 이름' */
+	public String traineeCreated(String name) {
+		return safe("교육생 폴더", () -> {
+			String token = token(), wait = conf.get("STAFF", "WAIT"), folder = traineeName(name);
+			String g = groupId(wait, token);
+			if (drive.childFolderId(g, folder, token) == null) drive.createFolder(folder, g, token);
+			return "드라이브 '" + wait + "/" + folder + "' 폴더를 만들었습니다.";
+		});
+	}
+
+	/** 교육생 중도이탈·교육종료: 대기자 관리의 그 폴더를 퇴사자 관리로 */
+	public String traineeLeft(String name) {
+		return safe("교육생 폴더", () -> {
+			String token = token(), folder = traineeName(name);
+			String id = drive.childFolderId(groupId(conf.get("STAFF", "WAIT"), token), folder, token);
+			if (id == null) return null;
+			drive.move(id, groupId(conf.get("STAFF", "LEFT"), token), null, token);
+			return "드라이브 '" + folder + "' 폴더를 '" + conf.get("STAFF", "LEFT") + "' 로 옮겼습니다.";
+		});
+	}
+
+	/** 직원 등록: 교육생 폴더(대기자·퇴사자 관리)가 있으면 소속 구분 폴더로 옮기고 '(입사일) 이름' 으로, 없으면 새로 만든다 */
+	public String staffCreated(Object staffSq) {
+		return staffCreated(staffSq, true);
+	}
+
+	/** reuseTrainee=false 는 재입사: 예전 폴더는 두고 새로 만든다 */
+	private String staffCreated(Object staffSq, boolean reuseTrainee) {
+		return safe("직원 폴더", () -> {
+			Map<String, Object> staff = staff(staffSq);
+			String token = token(), folder = traineeName(str(staff.get("STAFF_NM")));
+			String group = groupFolderName(str(staff.get("STATUS_CD")), str(staff.get("ORG_NM"))), target = groupId(group, token), name = personName(staff);
+			// 대기 카드가 이미 잡아 둔 폴더가 있으면 그것을, 없으면 대기자·퇴사자 관리에서 '(0000.00.00) 이름' 을 찾는다
+			String id = reuseTrainee ? str(staff.get("DRIVE_FOLDER_ID")) : null;
+			if (reuseTrainee && !hasText(id)) id = drive.childFolderId(groupId(conf.get("STAFF", "WAIT"), token), folder, token);
+			if (reuseTrainee && id == null) id = drive.childFolderId(groupId(conf.get("STAFF", "LEFT"), token), folder, token);
+			if (!hasText(id)) id = null;
+			String msg;
+			if (id != null) {
+				drive.move(id, target, name, token);
+				msg = "교육생 폴더를 '" + group + "/" + name + "' 로 옮겼습니다.";
+			} else {
+				id = drive.childFolderId(target, name, token);
+				if (id == null) id = drive.createFolder(name, target, token);
+				msg = "드라이브 '" + group + "/" + name + "' 폴더를 만들었습니다.";
+			}
+			saveFolder(staffSq, id);
+			return msg;
+		});
+	}
+
+	/** 재직 상태가 바뀔 때: 퇴사면 퇴사자 관리로 옮기고, 퇴사에서 돌아오면(재입사) 예전 폴더는 두고 새로 만든다 */
+	public String statusChanged(Object staffSq, String before, String after) {
+		if (before == null || before.equals(after)) return null;
+		if ("LEFT".equals(after)) {
+			return safe("퇴사자 폴더", () -> {
+				Map<String, Object> staff = staff(staffSq);
+				String token = token(), left = conf.get("STAFF", "LEFT");
+				String id = personFolder(staff, token);
+				drive.move(id, groupId(left, token), null, token);
+				return "드라이브 사람 폴더를 '" + left + "' 로 옮겼습니다.";
+			});
+		}
+		if ("LEFT".equals(before)) {
+			saveFolder(staffSq, null);
+			return staffCreated(staffSq, false);
+		}
+		// 대기(교육생) → 재직: 교육생 폴더를 소속 구분 폴더로 옮기고 '(입사일) 이름' 으로
+		if ("WAIT".equals(before) && "WORK".equals(after)) return staffCreated(staffSq);
+		return null;
+	}
+
+	private interface DriveStep {
+		String run() throws Exception;
+	}
+
+	private static String safe(String what, DriveStep step) {
+		try {
+			return step.run();
+		} catch (GoogleLinkService.NeedLink e) {
+			return what + "는 만들지 못했습니다(내 연동 드라이브 없음). 처리는 끝났고, 폴더는 서류를 올릴 때 다시 맞춥니다.";
+		} catch (Exception e) {
+			System.out.println("STAFF_DRIVE_LIFECYCLE " + e.getClass().getSimpleName() + " " + e.getMessage());
+			return what + " 처리에 실패했습니다(" + e.getClass().getSimpleName() + "). 처리는 끝났고, 폴더는 서류를 올릴 때 다시 맞춥니다.";
+		}
+	}
 	// ── 서류 ──
 
 	public List<Map<String, Object>> docs(Object staffSq) {
@@ -163,7 +282,11 @@ public class StaffDriveService {
 		String token = token();
 		String folder = docsFolder(personFolder(staff, token), token);
 		String ext = fileName != null && fileName.lastIndexOf('.') > 0 ? fileName.substring(fileName.lastIndexOf('.')).toLowerCase() : "";
-		String base = str(staff.get("STAFF_NM")) + "_" + DOC_NAMES.get(doc);
+		Map<String, String> v = new HashMap<>();
+		v.put("성명", str(staff.get("STAFF_NM")));
+		v.put("서류명", DOC_NAMES.get(doc));
+		v.put("올린날짜", LocalDate.now().toString().replace("-", ""));
+		String base = DriveConfService.render(conf.get("STAFF", "FILE"), v);
 		boolean taken = false;
 		for (Map<String, Object> f : drive.children(folder, token)) if ((base + ext).equals(f.get("name"))) taken = true;
 		String name = taken ? base + "_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm")) + ext : base + ext;
@@ -175,12 +298,12 @@ public class StaffDriveService {
 	public Map<String, Object> scan(Object staffSq) {
 		Map<String, Object> staff = staff(staffSq);
 		String token = token();
-		String person = personFolder(staff, token);
+		String person = personFolder(staff, token), docs = conf.get("STAFF", "DOCS");
 		List<Map<String, Object>> files = new ArrayList<>();
 		for (Map<String, Object> f : drive.children(person, token)) {
 			if (GoogleDriveApi.FOLDER.equals(f.get("mimeType"))) {
-				if (DOCS_FOLDER.equals(f.get("name"))) {
-					for (Map<String, Object> d : drive.children(str(f.get("id")), token)) addScanned(files, d, DOCS_FOLDER + "/");
+				if (docs.equals(f.get("name"))) {
+					for (Map<String, Object> d : drive.children(str(f.get("id")), token)) addScanned(files, d, docs + "/");
 				}
 				continue;
 			}
@@ -244,7 +367,9 @@ public class StaffDriveService {
 	public Map<String, Object> uploadCareerWord(Object staffSq, byte[] data) {
 		Map<String, Object> staff = staff(staffSq);
 		String token = token();
-		String folder = personFolder(staff, token), name = str(staff.get("STAFF_NM")) + "_이력카드(시스템).docx";
+		Map<String, String> v = new HashMap<>();
+		v.put("성명", str(staff.get("STAFF_NM")));
+		String folder = personFolder(staff, token), name = DriveConfService.render(conf.get("STAFF", "WORD"), v) + ".docx";
 		List<String> old = new ArrayList<>();
 		for (Map<String, Object> f : drive.children(folder, token)) if (name.equals(f.get("name"))) old.add(str(f.get("id")));
 		Map<String, Object> file = drive.upload(name, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", data, folder, token);
