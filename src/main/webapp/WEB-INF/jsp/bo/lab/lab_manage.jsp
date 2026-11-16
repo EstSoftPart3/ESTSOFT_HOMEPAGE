@@ -13,6 +13,11 @@
 	.bar-MEMBER { background: #7dbbdc; }
 	.lab-legend i { display: inline-block; width: 18px; height: 12px; margin: 0 5px 0 12px; }
 	.lab-pick { max-height: 220px; overflow-y: auto; }
+	/* 연구원 상세: 소속 기간 */
+	.lab-cnt { display: inline-block; min-width: 22px; text-align: center; border-radius: 10px; background: #0a4a78; color: #fff; font-size: 12px; padding: 0 6px; }
+	.lab-gap td { text-align: center; font-size: 12px; color: #495057; background: repeating-linear-gradient(45deg, #fafbfc, #fafbfc 6px, #f1f3f5 6px, #f1f3f5 12px); }
+	.lab-period-edit td { background: #f5fbfd; }
+	.lab-period-edit input, .lab-period-edit select { min-width: 120px; }
 	/* 결재라인: 넓은 화면은 한 줄, 좁은 화면은 위아래 카드 */
 	.lab-appr { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 	.lab-appr .ar { display: grid; grid-template-columns: auto 64px minmax(110px, 160px) minmax(160px, 240px) 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #ced4da; border-radius: 8px; background: #fff; }
@@ -94,7 +99,6 @@
 					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
 				</div>
 				<div class="modal-body">
-					<input type="hidden" id="RSCH_SQ">
 					<div class="form-group"><label for="pickSearch">직원 검색 (직원관리)</label><input type="search" id="pickSearch" class="form-control form-control-sm" placeholder="성명 또는 부서"></div>
 					<div class="table-responsive lab-pick mb-3">
 						<table class="table table-sm cal-table mb-0">
@@ -113,6 +117,19 @@
 					<button type="submit" class="btn btn-sm btn-primary">저장</button>
 				</div>
 			</form>
+		</div>
+	</div>
+
+	<div class="modal fade" id="rschModal" tabindex="-1" role="dialog" aria-labelledby="rschTitle" aria-hidden="true">
+		<div class="modal-dialog modal-lg" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="rschTitle">연구원</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
+				</div>
+				<div class="modal-body" id="rschBody"></div>
+				<div class="modal-footer"><button type="button" class="btn btn-sm btn-outline-secondary" data-dismiss="modal">닫기</button></div>
+			</div>
 		</div>
 	</div>
 
@@ -181,15 +198,91 @@
 		return $('<a target="_blank" rel="noopener">인사카드 열기</a>').attr('href', '/admin/staff/openStaffList.do?STAFF_SQ=' + sq);
 	}
 
+	function today() { return new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); }
+	function roleName(cd) { return ROLE[cd] || { HEAD: '연구소장', MEMBER: '연구원' }[cd] || cd; }
+	function isActive(p) { return !p.END_DT || p.END_DT >= today(); }
+
+	/** 같은 직원의 소속 기간(연구원 행)을 한 사람으로 묶는다. 기간은 최근 순 */
+	function persons() {
+		var by = {}, out = [];
+		detail.researchers.forEach(function(r) {
+			if (!by[r.STAFF_SQ]) out.push(by[r.STAFF_SQ] = { STAFF_SQ: r.STAFF_SQ, STAFF_NM: r.STAFF_NM, DEPT_NM: r.DEPT_NM, periods: [] });
+			by[r.STAFF_SQ].periods.push(r);
+		});
+		out.forEach(function(p) { p.periods.sort(function(a, b) { return a.START_DT < b.START_DT ? 1 : a.START_DT > b.START_DT ? -1 : 0; }); p.now = p.periods[0]; });
+		return out.sort(function(a, b) { return (isActive(b.now) - isActive(a.now)) || a.STAFF_NM.localeCompare(b.STAFF_NM); });
+	}
+
 	function drawMembers($b) {
 		$b.append(actions(['연구원 등록', function() { openMember(); }]));
-		var $t = $('<tbody>');
-		if (!detail.researchers.length) boEmpty($t, '등록된 연구원이 없습니다.');
-		detail.researchers.forEach(function(r) {
-			$('<tr>').append($('<td>').append($('<a href="#" class="lab-open">').text(r.STAFF_NM).click(function(e) { e.preventDefault(); openMember(r); })), $('<td>').text(r.DEPT_NM || ''),
-				$('<td>').text(ROLE[r.ROLE_CD] || r.ROLE_CD), $('<td>').text(r.START_DT), $('<td>').text(r.END_DT || '소속 중'), $('<td>').append(cardLink(r.STAFF_SQ))).appendTo($t);
+		var $t = $('<tbody>'), list = persons();
+		if (!list.length) boEmpty($t, '등록된 연구원이 없습니다.');
+		list.forEach(function(p) {
+			var on = isActive(p.now);
+			$('<tr>').append($('<td>').append($('<a href="#" class="lab-open">').text(p.STAFF_NM).click(function(e) { e.preventDefault(); openPerson(p.STAFF_SQ); })), $('<td>').text(p.DEPT_NM || ''),
+				$('<td>').text(roleName(p.now.ROLE_CD)),
+				$('<td>').append($('<span class="lab-pill">').toggleClass('APPROVED', on).text(on ? '소속 중' : '종료'), ' ', on ? p.now.START_DT + ' ~' : '~ ' + p.now.END_DT),
+				$('<td>').append($('<span class="lab-cnt">').text(p.periods.length)), $('<td>').append(cardLink(p.STAFF_SQ))).appendTo($t);
 		});
-		$b.append($('<div class="table-responsive">').append($('<table class="table table-sm table-hover cal-table mb-0"><thead><tr><th>성명</th><th>부서</th><th>역할</th><th>소속 시작일</th><th>소속 종료일</th><th>직원관리</th></tr></thead></table>').append($t)));
+		$b.append($('<div class="table-responsive">').append($('<table class="table table-sm table-hover cal-table mb-0"><thead><tr><th>성명</th><th>부서</th><th>현재 역할</th><th>현재 상태</th><th>소속 기간</th><th>직원관리</th></tr></thead></table>').append($t)));
+	}
+
+	// ── 연구원 상세: 소속 기간을 표에서 바로 추가·수정 ──
+	var personSq = null, editing = null;
+
+	function openPerson(sq) {
+		personSq = sq;
+		editing = null;
+		drawPerson();
+		$('#rschModal').modal('show');
+	}
+
+	function dayAdd(d, n) { var x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); }
+
+	function drawPerson() {
+		var p = persons().filter(function(x) { return String(x.STAFF_SQ) === String(personSq); })[0];
+		if (!p) { $('#rschModal').modal('hide'); return; }
+		$('#rschTitle').empty().append($('<span>').text(p.STAFF_NM), ' ', $('<small class="text-muted">').text(p.DEPT_NM || ''), ' ', cardLink(p.STAFF_SQ).addClass('small ml-2'));
+		var $t = $('<tbody>'), rows = editing && !editing.RSCH_SQ ? [editing].concat(p.periods) : p.periods;
+		rows.forEach(function(r, i) {
+			var next = rows[i + 1];
+			$t.append(editing && editing === r || editing && r.RSCH_SQ && editing.RSCH_SQ === r.RSCH_SQ ? periodEditRow(editing) : periodRow(r));
+			// 기간 사이 공백(앞 기간 종료 다음 날 ~ 다음 기간 시작 전날)
+			if (next && next.END_DT && r.START_DT && dayAdd(next.END_DT, 1) < r.START_DT) {
+				var from = dayAdd(next.END_DT, 1), to = dayAdd(r.START_DT, -1);
+				var months = (Number(to.slice(0, 4)) - Number(from.slice(0, 4))) * 12 + Number(to.slice(5, 7)) - Number(from.slice(5, 7)) + 1;
+				$t.append($('<tr class="lab-gap">').append($('<td colspan="4">').text('공백 ' + from + ' ~ ' + to + ' (' + months + '개월)')));
+			}
+		});
+		$('#rschBody').empty().append(
+			$('<div class="table-responsive">').append($('<table class="table table-sm cal-table mb-2"><thead><tr><th>역할</th><th>소속 시작일</th><th>소속 종료일</th><th></th></tr></thead></table>').append($t)),
+			$('<button type="button" class="lab-add">+ 소속 기간 추가</button>').prop('disabled', !!editing).click(function() { editing = { STAFF_SQ: p.STAFF_SQ, ROLE_CD: p.now.ROLE_CD, START_DT: '', END_DT: '' }; drawPerson(); $('#rschBody input[type=date]').first().focus(); }),
+			$('<p class="small text-muted mt-2 mb-0">').text('다른 기간과 겹치면 저장되지 않습니다. 연구원 → 연구소장처럼 역할이 바뀌면 기간을 하나 더 넣어 나눕니다.'));
+	}
+
+	function periodRow(r) {
+		return $('<tr>').append($('<td>').text(roleName(r.ROLE_CD)), $('<td>').text(r.START_DT), $('<td>').text(r.END_DT || '소속 중'),
+			$('<td class="text-right">').append($('<button type="button" class="btn btn-sm btn-outline-secondary">수정</button>').prop('disabled', !!editing).click(function() { editing = $.extend({}, r); drawPerson(); })));
+	}
+
+	function periodEditRow(r) {
+		var $role = $('<select class="form-control form-control-sm" aria-label="역할">');
+		Object.keys($.isEmptyObject(ROLE) ? { MEMBER: 1, HEAD: 1 } : ROLE).forEach(function(cd) { $role.append($('<option>').val(cd).text(roleName(cd))); });
+		$role.val(r.ROLE_CD || 'MEMBER').on('change', function() { r.ROLE_CD = this.value; });
+		var $s = $('<input type="date" class="form-control form-control-sm" aria-label="소속 시작일">').val(r.START_DT).on('change', function() { r.START_DT = this.value; });
+		var $e = $('<input type="date" class="form-control form-control-sm" aria-label="소속 종료일 (비우면 소속 중)">').val(r.END_DT || '').on('change', function() { r.END_DT = this.value; });
+		return $('<tr class="lab-period-edit">').append($('<td>').append($role), $('<td>').append($s), $('<td>').append($e),
+			$('<td class="text-right text-nowrap">').append($('<button type="button" class="btn btn-sm btn-primary">저장</button>').click(function() { savePeriod(r, $(this)); }), ' ',
+				$('<button type="button" class="btn btn-sm btn-outline-secondary">취소</button>').click(function() { editing = null; drawPerson(); })));
+	}
+
+	function savePeriod(r, $btn) {
+		$btn.prop('disabled', true);
+		hrPost('/admin/lab/saveResearcherData.do', { TEAM_SQ: detail.team.TEAM_SQ, RSCH_SQ: r.RSCH_SQ || '', STAFF_SQ: r.STAFF_SQ, ROLE_CD: r.ROLE_CD, START_DT: r.START_DT, END_DT: r.END_DT || '' }, function() {
+			editing = null;
+			toast('소속 기간을 저장했습니다');
+			reload(drawPerson);
+		}, function() { $btn.prop('disabled', false); });
 	}
 
 	function drawTimeline($b) {
@@ -204,16 +297,18 @@
 		months.forEach(function(m, i) { $('<th class="m">').toggleClass('now', m === thisYm).text((i + 1) + '월').appendTo($h); });
 		$h.append('<th style="width:180px;">소속 기간</th>');
 		var $t = $('<tbody>');
-		var rows = detail.researchers.filter(function(r) { return r.START_DT.slice(0, 4) <= String(year) && (!r.END_DT || r.END_DT.slice(0, 4) >= String(year)); })
-			.sort(function(a, b) { return (a.START_DT > b.START_DT) - (a.START_DT < b.START_DT); });
+		// 한 사람 한 줄. 기간이 여러 개면 막대가 끊겨 공백이 보인다
+		function inYear(r) { return r.START_DT.slice(0, 4) <= String(year) && (!r.END_DT || r.END_DT.slice(0, 4) >= String(year)); }
+		var rows = persons().filter(function(p) { return p.periods.some(inYear); })
+			.sort(function(a, b) { var x = a.periods[a.periods.length - 1].START_DT, y = b.periods[b.periods.length - 1].START_DT; return x < y ? -1 : x > y ? 1 : 0; });
 		if (!rows.length) boEmpty($t, '이 해에 소속된 연구원이 없습니다.');
-		rows.forEach(function(r) {
-			var $r = $('<tr>').append($('<td>').append($('<b>').text(r.STAFF_NM)));
+		rows.forEach(function(p) {
+			var $r = $('<tr>').append($('<td>').append($('<b>').text(p.STAFF_NM)));
 			months.forEach(function(m) {
-				var on = r.START_DT.slice(0, 7) <= m && (!r.END_DT || r.END_DT.slice(0, 7) >= m);
-				$('<td class="c">').append(on ? $('<div>').addClass('bar-' + r.ROLE_CD) : '').appendTo($r);
+				var r = p.periods.filter(function(x) { return x.START_DT.slice(0, 7) <= m && (!x.END_DT || x.END_DT.slice(0, 7) >= m); })[0];
+				$('<td class="c">').append(r ? $('<div>').addClass('bar-' + r.ROLE_CD).attr('title', roleName(r.ROLE_CD)) : '').appendTo($r);
 			});
-			$r.append($('<td class="small">').text(r.START_DT + ' ~ ' + (r.END_DT || '소속 중'))).appendTo($t);
+			$r.append($('<td class="small">').text(p.periods.slice().reverse().map(function(x) { return x.START_DT + ' ~ ' + (x.END_DT || '소속 중'); }).join(' · '))).appendTo($t);
 		});
 		$b.append($('<div class="table-responsive">').append($('<table class="table table-sm cal-table mb-0 lab-tl">').append($('<thead>').append($h), $t)));
 	}
@@ -364,27 +459,35 @@
 		var q = $('#pickSearch').val().trim().toLowerCase(), $b = $('#pickBody').empty();
 		var list = staff.filter(function(s) { return String(s.STAFF_SQ) === String(picked) || (q && ((s.STAFF_NM || '') + ' ' + (s.DEPT_NM || '')).toLowerCase().indexOf(q) >= 0); }).slice(0, 30);
 		if (!list.length) boEmpty($b, '성명이나 부서로 검색해 주세요.');
+		// 이미 이 팀 연구원인 직원은 고를 수 없고 상세로 보낸다(재소속은 상세에서 기간 추가)
+		var registered = {};
+		detail.researchers.forEach(function(r) { registered[r.STAFF_SQ] = true; });
 		list.forEach(function(s) {
-			var $radio = $('<input type="radio" name="pick">').attr('aria-label', s.STAFF_NM + ' 선택').prop('checked', String(s.STAFF_SQ) === String(picked)).on('change', function() { picked = s.STAFF_SQ; });
-			$('<tr>').append($('<td>').append($radio), $('<td>').text(s.STAFF_NM + (s.STATUS_CD === 'LEFT' ? ' (퇴사)' : '')), $('<td>').text(s.DEPT_NM || ''), $('<td>').text(s.POSITION_NM || ''), $('<td>').append(cardLink(s.STAFF_SQ))).appendTo($b);
+			var done = registered[s.STAFF_SQ];
+			var $radio = $('<input type="radio" name="pick">').attr('aria-label', s.STAFF_NM + ' 선택').prop({ checked: !done && String(s.STAFF_SQ) === String(picked), disabled: !!done }).on('change', function() { picked = s.STAFF_SQ; });
+			var $last = done ? $('<td>').append('<span class="lab-pill">이미 등록됨</span> ', $('<a href="#">상세에서 기간 추가</a>').click(function(e) {
+				e.preventDefault();
+				$('#memberModal').one('hidden.bs.modal', function() { openPerson(s.STAFF_SQ); }).modal('hide');
+			})) : $('<td>').append(cardLink(s.STAFF_SQ));
+			$('<tr>').append($('<td>').append($radio), $('<td>').text(s.STAFF_NM + (s.STATUS_CD === 'LEFT' ? ' (퇴사)' : '')), $('<td>').text(s.DEPT_NM || ''), $('<td>').text(s.POSITION_NM || ''), $last).appendTo($b);
 		});
 	}
 
-	function openMember(r) {
-		$('#memberTitle').text(r ? '연구원 수정' : '연구원 등록');
-		picked = r ? r.STAFF_SQ : null;
+	/** 처음 한 번만: 직원을 고르고 첫 소속 기간을 넣는다 */
+	function openMember() {
+		picked = null;
 		$('#pickSearch').val('');
-		$('#RSCH_SQ').val(r ? r.RSCH_SQ : '');
-		$('#ROLE_CD').val(r ? r.ROLE_CD : 'MEMBER');
-		$('#START_DT').val(r ? r.START_DT : '');
-		$('#END_DT').val(r && r.END_DT || '');
+		$('#ROLE_CD').val('MEMBER');
+		$('#START_DT, #END_DT').val('');
 		drawPick();
 		$('#memberModal').modal('show');
 	}
 
 	function saveMember() {
-		hrPost('/admin/lab/saveResearcherData.do', { TEAM_SQ: detail.team.TEAM_SQ, RSCH_SQ: $('#RSCH_SQ').val(), STAFF_SQ: picked || '', ROLE_CD: $('#ROLE_CD').val(), START_DT: $('#START_DT').val(), END_DT: $('#END_DT').val() }, function() {
+		var sq = picked;
+		hrPost('/admin/lab/saveResearcherData.do', { TEAM_SQ: detail.team.TEAM_SQ, RSCH_SQ: '', STAFF_SQ: sq || '', ROLE_CD: $('#ROLE_CD').val(), START_DT: $('#START_DT').val(), END_DT: $('#END_DT').val() }, function() {
 			$('#memberModal').modal('hide');
+			toast('연구원을 등록했습니다');
 			reload();
 		});
 	}
