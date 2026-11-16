@@ -234,10 +234,15 @@ public class BoEquipmentService {
 	private Map<String, Object> upload(String name, String mime, byte[] data, String sub) {
 		if (data == null || data.length == 0) throw new IllegalArgumentException("파일이 비어 있습니다.");
 		if (data.length > MAX_FILE) throw new IllegalArgumentException("20MB 이하 파일만 올릴 수 있습니다.");
-		String token = staffDrive.token(), rootName = driveConf.get("EQUIP", "ROOT");
-		List<Map<String, Object>> roots = drive.search("mimeType = '" + GoogleDriveApi.FOLDER + "' and trashed = false and name = '" + rootName.replace("\\", "\\\\").replace("'", "\\'") + "'", token);
-		if (roots.isEmpty()) throw new IllegalArgumentException("내 연동 드라이브 계정에서 '" + rootName + "' 폴더를 찾지 못했습니다. 내 구글 계정에 그 폴더 편집 권한이 있는지 확인해 주세요.");
-		String parent = (String) roots.get(0).get("id"), folder = drive.childFolderId(parent, sub, token);
+		String token = staffDrive.token(), rootName = driveConf.get("EQUIP", "ROOT"), parent;
+		if (com.eep.bo.my.DriveConfService.isFolderId(rootName)) {
+			parent = rootName; // ⚙ 에서 폴더를 직접 고른 경우
+		} else {
+			List<Map<String, Object>> roots = drive.search("mimeType = '" + GoogleDriveApi.FOLDER + "' and trashed = false and name = '" + rootName.replace("\\", "\\\\").replace("'", "\\'") + "'", token);
+			if (roots.isEmpty()) throw new IllegalArgumentException("내 연동 드라이브 계정에서 '" + rootName + "' 폴더를 찾지 못했습니다. 장비대장 ⚙ 드라이브 설정에서 최상위 폴더를 골라 주세요.");
+			parent = (String) roots.get(0).get("id");
+		}
+		String folder = drive.childFolderId(parent, sub, token);
 		if (folder == null) folder = drive.createFolder(sub, parent, token);
 		String original = name == null || name.isEmpty() ? "file" : name;
 		int dot = original.lastIndexOf('.');

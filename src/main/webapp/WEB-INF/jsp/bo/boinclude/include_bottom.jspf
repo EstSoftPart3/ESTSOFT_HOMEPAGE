@@ -110,4 +110,5 @@ $(document).ajaxSuccess(function(e, xhr) {
 	$t.text(msg).stop(true, true).fadeIn(150).delay(4000).fadeOut(400);
 });
 </script>
+<%@ include file="/WEB-INF/jsp/bo/my/folder_pick.jspf"%>
 <%@ include file="/WEB-INF/jsp/bo/boinclude/include_guide.jspf"%>

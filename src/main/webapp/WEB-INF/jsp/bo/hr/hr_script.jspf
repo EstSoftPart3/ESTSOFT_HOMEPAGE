@@ -80,29 +80,95 @@ function hrDriveGear(screen) {
 	});
 }
 
+// 이름표 예시 값. 서버가 실제로 넣는 형식과 같다(입사일 점, 올린날짜 8자리, 연월 YYYY-MM)
+var HR_DRIVE_SAMPLE = { '성명': '홍길동', '입사일': '2026.03.02', '서류명': '주민등록등본', '올린날짜': '20261116', '원래이름': '노트북구매영수증', '연월': '2026-11', '과제명': 'AI 플랫폼 개발' };
+// 화면별로 실제 만들어지는 경로 예시: [제목, [칸 키 또는 '키+.확장자' 또는 '@고정 글자']]
+var HR_DRIVE_PATHS = {
+	STAFF: [['교육생 폴더', ['ROOT', 'WAIT', 'TRAINEE']], ['정규직 서류', ['ROOT', 'REG', 'PERSON', 'DOCS', 'FILE+.pdf']], ['계약직·프리 이력카드', ['ROOT', 'CON', 'PERSON', 'WORD+.docx']], ['퇴사자', ['ROOT', 'LEFT', 'PERSON']]],
+	EQUIP: [['구매영수증', ['ROOT', 'RECEIPT', 'FILE+.pdf']], ['기타 첨부', ['ROOT', 'ETC', 'FILE+.jpg']], ['서명한 대여증서', ['ROOT', 'SIGN', '@(서명한 증서 파일)']]],
+	LAB: [['마감 PDF', ['@(과제 폴더)', 'SUB', 'FILE+.pdf']]],
+	PARTNER: [['서류 글자 읽기', ['TEMP', '@(읽는 동안만 잠깐 생겼다 지워지는 파일)']]]
+};
+function hrDriveRender(pattern) {
+	return String(pattern || '').replace(/\{([^{}]+)\}/g, function(all, k) { return (HR_DRIVE_SAMPLE[k] || '').replace(/\//g, '·'); }).trim();
+}
+
 function hrDriveConf(screen) {
 	hrPost('/admin/my/driveConfData.do', { screen: screen }, function(res) {
-		var $f = $('<div>');
+		var $f = $('<div>'), folderName = {}, fields = {};
+		// 칸 하나의 지금 모습: 입력값, 비었으면 기본값. 폴더 칸은 고른 폴더 이름
+		function shown(key) {
+			var f = fields[key], v = $f.find('[name="' + key + '"]').val();
+			if (f.KIND === 'folder') return folderName[key] || '(' + f.LABEL + ')';
+			return hrDriveRender(v || f.DEFAULT);
+		}
+		function drawPaths() {
+			var $p = $f.find('.hr-dc-paths').empty();
+			(HR_DRIVE_PATHS[screen] || []).forEach(function(p) {
+				var parts = p[1].map(function(k) {
+					if (k.charAt(0) === '@') return k.substring(1);
+					var ext = k.indexOf('+') > 0 ? k.substring(k.indexOf('+') + 1) : '';
+					return shown(ext ? k.substring(0, k.indexOf('+')) : k) + ext;
+				});
+				$p.append($('<div class="hr-dc-path">').append($('<b>').text(p[0])).append($('<span>').text(parts.join(' › '))));
+			});
+		}
 		res.result.fields.forEach(function(f) {
-			var id = 'dc_' + f.KEY;
-			var $in = $('<input class="form-control form-control-sm" autocomplete="off">').attr({ id: id, name: f.KEY, maxlength: 300 }).val(f.VALUE)
-				.attr('placeholder', f.KIND === 'folder' ? (f.DEFAULT || '드라이브 폴더 주소를 붙여넣기') : '기본: ' + (f.DEFAULT || '(없음)'));
-			var $g = $('<div class="form-group mb-2">').append($('<label class="small font-weight-bold mb-1">').attr('for', id).text(f.LABEL)).append($in);
+			fields[f.KEY] = f;
+			var id = 'dc_' + f.KEY, $g = $('<div class="form-group mb-2">').append($('<label class="small font-weight-bold mb-1">').attr('for', id).text(f.LABEL));
+			if (f.KIND === 'folder') {
+				// 폴더 칸: 주소 대신 드라이브를 열어 고른다. 값은 폴더 ID, 화면엔 맨 위부터 경로
+				var $in = $('<input type="hidden">').attr({ id: id, name: f.KEY }).val(f.VALUE);
+				var $view = $('<span class="hr-dc-folder">').text('불러오는 중…');
+				var $pick = $('<button type="button" class="btn btn-sm btn-outline-primary">').text('폴더 고르기').attr('aria-label', f.LABEL + ' 고르기');
+				var $reset = $('<button type="button" class="btn btn-sm btn-link">').text('기본으로').prop('hidden', !f.VALUE);
+				var setView = function(path, nameOnly) {
+					if (path && path.length) { folderName[f.KEY] = path[path.length - 1].name; boPathView($view.empty(), path); }
+					else { folderName[f.KEY] = nameOnly || ''; $view.text(nameOnly ? '「' + nameOnly + '」 이름으로 찾음' : '아직 고르지 않음').toggleClass('text-warning', !nameOnly); }
+					drawPaths();
+				};
+				if (f.IS_ID) boFolderPath(f.EFFECTIVE, screen, function(p) { setView(p); }, function(err) { setView(null); boGoogleErr($('<div class="ib-alert mt-1">').insertAfter($g.find('.hr-dc-row')), err); });
+				else setView(null, f.EFFECTIVE);
+				$pick.on('click', function() {
+					boFolderPick({ title: f.LABEL + ' 고르기', screen: screen, current: $in.val() || (f.IS_ID ? f.EFFECTIVE : ''),
+						onPick: function(folder, path) { $in.val(folder.id); $reset.prop('hidden', false); setView(path); } });
+				});
+				$reset.on('click', function() {
+					$in.val(''); $reset.prop('hidden', true);
+					if (f.DEFAULT && !f.IS_ID) setView(null, f.DEFAULT); else $view.text('저장하면 기본 폴더로 돌아갑니다');
+				});
+				$g.append($('<div class="hr-dc-row">').append($view).append($('<span class="ml-auto">').append($reset).append($pick))).append($in);
+				$f.append($g);
+				return;
+			}
+			var $txt = $('<input class="form-control form-control-sm" autocomplete="off">').attr({ id: id, name: f.KEY, maxlength: 300 }).val(f.VALUE).attr('placeholder', '기본: ' + (f.DEFAULT || '(없음)'));
+			// 입력하는 대로 실제 이름 예시(비우면 기본값 기준)
+			var $ex = $('<div class="hr-dc-ex">');
+			var paintEx = function() { var r = hrDriveRender($txt.val() || f.DEFAULT); $ex.empty().append('예: ').append($('<b>').text(r || '(이름 없음)')); drawPaths(); };
+			$txt.on('input', paintEx);
+			$g.append($txt);
 			if (f.TOKENS) {
 				var $chips = $('<div class="mt-1">');
 				f.TOKENS.split(',').forEach(function(t) {
-					$chips.append($('<button type="button" class="btn btn-xs btn-outline-info mr-1">').text(t).attr('aria-label', f.LABEL + '에 ' + t + ' 넣기').on('click', function() {
-						var el = $in[0], s = el.selectionStart == null ? el.value.length : el.selectionStart;
+					var k = t.replace(/[{}]/g, '');
+					$chips.append($('<button type="button" class="btn btn-xs btn-outline-info mr-1">').text(t).attr({ title: '예: ' + HR_DRIVE_SAMPLE[k], 'aria-label': f.LABEL + '에 ' + t + ' 넣기 (예: ' + HR_DRIVE_SAMPLE[k] + ')' }).on('click', function() {
+						var el = $txt[0], s = el.selectionStart == null ? el.value.length : el.selectionStart;
 						if (!el.value) el.value = f.DEFAULT;
 						else el.value = el.value.slice(0, s) + t + el.value.slice(el.selectionEnd == null ? s : el.selectionEnd);
 						el.focus();
+						paintEx();
 					}));
 				});
+				$chips.append($('<span class="small text-muted">').text(f.TOKENS.split(',').map(function(t) { return t + ' = ' + HR_DRIVE_SAMPLE[t.replace(/[{}]/g, '')]; }).join(' · ')));
 				$g.append($chips);
 			}
+			$g.append($ex);
 			$f.append($g);
+			setTimeout(paintEx);
 		});
-		$f.append('<div class="small text-muted">빈 칸은 기본값을 씁니다. 바꾸면 새로 올리거나 옮기는 것부터 적용되고, 이미 있는 파일·폴더는 그대로입니다. 회사 공통 설정이라 누가 올려도 같은 규칙을 씁니다.</div>');
+		$f.append($('<div class="hr-dc-box">').append('<div class="small font-weight-bold mb-1">이렇게 만들어집니다 (예시 값: 홍길동, 입사일 2026.03.02)</div>').append('<div class="hr-dc-paths"></div>'));
+		$f.append('<div class="small text-muted mt-2">빈 칸은 기본값을 씁니다. 바꾸면 새로 올리거나 옮기는 것부터 적용되고, 이미 있는 파일·폴더는 그대로입니다. 회사 공통 설정이라 누가 올려도 같은 규칙을 씁니다.</div>');
+		// id 는 화면 가이드(EG.modals.hrDriveConf)가 이 창을 알아보는 데 쓴다
 		bootbox.dialog({ title: res.result.title + ' · 드라이브 설정', message: $f, size: 'large', onEscape: true, buttons: {
 			cancel: { label: '취소', className: 'btn-sm btn-outline-secondary' },
 			ok: { label: '저장', className: 'btn-sm btn-primary', callback: function() {
@@ -111,7 +177,7 @@ function hrDriveConf(screen) {
 				hrPost('/admin/my/saveDriveConfData.do', data, function() { bootbox.hideAll(); hrToast('드라이브 설정을 저장했습니다.'); });
 				return false;
 			} }
-		} });
+		} }).attr('id', 'hrDriveConf');
 	});
 }
 

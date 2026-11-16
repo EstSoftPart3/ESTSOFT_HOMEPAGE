@@ -14,26 +14,8 @@
 	.ib-v .p { color: #5f6b75; } .ib-v.none { color: #7a5600; font-weight: 600; } .ib-v.ok { color: #17692f; } .ib-v.bad { color: #a32020; font-weight: 600; }
 	.ib-chip { font-size: 11px; border-radius: 999px; padding: 1px 7px; background: #fff5dc; color: #7a5600; font-weight: 600; }
 	.ib-act { margin-left: auto; }
-	.ib-alert { background: #fdeaea; color: #8a1c1c; border-radius: 8px; padding: 8px 12px; font-size: 13px; margin: 2px 0 6px 36px; }
-	.ib-alert a { font-weight: 700; }
-	.ib-alert ol { font-size: 12.5px; } .ib-alert li { margin-bottom: 2px; }
+	#icalBody .ib-alert { margin: 2px 0 6px 36px; } /* 빨간 칸·고르기 창 모양은 공통 folder_pick.jspf */
 	.ib-saved { color: #17692f; font-size: 12px; font-weight: 700; }
-	/* 고르기 창 */
-	.pk-list { border: 1px solid rgba(17,17,17,.12); border-radius: 8px; max-height: 50vh; overflow-y: auto; }
-	.pk-it { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; border-bottom: 1px solid #f0f1f3; background: #fff; padding: 9px 12px; text-align: left; font-size: 13.5px; }
-	.pk-it:last-child { border-bottom: 0; }
-	.pk-it:hover, .pk-it:focus { background: #f6fbfd; }
-	.pk-it.on { background: #eef9fc; font-weight: 700; }
-	.pk-sw { width: 12px; height: 12px; border-radius: 3px; flex: none; background: #9aa4ac; }
-	.pk-meta { margin-left: auto; font-size: 12px; color: #5f6b75; font-weight: 400; }
-	.pk-crumb { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 13px; margin-bottom: 8px; }
-	.pk-crumb button { border: 0; background: none; padding: 0; color: #0b6e8a; font-weight: 600; }
-	.pk-crumb b { color: #1f2328; }
-	.pk-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
-	.pk-tabs button { border: 1px solid rgba(17,17,17,.12); background: #fff; border-radius: 999px; padding: 3px 12px; font-size: 12.5px; font-weight: 700; color: #5f6b75; }
-	.pk-tabs button[aria-pressed=true] { background: #111; color: #fff; border-color: #111; }
-	.pk-sel { font-size: 12.5px; background: #eef9fc; color: #0b6e8a; border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
-	.pk-empty { padding: 14px; color: #5f6b75; font-size: 13px; text-align: center; }
 </style>
 
 <body class="hold-transition sidebar-mini">
@@ -126,21 +108,6 @@
 				</div>
 			</div>
 		</div>
-		<div class="modal fade" id="folderPick" tabindex="-1" role="dialog" aria-labelledby="folderPickTitle" aria-hidden="true">
-			<div class="modal-dialog" role="document">
-				<div class="modal-content">
-					<div class="modal-header"><h5 class="modal-title" id="folderPickTitle">이력서 폴더 고르기</h5><button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button></div>
-					<div class="modal-body">
-						<div class="pk-tabs"><button type="button" data-mode="MY" aria-pressed="true">내 드라이브</button><button type="button" data-mode="SHARED" aria-pressed="false">공유 문서함</button></div>
-						<div class="pk-crumb" id="fdCrumb"></div>
-						<input type="search" id="fdFind" class="form-control form-control-sm mb-2" placeholder="폴더 이름 찾기(Enter) · 드라이브 폴더 주소를 붙여 넣어도 이동" aria-label="폴더 찾기 또는 주소">
-						<div class="pk-list" id="fdList"></div>
-						<div class="pk-sel" id="fdSel"></div>
-					</div>
-					<div class="modal-footer"><span class="small text-muted mr-auto">폴더를 누르면 들어가고, 위 경로를 누르면 올라갑니다</span><button type="button" class="btn btn-sm btn-outline-secondary" data-dismiss="modal">취소</button><button type="button" class="btn btn-sm btn-primary" id="fdOk" disabled>이 폴더로</button></div>
-				</div>
-			</div>
-		</div>
 	</c:if>
 
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/include_bottom.jspf"%>
@@ -188,25 +155,10 @@
 
 	// ── 시스템 관리자: 캘린더·폴더 고르기. 고르면 바로 저장 ──
 
-	// 구글 오류 안내 { code, msg, url } → 빨간 칸 내용. API 꺼짐이면 켜는 순서까지. 바깥 줄과 고르기 창이 같이 쓴다
-	function errBody($e, err, retry) {
-		$e.empty().append($('<div>').text(err.msg));
-		if (err.code === 'API_OFF') {
-			var $ol = $('<ol class="mb-1 mt-1 pl-3">').appendTo($e);
-			$ol.append($('<li>').append('앱 키를 만든 구글 계정(연결 계정과 다를 수 있음)으로 ')
-				.append($('<a target="_blank" rel="noopener">').attr('href', err.url).text('켜러 가기 ↗')).append(' 를 누릅니다.'));
-			$ol.append($('<li>').text('맨 위 프로젝트 이름이 앱 키를 만든 프로젝트인지 확인합니다(내 연동 1단계 앱 키 앞부분 = 콘솔 「사용자 인증 정보」의 클라이언트 ID).'));
-			$ol.append($('<li>').text('파란 「사용」 버튼을 누릅니다. 결제 정보는 필요 없습니다. 「관리」가 보이면 이미 켜진 것이니 프로젝트를 다시 확인합니다.'));
-			$ol.append($('<li>').text('1~2분 뒤 아래 「다시 시도」를 누릅니다.'));
-		} else if (err.code === 'NOLINK' || err.code === 'EXPIRED' || err.code === 'SCOPE') {
-			$e.append($('<a>').attr('href', '/admin/my/openGoogleLink.do?back=/admin/batch/openInterviewBatch.do').text('내 연동에서 연결 ›'));
-		}
-		if (retry) $e.append($('<div class="mt-1">').append($('<button type="button" class="btn btn-sm btn-outline-danger">').text('다시 시도').on('click', retry)));
-		return $e;
-	}
+	// 구글 오류 안내 칸은 공통 boGoogleErr(folder_pick.jspf)
 	function showErr(sel, err, retry) {
 		var $e = $(sel).prop('hidden', !err);
-		if (err) errBody($e, err, retry); else $e.empty();
+		if (err) boGoogleErr($e, err, retry); else $e.empty();
 	}
 
 	function loadSource(then) {
@@ -215,10 +167,7 @@
 			src = res;
 			showErr('#calErr', res.calendarError, function() { loadSource(); });
 			showErr('#folderErr', res.folderError, function() { loadSource(); });
-			if (res.folderPath && res.folderPath.length) {
-				var p = res.folderPath, $v = $('#srcFolder').empty().attr('class', 'ib-v');
-				$v.append($('<span class="p">').text(p.slice(0, -1).map(function(x) { return x.name; }).concat(['']).join(' › '))).append(document.createTextNode(p[p.length - 1].name));
-			}
+			if (res.folderPath && res.folderPath.length) boPathView($('#srcFolder').attr('class', 'ib-v'), res.folderPath);
 			if (then) then();
 		}, 'json');
 	}
@@ -248,7 +197,7 @@
 		$('#calPick').modal('show');
 		$('#calList').html('<div class="pk-empty">불러오는 중입니다.</div>');
 		loadSource(function() {
-			if (src.calendarError) { $('#calList').empty().append(errBody($('<div class="ib-alert m-0">'), src.calendarError, openCalPick)); return; }
+			if (src.calendarError) { $('#calList').empty().append(boGoogleErr($('<div class="ib-alert m-0">'), src.calendarError, openCalPick)); return; }
 			drawCals();
 		});
 	}
@@ -271,51 +220,12 @@
 	$(document).on('input', '#calFind', function() { if (src) drawCals(); });
 	$(document).on('click', '#calPickOk', function() { if (calPicked) saveSource({ calId: calPicked.id, calName: calPicked.summary }, '#calSaved'); });
 
-	// 폴더 창: 지금 들어와 있는 폴더(fd.path 의 끝)를 고른다
-	var fd = { mode: 'MY', parent: '', path: [] };
+	// 이력서 폴더: 공통 폴더 고르기 창(folder_pick.jspf). 지금 폴더 위치에서 연다
 	function openFolderPick() {
 		var p = src && src.folderPath;
-		fd = { mode: 'MY', parent: p && p.length ? p[p.length - 1].id : '', path: [] };
-		$('#fdFind').val('');
-		$('#folderPick').modal('show');
-		listFolders();
+		boFolderPick({ title: '이력서 폴더 고르기', current: p && p.length ? p[p.length - 1].id : '', onPick: function(f) { saveSource({ folder: f.id }, '#folderSaved'); } });
 	}
-	function listFolders(q) {
-		$('.pk-tabs button').each(function() { $(this).attr('aria-pressed', $(this).data('mode') === fd.mode); });
-		$('#fdList').html('<div class="pk-empty">불러오는 중입니다.</div>');
-		$.post('/admin/my/driveFoldersData.do', { parent: fd.parent, mode: fd.mode, q: q || '' }, function(res) {
-			if (res.error || res.googleError) { $('#fdList').empty().append(errBody($('<div class="ib-alert m-0">'), res.googleError || { msg: res.error }, function() { listFolders(q); })); return; }
-			fd.path = res.path || [];
-			drawCrumb(q);
-			var $l = $('#fdList').empty();
-			if (!res.result.length) $l.append($('<div class="pk-empty">').text(q ? '찾는 폴더가 없습니다.' : '하위 폴더가 없습니다.'));
-			res.result.forEach(function(f) {
-				$l.append($('<button type="button" class="pk-it">').append($('<span>').text('📁')).append($('<span>').text(f.name)).append($('<span class="pk-meta">').text('›'))
-					.attr('aria-label', f.name + ' 폴더 열기').on('click', function() { fd.parent = f.id; $('#fdFind').val(''); listFolders(); }));
-			});
-			var here = fd.path[fd.path.length - 1];
-			$('#fdSel').text(here ? '고를 폴더: ' + fd.path.map(function(x) { return x.name; }).join(' › ') + ' · 배치는 이 아래 년/월/일/이름 폴더에서 이력서를 찾습니다' : (q ? '찾은 폴더를 눌러 들어간 뒤 고르세요' : '폴더를 눌러 들어간 뒤 고르세요'));
-			$('#fdOk').prop('disabled', !here);
-		}, 'json').fail(function() { $('#fdList').html('<div class="pk-empty">폴더를 불러오지 못했습니다.</div>'); });
-	}
-	function drawCrumb(q) {
-		var $c = $('#fdCrumb').empty();
-		if (q) return $c.append($('<b>').text('「' + q + '」 찾은 결과'));
-		if (!fd.path.length) return $c.append($('<b>').text(fd.mode === 'SHARED' ? '공유 문서함' : '내 드라이브'));
-		fd.path.forEach(function(x, i) {
-			if (i) $c.append($('<span class="text-muted">').text('›'));
-			if (i === fd.path.length - 1) $c.append($('<b>').text(x.name));
-			else $c.append($('<button type="button">').text(x.name).on('click', function() { fd.parent = x.id; listFolders(); }));
-		});
-	}
-	$(document).on('click', '.pk-tabs button', function() { fd = { mode: $(this).data('mode'), parent: '', path: [] }; $('#fdFind').val(''); listFolders(); });
-	$(document).on('keydown', '#fdFind', function(e) {
-		if (e.key !== 'Enter' || e.originalEvent.isComposing) return;
-		e.preventDefault();
-		var v = $.trim(this.value), m = v.match(/\/folders\/([\w-]{10,})/) || v.match(/^([\w-]{25,})$/);
-		if (m) { fd.parent = m[1]; this.value = ''; listFolders(); } else listFolders(v);
-	});
-	$(document).on('click', '#fdOk', function() { var here = fd.path[fd.path.length - 1]; if (here) saveSource({ folder: here.id }, '#folderSaved'); });
+
 	function renderLog(list) {
 		if (!list || !list.length) return emptyRow('#logBody', 12, '아직 실행 이력이 없습니다.');
 		var $body = $('#logBody').empty();

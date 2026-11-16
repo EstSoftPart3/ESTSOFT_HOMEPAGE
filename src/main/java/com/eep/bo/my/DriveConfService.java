@@ -40,7 +40,8 @@ public class DriveConfService {
 			{ "WORD", "이력카드 워드 이름", "{성명}_이력카드(시스템)", "{성명}", "" } });
 		SCREENS.put("EQUIP", new String[] { "장비대장", "/admin/equipment/openEquipmentList.do" });
 		FIELDS.put("EQUIP", new String[][] {
-			{ "ROOT", "최상위 폴더 이름 (내 드라이브에서 이 이름으로 찾음)", "3. 장비 관리", "", "" },
+			// 예전엔 이름으로만 찾았다. 폴더를 고르면 ID 가 저장되고, 비우면 기본 이름으로 찾는다(BoEquipmentService.upload)
+			{ "ROOT", "최상위 폴더", "3. 장비 관리", "", "folder" },
 			{ "RECEIPT", "구매영수증 하위 폴더", "01. 구매영수증", "", "" },
 			{ "ETC", "기타 첨부 하위 폴더", "04. 장비첨부", "", "" },
 			{ "SIGN", "서명한 대여증서 하위 폴더", "03. 대여증서", "", "" },
@@ -81,6 +82,12 @@ public class DriveConfService {
 			r.put("KEY", f[0]); r.put("LABEL", f[1]); r.put("DEFAULT", f[2]); r.put("TOKENS", f[3]); r.put("KIND", f[4]);
 			String saved = confDao.ConfMap().get("DRIVE." + screen + "." + f[0]);
 			r.put("VALUE", saved == null ? "" : saved);
+			// 폴더 칸: 실제로 쓰는 값(저장값, 없으면 기본값). 폴더 ID 면 화면이 경로 이름을 찾아 보이고, 이름이면 '이름으로 찾음'
+			if ("folder".equals(f[4])) {
+				String eff = get(screen, f[0]);
+				r.put("EFFECTIVE", eff == null ? "" : eff);
+				r.put("IS_ID", isFolderId(eff));
+			}
 			rows.add(r);
 		}
 		Map<String, Object> out = new HashMap<>();
@@ -100,6 +107,7 @@ public class DriveConfService {
 			if ("folder".equals(f[4]) && !v.isEmpty()) {
 				Matcher m = FOLDER_URL.matcher(v);
 				if (m.find()) v = m.group(1);
+				else if (v.equals(confDao.ConfMap().get("DRIVE." + screen + "." + f[0]))) continue; // 예전 방식(폴더 이름)으로 저장된 값을 안 바꾼 채 저장
 				else if (!FOLDER_ID.matcher(v).matches()) throw new IllegalArgumentException(f[1] + ": 드라이브 폴더 주소를 붙여넣어 주세요.");
 			} else if (!v.isEmpty()) {
 				if (v.contains("/")) throw new IllegalArgumentException(f[1] + ": 이름에는 / 를 쓸 수 없습니다.");
@@ -110,6 +118,11 @@ public class DriveConfService {
 			}
 			confDao.ConfSave("DRIVE." + screen + "." + f[0], v);
 		}
+	}
+
+	/** 드라이브 폴더 ID 인지(이름이 아니라). 폴더 이름에는 보통 공백·점이 있고, ID 는 영문·숫자·_- 20자 이상 */
+	public static boolean isFolderId(String v) {
+		return v != null && v.length() >= 20 && FOLDER_ID.matcher(v).matches();
 	}
 
 	/** 그 화면을 열 수 있는 주소. 이 주소를 열 수 있는 사람만 고친다 */

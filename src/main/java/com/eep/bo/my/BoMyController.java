@@ -174,11 +174,21 @@ public class BoMyController {
 		return mv;
 	}
 
-	/** 이력서 폴더 고르기 창: parent 아래 폴더(없으면 내 드라이브 맨 위, SHARED 면 나와 공유됨), q 가 있으면 이름으로 찾기 */
+	/**
+	 * 폴더 고르기 창(공통 folder_pick.jspf): parent 아래 폴더(없으면 내 드라이브 맨 위, SHARED 면 나와 공유됨), q 가 있으면 이름으로 찾기.
+	 * 신입면접 배치는 시스템 관리자만, 각 화면 ⚙ 드라이브 설정은 그 화면(screen)을 고칠 수 있는 사람이 쓴다
+	 */
 	@RequestMapping(value = "/admin/my/driveFoldersData.do", method = RequestMethod.POST)
 	public ModelAndView driveFoldersData(@RequestParam(value = "parent", defaultValue = "") String parent, @RequestParam(value = "mode", defaultValue = "MY") String mode,
-			@RequestParam(value = "q", defaultValue = "") String q) {
-		if (!superUser()) return json("error", "시스템 관리자만 볼 수 있습니다.");
+			@RequestParam(value = "q", defaultValue = "") String q, @RequestParam(value = "screen", defaultValue = "") String screen) {
+		if (!superUser()) {
+			if (screen.isEmpty()) return json("error", "시스템 관리자만 볼 수 있습니다.");
+			try {
+				canEdit(screen);
+			} catch (IllegalArgumentException e) {
+				return json("error", e.getMessage());
+			}
+		}
 		try {
 			String token = link.accessToken(GoogleLinkService.COMPANY, GoogleLinkService.DRIVE);
 			String text = q.trim(), at = parent.trim().isEmpty() ? ("SHARED".equals(mode) ? null : "root") : parent.trim();

@@ -54,6 +54,12 @@
 	td[data-tone=warn] { background: #fff5dc; color: #7a5600; }
 	td[data-tone=info] { background: #e5f1fb; color: #165a8f; }
 	td[data-tone=mute] { background: #f0f1f3; color: #5c6168; }
+	/* ⚙ 드라이브 설정 창: 폴더 칸(경로 + 고르기), 이름 예시, 만들어지는 경로 */
+	.hr-dc-row { display: flex; align-items: center; gap: 8px; border: 1px solid #ced4da; border-radius: 6px; padding: 5px 8px; background: #fafbfc; }
+	.hr-dc-folder { font-size: 13px; }
+	.hr-dc-ex { font-size: 12px; color: #5f6b75; margin-top: 3px; } .hr-dc-ex b { color: #0b6e8a; }
+	.hr-dc-box { background: #f6f8fa; border-radius: 8px; padding: 8px 12px; margin-top: 10px; }
+	.hr-dc-path { font-size: 12.5px; display: flex; gap: 8px; padding: 2px 0; } .hr-dc-path b { min-width: 120px; color: #3c4650; } .hr-dc-path span { color: #1f2328; word-break: break-all; }
 	/* 목록 메모 (hrMemoBtn·hrMemoFeed) */
 	.hr-memo-btn { border: 1px solid #b9dbe6; background: #f3fbfd; color: #0b6e8a; border-radius: 10px; padding: 0 7px; font-size: 11.5px; font-weight: 700; }
 	.hr-memo-btn.zero { opacity: .55; font-weight: 400; }
