@@ -66,6 +66,10 @@ public class BoTradeService {
 		if (!closed(ym)) mapper.insertRepeats(q);
 		Map<String, Map<String, Object>> saved = new HashMap<>();
 		for (Map<String, Object> l : mapper.selectLines(q)) saved.put(l.get("SRC_CD") + ":" + l.get("SRC_SQ"), l);
+		// 전달 묶음(PREV_INV·PREV_SORT): 이 달에 묶은 적 없는 거래처를 화면이 전달과 같게 자동으로 묶는다
+		q.put("PREV_YM", m.minusMonths(1).toString());
+		Map<String, Map<String, Object>> prev = new HashMap<>();
+		for (Map<String, Object> l : mapper.selectPrevLayout(q)) prev.put(s(l.get("ID")), l);
 		List<Map<String, Object>> out = new ArrayList<>();
 		int total = m.lengthOfMonth();
 		for (Map<String, Object> d : mapper.selectDeployLines(q)) {
@@ -90,6 +94,7 @@ public class BoTradeService {
 			l.put("CALC_AMT", calc);
 			l.put("AMT", l.get("AMT_FIXED") == null ? calc : n(l.get("AMT_FIXED")));
 			l.put("HOW", closed && fixed != null ? "마감한 달의 급여관리 금액" : "월 " + monthly + " ÷ " + total + "일 × " + days + "일");
+			prev(l, prev.get("D:" + d.get("DEPLOY_SQ")));
 			out.add(l);
 		}
 		for (Map<String, Object> t : mapper.selectTrades(q)) {
@@ -100,9 +105,16 @@ public class BoTradeService {
 			l.put("AMT", n(t.get("AMT")));
 			l.put("MEMO", t.get("MEMO"));
 			l.put("REPEAT_UNTIL", t.get("REPEAT_UNTIL"));
+			prev(l, prev.get("R:" + t.get("ROOT_SQ")));
 			out.add(l);
 		}
 		return out;
+	}
+
+	private static void prev(Map<String, Object> l, Map<String, Object> p) {
+		if (p == null) return;
+		l.put("PREV_INV", p.get("INV_NO"));
+		l.put("PREV_SORT", p.get("SORT_NO"));
 	}
 
 	private static Map<String, Object> line(String src, Object sq, String type, Map<String, Object> row, Map<String, Map<String, Object>> saved) {

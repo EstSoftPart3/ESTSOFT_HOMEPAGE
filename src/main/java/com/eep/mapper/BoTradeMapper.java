@@ -16,6 +16,7 @@ public interface BoTradeMapper {
 	public List<Map<String, Object>> selectDeployLines(Map<String, Object> param);
 	public List<Map<String, Object>> selectTrades(Map<String, Object> param);
 	public List<Map<String, Object>> selectLines(Map<String, Object> param);
+	public List<Map<String, Object>> selectPrevLayout(Map<String, Object> param);
 	public String selectIssueDt(Map<String, Object> param);
 	public String selectTradeYm(Map<String, Object> param);
 

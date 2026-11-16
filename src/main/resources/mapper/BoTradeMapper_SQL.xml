@@ -132,7 +132,7 @@
 	</select>
 
 	<select id="selectTrades" parameterType="hashMap" resultType="hashMap">
-		SELECT T.TRADE_SQ, T.PARTNER_SQ, COALESCE(P.PARTNER_NM, T.PARTNER_NM) AS PARTNER_NM, T.TYPE_NM, T.ITEM_NM, T.START_DT, T.END_DT, T.AMT, T.MEMO, T.REPEAT_UNTIL
+		SELECT T.TRADE_SQ, T.PARTNER_SQ, COALESCE(P.PARTNER_NM, T.PARTNER_NM) AS PARTNER_NM, T.TYPE_NM, T.ITEM_NM, T.START_DT, T.END_DT, T.AMT, T.MEMO, T.REPEAT_UNTIL, COALESCE(T.REPEAT_SRC, T.TRADE_SQ) AS ROOT_SQ
 		FROM TB_EEP_TRADE_M T
 		LEFT JOIN TB_EEP_PARTNER_M P ON P.PARTNER_SQ = T.PARTNER_SQ
 		WHERE T.KIND_CD = #{KIND_CD} AND T.YM = #{YM}
@@ -141,6 +141,14 @@
 
 	<select id="selectLines" parameterType="hashMap" resultType="hashMap">
 		SELECT SRC_CD, SRC_SQ, INV_NO, SORT_NO, AMT, ISSUE_DT FROM TB_EEP_TRADE_LINE_R WHERE KIND_CD = #{KIND_CD} AND YM = #{YM}
+	</select>
+
+	<!-- 전달 묶음: 같은 투입 건(D:투입번호)·같은 반복 뿌리(R:처음 건 번호)로 이 달 건과 맞춘다 -->
+	<select id="selectPrevLayout" parameterType="hashMap" resultType="hashMap">
+		SELECT CASE WHEN L.SRC_CD = 'D' THEN CONCAT('D:', L.SRC_SQ) ELSE CONCAT('R:', COALESCE(T.REPEAT_SRC, T.TRADE_SQ)) END AS ID, L.INV_NO, L.SORT_NO
+		FROM TB_EEP_TRADE_LINE_R L
+		LEFT JOIN TB_EEP_TRADE_M T ON L.SRC_CD = 'M' AND T.TRADE_SQ = L.SRC_SQ
+		WHERE L.KIND_CD = #{KIND_CD} AND L.YM = #{PREV_YM} AND L.INV_NO IS NOT NULL
 	</select>
 
 	<select id="selectIssueDt" parameterType="hashMap" resultType="string">

@@ -30,6 +30,21 @@
 	.tr-new { border: 1px dashed #adb5bd; border-radius: 8px; padding: 8px; text-align: center; color: #6c757d; font-size: 12.5px; }
 	.tr-cp { background: none; border: 0; padding: 0 3px; margin-left: 2px; color: #8a949c; font-size: 12px; line-height: 1; min-width: 20px; min-height: 20px; }
 	.tr-cp:hover, .tr-cp:focus { color: #0b6e8a; outline: 2px solid #16d5ff; border-radius: 3px; }
+	/* 세금계산서: 왼쪽 계산서 | 손잡이 | 오른쪽 새 건. 폭은 --trw */
+	.tr-split { display: flex; align-items: flex-start; }
+	.tr-split > .tr-left { flex: 0 0 var(--trw, 50%); min-width: 0; }
+	.tr-split > .tr-right { flex: 1 1 0; min-width: 0; position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow: auto; border: 1px solid #ced4da; border-radius: 8px; padding: 8px; background: #fbfcfd; }
+	.tr-grip { flex: 0 0 12px; align-self: stretch; cursor: col-resize; position: relative; }
+	.tr-grip::after { content: ''; position: absolute; left: 5px; top: 0; bottom: 0; width: 2px; background: #ced4da; }
+	.tr-grip:hover::after, .tr-grip:focus::after { background: #0b6e8a; width: 3px; }
+	.tr-grip:focus { outline: none; }
+	.tr-right h6 { font-size: 14px; font-weight: 700; margin: 0 0 8px; }
+	.tr-right h6 small { color: #6c757d; font-weight: 400; }
+	.tr-right td { padding: 3px 6px; vertical-align: middle; white-space: nowrap; border-top: 1px solid #eef1f4; }
+	.tr-right td.item { white-space: normal; width: 100%; }
+	.tr-right tr[draggable] { cursor: grab; }
+	.tr-right select { width: auto; }
+	@media (max-width: 767px) { .tr-split { flex-direction: column; } .tr-split > .tr-left, .tr-split > .tr-right { flex-basis: auto; width: 100%; } .tr-split > .tr-right { position: static; max-height: none; } .tr-grip { display: none; } }
 	#trToast { position: fixed; right: 18px; bottom: 18px; z-index: 2000; background: #222; color: #fff; font-size: 13px; padding: 8px 14px; border-radius: 6px; display: none; }
 </style>
 
@@ -72,9 +87,13 @@
 									<option value="">지금 순서 그대로</option><option value="ITEM_NM">품목 이름순</option><option value="STAFF_NM">성명순</option><option value="AMT">금액 큰 순</option><option value="START_DT">시작일순</option>
 								</select>
 								<label for="perInv" class="mb-0">한 장에</label>
-								<input type="number" id="perInv" class="form-control form-control-sm" style="width:70px" min="1" max="99" value="4"><span>행씩</span>								<span class="small text-muted">거래처마다 「다시 묶기」를 누르면 이 설정으로 묶습니다. 묶은 뒤에는 행을 끌거나 ▲▼, 「나누기」「위와 합치기」로 장마다 행 수를 바꿉니다. 바꾸면 바로 저장됩니다.</span>
+								<input type="number" id="perInv" class="form-control form-control-sm" style="width:70px" min="1" max="99" value="4"><span>행씩</span>								<span class="small text-muted">이 달에 묶은 적 없는 거래처는 전달 묶음대로 자동으로 묶고, 전달에 없던 새 건은 오른쪽에 모읍니다. 「다시 묶기」를 누르면 이 설정으로 새 건까지 묶습니다. 묶은 뒤에는 행을 끌거나 ▲▼, 「나누기」「위와 합치기」로 장마다 행 수를 바꿉니다. 바꾸면 바로 저장됩니다.</span>
 							</div>
-							<div id="invBody"></div>
+							<div class="tr-split" id="invSplit">
+								<div class="tr-left"><div id="invBody"></div></div>
+								<div class="tr-grip" id="invGrip" role="separator" aria-orientation="vertical" aria-valuemin="25" aria-valuemax="80" aria-label="계산서·새 건 폭 조절 (← → 키, 두 번 누르면 반반)" tabindex="0" title="끌어서 폭 조절 · 두 번 누르면 반반"></div>
+								<div class="tr-right" id="newBody" aria-label="새 건"></div>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -119,6 +138,8 @@
 	// 세금계산서 메뉴: 매출 건의 묶음만 보인다(내역·등록은 매출·매입 현황에서)
 	var INV_ONLY = '${invoiceOnly}' === 'true', invOff = {};
 	var lines = [], partners = [], tab = INV_ONLY ? 1 : 0, typeOff = {}, inv = {}, drag = null;
+	// pend[거래처] = 아직 계산서에 넣지 않은 새 건(오른쪽), pnm[거래처] = 거래처 이름
+	var pend = {}, pnm = {};
 
 	function toast(msg) { $('#trToast').text(msg).stop(true, true).fadeIn(100).delay(1500).fadeOut(300); }
 	function ymNow() { return $('#ym').val(); }
@@ -295,17 +316,24 @@
 		};
 	}
 
-	// 저장된 묶음 그대로. 한 번도 묶지 않은 거래처는 품목순 N행씩 보여 주고(저장 전), 새로 생긴 건은 맨 끝 장으로
+	function has(l) { return l.INV_NO !== null && l.INV_NO !== undefined; }
+	function hasPrev(l) { return l.PREV_INV !== null && l.PREV_INV !== undefined; }
+
+	// 저장된 묶음 그대로. 이 달에 묶은 적 없으면 전달 묶음(같은 장·같은 순서, 저장 전)으로, 그 밖의 새 건은 오른쪽 목록으로.
+	// 전달 묶음도 없으면 품목순 N행씩(저장 전)
 	function buildInv() {
-		inv = {};
+		inv = {}; pend = {}; pnm = {};
 		var by = {};
 		lines.forEach(function(l) { (by[pKey(l)] = by[pKey(l)] || []).push(l); });
 		Object.keys(by).forEach(function(p) {
-			var has = function(l) { return l.INV_NO !== null && l.INV_NO !== undefined; };
-			var saved = by[p].filter(has).sort(function(a, b) { return a.INV_NO - b.INV_NO || a.SORT_NO - b.SORT_NO; });
-			var fresh = by[p].filter(function(l) { return !has(l); }).sort(byKey('ITEM_NM')), list = [], last = null;
-			saved.forEach(function(l) { if (l.INV_NO !== last) { list.push([]); last = l.INV_NO; } list[list.length - 1].push(l); });
-			inv[p] = saved.length ? (fresh.length ? list.concat([fresh]) : list) : chunk(fresh, perInv());
+			var saved = by[p].filter(has), fresh = by[p].filter(function(l) { return !has(l); }).sort(byKey('ITEM_NM'));
+			var base = saved.length ? saved : fresh.filter(hasPrev), no = saved.length ? 'INV_NO' : 'PREV_INV', so = saved.length ? 'SORT_NO' : 'PREV_SORT', list = [], last = null;
+			pnm[p] = pName(by[p][0]);
+			if (!base.length) { inv[p] = chunk(fresh, perInv()); pend[p] = []; return; }
+			base.sort(function(a, b) { return a[no] - b[no] || a[so] - b[so]; });
+			base.forEach(function(l) { if (l[no] !== last) { list.push([]); last = l[no]; } list[list.length - 1].push(l); });
+			inv[p] = list;
+			pend[p] = fresh.filter(function(l) { return base.indexOf(l) < 0; });
 		});
 	}
 
@@ -322,7 +350,8 @@
 	}
 
 	function regroup(p) {
-		var locked = inv[p].filter(issued), free = [].concat.apply([], inv[p].filter(function(g) { return !issued(g); })), k = $('#sortKey').val();
+		var locked = inv[p].filter(issued), free = [].concat.apply([], inv[p].filter(function(g) { return !issued(g); })).concat(pend[p]), k = $('#sortKey').val();
+		pend[p] = [];
 		if (k) free.sort(byKey(k));
 		inv[p] = locked.concat(chunk(free, perInv()));
 		savePartner(p, perInv() + '행씩 다시 묶었습니다');
@@ -339,11 +368,11 @@
 		savePartner(p, '순서를 저장했습니다', function() { draw(); $('[data-key="' + l.KEY + '"] .' + (d < 0 ? 'up' : 'down')).focus(); });
 	}
 
-	// 끌어다 놓기: target 은 장(배열) 또는 null(새 장), tj 는 그 장 안에서 끼워 넣을 자리
+	// 끌어다 놓기: target 은 장(배열) 또는 null(새 장), tj 는 그 장 안에서 끼워 넣을 자리. 오른쪽 새 건이면 목록에서 빠진다
 	function dropTo(p, target, tj) {
 		if (!drag || drag.p !== p || (target && issued(target))) return;
-		var l = drag.l, at = locate(p, l), src = inv[p][at[0]];
-		src.splice(at[1], 1);
+		var l = drag.l, at = locate(p, l), src = at ? inv[p][at[0]] : null;
+		if (at) src.splice(at[1], 1); else pend[p].splice(pend[p].indexOf(l), 1);
 		if (!target) inv[p].push([l]);
 		else target.splice(src === target && at[1] < tj ? tj - 1 : tj, 0, l);
 		drag = null;
@@ -367,14 +396,15 @@
 	// 지금 탭에 보이는 거래처(거래처 필터 적용), 화면과 같은 순서
 	function invKeys() {
 		var f = $('#fPartner').val();
-		return Object.keys(inv).filter(function(p) { return !f || p === f; }).sort(function(a, b) { return pName(inv[a][0][0]).localeCompare(pName(inv[b][0][0]), 'ko'); });
+		return Object.keys(inv).filter(function(p) { return !f || p === f; }).sort(function(a, b) { return pnm[a].localeCompare(pnm[b], 'ko'); });
 	}
 
 	// 보이는 계산서 전체를 한 번에 복사한다. 제목 → [거래처] → 장마다 '번호. 금액' 한 줄, 빈 줄, 품목·기간·공급가액(탭 구분)
 	function copyAll() {
 		var out = [dpYmLabel(ymNow()) + ' 세금계산서 발급 건'], n = 0;
 		invKeys().forEach(function(p) {
-			out.push('', '[' + pName(inv[p][0][0]) + ']');
+			if (!inv[p].length) return;
+			out.push('', '[' + pnm[p] + ']');
 			inv[p].forEach(function(g, i) {
 				var s = sum(g);
 				n++;
@@ -392,21 +422,60 @@
 		keys.forEach(function(p) {
 			var groups = inv[p], all = [].concat.apply([], groups), s = sum(all), done = groups.filter(issued).length;
 			function hidden(g) { return invOff[issued(g) ? 'done' : 'todo']; }
-			if (groups.every(hidden)) return;
-			var unsaved = all.some(function(l) { return l.INV_NO === null || l.INV_NO === undefined; });
+			if (groups.every(hidden) && !pend[p].length) return;
+			var unsaved = all.filter(function(l) { return !has(l); }), auto = unsaved.length && unsaved.every(hasPrev);
 			var $p = $('<div class="tr-partner">').appendTo($b);
-			$p.append($('<h5>').append($('<span>').text(pName(all[0])),
-				$('<small>').text('계산서 ' + groups.length + '장 · ' + all.length + '행 · 공급가액 ' + dpWon(s) + ' · 발급 ' + done + '/' + groups.length + (unsaved ? ' · 자동 묶음(저장 전)' : '')),
+			$p.append($('<h5>').append($('<span>').text(pnm[p]),
+				$('<small>').text('계산서 ' + groups.length + '장 · ' + all.length + '행 · 공급가액 ' + dpWon(s) + ' · 발급 ' + done + '/' + groups.length + (pend[p].length ? ' · 새 건 ' + pend[p].length : '')),
+				unsaved.length ? $('<span class="dp-pill warn">').text(auto ? '전달 기준 자동 묶음(저장 전)' : '자동 묶음(저장 전)') : '',
+				unsaved.length ? $('<button type="button" class="btn btn-sm btn-outline-primary tr-save">저장</button>').attr('aria-label', pnm[p] + ' 묶음 저장').click(function() { savePartner(p, '묶음을 저장했습니다'); }) : '',
 				// 어느 거래처에서 눌러도 지금 보이는 계산서 전체를 복사한다
 				$('<button type="button" class="btn btn-sm btn-primary ml-auto">전체 복사</button>').attr('aria-label', '보이는 계산서 전체 복사').click(copyAll),
-				$('<button type="button" class="btn btn-sm btn-outline-secondary">다시 묶기</button>').attr('aria-label', pName(all[0]) + ' 다시 묶기').click(function() {
-					bootbox.confirm('발급 전인 ' + pName(all[0]) + ' 건을 ' + ($('#sortKey').val() ? $('#sortKey option:selected').text() + '으로 정렬해 ' : '') + perInv() + '행씩 다시 묶을까요? 손으로 맞춘 묶음은 바뀝니다.', function(ok) { if (ok) regroup(p); });
+				$('<button type="button" class="btn btn-sm btn-outline-secondary">다시 묶기</button>').attr('aria-label', pnm[p] + ' 다시 묶기').click(function() {
+					bootbox.confirm('발급 전인 ' + pnm[p] + ' 건을 ' + ($('#sortKey').val() ? $('#sortKey option:selected').text() + '으로 정렬해 ' : '') + perInv() + '행씩 다시 묶을까요? 손으로 맞춘 묶음은 바뀝니다.', function(ok) { if (ok) regroup(p); });
 				})));
 			groups.forEach(function(g, i) { if (!hidden(g)) $p.append(invCard(p, g, i)); });
 			var $new = $('<div class="tr-new">끌어온 행을 여기에 놓으면 새 계산서 한 장이 됩니다</div>').appendTo($p);
 			$new.on('dragover', function(e) { if (drag && drag.p === p) { e.preventDefault(); $new.addClass('over'); } }).on('dragleave', function() { $new.removeClass('over'); })
 				.on('drop', function(e) { e.preventDefault(); dropTo(p, null, 0); });
 		});
+		drawNew();
+	}
+
+	// 오른쪽: 전달에 없던 새 건(거래처별). 끌어서 왼쪽 계산서에 놓거나 '→ 계산서 n' 을 고른다
+	function drawNew() {
+		var $b = $('#newBody').empty().append('<h6>새 건 <small>전달 계산서에 없던 건 · 왼쪽 계산서로 끌어 놓으세요</small></h6>'), n = 0;
+		invKeys().forEach(function(p) {
+			if (!pend[p].length) return;
+			n += pend[p].length;
+			var $t = $('<tbody>');
+			pend[p].forEach(function(l) {
+				var $sel = $('<select class="form-control form-control-sm">').attr('aria-label', l.ITEM_NM + ' 넣을 계산서').append('<option value="">계산서 고르기</option>');
+				inv[p].forEach(function(g, i) { if (!issued(g)) $sel.append($('<option>').val(i).text('→ 계산서 ' + (i + 1))); });
+				$sel.append('<option value="new">→ 새 계산서</option>').on('change', function() {
+					if (!this.value) return;
+					var g = this.value === 'new' ? null : inv[p][Number(this.value)];
+					drag = { p: p, l: l };
+					dropTo(p, g, g ? g.length : 0);
+				});
+				var $r = $('<tr>').attr('data-key', l.KEY);
+				$r.on('mousedown touchstart', function(e) { if (!$(e.target).is('select, option')) $r.attr('draggable', 'true'); })
+					.on('dragstart', function(e) { drag = { p: p, l: l }; e.originalEvent.dataTransfer.setData('text/plain', l.KEY); $r.addClass('dragging'); })
+					.on('dragend', function() { drag = null; $r.removeClass('dragging').removeAttr('draggable'); $('.tr-inv .over, .tr-inv.over, .tr-new.over').removeClass('over'); });
+				$r.append($('<td class="tr-move"><span class="hdl" aria-hidden="true">&#8942;&#8942;</span></td>'), $('<td>').append(typePill(l)), $('<td class="item">').text(l.ITEM_NM),
+					$('<td>').text(period(l)), $('<td class="dp-num">').text(dpWon(l.AMT)), $('<td>').append($sel)).appendTo($t);
+			});
+			$b.append($('<div class="mb-2">').append($('<b>').text(pnm[p] + ' · ' + pend[p].length + '건'), $('<table class="table table-sm mb-0">').append($t)));
+		});
+		if (!n) $b.append('<p class="text-muted small mb-0">새 건 없음</p>');
+	}
+
+	// 계산서 | 새 건 폭(왼쪽 %): 손잡이 끌기·← → 키·두 번 누르면 반반, 이 브라우저에 저장
+	function setSplit(v, keep) {
+		v = Math.max(25, Math.min(80, Math.round(v)));
+		document.getElementById('invSplit').style.setProperty('--trw', v + '%');
+		$('#invGrip').attr('aria-valuenow', v);
+		if (keep) try { localStorage.setItem('tradeInvSplit', v); } catch (e) {}
 	}
 
 	function invCard(p, g, i) {
@@ -457,6 +526,17 @@
 	$('#PARTNER_SQ').on('change', function() { var typed = this.value === '__new'; $('#PARTNER_NM').toggle(typed).prop('required', typed); if (typed) $('#PARTNER_NM').focus(); });
 	try { if (localStorage.getItem('tradePerInv')) $('#perInv').val(localStorage.getItem('tradePerInv')); } catch (e) {}
 	$('#perInv').on('change', function() { try { localStorage.setItem('tradePerInv', perInv()); } catch (e) {} });
+	var splitW = 50;
+	try { splitW = Number(localStorage.getItem('tradeInvSplit')) || 50; } catch (e) {}
+	setSplit(splitW);
+	$('#invGrip').on('mousedown', function(e) {
+		e.preventDefault();
+		var r = document.getElementById('invSplit').getBoundingClientRect(), at = function(ev) { return (ev.clientX - r.left) / r.width * 100; };
+		$(document).on('mousemove.trs', function(ev) { setSplit(at(ev)); }).on('mouseup.trs', function(ev) { $(document).off('.trs'); setSplit(at(ev), true); });
+	}).on('keydown', function(e) {
+		var d = e.key === 'ArrowLeft' ? -2 : e.key === 'ArrowRight' ? 2 : 0;
+		if (d) { e.preventDefault(); setSplit(Number($(this).attr('aria-valuenow')) + d, true); }
+	}).on('dblclick', function() { setSplit(50, true); });
 	// 계산서는 지난달 것을 끊으므로 지난달부터 연다
 	$('#ym').val(moment().subtract(1, 'months').format('YYYY-MM')).on('change', function() { if (ymNow()) load(); });
 	$('#fPartner').on('change', draw);
