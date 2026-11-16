@@ -21,6 +21,7 @@ public interface BoHrMapper {
 	public int insertTraineeFromIntv(Map<String, Object> param);				//면접자 -> 교육생 등록
 
 	public List<Map<String, Object>> selectTraineeList();						//교육생 전체 목록
+	public int updateTraineeWeek(Map<String, Object> param);					//교육생 주차 보정값 저장
 	public int insertTrainee(Map<String, Object> param);						//교육생 등록
 	public int updateTrainee(Map<String, Object> param);						//교육생 수정
 	public int updateTraineeField(Map<String, Object> param);					//교육생 칸 하나 수정

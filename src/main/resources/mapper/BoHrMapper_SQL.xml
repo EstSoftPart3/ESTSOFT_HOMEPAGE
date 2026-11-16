@@ -88,6 +88,12 @@
 	</insert>
 
 	<!-- 교육생 -->
+	<!-- 시작일 주의 월요일부터 오늘(한국 시간) 주의 월요일까지 지난 주 수 + 1. DB·서버 시간대와 관계없이 월요일 0시에 넘어간다 -->
+	<sql id="autoWeekNo">
+		(FLOOR(DATEDIFF(SUBDATE(DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+09:00')), WEEKDAY(DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+09:00')))),
+		                SUBDATE(EDU_START_DT, WEEKDAY(EDU_START_DT))) / 7) + 1)
+	</sql>
+
 	<select id="selectTraineeList" resultType="hashMap">
 		SELECT
 			  TRN_SQ, SEQ_NO, STATUS_CD, LEAVE_NOTE, TRN_NM, GENDER, EDU, AGE, ADDR, STATION, CAREER, LANG, LANG_NOTE
@@ -95,11 +101,23 @@
 			, (SELECT GROUP_CONCAT(M.CONTENT ORDER BY M.MEMO_SQ DESC SEPARATOR '\n') FROM TB_EEP_ROW_MEMO_R M WHERE M.TARGET_CD = 'TRAINEE' AND M.TARGET_SQ = TB_EEP_HR_TRAINEE_M.TRN_SQ) AS MEMO
 			, (SELECT COUNT(*) FROM TB_EEP_ROW_MEMO_R M WHERE M.TARGET_CD = 'TRAINEE' AND M.TARGET_SQ = TB_EEP_HR_TRAINEE_M.TRN_SQ) AS MEMO_CNT
 			, DATE_FORMAT(EDU_START_DT, '%Y-%m-%d') AS EDU_START_DT
-			, EDU_WEEK, INTERVIEW_YN, INTERVIEW_AVAIL
+			, CASE WHEN EDU_START_DT IS NULL THEN NULL
+				   WHEN <include refid="autoWeekNo"/> + EDU_WEEK_ADJ &lt;= 1 THEN '1'
+				   WHEN <include refid="autoWeekNo"/> + EDU_WEEK_ADJ = 2 THEN '2'
+				   WHEN <include refid="autoWeekNo"/> + EDU_WEEK_ADJ = 3 THEN '3'
+				   ELSE 'OVER' END AS EDU_WEEK
+			, INTERVIEW_YN, INTERVIEW_AVAIL
 			, SK_JSP, SK_THYMELEAF, SK_VUE, SK_REACT, SK_NODE_FE, SK_SPRING, SK_JAVA, SK_NODE_BE, SK_NEXACRO, SK_WEBSQUARE, SK_EXBUILDER
 		FROM TB_EEP_HR_TRAINEE_M
 		ORDER BY EDU_START_DT DESC, TRN_SQ DESC
 	</select>
+
+	<!-- 드래그한 주차와 자동 주차의 차이만 저장해 다음 주에도 자동으로 넘어가게 한다. 시작일이 없으면 0건 -->
+	<update id="updateTraineeWeek" parameterType="hashMap">
+		UPDATE TB_EEP_HR_TRAINEE_M SET
+			  EDU_WEEK_ADJ = #{WEEK_NO} - <include refid="autoWeekNo"/>, UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
+		WHERE TRN_SQ = #{TRN_SQ} AND EDU_START_DT IS NOT NULL
+	</update>
 
 	<insert id="insertTrainee" parameterType="hashMap" useGeneratedKeys="true" keyProperty="TRN_SQ">
 		INSERT INTO TB_EEP_HR_TRAINEE_M

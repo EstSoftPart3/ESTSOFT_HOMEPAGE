@@ -45,6 +45,10 @@ public class BoHrDao {
 		return BoHrMapper.selectTraineeList();
 	}
 
+	public int TraineeWeekUpdate(Map<String, Object> param) {
+		return BoHrMapper.updateTraineeWeek(param);
+	}
+
 	public int TraineeInsert(Map<String, Object> param) {
 		return BoHrMapper.insertTrainee(param);
 	}

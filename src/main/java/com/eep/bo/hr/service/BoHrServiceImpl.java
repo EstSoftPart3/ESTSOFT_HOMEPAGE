@@ -135,8 +135,15 @@ public class BoHrServiceImpl implements BoHrService {
 		if ("STATUS_CD".equals(field) && !STATUS_CODES.contains(value)) {
 			throw new IllegalArgumentException("상태 값이 올바르지 않습니다.");
 		}
-		if ("EDU_WEEK".equals(field) && !WEEK_CODES.contains(value)) {
-			throw new IllegalArgumentException("주차 값이 올바르지 않습니다.");
+		if ("EDU_WEEK".equals(field)) {
+			if (!WEEK_CODES.contains(value)) {
+				throw new IllegalArgumentException("주차 값이 올바르지 않습니다.");
+			}
+			param.put("WEEK_NO", "OVER".equals(value) ? 4 : Integer.parseInt(value));
+			if (BoHrDao.TraineeWeekUpdate(param) == 0) {
+				throw new IllegalArgumentException("교육 시작일이 없어 주차를 정할 수 없습니다. 시작일을 먼저 넣어 주세요.");
+			}
+			return;
 		}
 		if ("EDU_START_DT".equals(field)) {
 			checkDate(param, "VALUE", "교육 시작일");
