@@ -418,10 +418,10 @@
 		if (file.size > 5 * 1024 * 1024) { bootbox.alert('5MB 이하 이미지만 올릴 수 있습니다.'); return; }
 		var url = URL.createObjectURL(file), img = new Image();
 		img.onload = function() {
-			var c = document.createElement('canvas'), s;
+			var c = document.createElement('canvas'), k;
 			c.width = 440; c.height = 176;
-			s = Math.min(c.width / img.width, c.height / img.height, 1);
-			c.getContext('2d').drawImage(img, (c.width - img.width * s) / 2, (c.height - img.height * s) / 2, img.width * s, img.height * s);
+			k = Math.min(c.width / img.width, c.height / img.height, 1);
+			c.getContext('2d').drawImage(img, (c.width - img.width * k) / 2, (c.height - img.height * k) / 2, img.width * k, img.height * k);
 			URL.revokeObjectURL(url);
 			saveSign(c.toDataURL('image/png'), s);
 		};
