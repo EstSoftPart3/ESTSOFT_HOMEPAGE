@@ -41,6 +41,8 @@ public class BoMyController {
 	private com.eep.bo.calendar.service.GoogleCalendarApi calendarApi;
 	@Autowired
 	private com.eep.bo.batch.service.GoogleDriveApi drive;
+	@Autowired
+	private ViewPresetService views;
 
 	@RequestMapping("/admin/my/openGoogleLink.do")
 	public ModelAndView openGoogleLink() {
@@ -259,6 +261,49 @@ public class BoMyController {
 		try {
 			link.disconnect(GoogleLinkService.currentUser(), svc);
 			return json("result", "OK");
+		} catch (IllegalArgumentException e) {
+			return json("error", e.getMessage());
+		}
+	}
+
+	// ── 목록 화면 '보기' 저장(bo-view.js). 자기 계정 것만 읽고 고친다 ──
+
+	@RequestMapping(value = "/admin/my/viewPresetData.do", method = RequestMethod.POST)
+	public ModelAndView viewPresetData(@RequestParam("page") String page) {
+		return viewDo(() -> views.list(me(), page));
+	}
+
+	@RequestMapping(value = "/admin/my/saveViewPresetData.do", method = RequestMethod.POST)
+	public ModelAndView saveViewPresetData(@RequestParam("page") String page, @RequestParam(value = "vwSq", defaultValue = "") String vwSq,
+			@RequestParam(value = "nm", defaultValue = "") String nm, @RequestParam("conf") String conf, @RequestParam(value = "drop", defaultValue = "") String drop) {
+		return viewDo(() -> {
+			Object sq = views.save(me(), page, vwSq, nm, conf, "Y".equals(drop));
+			if (sq != null) return sq;
+			Map<String, Object> full = new HashMap<>();
+			full.put("full", ((List<?>) views.list(me(), page).get("list")).get(0));
+			return full;
+		});
+	}
+
+	@RequestMapping(value = "/admin/my/useViewPresetData.do", method = RequestMethod.POST)
+	public ModelAndView useViewPresetData(@RequestParam("page") String page, @RequestParam(value = "vwSq", defaultValue = "") String vwSq) {
+		return viewDo(() -> { views.use(me(), page, vwSq); return "OK"; });
+	}
+
+	@RequestMapping(value = "/admin/my/deleteViewPresetData.do", method = RequestMethod.POST)
+	public ModelAndView deleteViewPresetData(@RequestParam("page") String page, @RequestParam("vwSq") String vwSq) {
+		return viewDo(() -> { views.delete(me(), page, vwSq); return "OK"; });
+	}
+
+	private static String me() {
+		String id = GoogleLinkService.currentUser();
+		if (id == null) throw new IllegalArgumentException("로그인이 필요합니다.");
+		return id;
+	}
+
+	private static ModelAndView viewDo(java.util.function.Supplier<Object> f) {
+		try {
+			return json("result", f.get());
 		} catch (IllegalArgumentException e) {
 			return json("error", e.getMessage());
 		}
