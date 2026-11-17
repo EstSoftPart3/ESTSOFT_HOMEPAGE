@@ -14,13 +14,17 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.eep.bo.system.service.BoSystemService;
+import com.eep.bo.system.service.MailConfService;
 
-/** 메뉴·권한 관리. 접근 제어는 /admin/** 인터셉터가 맡고 쓰기는 POST 만 받는다 */
+/** 메뉴·권한 관리, 메일 설정. 접근 제어는 /admin/** 인터셉터가 맡고 쓰기는 POST 만 받는다 */
 @Controller
 public class BoSystemController {
 
 	@Autowired
 	private BoSystemService service;
+
+	@Autowired
+	private MailConfService mail;
 
 	// 로그인 뒤 진입점(/admin/home.do)은 BoHomeController 의 대시보드
 
@@ -85,6 +89,46 @@ public class BoSystemController {
 	public ModelAndView removeRoleUserData(@RequestParam("ROLE_SQ") int roleSq, @RequestParam("EMPLY_ID") String emplyId, HttpSession session) {
 		String login = loginId(session);
 		return call(() -> { service.removeRoleUser(roleSq, emplyId, login); return "OK"; });
+	}
+
+	// ── 메일 설정 (메뉴 권한 역할에 넣지 않아 슈퍼관리자만 연다) ──
+
+	@RequestMapping("/admin/system/mail/openMailConf.do")
+	public ModelAndView openMailConf() {
+		return new ModelAndView("bo/system/mail_conf");
+	}
+
+	@RequestMapping(value = "/admin/system/mail/confData.do", method = RequestMethod.POST)
+	public ModelAndView mailConfData() {
+		return call(mail::screen);
+	}
+
+	@RequestMapping(value = "/admin/system/mail/usersData.do", method = RequestMethod.POST)
+	public ModelAndView mailUsersData() {
+		return call(mail::users);
+	}
+
+	@RequestMapping(value = "/admin/system/mail/histData.do", method = RequestMethod.POST)
+	public ModelAndView mailHistData() {
+		return call(mail::hist);
+	}
+
+	@RequestMapping(value = "/admin/system/mail/saveData.do", method = RequestMethod.POST)
+	public ModelAndView mailSaveData(@RequestParam Map<String, Object> param, HttpSession session) {
+		String login = loginId(session);
+		return call(() -> mail.save(param, login));
+	}
+
+	@RequestMapping(value = "/admin/system/mail/verifyData.do", method = RequestMethod.POST)
+	public ModelAndView mailVerifyData(@RequestParam(value = "ACC_SQ", required = false) String accSq, HttpSession session) {
+		String login = loginId(session);
+		return call(() -> { if (accSq == null || accSq.isEmpty()) return mail.verifyAll(login); mail.verify(accSq, login); return "OK"; });
+	}
+
+	@RequestMapping(value = "/admin/system/mail/testData.do", method = RequestMethod.POST)
+	public ModelAndView mailTestData(@RequestParam("USE_CD") String use, HttpSession session) {
+		String login = loginId(session);
+		return call(() -> mail.test(use, login));
 	}
 
 	private interface Call {

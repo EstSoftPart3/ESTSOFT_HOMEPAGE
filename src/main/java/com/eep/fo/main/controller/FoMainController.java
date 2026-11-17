@@ -3,17 +3,14 @@ package com.eep.fo.main.controller;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.mail.internet.MimeMessage;
-
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 
+import com.eep.bo.system.service.MailConfService;
 import com.eep.fo.board.service.FoBoardService;
 
 import common.base.controller.BaseController;
@@ -159,7 +156,7 @@ public class FoMainController extends BaseController {
 	
 	
 	@Autowired
-	private JavaMailSender mailSender;
+	private MailConfService mailConf;
 
 	@RequestMapping(value = "/eep/sendmail.do", method = RequestMethod.POST)
 	public String sendmail(@RequestParam("email")String email, @RequestParam("name")String name, @RequestParam("handphone")String handphone, @RequestParam("content")String content) throws Exception {
@@ -172,9 +169,7 @@ public class FoMainController extends BaseController {
 //		String setcontent = "지금도 테스트중 입니다."; // 내용
 		
 		
-		String setfrom = email; //보내는 사람
 		String settitle = "(주)이에스티소프트 홈페이지 입사지원이 있습니다. [지원자 : '" + name + "']"; // 제목
-		String tomail = "est.part2@gmail.com"; // 받을 주소
 		//String setcontent = "성명 :"+name+"\n 전화번호 : "+handphone+"\n"+content; // 내용
 		
 		String setcontent = "<!DOCTYPE HTML PUBLIC \\\"-//W3C//DTD XHTML 1.0 Transitional //EN\\\" \\\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\\\">" +
@@ -451,19 +446,15 @@ public class FoMainController extends BaseController {
 				"</html>";
 
 		try {
-			MimeMessage message = mailSender.createMimeMessage();
-			MimeMessageHelper messageHelper = new MimeMessageHelper(message,true, "UTF-8");
-
-			messageHelper.setFrom(setfrom); // 보내는사람 (필수)
-			messageHelper.setTo(tomail); // 받는사람 이메일
-			messageHelper.setSubject(settitle); // 메일제목은
-			//messageHelper.setText(setcontent); // 메일 내용
-			message.setContent(setcontent,"text/html; charset=UTF-8"); // HTML 형식
-
-			mailSender.send(message);
-			
+			// 보내는 계정·받는 사람은 시스템관리 › 메일 설정. 지원자 주소로 보내면 Gmail 이 거부하므로 답장 주소로만 둔다
+			MailConfService.Mail m = mailConf.create(MailConfService.APPLY, true);
+			m.h.setTo(mailConf.to(MailConfService.APPLY));
+			if (email.matches("[^@\\s<>\",]+@[^@\\s<>\",]+\\.[^@\\s<>\",]+")) m.h.setReplyTo(email);
+			m.h.setSubject(settitle);
+			m.h.setText(setcontent, true);
+			mailConf.send(m);
 		} catch (Exception e) {
-			System.out.println(e);
+			System.out.println("APPLY_MAIL_ERROR " + e.getClass().getSimpleName() + " " + e.getMessage());
 		}
 		
 		return "redirect:/eep/mainPage.do";
@@ -494,13 +485,12 @@ public class FoMainController extends BaseController {
 			return mv;
 		}
 		try {
-			MimeMessage msg = mailSender.createMimeMessage();
-			MimeMessageHelper h = new MimeMessageHelper(msg, false, "UTF-8");
-			h.setTo("est.part2@gmail.com"); // 입사지원(sendmail)과 같은 받는 주소
-			h.setReplyTo(email);
-			h.setSubject("(주)이에스티소프트 홈페이지 컨설팅 문의 [" + name + "] " + subject);
-			h.setText("문의자명(기업명): " + name + "\n이메일: " + email + "\n제목: " + subject + "\n\n" + message + "\n\n(개인정보 수집·이용 동의함)", false);
-			mailSender.send(msg);
+			MailConfService.Mail m = mailConf.create(MailConfService.CONSULT, false);
+			m.h.setTo(mailConf.to(MailConfService.CONSULT));
+			m.h.setReplyTo(email);
+			m.h.setSubject("(주)이에스티소프트 홈페이지 컨설팅 문의 [" + name + "] " + subject);
+			m.h.setText("문의자명(기업명): " + name + "\n이메일: " + email + "\n제목: " + subject + "\n\n" + message + "\n\n(개인정보 수집·이용 동의함)", false);
+			mailConf.send(m);
 			mv.addObject("result", "OK");
 		} catch (Exception e) {
 			System.out.println("CONSULT_MAIL_ERROR " + e);

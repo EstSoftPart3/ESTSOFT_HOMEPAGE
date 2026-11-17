@@ -1,4 +1,5 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_head.jspf"%>
 <%@ include file="/WEB-INF/jsp/bo/deploy/deploy_common.jspf"%>
@@ -54,7 +55,7 @@
 						<div class="ps-two px-3 pb-3">
 							<div>
 								<div class="ps-form" style="grid-template-columns:80px 1fr">
-									<label for="tTo">받는 주소 *</label><textarea id="tTo" class="form-control form-control-sm" rows="2" placeholder="세무사무소 메일. 여러 곳이면 쉼표나 줄바꿈으로 나눕니다"></textarea>
+									<label>받는 주소</label><div><span id="tTo"></span> <span class="small text-muted">· 시스템관리 › 메일 설정에서 바꿉니다</span></div>
 									<label for="tSubject">제목 *</label><input id="tSubject" class="form-control form-control-sm" maxlength="300">
 									<label>넣을 값</label><div id="tVars"></div>
 									<label for="tBody">내용 *</label><textarea id="tBody" class="form-control form-control-sm" rows="8"></textarea>
@@ -64,7 +65,7 @@
 									<span class="small text-muted align-self-center" id="tSaved"></span>
 									<button type="button" class="btn btn-sm btn-primary ml-auto" id="btnTaxSave">저장</button>
 								</div>
-								<div class="small text-muted mt-2">보내는 계정·답장 주소·숨은 참조는 ⚙ 보내는 메일 설정(급여명세서와 같은 Gmail)을 씁니다.</div>
+								<div class="small text-muted mt-2" id="tAccount"></div>
 							</div>
 							<div>
 								<div class="small text-muted mb-1">보낸 기록</div>
@@ -125,24 +126,15 @@
 				<div class="cate-tabs" id="confTabs" role="tablist" aria-label="설정 구분"></div>
 				<div class="modal-body">
 					<div data-pane="account">
-						<form id="accForm" onsubmit="saveAccount(); return false;">
-							<div class="ps-form">
-								<label>메일 서비스</label><div><span class="dp-pill ok">Gmail</span> <span class="small text-muted">회사 메일이 모두 Gmail 이라 고정입니다</span></div>
-								<label for="cFromNm">보내는 사람 이름 *</label><input id="cFromNm" name="FROM_NM" class="form-control form-control-sm" maxlength="100" required>
-								<label for="cFromAddr">보내는 Gmail 주소 *</label><input id="cFromAddr" name="FROM_ADDR" type="email" class="form-control form-control-sm" maxlength="200" required>
-								<label for="cPw">앱 비밀번호 *</label>
-								<div>
-									<input id="cPw" name="APP_PW" type="password" class="form-control form-control-sm" maxlength="40" autocomplete="new-password" style="max-width:320px;display:inline-block">
-									<span id="cPwState"></span>
-									<details class="small text-muted mt-1"><summary>발급 방법</summary>Google 계정 로그인 비밀번호가 아니라 <b>앱 비밀번호 16자리</b>입니다. 보내는 Gmail 계정으로 로그인 → Google 계정 관리 → 보안 → 2단계 인증 켜기 → 「앱 비밀번호」에서 새로 만들기 → 나온 16자리를 여기에 붙여 넣습니다. 저장하면 암호화해 보관하고 화면에 다시 보이지 않습니다.</details>
-								</div>
-								<label for="cReply">답장 받을 주소</label><input id="cReply" name="REPLY_TO" type="email" class="form-control form-control-sm" maxlength="200" placeholder="비우면 보내는 주소">
-								<label for="cBcc">숨은 참조(BCC)</label><input id="cBcc" name="BCC" type="email" class="form-control form-control-sm" maxlength="200" placeholder="선택 · 보낸 메일 보관용">
-								<label for="cContact">담당자 연락처</label><input id="cContact" name="CONTACT" class="form-control form-control-sm" maxlength="100" placeholder="본문의 {담당자 연락처} 자리에 들어갑니다">
-								<label>연결 상태</label><div><span id="cVerified"></span> <button type="button" class="btn btn-sm btn-outline-secondary" id="btnVerify">연결 확인</button> <span class="small text-muted">실제로 로그인만 해 보고 메일은 보내지 않습니다</span></div>
-							</div>
-							<div class="text-right mt-3"><span class="small text-muted mr-2">주소나 앱 비밀번호를 바꾸면 연결 확인을 다시 해야 보낼 수 있습니다</span><button type="submit" class="btn btn-sm btn-primary">저장</button></div>
-						</form>
+						<div class="ps-form">
+							<label>보내는 계정</label><div id="cAccount"></div>
+							<label>보내는 사람</label><div id="cFrom"></div>
+							<label>답장 · 숨은 참조</label><div id="cReplyBcc"></div>
+							<label>담당자 연락처</label><div id="cContact"></div>
+							<label>연결 상태</label><div id="cVerified"></div>
+						</div>
+						<div class="ps-note mt-3 mx-0">보내는 계정(Gmail·앱 비밀번호·답장·숨은 참조·연락처)은 <b>시스템관리 › 메일 설정</b>에서 바꿉니다.
+							<c:choose><c:when test="${superUser}"><a href="/admin/system/mail/openMailConf.do" class="ml-1">메일 설정 열기 ›</a></c:when><c:otherwise><span class="ml-1">바꿀 일이 있으면 슈퍼관리자에게 요청해 주세요.</span></c:otherwise></c:choose></div>
 					</div>
 					<div data-pane="body" hidden>
 						<div class="ps-two">
@@ -202,11 +194,10 @@
 		$('#sendGo').on('click', runSend);
 		$('#sendModal').on('hide.bs.modal', function(e) { if (sending) e.preventDefault(); }).on('hidden.bs.modal', load);
 		$('#confTabs').on('click', '.cate-tab', function() { showConfTab($(this).attr('data-tab')); });
-		$('#btnVerify').on('click', verify);
 		$('#btnBody').on('click', saveBody);
 		$('#btnTest').on('click', testSend);
 		$('#btnDefault').on('click', function() { bootbox.confirm('제목과 내용을 처음 기본 문구로 바꿀까요? 저장을 눌러야 반영됩니다.', function(ok) { if (ok) setBody(conf.DEFAULT_SUBJECT, conf.DEFAULT_BODY); }); });
-		$('#cSubject, #cFromNm, #cFromAddr, #cContact').on('input', paintPreview);
+		$('#cSubject').on('input', paintPreview);
 		$('#confModal').on('hidden.bs.modal', function() { clearInterval(pvTimer); load(); });
 		$('#pageTabs').on('click', '.cate-tab', function() { showPage($(this).attr('data-tab')); });
 		$('#btnTaxXl').on('click', function() { window.open('/admin/payslip/taxExcel.do?YM=' + ym, '_blank'); });
@@ -232,7 +223,8 @@
 		paintTaxRange();
 		hrPost('/admin/payslip/taxConfData.do', {}, function(res) {
 			taxConf = res.result;
-			$('#tTo').val((taxConf.TO_ADDR || '').split(', ').join('\n'));
+			$('#tTo').text(taxConf.TO_ADDR || '없음 (메일 설정에서 넣어 주세요)');
+			$('#tAccount').text('보내는 계정: ' + (taxConf.ACC_NM || '') + ' <' + (taxConf.FROM_ADDR || '') + '> · 답장·숨은 참조도 그 계정 설정을 씁니다(시스템관리 › 메일 설정).');
 			$('#tSubject').val(taxConf.SUBJECT);
 			$('#tBody').val(htmlText(taxConf.BODY));
 			$('#tSaved').text(taxConf.REG_DT ? '저장 ' + taxConf.REG_DT : '아직 저장 전 (기본 문구)');
@@ -250,9 +242,9 @@
 	function paintTaxRange() {
 		var y = ym.substring(0, 4), m = Number(ym.substring(5));
 		$('#taxRange').empty().append($('<b>').text(y + '년 1월 ~ ' + m + '월')).append(document.createTextNode(' · 달마다 시트(최근 달이 앞) · 전월과 달라진 칸은 노란색, 신규·퇴사·기본급 변경·수습 종료는 기타 칸에 적습니다'));
-		var note = !monthClosed ? dpYmLabel(ym) + '은 아직 작성중이라 보낼 수 없습니다(내려받기는 지금 값으로 됩니다).' : taxConf && !taxConf.ready ? '⚙ 보내는 메일 설정에서 Gmail 연결 확인을 먼저 해 주세요.' : '';
+		var note = !monthClosed ? dpYmLabel(ym) + '은 아직 작성중이라 보낼 수 없습니다(내려받기는 지금 값으로 됩니다).' : taxConf && !taxConf.ready ? '보내는 계정의 연결 확인이 안 됐습니다. 시스템관리 › 메일 설정에서 연결 확인을 해 주세요.' : taxConf && !taxConf.TO_ADDR ? '받는 주소가 없습니다. 시스템관리 › 메일 설정의 「세무서 급여 자료」에서 넣어 주세요.' : '';
 		$('#taxNote').prop('hidden', !note).text(note);
-		$('#btnTaxSend').prop('disabled', !monthClosed || !(taxConf && taxConf.ready));
+		$('#btnTaxSend').prop('disabled', !monthClosed || !(taxConf && taxConf.ready && taxConf.TO_ADDR));
 	}
 
 	// 내용 칸은 글로 고치고, 저장할 때 HTML 로 바꾼다
@@ -269,14 +261,14 @@
 	}
 
 	function saveTax(after, fail) {
-		hrPost('/admin/payslip/saveTaxConfData.do', { TO_ADDR: $('#tTo').val(), SUBJECT: $('#tSubject').val(), BODY: textHtml($('#tBody').val()) }, function() {
+		hrPost('/admin/payslip/saveTaxConfData.do', { SUBJECT: $('#tSubject').val(), BODY: textHtml($('#tBody').val()) }, function() {
 			if (typeof after === 'function') after(); else { loadTax(); bootbox.alert('저장했습니다.'); }
 		}, typeof fail === 'function' ? fail : undefined);
 	}
 
 	function sendTax() {
-		var to = $('#tTo').val().split(/[\s,;]+/).filter(Boolean);
-		bootbox.confirm({ title: dpYmLabel(ym) + ' 세무서 자료 보내기', message: $('<div>').append($('<div>').text('받는 곳: ' + to.join(', '))).append($('<div>').text('첨부: ' + ym.substring(0, 4) + '년 1월~' + Number(ym.substring(5)) + '월 급여 엑셀 (주민번호 전체가 들어 있습니다)')).append('<div class="small text-muted mt-1">지금 화면의 주소·문구를 저장한 뒤 보냅니다.</div>').html(),
+		var to = (taxConf.TO_ADDR || '').split(', ').filter(Boolean);
+		bootbox.confirm({ title: dpYmLabel(ym) + ' 세무서 자료 보내기', message: $('<div>').append($('<div>').text('받는 곳: ' + to.join(', '))).append($('<div>').text('첨부: ' + ym.substring(0, 4) + '년 1월~' + Number(ym.substring(5)) + '월 급여 엑셀 (주민번호 전체가 들어 있습니다)')).append('<div class="small text-muted mt-1">지금 화면의 문구를 저장한 뒤 보냅니다.</div>').html(),
 			callback: function(ok) {
 				if (!ok) return;
 				var $b = $('#btnTaxSend').prop('disabled', true).text('보내는 중…');
@@ -317,7 +309,7 @@
 
 	function render() {
 		$('#status').text(monthClosed ? '마감' : '작성중').attr('class', 'dp-pill ' + (monthClosed ? 'ok' : 'warn'));
-		var note = !monthClosed ? dpYmLabel(ym) + '은 아직 작성중입니다. 급여관리에서 마감한 뒤 보낼 수 있습니다(미리보기는 됩니다).' : !ready ? '보내는 메일 설정이 필요합니다. ⚙ 보내는 메일 설정에서 Gmail 계정을 넣고 연결 확인을 해 주세요.' : '';
+		var note = !monthClosed ? dpYmLabel(ym) + '은 아직 작성중입니다. 급여관리에서 마감한 뒤 보낼 수 있습니다(미리보기는 됩니다).' : !ready ? '보내는 계정의 연결 확인이 안 됐습니다. 시스템관리 › 메일 설정에서 연결 확인을 해 주세요.' : '';
 		$('#note').prop('hidden', !note).text(note);
 		renderChips();
 		var list = shown(), $h = $('<tr>').append($('<th>').append($('<input type="checkbox" id="pickAll">').attr('aria-label', '보이는 사람 전체 선택').prop('checked', list.length > 0 && list.every(function(r) { return picked[r.STAFF_SQ]; }))));
@@ -354,7 +346,7 @@
 	function paintBar() {
 		var n = pickedRows().length;
 		$('#pickCount').text(n + '명 선택');
-		$('#btnMail').prop('disabled', !n || !monthClosed || !ready).attr('title', !monthClosed ? '마감된 달만 보낼 수 있습니다' : !ready ? '보내는 메일 설정이 필요합니다' : '');
+		$('#btnMail').prop('disabled', !n || !monthClosed || !ready).attr('title', !monthClosed ? '마감된 달만 보낼 수 있습니다' : !ready ? '보내는 계정 연결 확인이 필요합니다(메일 설정)' : '');
 		$('#btnZip').prop('disabled', !n || !monthClosed).attr('title', monthClosed ? '' : '마감된 달만 내려받을 수 있습니다');
 	}
 
@@ -433,8 +425,6 @@
 	function openConf() {
 		hrPost('/admin/payslip/confData.do', {}, function(res) {
 			conf = res.result;
-			$('#cFromNm').val(conf.FROM_NM || ''); $('#cFromAddr').val(conf.FROM_ADDR || ''); $('#cReply').val(conf.REPLY_TO || ''); $('#cBcc').val(conf.BCC || ''); $('#cContact').val(conf.CONTACT || '');
-			$('#cPw').val('').attr('placeholder', conf.HAS_PW ? '저장됨 · 바꿀 때만 입력' : '앱 비밀번호 16자리').prop('required', !conf.HAS_PW);
 			$('#cVars').empty().append(conf.VARS.map(function(v) { return $('<button type="button" class="ps-var">').text('{' + v + '}').on('click', function() { insertVar('{' + v + '}'); }); }));
 			$('#cSubject').val(conf.SUBJECT);
 			paintConf();
@@ -444,8 +434,11 @@
 	}
 
 	function paintConf() {
-		$('#cPwState').empty().append(conf.HAS_PW ? '<span class="dp-pill ok">저장됨</span>' : '<span class="dp-pill warn">없음</span>');
-		$('#cVerified').empty().append(conf.VERIFIED_YN === 'Y' ? $('<span class="dp-pill ok">').text('연결 확인됨 · ' + (conf.VERIFIED_DT || '')) : $('<span class="dp-pill bad">').text('연결 확인 필요'));
+		$('#cAccount').text(conf.ACC_NM || '');
+		$('#cFrom').text((conf.FROM_NM || '') + ' <' + (conf.FROM_ADDR || '주소 없음') + '>');
+		$('#cReplyBcc').text((conf.REPLY_TO || '(보내는 주소)') + ' · ' + (conf.BCC || '없음'));
+		$('#cContact').text(conf.CONTACT || '없음');
+		$('#cVerified').empty().append(conf.VERIFIED_YN === 'Y' ? $('<span class="dp-pill ok">').text('연결됨 · ' + (conf.VERIFIED_DT || '')) : $('<span class="dp-pill bad">').text(conf.VERIFY_MSG ? '실패 · ' + conf.VERIFY_MSG : '연결 확인 필요'));
 		var $h = $('#histBody').empty();
 		conf.hist.forEach(function(h) {
 			var $act = $('<td>');
@@ -456,7 +449,7 @@
 			$h.append($('<tr>').append($('<td>').text(h.REG_DT)).append($('<td>').text(h.EMPLY_NM || h.EMPLY_ID)).append($('<td>').text(h.SUMMARY)).append($act));
 		});
 		if (!conf.hist.length) boEmpty($h, '아직 바꾼 기록이 없습니다.');
-		$('#confTabs').empty().append(hrTab('account', '메일 계정', conf.VERIFIED_YN === 'Y' ? '' : '!', confTab === 'account')).append(hrTab('body', '메일 내용', '', confTab === 'body'))
+		$('#confTabs').empty().append(hrTab('account', '보내는 계정',conf.VERIFIED_YN === 'Y' ? '' : '!', confTab === 'account')).append(hrTab('body', '메일 내용', '', confTab === 'body'))
 			.append(hrTab('hist', '설정 이력', conf.hist.length || '', confTab === 'hist'));
 	}
 
@@ -506,7 +499,7 @@
 	}
 
 	function sampleVars() {
-		return { '성명': '김예시', '귀속월': dpYmLabel(ym), '지급일자': ($('#payDt').text().replace('지급일자 ', '') || ''), '부서': '개발팀', '직급': '선임', '회사명': '주식회사 이에스티소프트', '담당자 연락처': $('#cContact').val() || '' };
+		return { '성명': '김예시', '귀속월': dpYmLabel(ym), '지급일자': ($('#payDt').text().replace('지급일자 ', '') || ''), '부서': '개발팀', '직급': '선임', '회사명': '주식회사 이에스티소프트', '담당자 연락처': (conf && conf.CONTACT) || '' };
 	}
 	function fill(t, html) {
 		var v = sampleVars();
@@ -516,7 +509,7 @@
 	var pvLast = '';
 	function paintPreview() {
 		if (!conf) return;
-		$('#pvFrom').text(($('#cFromNm').val() || '주식회사 이에스티소프트') + ' <' + ($('#cFromAddr').val() || '보내는 주소 없음') + '>');
+		$('#pvFrom').text((conf.FROM_NM || '주식회사 이에스티소프트') + ' <' + (conf.FROM_ADDR || '보내는 주소 없음') + '>');
 		$('#pvSubject').text(fill($('#cSubject').val() || '', false));
 		$('#pvFile').text(Number(ym.substring(5)) + '월 이에스티_급여명세서_김예시.pdf');
 		var html = fill(editorHtml() || '', true);
@@ -524,16 +517,6 @@
 		pvLast = html;
 		// 스크립트가 돌지 않는 틀 안에서만 그린다
 		$('#pvBody').attr('srcdoc', '<!doctype html><meta charset="utf-8"><body style="font:13px/1.6 \'Malgun Gothic\',sans-serif;margin:14px;color:#15191d">' + html + '</body>');
-	}
-
-	function saveAccount() {
-		hrPost('/admin/payslip/saveAccountData.do', $('#accForm').serialize(), function() { $('#cPw').val(''); reloadConf(function() { $('#cPw').attr('placeholder', conf.HAS_PW ? '저장됨 · 바꿀 때만 입력' : '앱 비밀번호 16자리').prop('required', !conf.HAS_PW); }); });
-	}
-
-	function verify() {
-		var $b = $('#btnVerify').prop('disabled', true).text('확인 중…');
-		function done() { $b.prop('disabled', false).text('연결 확인'); reloadConf(); }
-		hrPost('/admin/payslip/verifyData.do', {}, function() { done(); bootbox.alert('Gmail 연결을 확인했습니다. 이제 명세서를 보낼 수 있습니다.'); }, done);
 	}
 
 	function saveBody() {

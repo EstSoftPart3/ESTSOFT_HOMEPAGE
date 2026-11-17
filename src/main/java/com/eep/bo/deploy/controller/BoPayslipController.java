@@ -100,22 +100,6 @@ public class BoPayslipController {
 		return run(() -> service.conf());
 	}
 
-	@RequestMapping(value = "/admin/payslip/saveAccountData.do", method = RequestMethod.POST)
-	public ModelAndView saveAccountData(@RequestParam Map<String, Object> param, HttpSession session) {
-		return run(() -> {
-			service.saveAccount(param, loginId(session));
-			return "OK";
-		});
-	}
-
-	@RequestMapping(value = "/admin/payslip/verifyData.do", method = RequestMethod.POST)
-	public ModelAndView verifyData(HttpSession session) {
-		return run(() -> {
-			service.verify(loginId(session));
-			return "OK";
-		});
-	}
-
 	@RequestMapping(value = "/admin/payslip/saveBodyData.do", method = RequestMethod.POST)
 	public ModelAndView saveBodyData(@RequestParam("SUBJECT") String subject, @RequestParam("BODY") String body, HttpSession session) {
 		return run(() -> {
@@ -164,9 +148,9 @@ public class BoPayslipController {
 	}
 
 	@RequestMapping(value = "/admin/payslip/saveTaxConfData.do", method = RequestMethod.POST)
-	public ModelAndView saveTaxConfData(@RequestParam("TO_ADDR") String to, @RequestParam("SUBJECT") String subject, @RequestParam("BODY") String body, HttpSession session) {
+	public ModelAndView saveTaxConfData(@RequestParam("SUBJECT") String subject, @RequestParam("BODY") String body, HttpSession session) {
 		return run(() -> {
-			service.saveTaxConf(to, subject, body, loginId(session));
+			service.saveTaxConf(subject, body, loginId(session));
 			return "OK";
 		});
 	}

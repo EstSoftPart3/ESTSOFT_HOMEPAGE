@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 메일 설정. 표는 sql/mail_conf.sql -->
+<mapper namespace="com.eep.mapper.BoMailMapper">
+
+	<sql id="account">
+		A.ACC_SQ, A.ACC_NM, A.FROM_NM, A.FROM_ADDR, A.APP_PW_ENC, A.REPLY_TO, A.BCC, A.CONTACT, A.VERIFIED_YN, A.VERIFY_MSG
+		, DATE_FORMAT(A.VERIFIED_DT, '%Y-%m-%d %H:%i') AS VERIFIED_DT
+	</sql>
+
+	<select id="selectAccounts" resultType="hashMap">
+		SELECT <include refid="account"/> FROM TB_EEP_MAIL_ACCOUNT_M A ORDER BY A.ACC_SQ
+	</select>
+
+	<select id="selectAccountOfUse" parameterType="string" resultType="hashMap">
+		SELECT <include refid="account"/> FROM TB_EEP_MAIL_USE_M U JOIN TB_EEP_MAIL_ACCOUNT_M A ON A.ACC_SQ = U.ACC_SQ WHERE U.USE_CD = #{useCd}
+	</select>
+
+	<insert id="insertAccount" parameterType="hashMap" useGeneratedKeys="true" keyProperty="ACC_SQ">
+		INSERT INTO TB_EEP_MAIL_ACCOUNT_M (ACC_NM, FROM_NM, FROM_ADDR, APP_PW_ENC, REPLY_TO, BCC, CONTACT, UPDT_EMPLY_ID)
+		VALUES (#{ACC_NM}, #{FROM_NM}, #{FROM_ADDR}, #{APP_PW_ENC}, NULLIF(#{REPLY_TO}, ''), NULLIF(#{BCC}, ''), NULLIF(#{CONTACT}, ''), #{EMPLY_ID})
+	</insert>
+
+	<update id="updateAccount" parameterType="hashMap">
+		UPDATE TB_EEP_MAIL_ACCOUNT_M SET ACC_NM = #{ACC_NM}, FROM_NM = #{FROM_NM}, FROM_ADDR = NULLIF(#{FROM_ADDR}, ''), REPLY_TO = NULLIF(#{REPLY_TO}, ''), BCC = NULLIF(#{BCC}, ''), CONTACT = NULLIF(#{CONTACT}, '')
+			<if test="APP_PW_ENC != null">, APP_PW_ENC = #{APP_PW_ENC}</if>
+			<if test="RESET_VERIFIED">, VERIFIED_YN = 'N', VERIFIED_DT = NULL, VERIFY_MSG = NULL</if>
+			, UPDT_EMPLY_ID = #{EMPLY_ID}
+		WHERE ACC_SQ = #{ACC_SQ}
+	</update>
+
+	<update id="updateVerified" parameterType="hashMap">
+		UPDATE TB_EEP_MAIL_ACCOUNT_M SET VERIFIED_YN = #{VERIFIED_YN}, VERIFIED_DT = NOW(), VERIFY_MSG = #{VERIFY_MSG} WHERE ACC_SQ = #{ACC_SQ}
+	</update>
+
+	<select id="selectUses" resultType="hashMap">
+		SELECT U.USE_CD, U.ACC_SQ, U.TO_LIST FROM TB_EEP_MAIL_USE_M U
+	</select>
+
+	<update id="updateUse" parameterType="hashMap">
+		UPDATE TB_EEP_MAIL_USE_M SET ACC_SQ = #{ACC_SQ}, TO_LIST = NULLIF(#{TO_LIST}, ''), UPDT_EMPLY_ID = #{EMPLY_ID} WHERE USE_CD = #{USE_CD}
+	</update>
+
+	<select id="selectUsers" resultType="hashMap">
+		SELECT E.EMPLY_ID, E.EMPLY_NM, NULLIF(TRIM(E.EMPLY_EMAIL), '') AS EMAIL
+			, (SELECT GROUP_CONCAT(R.ROLE_NM ORDER BY R.SORT_NO, R.ROLE_SQ SEPARATOR ', ') FROM TB_EEP_USER_ROLE_R U JOIN TB_EEP_ROLE_M R ON R.ROLE_SQ = U.ROLE_SQ WHERE U.EMPLY_ID = E.EMPLY_ID) AS ROLE_NMS
+		FROM TB_EEP_EMPLY_M E
+		WHERE IFNULL(E.USE_YN, 'Y') = 'Y' AND IFNULL(E.DEL_YN, 'N') = 'N'
+		ORDER BY E.EMPLY_NM
+	</select>
+
+	<select id="selectUserMails" resultType="hashMap">
+		SELECT E.EMPLY_ID, E.EMPLY_NM, NULLIF(TRIM(E.EMPLY_EMAIL), '') AS EMAIL
+		FROM TB_EEP_EMPLY_M E
+		WHERE IFNULL(E.DEL_YN, 'N') = 'N' AND E.EMPLY_ID IN <foreach collection="list" item="id" open="(" separator="," close=")">#{id}</foreach>
+	</select>
+
+	<select id="selectMyMail" parameterType="string" resultType="string">
+		SELECT NULLIF(TRIM(EMPLY_EMAIL), '') FROM TB_EEP_EMPLY_M WHERE EMPLY_ID = #{emplyId}
+	</select>
+
+	<insert id="insertHist" parameterType="hashMap">
+		INSERT INTO TB_EEP_MAIL_CONF_H (TARGET, SUMMARY, EMPLY_ID) VALUES (#{TARGET}, #{SUMMARY}, #{EMPLY_ID})
+	</insert>
+
+	<select id="selectHist" resultType="hashMap">
+		SELECT H.TARGET, H.SUMMARY, DATE_FORMAT(H.REG_DT, '%Y-%m-%d %H:%i') AS REG_DT, H.EMPLY_ID
+			, (SELECT E.EMPLY_NM FROM TB_EEP_EMPLY_M E WHERE E.EMPLY_ID = H.EMPLY_ID LIMIT 1) AS EMPLY_NM
+		FROM TB_EEP_MAIL_CONF_H H ORDER BY H.HIST_SQ DESC LIMIT 200
+	</select>
+</mapper>

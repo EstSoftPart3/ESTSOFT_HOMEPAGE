@@ -3,17 +3,14 @@ package com.eep.bo.member.service;
 import java.util.List;
 import java.util.Map;
 
-import javax.mail.internet.MimeMessage;
 import javax.servlet.http.HttpServletRequest;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import com.eep.bo.system.service.MailConfService;
 import com.eep.mapper.BoMemberMapper;
 
 /**
@@ -26,9 +23,7 @@ public class AccountMail {
 	@Autowired
 	private BoMemberMapper mapper;
 	@Autowired
-	private JavaMailSender mailSender;
-	@Value("${mail.username}")
-	private String mailFrom;
+	private MailConfService mailConf;
 
 	/** 직원 본인 가입 직후 */
 	public void signedUp(String id, String name) {
@@ -36,7 +31,7 @@ public class AccountMail {
 		if (to.isEmpty()) {
 			return;
 		}
-		send(to.toArray(new String[0]), "[이에스티소프트] 직원 가입 · 권한 발급 요청: " + name,
+		send(MailConfService.GRANT_REQ, to.toArray(new String[0]), "[이에스티소프트] 직원 가입 · 권한 발급 요청: " + name,
 				name + "(" + id + ")님이 홈페이지에 직원으로 가입했습니다.\n\n"
 				+ "지금은 권한 없는 일반 직원 계정입니다. 관리자 화면이 필요한 직원이면 계정관리에서 권한을 발급해 주세요.\n"
 				+ "권한을 발급하면 본인 회사 메일로 안내가 갑니다.\n\n"
@@ -50,7 +45,7 @@ public class AccountMail {
 		if (to == null || !to.contains("@")) {
 			return;
 		}
-		send(new String[] { to }, "[이에스티소프트] 관리자 권한이 발급되었습니다",
+		send(MailConfService.GRANT, new String[] { to },"[이에스티소프트] 관리자 권한이 발급되었습니다",
 				a.get("EMPLY_NM") + "님, 관리자 권한이 발급되었습니다.\n\n"
 				+ "- 아이디: " + id + "\n"
 				+ "- 권한: " + (a.get("ROLE_NMS") == null ? "-" : a.get("ROLE_NMS")) + "\n"
@@ -60,15 +55,13 @@ public class AccountMail {
 						+ "비밀번호를 잊었으면 관리자에게 초기화를 요청해 주세요.\n"));
 	}
 
-	private void send(String[] to, String subject, String text) {
+	private void send(String use, String[] to, String subject, String text) {
 		try {
-			MimeMessage message = mailSender.createMimeMessage();
-			MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
-			helper.setFrom(mailFrom);
-			helper.setTo(to);
-			helper.setSubject(subject);
-			helper.setText(text);
-			mailSender.send(message);
+			MailConfService.Mail m = mailConf.create(use, false);
+			m.h.setTo(to);
+			m.h.setSubject(subject);
+			m.h.setText(text);
+			mailConf.send(m);
 		} catch (Exception e) {
 			System.out.println("ACCOUNT_MAIL_FAIL " + subject + " " + e.getClass().getSimpleName() + " " + e.getMessage());
 		}

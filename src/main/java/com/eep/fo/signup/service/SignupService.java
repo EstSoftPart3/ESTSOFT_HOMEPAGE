@@ -11,16 +11,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.mail.internet.MimeMessage;
 import javax.servlet.http.HttpSession;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 import com.eep.bo.member.service.BoMemberService;
+import com.eep.bo.system.service.MailConfService;
 import com.eep.mapper.BoMemberMapper;
 
 import common.util.RrnCipher;
@@ -46,11 +43,9 @@ public class SignupService {
 	@Autowired
 	private BoMemberService memberService;
 	@Autowired
-	private JavaMailSender mailSender;
+	private MailConfService mailConf;
 	@Autowired
 	private com.eep.bo.member.service.AccountMail accountMail;
-	@Value("${mail.username}")
-	private String mailFrom;
 
 	/** 4항목이 모두 맞는 재직자 목록. 입사일만 틀린 경우(사용자 요청 2026-11-13)만 따로 알리고, 그 밖에는 어느 항목이 틀렸는지 알려 주지 않는다 */
 	public List<Map<String, Object>> match(String name, String joinDt, String birth, String phone, HttpSession session) {
@@ -156,13 +151,11 @@ public class SignupService {
 
 	private void mail(String to, String code) {
 		try {
-			MimeMessage message = mailSender.createMimeMessage();
-			MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
-			helper.setFrom(mailFrom);
-			helper.setTo(to);
-			helper.setSubject("[이에스티소프트] 직원 가입 인증번호");
-			helper.setText("직원 가입 인증번호: " + code + "\n\n10분 안에 입력해 주세요. 직접 요청하지 않았다면 이 메일을 무시해 주세요.");
-			mailSender.send(message);
+			MailConfService.Mail m = mailConf.create(MailConfService.SIGNUP, false);
+			m.h.setTo(to);
+			m.h.setSubject("[이에스티소프트] 직원 가입 인증번호");
+			m.h.setText("직원 가입 인증번호: " + code + "\n\n10분 안에 입력해 주세요. 직접 요청하지 않았다면 이 메일을 무시해 주세요.");
+			mailConf.send(m);
 		} catch (Exception e) {
 			throw new IllegalArgumentException("메일을 보내지 못했습니다. 잠시 후 다시 시도해 주세요.");
 		}

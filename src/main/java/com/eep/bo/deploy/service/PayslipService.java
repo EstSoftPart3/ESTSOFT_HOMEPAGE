@@ -10,32 +10,26 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import javax.mail.AuthenticationFailedException;
-import javax.mail.MessagingException;
-import javax.mail.Transport;
-import javax.mail.internet.MimeMessage;
 import javax.servlet.ServletContext;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.mail.MailAuthenticationException;
-import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import com.eep.bo.system.service.MailConfService;
 import com.eep.mapper.BoPayslipMapper;
 
 import common.util.RrnCipher;
 
 /**
  * 급여명세서: 마감된 달의 급여대장 값으로 PDF 를 만들어(여는 암호 = 생년월일 8자리) 직원의 개인 메일로 보낸다.
- * 보내는 Gmail 계정과 메일 문구는 화면에서 정한다. 앱 비밀번호는 암호화해 저장하고 이 클래스 밖으로 내보내지 않는다.
+ * 메일 문구는 이 화면에서, 보내는 계정·세무서 받는 주소는 시스템관리 › 메일 설정(MailConfService)에서 정한다.
  */
 @Service
 public class PayslipService {
@@ -62,6 +56,9 @@ public class PayslipService {
 
 	@Autowired
 	private BoPayrollService payroll;
+
+	@Autowired
+	private MailConfService mailConf;
 
 	@Autowired
 	private ServletContext servletContext;
@@ -99,7 +96,7 @@ public class PayslipService {
 		out.put("rows", rows);
 		out.put("closed", month.get("closed"));
 		out.put("PAY_DT", month.get("PAY_DT"));
-		out.put("ready", "Y".equals(mapper.selectConf().get("VERIFIED_YN")));
+		out.put("ready", "Y".equals(mailConf.accountInfo(MailConfService.PAYSLIP).get("VERIFIED_YN")));
 		return out;
 	}
 
@@ -213,13 +210,13 @@ public class PayslipService {
 	/** 한 사람에게 보낸다. 결과는 발송 이력에 남고, 실패해도 예외 대신 { RESULT: FAIL, MSG } 로 돌려준다(여러 명을 이어서 보내므로) */
 	public Map<String, Object> send(String ym, Object staffSq, String baseUrl, String loginId) {
 		require(payroll.closed(ym), "마감된 달만 보낼 수 있습니다. 급여관리에서 먼저 마감해 주세요.");
-		Map<String, Object> conf = mapper.selectConf();
-		require("Y".equals(conf.get("VERIFIED_YN")), "보내는 메일 설정에서 연결 확인을 먼저 해 주세요.");
+		Map<String, Object> conf = conf(MailConfService.PAYSLIP);
+		require("Y".equals(conf.get("VERIFIED_YN")), NOT_VERIFIED);
 		Map<String, Object> slip = slip(ym, staffSq), log = new HashMap<>();
 		String to = str(slip.get("EMAIL")), error = null;
 		try {
 			require(EMAIL.matcher(to).matches(), "인사카드에 개인 메일이 없습니다.");
-			mail(conf, to, vars(slip, conf), fileName(slip), pdf(slip, true), baseUrl);
+			mail(MailConfService.PAYSLIP, conf, to, vars(slip, conf), fileName(slip), pdf(slip, true), baseUrl);
 		} catch (IllegalArgumentException e) {
 			error = e.getMessage();
 		} catch (Exception e) {
@@ -271,42 +268,26 @@ public class PayslipService {
 		return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
 	}
 
-	private static JavaMailSenderImpl sender(Map<String, Object> conf) {
-		require(!str(conf.get("FROM_ADDR")).isEmpty() && !str(conf.get("APP_PW_ENC")).isEmpty(), "보내는 Gmail 주소와 앱 비밀번호를 먼저 저장해 주세요.");
-		JavaMailSenderImpl s = new JavaMailSenderImpl();
-		s.setHost("smtp.gmail.com");
-		s.setPort(587);
-		s.setUsername(str(conf.get("FROM_ADDR")));
-		s.setPassword(RrnCipher.decrypt(str(conf.get("APP_PW_ENC"))));
-		Properties p = new Properties();
-		p.put("mail.transport.protocol", "smtp");
-		p.put("mail.smtp.auth", "true");
-		p.put("mail.smtp.starttls.enable", "true");
-		p.put("mail.smtp.ssl.trust", "smtp.gmail.com");
-		p.put("mail.smtp.ssl.protocols", "TLSv1.2");
-		p.put("mail.smtp.connectiontimeout", "10000");
-		p.put("mail.smtp.timeout", "20000");
-		s.setJavaMailProperties(p);
-		return s;
+	static final String NOT_VERIFIED = "보내는 계정의 연결 확인이 안 됐습니다. 시스템관리 › 메일 설정에서 연결 확인을 먼저 해 주세요.";
+
+	/** 메일 문구(이 화면) + 그 메일이 쓰는 계정(메일 설정): FROM_NM, FROM_ADDR, CONTACT, VERIFIED_YN … */
+	private Map<String, Object> conf(String use) {
+		Map<String, Object> c = mapper.selectConf(), a = mailConf.accountInfo(use);
+		for (String k : new String[] { "FROM_NM", "FROM_ADDR", "REPLY_TO", "BCC", "CONTACT", "VERIFIED_YN", "VERIFIED_DT", "VERIFY_MSG", "ACC_NM" }) c.put(k, a.get(k));
+		c.remove("APP_PW_ENC");
+		return c;
 	}
 
-	private void mail(Map<String, Object> conf, String to, Map<String, String> vars, String fileName, byte[] pdf, String baseUrl) throws Exception {
-		JavaMailSenderImpl s = sender(conf);
-		MimeMessage message = s.createMimeMessage();
-		MimeMessageHelper h = new MimeMessageHelper(message, true, "UTF-8");
-		h.setFrom(str(conf.get("FROM_ADDR")), str(conf.get("FROM_NM")).isEmpty() ? COMPANY : str(conf.get("FROM_NM")));
+	/** 보내는 사람·답장·숨은참조는 메일 설정의 계정 값이 들어간다 */
+	private void mail(String use, Map<String, Object> conf, String to, Map<String, String> vars, String fileName, byte[] pdf, String baseUrl) throws Exception {
+		MailConfService.Mail m = mailConf.create(use, true);
+		MimeMessageHelper h = m.h;
 		h.setTo(to.split("\\s*,\\s*"));
-		if (!str(conf.get("REPLY_TO")).isEmpty()) {
-			h.setReplyTo(str(conf.get("REPLY_TO")));
-		}
-		if (!str(conf.get("BCC")).isEmpty()) {
-			h.setBcc(str(conf.get("BCC")));
-		}
 		h.setSubject(fill(subject(conf), vars, false));
 		// 본문 이미지·링크의 사이트 안 주소는 받는 사람이 열 수 있게 전체 주소로 바꾼다
 		h.setText(fill(body(conf), vars, true).replaceAll("(?i)(src|href)=\"/(?!/)", "$1=\"" + Matcher.quoteReplacement(baseUrl) + "/"), true);
 		h.addAttachment(fileName, new ByteArrayResource(pdf));
-		s.send(message);
+		mailConf.send(m);
 	}
 
 	private static String subject(Map<String, Object> conf) {
@@ -319,27 +300,14 @@ public class PayslipService {
 
 	/** 메일 오류를 사람 말로 */
 	private static String reason(Throwable e) {
-		for (Throwable t = e; t != null; t = t.getCause()) {
-			if (t instanceof AuthenticationFailedException || t instanceof MailAuthenticationException) {
-				return "Gmail 로그인에 실패했습니다. 앱 비밀번호가 틀렸거나, 2단계 인증·앱 비밀번호가 설정되지 않았습니다.";
-			}
-			if (t instanceof java.net.UnknownHostException || t instanceof java.net.ConnectException || t instanceof java.net.SocketTimeoutException) {
-				return "메일 서버에 연결할 수 없습니다. 잠시 뒤 다시 해 주세요.";
-			}
-			if (t instanceof javax.mail.SendFailedException) {
-				return "받는 주소로 보낼 수 없습니다. 주소를 확인해 주세요.";
-			}
-		}
-		System.out.println("PAYSLIP_MAIL_ERROR " + e.getClass().getSimpleName());
-		return "보내지 못했습니다. (" + e.getClass().getSimpleName() + ")";
+		return MailConfService.reason(e);
 	}
 
-	// ── 보내는 메일 설정 ──
+	// ── 메일 문구 (보내는 계정은 시스템관리 › 메일 설정) ──
 
-	/** 화면에 주는 설정. 앱 비밀번호는 있는지(HAS_PW)만 알린다 */
+	/** 화면에 주는 설정: 문구 + 보내는 계정 요약(앱 비밀번호는 없다) */
 	public Map<String, Object> conf() {
-		Map<String, Object> c = mapper.selectConf();
-		c.put("HAS_PW", !str(c.remove("APP_PW_ENC")).isEmpty());
+		Map<String, Object> c = conf(MailConfService.PAYSLIP);
 		c.put("SUBJECT", subject(c));
 		c.put("BODY", body(c));
 		c.put("DEFAULT_SUBJECT", DEFAULT_SUBJECT);
@@ -347,67 +315,6 @@ public class PayslipService {
 		c.put("VARS", VARS);
 		c.put("hist", mapper.selectConfHist());
 		return c;
-	}
-
-	public void saveAccount(Map<String, Object> p, String loginId) {
-		Map<String, Object> cur = mapper.selectConf();
-		String name = str(p.get("FROM_NM")).trim(), addr = str(p.get("FROM_ADDR")).trim(), reply = str(p.get("REPLY_TO")).trim(), bcc = str(p.get("BCC")).trim(), contact = str(p.get("CONTACT")).trim();
-		String pw = str(p.get("APP_PW")).replaceAll("\\s", "");
-		require(!name.isEmpty() && name.length() <= 100, "보내는 사람 이름을 1~100자로 입력해 주세요.");
-		require(EMAIL.matcher(addr).matches() && addr.length() <= 200, "보내는 Gmail 주소를 확인해 주세요.");
-		require(reply.isEmpty() || EMAIL.matcher(reply).matches(), "답장 받을 주소를 확인해 주세요.");
-		require(bcc.isEmpty() || EMAIL.matcher(bcc).matches(), "숨은 참조 주소를 확인해 주세요.");
-		require(contact.length() <= 100, "담당자 연락처는 100자까지입니다.");
-		require(pw.isEmpty() || pw.matches("[A-Za-z]{16}"), "앱 비밀번호는 영문 16자리입니다(띄어쓰기는 빼도 됩니다). Google 계정 로그인 비밀번호가 아닙니다.");
-		require(!pw.isEmpty() || !str(cur.get("APP_PW_ENC")).isEmpty(), "앱 비밀번호를 입력해 주세요.");
-		List<String> changed = new ArrayList<>();
-		if (!addr.equals(str(cur.get("FROM_ADDR")))) {
-			changed.add("보내는 주소 " + str(cur.get("FROM_ADDR")) + " → " + addr);
-		}
-		if (!name.equals(str(cur.get("FROM_NM")))) {
-			changed.add("보내는 사람 이름");
-		}
-		if (!pw.isEmpty()) {
-			changed.add("앱 비밀번호 변경");
-		}
-		if (!reply.equals(str(cur.get("REPLY_TO"))) || !bcc.equals(str(cur.get("BCC"))) || !contact.equals(str(cur.get("CONTACT")))) {
-			changed.add("답장·숨은 참조·담당자 연락처");
-		}
-		if (changed.isEmpty()) {
-			return;
-		}
-		Map<String, Object> q = new HashMap<>();
-		q.put("FROM_NM", name);
-		q.put("FROM_ADDR", addr);
-		q.put("REPLY_TO", reply);
-		q.put("BCC", bcc);
-		q.put("CONTACT", contact);
-		q.put("APP_PW_ENC", pw.isEmpty() ? null : RrnCipher.encrypt(pw));
-		q.put("RESET_VERIFIED", !pw.isEmpty() || !addr.equals(str(cur.get("FROM_ADDR")))); // 계정이 바뀌면 연결을 다시 확인해야 보낼 수 있다
-		q.put("EMPLY_ID", loginId);
-		mapper.updateConfAccount(q);
-		hist("ACCOUNT", String.join(", ", changed), null, null, loginId);
-	}
-
-	/** 실제로 Gmail 에 로그인만 해 본다. 메일은 보내지 않는다 */
-	public void verify(String loginId) {
-		JavaMailSenderImpl s = sender(mapper.selectConf());
-		String error = null;
-		try {
-			Transport t = s.getSession().getTransport("smtp");
-			try {
-				t.connect(s.getHost(), s.getPort(), s.getUsername(), s.getPassword());
-			} finally {
-				t.close();
-			}
-		} catch (MessagingException e) {
-			error = reason(e);
-		}
-		Map<String, Object> q = new HashMap<>();
-		q.put("VERIFIED_YN", error == null ? "Y" : "N");
-		mapper.updateConfVerified(q);
-		hist("VERIFY", error == null ? "연결 확인 성공" : "연결 확인 실패: " + error, null, null, loginId);
-		require(error == null, error);
 	}
 
 	public void saveBody(String subject, String body, String loginId) {
@@ -448,9 +355,9 @@ public class PayslipService {
 	public String testSend(String subject, String body, String baseUrl, String loginId) throws IOException {
 		Map<String, Object> q = new HashMap<>();
 		q.put("EMPLY_ID", loginId);
-		Map<String, Object> conf = mapper.selectConf(), slip = sample();
+		Map<String, Object> conf = conf(MailConfService.PAYSLIP_TEST), slip = sample();
 		String mine = str(mapper.selectEmplyEmail(q)).trim(), to = EMAIL.matcher(mine).matches() ? mine : str(conf.get("FROM_ADDR")); // 내 계정에 메일이 없으면 보내는 주소 자신에게
-		require(EMAIL.matcher(to).matches(), "보내는 Gmail 주소를 먼저 저장해 주세요.");
+		require(EMAIL.matcher(to).matches(), "시스템관리 › 메일 설정에서 보내는 Gmail 주소를 먼저 넣어 주세요.");
 		if (!str(subject).trim().isEmpty()) {
 			conf.put("SUBJECT", str(subject).trim());
 		}
@@ -458,7 +365,7 @@ public class PayslipService {
 			conf.put("BODY", clean(str(body)));
 		}
 		try {
-			mail(conf, to, vars(slip, conf), fileName(slip), PayslipPdf.build(slip, logo(), "19900101"), baseUrl);
+			mail(MailConfService.PAYSLIP_TEST, conf, to, vars(slip, conf), fileName(slip), PayslipPdf.build(slip, logo(), "19900101"), baseUrl);
 		} catch (IllegalArgumentException e) {
 			throw e;
 		} catch (Exception e) {
@@ -536,8 +443,9 @@ public class PayslipService {
 	public Map<String, Object> taxConf() {
 		Map<String, Object> c = mapper.selectTaxConf(), out = new HashMap<>();
 		c = c == null ? new HashMap<>() : c;
-		Map<String, Object> mail = mapper.selectConf();
-		out.put("TO_ADDR", str(c.get("TO_ADDR")));
+		Map<String, Object> mail = mailConf.accountInfo(MailConfService.TAX);
+		out.put("TO_ADDR", String.join(", ", mailConf.to(MailConfService.TAX))); // 받는 주소는 메일 설정에서 정한다
+		out.put("ACC_NM", mail.get("ACC_NM"));
 		out.put("SUBJECT", str(c.get("SUBJECT")).isEmpty() ? TAX_SUBJECT : c.get("SUBJECT"));
 		out.put("BODY", str(c.get("BODY")).isEmpty() ? TAX_BODY : c.get("BODY"));
 		out.put("REG_DT", c.get("REG_DT"));
@@ -552,23 +460,9 @@ public class PayslipService {
 		return out;
 	}
 
-	/** 받는 주소(쉼표·줄바꿈으로 여러 개)를 정리해 "a, b" 로 */
-	static String taxTo(String raw) {
-		List<String> to = new ArrayList<>();
-		for (String a : str(raw).split("[,;\\s]+")) {
-			if (!a.isEmpty() && !to.contains(a)) {
-				require(EMAIL.matcher(a).matches(), "받는 주소를 확인해 주세요: " + a);
-				to.add(a);
-			}
-		}
-		require(!to.isEmpty() && to.size() <= 10, "받는 주소를 1~10개 넣어 주세요.");
-		String joined = String.join(", ", to);
-		require(joined.length() <= 500, "받는 주소가 너무 깁니다.");
-		return joined;
-	}
-
-	public void saveTaxConf(String toRaw, String subject, String body, String loginId) {
-		String to = taxTo(toRaw), s = str(subject).trim(), b = clean(str(body));
+	/** 문구만 저장한다. 이력 SUMMARY 에는 저장할 때의 받는 주소를 남긴다(받는 주소는 메일 설정) */
+	public void saveTaxConf(String subject, String body, String loginId) {
+		String to = String.join(", ", mailConf.to(MailConfService.TAX)), s = str(subject).trim(), b = clean(str(body));
 		require(!s.isEmpty() && s.length() <= 300, "제목을 1~300자로 입력해 주세요.");
 		require(!b.replaceAll("(?s)<[^>]*>|&nbsp;|\\s", "").isEmpty() && b.length() <= 200000, "메일 내용을 입력해 주세요.");
 		for (String text : new String[] { s, b }) {
@@ -577,25 +471,25 @@ public class PayslipService {
 				require(TAX_VARS.contains(m.group(1)), "쓸 수 없는 값입니다: {" + m.group(1) + "}. 넣을 수 있는 값은 " + TAX_VARS + " 입니다.");
 			}
 		}
-		hist("TAX", to, s, b, loginId);
+		hist("TAX", to.isEmpty() ? "-" : to, s, b, loginId);
 	}
 
 	/** 마감된 달만. 결과는 발송 이력(CHANNEL TAX)에 남기고, 실패하면 이유를 오류로 돌려준다 */
 	public String sendTax(String ym, String baseUrl, String loginId, java.util.function.Predicate<Object> hide) throws IOException {
 		require(payroll.closed(ym), "마감된 달만 보낼 수 있습니다. 급여관리에서 먼저 마감해 주세요(내려받기는 언제든 됩니다).");
-		Map<String, Object> conf = mapper.selectConf(), tax = mapper.selectTaxConf();
-		require("Y".equals(conf.get("VERIFIED_YN")), "보내는 메일 설정(급여명세서 ⚙)에서 연결 확인을 먼저 해 주세요.");
-		require(tax != null && !str(tax.get("TO_ADDR")).isEmpty(), "받는 주소를 먼저 저장해 주세요.");
-		String to = str(tax.get("TO_ADDR")), error = null;
-		conf.put("SUBJECT", tax.get("SUBJECT"));
-		conf.put("BODY", tax.get("BODY"));
+		Map<String, Object> conf = conf(MailConfService.TAX), tax = mapper.selectTaxConf();
+		require("Y".equals(conf.get("VERIFIED_YN")), NOT_VERIFIED);
+		String to = String.join(", ", mailConf.to(MailConfService.TAX)), error = null;
+		require(!to.isEmpty(), "받는 주소가 없습니다. 시스템관리 › 메일 설정의 '세무서 급여 자료'에서 넣어 주세요.");
+		conf.put("SUBJECT", tax == null || str(tax.get("SUBJECT")).isEmpty() ? TAX_SUBJECT : tax.get("SUBJECT"));
+		conf.put("BODY", tax == null || str(tax.get("BODY")).isEmpty() ? TAX_BODY : tax.get("BODY"));
 		Map<String, String> v = new LinkedHashMap<>();
 		v.put("귀속월", ym.substring(0, 4) + "년 " + Integer.parseInt(ym.substring(5)) + "월");
 		v.put("회사명", COMPANY);
 		v.put("담당자 연락처", str(conf.get("CONTACT")));
 		byte[] xlsx = taxExcel(ym, hide);
 		try {
-			mail(conf, to, v, taxFileName(ym), xlsx, baseUrl);
+			mail(MailConfService.TAX, conf, to, v, taxFileName(ym), xlsx, baseUrl);
 		} catch (IllegalArgumentException e) {
 			error = e.getMessage();
 		} catch (Exception e) {

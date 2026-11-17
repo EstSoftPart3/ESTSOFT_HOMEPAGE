@@ -26,25 +26,12 @@
 	</select>
 
 	<select id="selectConf" resultType="hashMap">
-		SELECT C.FROM_NM, C.FROM_ADDR, C.APP_PW_ENC, C.REPLY_TO, C.BCC, C.CONTACT, C.SUBJECT, C.BODY, C.VERIFIED_YN
-			, DATE_FORMAT(C.VERIFIED_DT, '%Y-%m-%d %H:%i') AS VERIFIED_DT
-		FROM TB_EEP_PAYSLIP_MAIL_M C WHERE C.CONF_SQ = 1
+		<!-- 계정 칸은 메일 설정(TB_EEP_MAIL_ACCOUNT_M)으로 옮겼다. 여기서는 문구만 -->
+		SELECT C.SUBJECT, C.BODY FROM TB_EEP_PAYSLIP_MAIL_M C WHERE C.CONF_SQ = 1
 	</select>
-
-	<update id="updateConfAccount" parameterType="hashMap">
-		UPDATE TB_EEP_PAYSLIP_MAIL_M SET FROM_NM = #{FROM_NM}, FROM_ADDR = #{FROM_ADDR}, REPLY_TO = NULLIF(#{REPLY_TO}, ''), BCC = NULLIF(#{BCC}, ''), CONTACT = NULLIF(#{CONTACT}, '')
-			<if test="APP_PW_ENC != null">, APP_PW_ENC = #{APP_PW_ENC}</if>
-			<if test="RESET_VERIFIED">, VERIFIED_YN = 'N', VERIFIED_DT = NULL</if>
-			, UPDT_EMPLY_ID = #{EMPLY_ID}
-		WHERE CONF_SQ = 1
-	</update>
 
 	<update id="updateConfBody" parameterType="hashMap">
 		UPDATE TB_EEP_PAYSLIP_MAIL_M SET SUBJECT = #{SUBJECT}, BODY = #{BODY}, UPDT_EMPLY_ID = #{EMPLY_ID} WHERE CONF_SQ = 1
-	</update>
-
-	<update id="updateConfVerified" parameterType="hashMap">
-		UPDATE TB_EEP_PAYSLIP_MAIL_M SET VERIFIED_YN = #{VERIFIED_YN}, VERIFIED_DT = IF(#{VERIFIED_YN} = 'Y', NOW(), NULL) WHERE CONF_SQ = 1
 	</update>
 
 	<insert id="insertConfHist" parameterType="hashMap">

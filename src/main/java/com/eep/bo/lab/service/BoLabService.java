@@ -18,16 +18,12 @@ import java.util.regex.Pattern;
 
 import javax.annotation.PostConstruct;
 import javax.imageio.ImageIO;
-import javax.mail.internet.MimeMessage;
 import javax.sql.DataSource;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.HttpStatusCodeException;
@@ -36,6 +32,7 @@ import org.springframework.web.util.HtmlUtils;
 import com.eep.bo.batch.service.GoogleDriveApi;
 import com.eep.bo.my.DriveConfService;
 import com.eep.bo.staff.service.StaffDriveService;
+import com.eep.bo.system.service.MailConfService;
 import com.eep.mapper.BoLabMapper;
 
 /**
@@ -65,9 +62,7 @@ public class BoLabService {
 	@Autowired
 	private DataSource dataSource;
 	@Autowired
-	private JavaMailSender mailSender;
-	@Value("${mail.username}")
-	private String mailFrom;
+	private MailConfService mailConf;
 
 	private TransactionTemplate tx;
 
@@ -429,13 +424,18 @@ public class BoLabService {
 	public String resendRequest(Object sq, Map<String, Object> login) {
 		Map<String, Object> j = journal(sq);
 		if (!SUBMITTED.equals(j.get("STATUS_CD"))) throw new IllegalArgumentException("결재 중인 일지만 승인 요청을 보낼 수 있습니다.");
-		String error = requestMail(sq, login);
+		String error = requestMail(sq, login, MailConfService.LAB_RESEND);
 		if (error != null) throw new IllegalArgumentException(error);
 		return str(currentStep(j, mapper.selectJournalSteps(key(sq))).get("EMPLY_NM"));
 	}
 
 	/** 제출·단계 승인 뒤에 부른다. 메일이 실패해도 결재는 되돌리지 않고 이력에 남긴다. @return 실패 메시지, 성공이면 null */
 	private String requestMail(Object sq, Map<String, Object> login) {
+		return requestMail(sq, login, MailConfService.LAB_REQ);
+	}
+
+	/** @param use 메일 설정의 메일 코드(승인 요청 / 다시 보내기) */
+	private String requestMail(Object sq, Map<String, Object> login, String use) {
 		String who = "";
 		try {
 			Map<String, Object> j = journal(sq);
@@ -456,13 +456,11 @@ public class BoLabService {
 			link.put("STEP_NO", step.get("STEP_NO"));
 			link.put("EMPLY_ID", id);
 			mapper.insertApprLink(link);
-			MimeMessage message = mailSender.createMimeMessage();
-			MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
-			helper.setFrom(mailFrom);
-			helper.setTo(addr);
-			helper.setSubject("[연구일지 승인 요청] " + j.get("YM") + " " + j.get("PRJ_NM"));
-			helper.setText(requestHtml(who, j, mapper.selectJournalSteps(key(sq)), recipients(j), SITE + "/lab/approve.do?t=" + token), true);
-			mailSender.send(message);
+			MailConfService.Mail m = mailConf.create(use, false);
+			m.h.setTo(addr);
+			m.h.setSubject("[연구일지 승인 요청] " + j.get("YM") + " " + j.get("PRJ_NM"));
+			m.h.setText(requestHtml(who, j, mapper.selectJournalSteps(key(sq)), recipients(j), SITE + "/lab/approve.do?t=" + token), true);
+			mailConf.send(m);
 			history(sq, "REQ_MAIL", SUBMITTED, who + " <" + addr + ">", null, login);
 			return null;
 		} catch (RuntimeException | javax.mail.MessagingException e) {
@@ -648,14 +646,12 @@ public class BoLabService {
 				continue;
 			}
 			try {
-				MimeMessage message = mailSender.createMimeMessage();
-				MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-				helper.setFrom(mailFrom);
-				helper.setTo(addr);
-				helper.setSubject("[연구일지] " + j.get("YM") + " " + j.get("PRJ_NM") + " 마감");
-				helper.setText(mailHtml(nm, j, steps, people), true);
-				helper.addAttachment(fileName, new ByteArrayResource(pdf));
-				mailSender.send(message);
+				MailConfService.Mail m = mailConf.create(MailConfService.LAB_CLOSE, true);
+				m.h.setTo(addr);
+				m.h.setSubject("[연구일지] " + j.get("YM") + " " + j.get("PRJ_NM") + " 마감");
+				m.h.setText(mailHtml(nm, j, steps, people), true);
+				m.h.addAttachment(fileName, new ByteArrayResource(pdf));
+				mailConf.send(m);
 				history(sq, "MAIL", CLOSED, nm + " <" + addr + ">", null, login);
 			} catch (Exception e) {
 				history(sq, "MAIL_FAIL", CLOSED, nm + " <" + addr + "> " + e.getClass().getSimpleName(), null, login);
@@ -678,14 +674,12 @@ public class BoLabService {
 		}
 		for (Map<String, Object> p : people) if (addr.equalsIgnoreCase(str(p.get("ADDR")))) return;
 		try {
-			MimeMessage message = mailSender.createMimeMessage();
-			MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-			helper.setFrom(mailFrom);
-			helper.setTo(addr);
-			helper.setSubject("[참조] [연구일지] " + j.get("YM") + " " + j.get("PRJ_NM") + " 마감");
-			helper.setText(mailHtml(nm, j, steps, people), true);
-			helper.addAttachment(fileName, new ByteArrayResource(pdf));
-			mailSender.send(message);
+			MailConfService.Mail m = mailConf.create(MailConfService.LAB_CEO, true);
+			m.h.setTo(addr);
+			m.h.setSubject("[참조] [연구일지] " + j.get("YM") + " " + j.get("PRJ_NM") + " 마감");
+			m.h.setText(mailHtml(nm, j, steps, people), true);
+			m.h.addAttachment(fileName, new ByteArrayResource(pdf));
+			mailConf.send(m);
 			history(sq, "MAIL", CLOSED, "참조 " + nm + " <" + addr + ">", null, login);
 		} catch (Exception e) {
 			history(sq, "MAIL_FAIL", CLOSED, "참조 " + nm + " <" + addr + "> " + e.getClass().getSimpleName(), null, login);
