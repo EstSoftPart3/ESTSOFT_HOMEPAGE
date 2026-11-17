@@ -24,6 +24,8 @@
 	function find(url) { var k = keyOf(url); return tabs.filter(function (t) { return keyOf(t.url) === k; })[0]; }
 	function save() {
 		try { localStorage.setItem(KEY, JSON.stringify(tabs.map(function (t) { return { url: t.url, title: t.title }; }))); } catch (e) {}
+		// 본 탭 순서는 이 브라우저 창에만(새로고침·첫 탭 안에서 다른 화면으로 넘어가도 뒤로가기가 이어진다)
+		try { sessionStorage.setItem('boTrail', JSON.stringify(trail.map(function (t) { return keyOf(t.url); }))); } catch (e) {}
 	}
 
 	// 저장 안 한 입력: 열린 팝업, 고치는 중인 칸, 쓰다 만 메모
@@ -235,6 +237,7 @@
 	});
 	if (tabs.indexOf(selfTab) < 0) tabs.push(selfTab);
 	while (tabs.length > MAX) tabs.splice(tabs[0] === selfTab ? 1 : 0, 1);
+	try { JSON.parse(sessionStorage.getItem('boTrail') || '[]').forEach(function (k) { var t = find(k); if (t && t !== selfTab && trail.indexOf(t) < 0) trail.push(t); }); } catch (e) {}
 	activate(selfTab);
 
 	// 왼쪽 메뉴: 새 탭(이미 있으면 그 탭). Ctrl·Shift·가운데 클릭·새 창 메뉴는 브라우저 그대로
