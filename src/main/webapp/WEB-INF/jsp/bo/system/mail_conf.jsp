@@ -22,6 +22,7 @@
 	.mc-form > label { margin: 0; color: #5f6b75; font-weight: 400; font-size: 12.5px; }
 	.mc-hint { background: #fff8e1; border: 1px solid #ffe08a; border-radius: 4px; padding: 5px 8px; font-size: 12px; color: #7a5b00; margin-top: 8px; }
 	.mc-to { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; border: 1px solid #ced4da; border-radius: 4px; padding: 4px 6px; background: #fff; min-height: 32px; }
+	#btnPickFrom { white-space: nowrap; }
 	.mc-to input { border: 0; outline: 0; flex: 1; min-width: 160px; font-size: 13px; }
 	#mcPick .table-responsive { max-height: 46vh; }
 	#mcPickBody tr { cursor: pointer; }
@@ -127,7 +128,7 @@
 		$('#mcBody').on('click', '.mc-edit', function() { open($(this).attr('data-use')); });
 		$('#mAcc').on('change', function() { fillAccount(this.value); });
 		$('#mToInput').on('keydown', function(e) {
-			if ((e.key === 'Enter' || e.key === ',') && !e.originalEvent.isComposing) { e.preventDefault(); addTyped(); }
+			if ((e.key === 'Enter' || e.key === ',') && !(e.originalEvent && e.originalEvent.isComposing)) { e.preventDefault(); addTyped(); }
 		}).on('blur', addTyped);
 		$('#mTo').on('click', 'button', function() { var v = $(this).attr('data-v'); to = to.filter(function(t) { return t.V !== v; }); paintTo(); });
 		$('#btnPickTo').on('click', function() { pick('to'); });
