@@ -521,7 +521,7 @@ public class StaffCareerService {
 		}
 	}
 
-	static Map<String, Object> parseMap(String json) {
+	public static Map<String, Object> parseMap(String json) {
 		try {
 			return JSON.readValue(json == null || json.isEmpty() ? "{}" : json, new TypeReference<Map<String, Object>>() { });
 		} catch (java.io.IOException e) {
