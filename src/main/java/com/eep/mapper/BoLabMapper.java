@@ -31,6 +31,7 @@ public interface BoLabMapper {
 	public int countResearcherOverlap(Map<String, Object> param);
 	public int insertResearcher(Map<String, Object> param);
 	public int updateResearcher(Map<String, Object> param);
+	public int deleteResearcher(Map<String, Object> param);
 
 	public List<Map<String, Object>> selectProjects();
 	public Map<String, Object> selectProjectOne(Map<String, Object> param);

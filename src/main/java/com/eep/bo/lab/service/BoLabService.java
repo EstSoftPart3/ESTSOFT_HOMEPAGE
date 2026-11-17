@@ -190,6 +190,11 @@ public class BoLabService {
 
 	public void saveResearcher(Map<String, Object> p, Map<String, Object> login) {
 		team(p.get("TEAM_SQ"));
+		// 삭제도 같은 주소로 받는다(권한 패턴 saveResearcherData 재사용). 지난 일지는 제출 때 명단을 따로 저장해 영향 없다
+		if ("Y".equals(str(p.get("DEL")))) {
+			if (mapper.deleteResearcher(p) == 0) throw new IllegalArgumentException("이미 지워졌거나 없는 기간입니다.");
+			return;
+		}
 		boolean isNew = !hasText(str(p.get("RSCH_SQ")));
 		if (isNew) p.put("RSCH_SQ", 0);
 		if (!hasText(str(p.get("STAFF_SQ")))) throw new IllegalArgumentException("직원을 선택해 주세요.");

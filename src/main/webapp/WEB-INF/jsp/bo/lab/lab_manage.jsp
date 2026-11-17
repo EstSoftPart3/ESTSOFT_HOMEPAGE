@@ -246,7 +246,7 @@
 		var $t = $('<tbody>'), rows = editing && !editing.RSCH_SQ ? [editing].concat(p.periods) : p.periods;
 		rows.forEach(function(r, i) {
 			var next = rows[i + 1];
-			$t.append(editing && editing === r || editing && r.RSCH_SQ && editing.RSCH_SQ === r.RSCH_SQ ? periodEditRow(editing) : periodRow(r));
+			$t.append(editing && editing === r || editing && r.RSCH_SQ && editing.RSCH_SQ === r.RSCH_SQ ? periodEditRow(editing) : periodRow(r, p));
 			// 기간 사이 공백(앞 기간 종료 다음 날 ~ 다음 기간 시작 전날)
 			if (next && next.END_DT && r.START_DT && dayAdd(next.END_DT, 1) < r.START_DT) {
 				var from = dayAdd(next.END_DT, 1), to = dayAdd(r.START_DT, -1);
@@ -260,9 +260,23 @@
 			$('<p class="small text-muted mt-2 mb-0">').text('다른 기간과 겹치면 저장되지 않습니다. 연구원 → 연구소장처럼 역할이 바뀌면 기간을 하나 더 넣어 나눕니다.'));
 	}
 
-	function periodRow(r) {
+	function periodRow(r, p) {
 		return $('<tr>').append($('<td>').text(roleName(r.ROLE_CD)), $('<td>').text(r.START_DT), $('<td>').text(r.END_DT || '소속 중'),
-			$('<td class="text-right">').append($('<button type="button" class="btn btn-sm btn-outline-secondary">수정</button>').prop('disabled', !!editing).click(function() { editing = $.extend({}, r); drawPerson(); })));
+			$('<td class="text-right text-nowrap">').append($('<button type="button" class="btn btn-sm btn-outline-secondary">수정</button>').prop('disabled', !!editing).click(function() { editing = $.extend({}, r); drawPerson(); }), ' ',
+				$('<button type="button" class="btn btn-sm btn-outline-danger">삭제</button>').prop('disabled', !!editing).click(function() { deletePeriod(r, p); })));
+	}
+
+	function deletePeriod(r, p) {
+		var msg = r.START_DT + ' ~ ' + (r.END_DT || '소속 중') + ' 기간을 지울까요?'
+			+ (p.periods.length === 1 ? ' 마지막 기간이라 ' + p.STAFF_NM + ' 님이 연구원 목록에서 빠집니다.' : '')
+			+ ' 이미 제출된 연구일지에는 영향이 없습니다.';
+		bootbox.confirm($('<div>').text(msg).html(), function(ok) {
+			if (!ok) return;
+			hrPost('/admin/lab/saveResearcherData.do', { TEAM_SQ: detail.team.TEAM_SQ, RSCH_SQ: r.RSCH_SQ, DEL: 'Y' }, function() {
+				toast('소속 기간을 지웠습니다');
+				reload(drawPerson);
+			});
+		});
 	}
 
 	function periodEditRow(r) {

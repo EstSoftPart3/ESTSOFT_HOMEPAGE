@@ -252,6 +252,10 @@
 		WHERE RSCH_SQ = #{RSCH_SQ} AND TEAM_SQ = #{TEAM_SQ}
 	</update>
 
+	<delete id="deleteResearcher" parameterType="hashMap">
+		DELETE FROM TB_EEP_LAB_RESEARCHER_M WHERE RSCH_SQ = #{RSCH_SQ} AND TEAM_SQ = #{TEAM_SQ}
+	</delete>
+
 	<!-- 연구과제 -->
 
 	<select id="selectProjects" resultType="hashMap">
