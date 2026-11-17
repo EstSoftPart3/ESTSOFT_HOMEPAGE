@@ -222,8 +222,10 @@
 	}
 
 	// ── 시작: 지금 화면이 첫 탭, 저장된 탭은 목록만 되살린다 ──
-	var here = location.pathname + location.search;
+	// #(연구소 관리의 #t=팀, 연구일지의 #p=과제 등)를 지우면 그 화면이 처음 목록으로 돌아가므로 같이 둔다
+	var here = location.pathname + location.search + location.hash;
 	selfTab = { url: here, title: menuName(here) || ((document.querySelector('.bTitle') || {}).textContent || '').trim() || '화면', self: true };
+	window.addEventListener('hashchange', function () { selfTab.url = location.pathname + location.search + location.hash; save(); });
 	var saved = [];
 	try { saved = JSON.parse(localStorage.getItem(KEY) || '[]') || []; } catch (e) {}
 	saved.forEach(function (s) {
