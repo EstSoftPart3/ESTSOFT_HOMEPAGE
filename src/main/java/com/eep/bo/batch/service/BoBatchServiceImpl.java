@@ -348,6 +348,47 @@ public class BoBatchServiceImpl implements BoBatchService {
 		return "반영: " + String.join(", ", filled);
 	}
 
+	@Override
+	public String saveResume(String intvDt, String name, String fileName, byte[] pdf) {
+		String[] drive = resumeDrive();
+		LocalDate date = LocalDate.parse(intvDt);
+		String folder = drive[0];
+		// fillResume·resumeFile 이 찾는 경로와 같게 만든다
+		for (String part : new String[] { date.getYear() + "년도", date.getMonthValue() + "월", date.getDayOfMonth() + "일", name }) {
+			String id = GoogleDriveApi.childFolderId(folder, part, drive[1]);
+			folder = id != null ? id : GoogleDriveApi.createFolder(part, folder, drive[1]);
+		}
+		return (String) GoogleDriveApi.upload(fileName, "application/pdf", pdf, folder, drive[1]).get("id");
+	}
+
+	@Override
+	public byte[] resumeFile(String fileId, String intvDt, String name) {
+		String[] drive = resumeDrive();
+		Map<String, Object> file;
+		if (hasText(fileId)) {
+			file = new HashMap<>();
+			file.put("id", fileId);
+		} else {
+			if (!hasText(intvDt) || !hasText(name)) return null;
+			String day = dayFolder(drive[0], LocalDate.parse(intvDt), drive[1]);
+			if (day == null) return null;
+			String person = GoogleDriveApi.childFolderId(day, name, drive[1]);
+			file = person != null ? GoogleDriveApi.resumePdf(person, null, drive[1]) : GoogleDriveApi.resumePdf(day, name, drive[1]);
+			if (file == null) return null;
+		}
+		return GoogleDriveApi.download(file, drive[1]);
+	}
+
+	/** 면접 이력서 폴더(신입면접 배치 첫 세트와 같은 값)와 회사 공용 드라이브 토큰 */
+	private String[] resumeDrive() {
+		List<Map<String, Object>> sets = BoBatchDao.IcalList();
+		String root = sets.isEmpty() ? null : (String) sets.get(0).get("DRIVE_FOLDER_ID");
+		if (!hasText(root)) {
+			throw new IllegalArgumentException("면접 이력서 폴더가 정해지지 않았습니다. 시스템 관리자가 내 연동에서 폴더를 골라 주세요.");
+		}
+		return new String[] { root, googleLink.accessToken(GoogleLinkService.COMPANY, GoogleLinkService.DRIVE) };
+	}
+
 	private String dayFolder(String root, LocalDate date, String token) {
 		String year = GoogleDriveApi.childFolderId(root, date.getYear() + "년도", token);
 		String month = year == null ? null : GoogleDriveApi.childFolderId(year, date.getMonthValue() + "월", token);

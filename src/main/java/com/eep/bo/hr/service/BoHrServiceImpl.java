@@ -40,7 +40,7 @@ public class BoHrServiceImpl implements BoHrService {
 	private static final List<String> TRAINEE_TEXT_FIELDS = Arrays.asList("TRN_NM", "AGE", "INTERVIEW_AVAIL");
 	// 항목별 코드 그룹. 비어 있거나 파라미터가 없으면 값 없음으로 저장한다
 	private static final String[][] INTV_CODES = { { "GENDER", "HR_GENDER" }, { "APLY_ROUTE", "HR_ROUTE" }, { "ATTEND_ST", "HR_ATTEND" },
-			{ "RESULT_ST", "HR_RESULT" }, { "NOTICE_ST", "HR_NOTICE" }, { "JOIN_ST", "HR_JOIN" }, { "LOCAL_YN", "HR_LOCAL" }, { "LANG", "HR_LANG" } };
+			{ "RESULT_ST", "HR_RESULT" }, { "NOTICE_ST", "HR_NOTICE" }, { "JOIN_ST", "HR_JOIN" }, { "LOCAL_YN", "HR_LOCAL" }, { "LANG", "HR_LANG" }, { "HIRE_CD", "HR_HIRE" } };
 	private static final String[][] TRAINEE_CODES = { { "LEAVE_NOTE", "HR_LEAVE" }, { "GENDER", "HR_GENDER" }, { "INTERVIEW_YN", "HR_INTERVIEW" },
 			{ "LOCAL_YN", "HR_LOCAL" }, { "EARLY_YN", "HR_OXT" }, { "SPECIAL_YN", "HR_OXT" }, { "LANG", "HR_LANG" } };
 
@@ -56,6 +56,8 @@ public class BoHrServiceImpl implements BoHrService {
 	private BoStaffService staffService;
 	@Autowired
 	private com.eep.bo.staff.service.StaffDriveService staffDrive;
+	@Autowired
+	private com.eep.bo.batch.service.BoBatchService batchService;
 
 	private TransactionTemplate tx;
 
@@ -102,6 +104,37 @@ public class BoHrServiceImpl implements BoHrService {
 		} catch (java.io.IOException e) {
 			throw new IllegalArgumentException("PDF를 읽지 못했습니다. 파일이 손상되지 않았는지 확인해 주세요.");
 		}
+	}
+
+	@Override
+	public void IntvResumeSave(Object intvSq, String fileName, byte[] pdf) {
+		Map<String, Object> row = intvResume(intvSq);
+		if (!hasText(row.get("INTV_DT"))) {
+			throw new IllegalArgumentException("면접일자가 없어 이력서를 올릴 폴더를 정할 수 없습니다.");
+		}
+		row.put("INTV_SQ", intvSq);
+		row.put("RESUME_FILE_ID", batchService.saveResume((String) row.get("INTV_DT"), (String) row.get("APLY_NM"), fileName, pdf));
+		hrMapper.updateIntvResume(row);
+	}
+
+	@Override
+	public byte[] IntvResumeFile(Object intvSq) {
+		Map<String, Object> row = intvResume(intvSq);
+		return batchService.resumeFile((String) row.get("RESUME_FILE_ID"), (String) row.get("INTV_DT"), (String) row.get("APLY_NM"));
+	}
+
+	private Map<String, Object> intvResume(Object intvSq) {
+		Map<String, Object> p = new HashMap<>();
+		p.put("INTV_SQ", intvSq);
+		Map<String, Object> row = hrMapper.selectIntvResume(p);
+		if (row == null) {
+			throw new IllegalArgumentException("면접자를 찾을 수 없습니다.");
+		}
+		return row;
+	}
+
+	private static boolean hasText(Object v) {
+		return v != null && !v.toString().trim().isEmpty();
 	}
 
 	@Override
@@ -239,6 +272,9 @@ public class BoHrServiceImpl implements BoHrService {
 		}
 		if ("INTV_DT".equals(field)) {
 			checkDate(param, "VALUE", "면접일자");
+		}
+		if ("HIRE_CD".equals(field) && value.trim().isEmpty()) {
+			param.put("VALUE", "NEW"); // 구분은 비울 수 없는 칸이라 비우면 신입으로 둔다
 		}
 		checkFieldCode(INTV_CODES, field, param);
 		BoHrDao.IntvFieldUpdate(param);

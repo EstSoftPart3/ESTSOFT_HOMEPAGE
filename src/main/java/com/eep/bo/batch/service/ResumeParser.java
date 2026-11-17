@@ -78,6 +78,9 @@ public final class ResumeParser {
 				}
 			}
 		}
+		// 구분: '경력 총 1년 2개월'처럼 기간이 적혀 있으면 경력, 신입이거나 경력 기간이 없으면 신입(화면에서 저장 전에 바꾼다)
+		Matcher total = Pattern.compile("(?m)^\\s*경력\\s*총\\s*(.+)$").matcher(text);
+		row.put("HIRE_CD", total.find() && total.group(1).matches(".*\\d+\\s*(년|개월).*") ? "EXP" : "NEW");
 		String lower = text.toLowerCase();
 		if (lower.contains("saramin")) {
 			row.put("APLY_ROUTE", "SARAMIN");

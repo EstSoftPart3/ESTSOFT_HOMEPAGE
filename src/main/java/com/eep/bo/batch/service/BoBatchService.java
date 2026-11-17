@@ -43,4 +43,10 @@ public interface BoBatchService {
 	Map<String, Object> interviewSource();
 
 	void saveInterviewSource(String calId, String calName, String folder);
+
+	/** 면접 이력서 폴더 아래 년도/월/일/이름 폴더(없으면 만듦)에 PDF 를 올린다. @return 드라이브 파일 ID */
+	String saveResume(String intvDt, String name, String fileName, byte[] pdf);
+
+	/** 파일 ID 가 있으면 그 파일, 없으면 배치와 같은 규칙(날짜·이름 폴더)으로 찾은 이력서 PDF. 없으면 null */
+	byte[] resumeFile(String fileId, String intvDt, String name);
 }

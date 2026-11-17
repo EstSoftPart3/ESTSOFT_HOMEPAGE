@@ -19,7 +19,9 @@
 	<!-- 면접자 -->
 	<select id="selectIntvList" resultType="hashMap">
 		SELECT
-			  I.INTV_SQ, I.SEQ_NO, I.APLY_NM, I.GENDER
+			  I.INTV_SQ, I.SEQ_NO, I.APLY_NM, I.HIRE_CD, I.GENDER
+			<!-- 이력서 보기 버튼: 캘린더로 올린 파일이 있거나 배치로 들어온 면접(드라이브 날짜·이름 폴더에 이력서가 있음) -->
+			, IF(I.RESUME_FILE_ID IS NOT NULL OR I.GCAL_EVT_ID IS NOT NULL, 'Y', 'N') AS RESUME_YN
 			, DATE_FORMAT(I.INTV_DT, '%Y-%m-%d') AS INTV_DT
 			, I.INTV_TM, I.APLY_TARGET, I.APLY_ROUTE, I.REFERRER, I.LANG_NOTE, I.PHONE, I.ATTEND_ST, I.EDU, I.AGE, I.ADDR, I.STATION
 			, I.CAREER, I.LANG, I.LOCAL_YN, I.HOBBY, I.SPECIALTY, I.SALARY
@@ -34,15 +36,15 @@
 	</select>
 
 	<!-- 순번은 엑셀에서 이어지던 번호. 다음 번호를 준다 -->
-	<insert id="insertIntv" parameterType="hashMap">
+	<insert id="insertIntv" parameterType="hashMap" useGeneratedKeys="true" keyProperty="INTV_SQ">
 		INSERT INTO TB_EEP_HR_INTV_M
 		(
-			  SEQ_NO, APLY_NM, GENDER, INTV_DT, INTV_TM, APLY_TARGET, APLY_ROUTE, PHONE, ATTEND_ST, EDU, AGE, ADDR, STATION
+			  SEQ_NO, APLY_NM, HIRE_CD, GENDER, INTV_DT, INTV_TM, APLY_TARGET, APLY_ROUTE, PHONE, ATTEND_ST, EDU, AGE, ADDR, STATION
 			, CAREER, LANG, LOCAL_YN, MEMO, HOBBY, SPECIALTY, SALARY, RESULT_ST, NOTICE_ST, JOIN_ST, JOIN_DT
 			, REFERRER, LANG_NOTE, UPDT_EMPLY_ID, UPDT_DT
 		)
 		SELECT
-			  IFNULL(MAX(SEQ_NO), 0) + 1, #{APLY_NM}, #{GENDER}, NULLIF(#{INTV_DT}, ''), #{INTV_TM}, #{APLY_TARGET}, #{APLY_ROUTE}, #{PHONE}, #{ATTEND_ST}, #{EDU}, #{AGE}, #{ADDR}, #{STATION}
+			  IFNULL(MAX(SEQ_NO), 0) + 1, #{APLY_NM}, IFNULL(NULLIF(#{HIRE_CD}, ''), 'NEW'), #{GENDER}, NULLIF(#{INTV_DT}, ''), #{INTV_TM}, #{APLY_TARGET}, #{APLY_ROUTE}, #{PHONE}, #{ATTEND_ST}, #{EDU}, #{AGE}, #{ADDR}, #{STATION}
 			, #{CAREER}, #{LANG}, #{LOCAL_YN}, #{MEMO}, #{HOBBY}, #{SPECIALTY}, #{SALARY}, #{RESULT_ST}, #{NOTICE_ST}, #{JOIN_ST}, #{JOIN_DT}
 			, #{REFERRER}, #{LANG_NOTE}, #{UPDT_EMPLY_ID}, NOW()
 		FROM TB_EEP_HR_INTV_M
@@ -50,7 +52,7 @@
 
 	<update id="updateIntv" parameterType="hashMap">
 		UPDATE TB_EEP_HR_INTV_M SET
-			  APLY_NM = #{APLY_NM}, GENDER = #{GENDER}, INTV_DT = NULLIF(#{INTV_DT}, ''), INTV_TM = #{INTV_TM}
+			  APLY_NM = #{APLY_NM}, HIRE_CD = IFNULL(NULLIF(#{HIRE_CD}, ''), 'NEW'), GENDER = #{GENDER}, INTV_DT = NULLIF(#{INTV_DT}, ''), INTV_TM = #{INTV_TM}
 			, APLY_TARGET = #{APLY_TARGET}, APLY_ROUTE = #{APLY_ROUTE}, PHONE = #{PHONE}, ATTEND_ST = #{ATTEND_ST}
 			, EDU = #{EDU}, AGE = #{AGE}, ADDR = #{ADDR}, STATION = #{STATION}, CAREER = #{CAREER}, LANG = #{LANG}
 			, LOCAL_YN = #{LOCAL_YN}, HOBBY = #{HOBBY}, SPECIALTY = #{SPECIALTY}, SALARY = #{SALARY}
@@ -58,6 +60,14 @@
 			, REFERRER = #{REFERRER}, LANG_NOTE = #{LANG_NOTE}
 			, UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
 		WHERE INTV_SQ = #{INTV_SQ}
+	</update>
+
+	<select id="selectIntvResume" parameterType="hashMap" resultType="hashMap">
+		SELECT DATE_FORMAT(INTV_DT, '%Y-%m-%d') AS INTV_DT, APLY_NM, RESUME_FILE_ID FROM TB_EEP_HR_INTV_M WHERE INTV_SQ = #{INTV_SQ}
+	</select>
+
+	<update id="updateIntvResume" parameterType="hashMap">
+		UPDATE TB_EEP_HR_INTV_M SET RESUME_FILE_ID = #{RESUME_FILE_ID} WHERE INTV_SQ = #{INTV_SQ}
 	</update>
 
 	<delete id="deleteIntv" parameterType="hashMap">

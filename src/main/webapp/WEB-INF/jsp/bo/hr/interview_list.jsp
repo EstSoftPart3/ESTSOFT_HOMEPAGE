@@ -55,6 +55,7 @@
 									<label for="keyword">검색 (이름·연락처·메모, 모든 연도)</label>
 									<input type="search" id="keyword" class="form-control form-control-sm">
 								</div>
+								<div class="col-md-1 col-6 mb-2"><label for="fHire">구분</label><select id="fHire" class="form-control form-control-sm hr-filter-input"></select></div>
 								<div class="col-md-2 col-6 mb-2"><label for="fRoute">경로</label><select id="fRoute" class="form-control form-control-sm hr-filter-input"></select></div>
 								<div class="col-md-1 col-6 mb-2"><label for="fAttend">참석</label><select id="fAttend" class="form-control form-control-sm hr-filter-input"></select></div>
 								<div class="col-md-1 col-6 mb-2"><label for="fNotice">통보</label><select id="fNotice" class="form-control form-control-sm hr-filter-input"></select></div>
@@ -93,6 +94,7 @@
 			<div class="modal-content">
 				<div class="modal-header">
 					<h5 class="modal-title" id="editTitle">면접자</h5>
+					<a id="btnResume" class="btn btn-sm btn-outline-primary ml-auto align-self-center" target="_blank" rel="noopener" style="display:none;"><i class="far fa-file-pdf"></i> 이력서 보기</a>
 					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
 				</div>
 				<form id="editForm" onsubmit="saveEdit(); return false;">
@@ -123,7 +125,7 @@
 	}
 	var SECTIONS = [
 		['기본정보', [
-			['APLY_NM', '이름 *', 3], ['GENDER', '성별', 2, { code: 'HR_GENDER' }], ['AGE', '나이', 2], ['PHONE', '연락처', 5],
+			['APLY_NM', '이름 *', 3], ['HIRE_CD', '구분', 2, { code: 'HR_HIRE' }], ['GENDER', '성별', 2, { code: 'HR_GENDER' }], ['AGE', '나이', 2], ['PHONE', '연락처', 3],
 			['EDU', '최종학력', 4], ['HOBBY', '취미', 4], ['SPECIALTY', '특기', 4],
 			['LANG', '외국어', 12, { multi: 'HR_LANG' }], ['LANG_NOTE', '외국어 수준', 12],
 			['ADDR', '주소지', 6], ['STATION', '인근 지하철역', 6],
@@ -158,6 +160,7 @@
 	var COLS = [
 		textCol('면접일자', 135, 'INTV_DT', true, 'date'),
 		textCol('시간', 95, 'INTV_TM', true, { values: TIME_VALUES }),
+		codeCol('구분', 75, 'HIRE_CD', 'HR_HIRE'),
 		{ t: '이름', w: 140, sort: true, field: 'APLY_NM', v: function(r) { return r.APLY_NM; },
 			show: function(r) { return r.APLY_NM + (r.GENDER ? ' (' + hrCodeName('HR_GENDER', r.GENDER) + (r.AGE ? ', ' + r.AGE : '') + ')' : '') + (r.TRN_SQ ? ' · 교육생' : ''); } },
 		textCol('연락처', 120, 'PHONE'),
@@ -171,7 +174,7 @@
 	];
 	var NONE = '__NONE';
 	// 결과는 탭, 이름·연락처·메모는 검색, 날짜는 연도로 찾으므로 필터에서 뺀다
-	var FILTERS = [['#fRoute', 'APLY_ROUTE', 'HR_ROUTE'], ['#fAttend', 'ATTEND_ST', 'HR_ATTEND'], ['#fNotice', 'NOTICE_ST', 'HR_NOTICE'], ['#fJoin', 'JOIN_ST', 'HR_JOIN']];
+	var FILTERS = [['#fHire', 'HIRE_CD', 'HR_HIRE'], ['#fRoute', 'APLY_ROUTE', 'HR_ROUTE'], ['#fAttend', 'ATTEND_ST', 'HR_ATTEND'], ['#fNotice', 'NOTICE_ST', 'HR_NOTICE'], ['#fJoin', 'JOIN_ST', 'HR_JOIN']];
 	// 목록 칸 색. 코드 없는 값은 색을 넣지 않는다
 	var TONES = {
 		ATTEND_ST: { ATTEND: 'good', CANCEL: 'mute', ABSENT: 'bad', CHANGE: 'warn' },
@@ -250,10 +253,12 @@
 		var wk = (!kw && week ? $('#weekSel option:selected').text() : '').match(/^([^(]*)(\(.*\))?$/) || ['', '', ''];
 		var title = kw ? '' : [y && y + '년', mon && +mon + '월', wk[1]].filter(Boolean).join(' ');
 		var conds = kw ? ['검색어: ' + kw] : [];
+		// 구분은 제목(신입/경력 채용현황)에 넣으므로 조건 줄에서는 뺀다
+		var hire = { NEW: '신입 ', EXP: '경력 ' }[$('#fHire').val()] || '';
 		FILTERS.forEach(function(f) {
-			if ($(f[0]).val()) conds.push($('label[for=' + f[0].substr(1) + ']').text() + ': ' + $(f[0]).find('option:selected').text());
+			if (f[0] !== '#fHire' && $(f[0]).val()) conds.push($('label[for=' + f[0].substr(1) + ']').text() + ': ' + $(f[0]).find('option:selected').text());
 		});
-		return { title: (title || '전체 기간') + ' 신입 채용현황' + (wk[2] || ''), conds: conds.join(' / ') };
+		return { title: (title || '전체 기간') + ' ' + hire + '채용현황' + (wk[2] || ''), conds: conds.join(' / ') };
 	}
 
 	// 코드별 인원. 코드가 없거나 지워진 값은 미입력으로 묶어 합계를 맞춘다
@@ -341,7 +346,7 @@
 		var $title = $('<tr>'), $new = $('<tr class="hr-new">');
 		COLS.forEach(function(c, i) {
 			if (c.memo) { $new.append('<th></th>'); $title.append($('<th>').attr('data-col', i).text(c.t)); return; }
-			var $add = hrControl(c.type === 'textarea' ? 'text' : c.type, c.field === 'INTV_DT' ? moment().format('YYYY-MM-DD') : c.field === 'APLY_ROUTE' ? firstRoute() : '')
+			var $add = hrControl(c.type === 'textarea' ? 'text' : c.type, c.field === 'INTV_DT' ? moment().format('YYYY-MM-DD') : c.field === 'APLY_ROUTE' ? firstRoute() : c.field === 'HIRE_CD' ? 'NEW' : '')
 				.addClass('hr-new-input').attr({ name: c.field, 'aria-label': '새 면접자 ' + c.t });
 			$new.append($('<th>').append($add));
 
@@ -364,6 +369,7 @@
 		hrPost('/admin/hr/saveInterviewData.do', data, function() {
 			$('.hr-new-input').not('[name=INTV_DT]').val('');
 			$('.hr-new-input[name=APLY_ROUTE]').val(firstRoute());
+			$('.hr-new-input[name=HIRE_CD]').val('NEW');
 			$('.hr-new-input[name=INTV_DT]').focus();
 			load();
 		});
@@ -489,7 +495,9 @@
 
 	function openEdit(row) {
 		editing = row;
+		pendingFile = null;
 		hrFillForm('#editForm', FIELDS, row);
+		$('#btnResume').toggle(row.RESUME_YN === 'Y').attr('href', '/admin/hr/interviewResumeFile.do?INTV_SQ=' + row.INTV_SQ);
 		$('#editForm .ic-auto').removeClass('ic-auto');
 		toggleReferrer();
 		$('#editTitle').text('면접자 상세 · 순번 ' + (row.SEQ_NO || '-'));
@@ -502,10 +510,14 @@
 	}
 
 	// 캘린더에서 새 면접자: 누른(놓은) 날짜·시간과 이력서에서 읽은 값을 채운 상세 창. 저장을 눌러야 등록된다
-	function openNew(dt, tm, fields) {
+	var pendingFile = null;
+	// file: 끌어 놓은 이력서. 저장에 성공하면 그 면접자의 드라이브 폴더에 올린다
+	function openNew(dt, tm, fields, file) {
 		fields = fields || {};
 		editing = {};
-		hrFillForm('#editForm', FIELDS, $.extend({ APLY_TARGET: '이에스티', APLY_ROUTE: fields.APLY_ROUTE || (fields.APLY_NM ? '' : firstRoute()) }, fields, { INTV_DT: dt, INTV_TM: tm }));
+		pendingFile = file || null;
+		$('#btnResume').hide();
+		hrFillForm('#editForm', FIELDS, $.extend({ APLY_TARGET: '이에스티', HIRE_CD: 'NEW', APLY_ROUTE: fields.APLY_ROUTE || (fields.APLY_NM ? '' : firstRoute()) }, fields, { INTV_DT: dt, INTV_TM: tm }));
 		$('#editForm .ic-auto').removeClass('ic-auto');
 		var auto = Object.keys(fields);
 		auto.forEach(function(k) { $('#editForm [name=' + k + '], #editForm [data-multi=' + k + ']').addClass('ic-auto'); });
@@ -547,7 +559,9 @@
 		calendar.batchRendering(function() {
 			calendar.getEvents().forEach(function(e) { e.remove(); });
 			list.forEach(function(r) {
-				calendar.addEvent({ id: String(r.INTV_SQ), title: r.APLY_NM + (r.APLY_ROUTE ? ' · ' + hrCodeName('HR_ROUTE', r.APLY_ROUTE) : ''), start: r.INTV_DT + (r.INTV_TM ? 'T' + r.INTV_TM : ''),
+				// [구분] 이름 · 참석 · 결과. 정해지지 않은 값은 뺀다
+			var title = (r.HIRE_CD ? '[' + hrCodeName('HR_HIRE', r.HIRE_CD) + '] ' : '') + [r.APLY_NM, hrCodeName('HR_ATTEND', r.ATTEND_ST), hrCodeName('HR_RESULT', r.RESULT_ST)].filter(Boolean).join(' · ');
+			calendar.addEvent({ id: String(r.INTV_SQ), title: title, start: r.INTV_DT + (r.INTV_TM ? 'T' + r.INTV_TM : ''),
 					allDay: !r.INTV_TM, color: eventColor(r), classNames: [eventClass(r)], extendedProps: { row: r } });
 			});
 		});
@@ -623,14 +637,30 @@
 		fd.append('file', file);
 		$.ajax({ url: '/admin/hr/readInterviewResumeData.do', type: 'POST', data: fd, processData: false, contentType: false }).done(function(res) {
 			if (res.error) { bootbox.alert($('<div>').text(res.error).html()); return; }
-			openNew(s.date, s.time, res.fields);
+			openNew(s.date, s.time, res.fields, file);
 		});
 	});
 
 	function saveEdit() {
 		var data = hrFormData('#editForm');
 		if (editing.INTV_SQ) data.push({ name: 'INTV_SQ', value: editing.INTV_SQ });
-		hrPost('/admin/hr/saveInterviewData.do', data, function() { $('#editModal').modal('hide'); load(); });
+		var file = pendingFile;
+		hrPost('/admin/hr/saveInterviewData.do', data, function(res) {
+			$('#editModal').modal('hide');
+			if (file && res.INTV_SQ) uploadResume(res.INTV_SQ, file);
+			load();
+		});
+	}
+
+	// 면접자는 이미 저장됐으므로 이력서 올리기가 실패해도 안내만 한다
+	function uploadResume(intvSq, file) {
+		var fd = new FormData();
+		fd.append('INTV_SQ', intvSq);
+		fd.append('file', file);
+		$.ajax({ url: '/admin/hr/uploadInterviewResumeData.do', type: 'POST', data: fd, processData: false, contentType: false }).done(function(res) {
+			bootbox.alert(res.error ? '면접자는 저장했습니다. 이력서는 드라이브에 올리지 못했습니다.<br>' + $('<div>').text(res.error).html() : '저장했습니다. 이력서를 드라이브에 올렸습니다.');
+			if (!res.error) load();
+		}).fail(function() { bootbox.alert('면접자는 저장했습니다. 이력서는 드라이브에 올리지 못했습니다.'); });
 	}
 
 	function deleteEdit() {
