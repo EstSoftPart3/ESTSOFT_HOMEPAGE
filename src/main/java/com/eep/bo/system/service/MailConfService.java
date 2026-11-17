@@ -124,6 +124,7 @@ public class MailConfService {
 	private Map<String, Object> account(String use) {
 		Map<String, Object> a = mapper.selectAccountOfUse(use);
 		if (a == null) throw new IllegalArgumentException("메일 설정에 '" + use + "' 메일이 없습니다. 시스템관리 › 메일 설정을 확인해 주세요.");
+		if (!str(a.get("USE_FROM_NM")).isEmpty()) a.put("FROM_NM", a.get("USE_FROM_NM")); // 보내는 이름은 메일마다, 비면 계정 값
 		return a;
 	}
 
@@ -223,6 +224,8 @@ public class MailConfService {
 			v.put("ACC_SQ", u.get("ACC_SQ"));
 			v.put("TO", d[4] == null ? resolve(str(u.get("TO_LIST"))) : null);
 			Map<String, Object> a = accs.get(str(u.get("ACC_SQ")));
+			String nm = str(u.get("FROM_NM")).isEmpty() && a != null ? str(a.get("FROM_NM")) : str(u.get("FROM_NM"));
+			v.put("FROM_NM", nm.isEmpty() ? DEFAULT_FROM_NM : nm);
 			if (a != null) a.put("USE_CNT", (Integer) a.get("USE_CNT") + 1);
 			uses.add(v);
 		}
@@ -288,8 +291,11 @@ public class MailConfService {
 		require(cur != null, "메일을 찾지 못했습니다.");
 		String to = def[4] == null ? cleanTo(str(p.get("TO_LIST"))) : null;
 		if (def[4] == null) require(!to.isEmpty(), "받는 사람을 한 명 이상 넣어 주세요.");
+		String name = str(p.get("FROM_NM")).trim();
+		require(!name.isEmpty() && name.length() <= 100, "보내는 이름을 1~100자로 입력해 주세요.");
 		List<String> changed = new ArrayList<>();
 		if (!str(accSq).equals(str(cur.get("ACC_SQ")))) changed.add("보내는 계정 " + accName(cur.get("ACC_SQ")) + " → " + accName(accSq));
+		if (!name.equals(str(cur.get("FROM_NM")))) changed.add("보내는 이름 " + (str(cur.get("FROM_NM")).isEmpty() ? "계정 값" : cur.get("FROM_NM")) + " → " + name);
 		if (def[4] == null) {
 			List<String> before = Arrays.asList(str(cur.get("TO_LIST")).split("\\s*,\\s*")), after = Arrays.asList(to.split(","));
 			List<String> diff = new ArrayList<>();
@@ -301,6 +307,7 @@ public class MailConfService {
 		Map<String, Object> q = new HashMap<>();
 		q.put("USE_CD", use);
 		q.put("ACC_SQ", accSq);
+		q.put("FROM_NM", name);
 		q.put("TO_LIST", to);
 		q.put("EMPLY_ID", loginId);
 		mapper.updateUse(q);
@@ -334,11 +341,11 @@ public class MailConfService {
 			for (Map<String, Object> a : mapper.selectAccounts()) if (str(a.get("ACC_SQ")).equals(str(p.get("ACC_SQ")))) cur = a;
 			require(cur != null, "보내는 계정을 골라 주세요.");
 		}
-		String accNm = str(p.get("ACC_NM")).trim(), name = str(p.get("FROM_NM")).trim(), addr = str(p.get("FROM_ADDR")).trim(), reply = str(p.get("REPLY_TO")).trim(),
+		// 보내는 이름은 메일마다 정한다(save). 계정 칸은 메일 값이 빌 때의 기본값으로만 남긴다
+		String accNm = str(p.get("ACC_NM")).trim(), name = isNew || str(cur.get("FROM_NM")).isEmpty() ? DEFAULT_FROM_NM : str(cur.get("FROM_NM")), addr = str(p.get("FROM_ADDR")).trim(), reply = str(p.get("REPLY_TO")).trim(),
 				bcc = str(p.get("BCC")).trim(), contact = str(p.get("CONTACT")).trim(), pw = str(p.get("APP_PW")).replaceAll("\\s", "");
 		boolean first = !isNew && "1".equals(str(cur.get("ACC_SQ")));
 		require(!accNm.isEmpty() && accNm.length() <= 50, "계정 이름을 1~50자로 입력해 주세요.");
-		require(!name.isEmpty() && name.length() <= 100, "보내는 사람 이름을 1~100자로 입력해 주세요.");
 		require(pw.isEmpty() || pw.matches("[A-Za-z]{16}"), "앱 비밀번호는 영문 16자리입니다(띄어쓰기는 빼도 됩니다). Google 계정 로그인 비밀번호가 아닙니다.");
 		boolean hasPw = !pw.isEmpty() || (cur != null && !str(cur.get("APP_PW_ENC")).isEmpty());
 		// 1번 계정은 앱 비밀번호 없이 서버 설정 파일 계정으로 보낼 수 있다(주소는 그 계정으로 고정)
@@ -370,7 +377,6 @@ public class MailConfService {
 		List<String> changed = new ArrayList<>();
 		if (!accNm.equals(str(cur.get("ACC_NM")))) changed.add("이름 " + cur.get("ACC_NM") + " → " + accNm);
 		if (!addr.equals(str(cur.get("FROM_ADDR")))) changed.add("주소 " + (str(cur.get("FROM_ADDR")).isEmpty() ? "서버 설정" : cur.get("FROM_ADDR")) + " → " + (addr.isEmpty() ? "서버 설정" : addr));
-		if (!name.equals(str(cur.get("FROM_NM")))) changed.add("보내는 이름");
 		if (!pw.isEmpty()) changed.add("앱 비밀번호 변경");
 		if (!reply.equals(str(cur.get("REPLY_TO"))) || !bcc.equals(str(cur.get("BCC"))) || !contact.equals(str(cur.get("CONTACT")))) changed.add("답장·숨은참조·연락처");
 		if (changed.isEmpty()) return cur.get("ACC_SQ");

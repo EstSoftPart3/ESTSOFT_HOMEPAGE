@@ -64,7 +64,6 @@
 							<div class="mc-form">
 								<label for="mAcc">계정</label><div class="d-flex align-items-center" style="gap:8px"><select id="mAcc" class="form-control form-control-sm" style="max-width:340px"></select><span id="mAccSt"></span></div>
 								<label for="mAccNm">계정 이름 *</label><input id="mAccNm" class="form-control form-control-sm" maxlength="50" placeholder="예: 기본, 급여, 연구소">
-								<label for="mFromNm">보내는 이름 *</label><input id="mFromNm" class="form-control form-control-sm" maxlength="100">
 								<label for="mFromAddr">Gmail 주소 *</label><div class="d-flex" style="gap:6px"><input id="mFromAddr" type="email" class="form-control form-control-sm" maxlength="200"><button type="button" class="btn btn-sm btn-outline-secondary" id="btnPickFrom">👤 계정에서 고르기</button></div>
 								<label for="mPw">앱 비밀번호</label>
 								<div>
@@ -77,6 +76,8 @@
 							</div>
 							<div class="mc-hint" id="mShare" hidden></div>
 						</div>
+						<div class="mc-sec"><label for="mFromNm" class="m-0 font-weight-bold">📛 보내는 이름 *</label> <span class="small text-muted">이 메일에만 적용 · 받는 사람 메일함에 보이는 이름</span></div>
+						<div><input id="mFromNm" class="form-control form-control-sm" maxlength="100" style="max-width:340px" placeholder="예: 이에스티소프트 채용팀"></div>
 						<div class="mc-sec">📥 받는 사람</div>
 						<div id="mToWrap">
 							<div class="mc-to" id="mTo"><input id="mToInput" aria-label="받는 주소 입력" placeholder="주소 입력 후 Enter"></div>
@@ -191,7 +192,7 @@
 			if (u.GRP !== grp) { grp = u.GRP; $b.append($('<tr class="mc-grp">').append($('<td colspan="6">').text(grp))); }
 			$b.append($('<tr>')
 				.append($('<td>').text(u.NM)).append($('<td class="text-muted">').text(u.WHEN))
-				.append($('<td>').append($('<span class="mc-acc">').text(a ? a.ACC_NM : '?')).append(document.createTextNode(a ? a.FROM_ADDR || '' : '')))
+				.append($('<td>').append($('<span class="mc-acc">').text(a ? a.ACC_NM : '?')).append(document.createTextNode(u.FROM_NM + (a && a.FROM_ADDR ? ' <' + a.FROM_ADDR + '>' : ''))))
 				.append($('<td>').append(stOf(a)))
 				.append($('<td>').append(u.AUTO_TO ? $('<span class="mc-auto">').text(u.AUTO_TO) : (u.TO || []).map(function(t) { return chip(t, false); })))
 				.append($('<td>').append($('<button type="button" class="btn btn-sm btn-outline-secondary py-0 mc-edit">').attr('data-use', u.USE_CD).text('설정'))));
@@ -206,6 +207,7 @@
 		$('#mAcc').empty().append(data.accounts.map(function(a) { return $('<option>').val(a.ACC_SQ).text(a.ACC_NM + ' · ' + (a.FROM_ADDR || '주소 없음')); }))
 			.append($('<option value="NEW">').text('+ 새 계정 추가')).val(cur.ACC_SQ);
 		fillAccount(cur.ACC_SQ);
+		$('#mFromNm').val(cur.FROM_NM || '');
 		to = (cur.TO || []).slice();
 		$('#mToWrap').prop('hidden', !!cur.AUTO_TO);
 		$('#mToAuto').prop('hidden', !cur.AUTO_TO).text((cur.AUTO_TO || '') + ' (자동, 여기서 바꾸지 않음)');
@@ -217,7 +219,6 @@
 	function fillAccount(sq) {
 		var a = acc(sq), isNew = !a;
 		$('#mAccNm').val(a ? a.ACC_NM : '');
-		$('#mFromNm').val(a ? a.FROM_NM || '' : '주식회사 이에스티소프트');
 		$('#mFromAddr').val(a ? a.FROM_ADDR || '' : '');
 		$('#mReply').val(a ? a.REPLY_TO || '' : ''); $('#mBcc').val(a ? a.BCC || '' : ''); $('#mContact').val(a ? a.CONTACT || '' : '');
 		$('#mPw').val('').attr('placeholder', a && a.HAS_PW ? '저장됨 · 바꿀 때만 입력' : a && a.SERVER ? '비우면 서버 설정 파일 계정으로 보냅니다' : '앱 비밀번호 16자리');
@@ -295,7 +296,7 @@
 				cur = data.uses.filter(function(u) { return u.USE_CD === cur.USE_CD; })[0];
 				$('#mAcc').empty().append(data.accounts.map(function(a) { return $('<option>').val(a.ACC_SQ).text(a.ACC_NM + ' · ' + (a.FROM_ADDR || '주소 없음')); }))
 					.append($('<option value="NEW">').text('+ 새 계정 추가')).val(accSq);
-				fillAccount(accSq);
+				fillAccount(accSq); $('#mFromNm').val(cur.FROM_NM || '');
 				to = (cur.TO || []).slice(); paintTo();
 				if (after) after(accSq);
 			});

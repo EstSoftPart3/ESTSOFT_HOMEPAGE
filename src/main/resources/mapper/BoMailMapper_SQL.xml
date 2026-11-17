@@ -16,7 +16,7 @@
 	</select>
 
 	<select id="selectAccountOfUse" parameterType="string" resultType="hashMap">
-		SELECT <include refid="account"/> FROM TB_EEP_MAIL_USE_M U JOIN TB_EEP_MAIL_ACCOUNT_M A ON A.ACC_SQ = U.ACC_SQ WHERE U.USE_CD = #{useCd}
+		SELECT <include refid="account"/>, U.FROM_NM AS USE_FROM_NM FROM TB_EEP_MAIL_USE_M U JOIN TB_EEP_MAIL_ACCOUNT_M A ON A.ACC_SQ = U.ACC_SQ WHERE U.USE_CD = #{useCd}
 	</select>
 
 	<insert id="insertAccount" parameterType="hashMap" useGeneratedKeys="true" keyProperty="ACC_SQ">
@@ -37,11 +37,11 @@
 	</update>
 
 	<select id="selectUses" resultType="hashMap">
-		SELECT U.USE_CD, U.ACC_SQ, U.TO_LIST FROM TB_EEP_MAIL_USE_M U
+		SELECT U.USE_CD, U.ACC_SQ, U.FROM_NM, U.TO_LIST FROM TB_EEP_MAIL_USE_M U
 	</select>
 
 	<update id="updateUse" parameterType="hashMap">
-		UPDATE TB_EEP_MAIL_USE_M SET ACC_SQ = #{ACC_SQ}, TO_LIST = NULLIF(#{TO_LIST}, ''), UPDT_EMPLY_ID = #{EMPLY_ID} WHERE USE_CD = #{USE_CD}
+		UPDATE TB_EEP_MAIL_USE_M SET ACC_SQ = #{ACC_SQ}, FROM_NM = #{FROM_NM}, TO_LIST = NULLIF(#{TO_LIST}, ''), UPDT_EMPLY_ID = #{EMPLY_ID} WHERE USE_CD = #{USE_CD}
 	</update>
 
 	<select id="selectUsers" resultType="hashMap">
