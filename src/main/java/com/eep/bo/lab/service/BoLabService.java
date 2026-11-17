@@ -285,6 +285,8 @@ public class BoLabService {
 			x.put("ADDR", hasText(company) ? company : personal);
 			x.put("KIND", hasText(company) ? "COMPANY" : hasText(personal) ? "PERSONAL" : "NONE");
 			x.put("ITEMS", workItems(str(j.get("CONTENT")), nm));
+			x.put("FROM_DT", r.get("FROM_DT"));
+			x.put("TO_DT", r.get("TO_DT"));
 			out.add(x);
 		}
 		return out;
@@ -616,9 +618,11 @@ public class BoLabService {
 	}
 
 	/** 사람마다 한 통씩. 실패한 사람은 이력에 남기고 나머지는 계속 보낸다. 한 번 보낸 일지는 다시 보내지 않는다 */
-	private void sendMails(Map<String, Object> j, byte[] pdf, String fileName, Map<String, Object> login) {
-		Object sq = j.get("JRN_SQ");
-		for (Map<String, Object> r : recipients(j)) {
+	private void sendMails(Map<String, Object> before, byte[] pdf, String fileName, Map<String, Object> login) {
+		Object sq = before.get("JRN_SQ");
+		Map<String, Object> j = journal(sq); // 방금 올린 PDF 링크까지 담으려고 다시 읽는다
+		List<Map<String, Object>> people = recipients(j), steps = mapper.selectJournalSteps(key(sq));
+		for (Map<String, Object> r : people) {
 			String nm = str(r.get("STAFF_NM")), addr = str(r.get("ADDR"));
 			if (!hasText(addr)) {
 				history(sq, "MAIL_FAIL", CLOSED, nm + ": 메일 주소 없음", null, login);
@@ -630,9 +634,7 @@ public class BoLabService {
 				helper.setFrom(mailFrom);
 				helper.setTo(addr);
 				helper.setSubject("[연구일지] " + j.get("YM") + " " + j.get("PRJ_NM") + " 마감");
-				@SuppressWarnings("unchecked")
-				List<String> items = (List<String>) r.get("ITEMS");
-				helper.setText(mailHtml(nm, str(j.get("YM")), str(j.get("PRJ_NM")), items), true);
+				helper.setText(mailHtml(nm, j, steps, people), true);
 				helper.addAttachment(fileName, new ByteArrayResource(pdf));
 				mailSender.send(message);
 				history(sq, "MAIL", CLOSED, nm + " <" + addr + ">", null, login);
@@ -643,16 +645,81 @@ public class BoLabService {
 		mapper.updateJournalMailed(key(sq));
 	}
 
-	static String mailHtml(String name, String ym, String project, List<String> items) {
-		StringBuilder b = new StringBuilder("<p>").append(esc(name)).append("님, ").append(esc(ym)).append(" 월간 연구일지(").append(esc(project)).append(")가 마감되었습니다.</p>");
-		b.append("<p><b>이번 달 본인 작업</b></p>");
-		if (items.isEmpty()) b.append("<p>일지에서 본인 담당 항목을 찾지 못했습니다.</p>");
+	/** 마감 메일(받는 사람마다): 본인 작업을 맨 위에, 그 아래 과제·기간·연구원·결재, 전체 연구원 업무요약. 승인 요청 메일과 같은 모양 */
+	@SuppressWarnings("unchecked")
+	static String mailHtml(String name, Map<String, Object> j, List<Map<String, Object>> steps, List<Map<String, Object>> people) {
+		String ym = str(j.get("YM")), td = "padding:7px 10px;vertical-align:top;", key = td + "color:#6c757d;white-space:nowrap;width:72px;";
+		List<String> mine = new ArrayList<>();
+		for (Map<String, Object> p : people) if (name.equals(str(p.get("STAFF_NM")))) mine = (List<String>) p.get("ITEMS");
+		StringBuilder b = new StringBuilder("<div style=\"max-width:600px;margin:0 auto;font-family:'Malgun Gothic',sans-serif;color:#212529;font-size:14px;line-height:1.6;\">")
+			.append("<div style=\"background:#0a4a78;color:#fff;padding:16px 20px;border-radius:8px 8px 0 0;\"><div style=\"font-size:12px;opacity:.8;\">이에스티소프트 연구소</div>")
+			.append("<div style=\"font-size:18px;font-weight:700;\">").append(esc(ym)).append(" 월간 연구일지 마감</div></div>")
+			.append("<div style=\"border:1px solid #dee2e6;border-top:0;padding:18px 20px;border-radius:0 0 8px 8px;\">")
+			.append("<p style=\"margin:0 0 12px;\">").append(esc(name)).append(" 님, ").append(esc(ym)).append(" 연구일지가 결재를 마치고 마감되었습니다.</p>");
+
+		// 1. 본인 작업
+		b.append("<div style=\"background:#e7f3f8;border-left:4px solid #0b6e8a;border-radius:6px;padding:12px 14px;margin-bottom:16px;\">")
+			.append("<div style=\"font-weight:700;color:#0a4a78;margin-bottom:4px;\">이번 달 내 작업 (").append(mine.size()).append("건)</div>");
+		if (mine.isEmpty()) b.append("<div style=\"color:#6c757d;\">일지에서 본인 담당 항목을 찾지 못했습니다.</div>");
 		else {
-			b.append("<ul>");
-			for (String i : items) b.append("<li>").append(esc(i)).append("</li>");
+			b.append("<ul style=\"margin:0;padding-left:18px;\">");
+			for (String i : mine) b.append("<li>").append(esc(i)).append("</li>");
 			b.append("</ul>");
 		}
-		return b.append("<p>전체 내용은 첨부한 PDF 를 확인해 주세요.</p>").toString();
+		b.append("</div>");
+
+		// 2. 과제·기간·연구원·결재
+		StringBuilder who = new StringBuilder();
+		for (Map<String, Object> p : people) {
+			who.append(who.length() > 0 ? "<br>" : "").append(esc(str(p.get("STAFF_NM")))).append(" <span style=\"color:#6c757d;\">")
+				.append("HEAD".equals(p.get("ROLE_CD")) ? "연구소장" : "연구원").append(" · ")
+				.append(esc(shortDate(str(p.get("FROM_DT"))) + " ~ " + shortDate(str(p.get("TO_DT"))))).append("</span>");
+		}
+		StringBuilder line = new StringBuilder();
+		for (Map<String, Object> s : steps) {
+			line.append(line.length() > 0 ? "<br>" : "").append(esc(str(s.get("STEP_NM")) + " " + str(s.get("DONE_NM")).trim()))
+				.append(hasText(str(s.get("DONE_DT"))) ? " <span style=\"color:#198754;\">승인 " + esc(str(s.get("DONE_DT")).substring(0, Math.min(10, str(s.get("DONE_DT")).length()))) + "</span>" : "");
+		}
+		LocalDate first = LocalDate.parse(ym + "-01");
+		b.append("<table style=\"width:100%;border-collapse:collapse;background:#f8f9fa;margin-bottom:16px;\">")
+			.append("<tr><td style=\"").append(key).append("\">연구과제</td><td style=\"").append(td).append("\">").append(esc(str(j.get("PRJ_NM")))).append("</td></tr>")
+			.append(hasText(str(j.get("PERIOD"))) ? "<tr><td style=\"" + key + "\">과제 기간</td><td style=\"" + td + "\">" + esc(str(j.get("PERIOD"))) + "</td></tr>" : "")
+			.append("<tr><td style=\"").append(key).append("\">연구 기간</td><td style=\"").append(td).append("\">").append(first).append(" ~ ").append(first.withDayOfMonth(first.lengthOfMonth())).append("</td></tr>")
+			.append(hasText(str(j.get("PLACE"))) ? "<tr><td style=\"" + key + "\">연구 장소</td><td style=\"" + td + "\">" + esc(str(j.get("PLACE"))) + "</td></tr>" : "")
+			.append("<tr><td style=\"").append(key).append("\">연구원</td><td style=\"").append(td).append("\">").append(who).append("</td></tr>")
+			.append(line.length() > 0 ? "<tr><td style=\"" + key + "\">결재</td><td style=\"" + td + "\">" + line + "</td></tr>" : "")
+			.append("</table>");
+
+		// 3. 전체 연구원 업무요약
+		b.append("<div style=\"font-weight:700;margin-bottom:4px;\">연구원별 업무요약</div><table style=\"width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;\">");
+		for (Map<String, Object> p : people) {
+			List<String> items = (List<String>) p.get("ITEMS");
+			b.append("<tr><td style=\"padding:7px 8px;border-top:1px solid #e9ecef;white-space:nowrap;font-weight:700;vertical-align:top;width:70px;\">").append(esc(str(p.get("STAFF_NM"))))
+				.append("</td><td style=\"padding:7px 8px;border-top:1px solid #e9ecef;\">");
+			if (items.isEmpty()) b.append("<span style=\"color:#6c757d;\">-</span>");
+			else {
+				b.append("<ul style=\"margin:0;padding-left:18px;\">");
+				for (String i : items) b.append("<li>").append(esc(i)).append("</li>");
+				b.append("</ul>");
+			}
+			b.append("</td></tr>");
+		}
+		b.append("</table>");
+
+		// 4. 링크
+		String pdf = str(j.get("PDF_LINK")), folder = str(j.get("DRIVE_FOLDER_ID"));
+		if (pdf.startsWith("https://") || hasText(folder)) {
+			b.append("<div style=\"text-align:center;margin:4px 0 14px;\">");
+			if (pdf.startsWith("https://")) b.append("<a href=\"").append(esc(pdf)).append("\" style=\"display:inline-block;background:#0b6e8a;color:#fff;text-decoration:none;padding:10px 20px;border-radius:6px;font-weight:700;margin:4px;\">드라이브에서 일지 PDF 보기</a>");
+			if (folder.matches("[\\w-]+")) b.append("<a href=\"https://drive.google.com/drive/folders/").append(folder).append("\" style=\"display:inline-block;border:1px solid #0b6e8a;color:#0b6e8a;text-decoration:none;padding:9px 18px;border-radius:6px;margin:4px;\">연구과제 폴더 열기</a>");
+			b.append("</div>");
+		}
+		return b.append("<p style=\"margin:0;font-size:12px;color:#6c757d;\">결재란과 서명이 들어간 일지 전체는 첨부한 PDF 에 있습니다.</p></div></div>").toString();
+	}
+
+	/** 2026-10-01 → 10/01 */
+	private static String shortDate(String d) {
+		return d.length() >= 10 ? d.substring(5, 7) + "/" + d.substring(8, 10) : d;
 	}
 
 	/**

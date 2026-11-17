@@ -55,8 +55,18 @@ public class BoLabServiceCheck {
 				Arrays.asList("툴팁이 열리지 않던 오류를 고쳤습니다."), "제목이 코드뿐이면 내용 문장");
 		same(BoLabService.workItems(hwp, "이정수"), Arrays.asList("입사지원 로직", "추천 공고"), "괄호 이름 형식, 비슷한 이름 제외");
 		same(BoLabService.workItems(hwp, "이슬이").size(), 0, "담당 없음");
-		String mail = BoLabService.mailHtml("<b>홍</b>", "2026-10", "과제 & A", Arrays.asList("<script>x</script>"));
-		yes(!mail.contains("<script>") && mail.contains("&lt;b&gt;홍") && mail.contains("과제 &amp; A"), "메일 본문 이스케이프");
+		Map<String, Object> mj = new HashMap<>();
+		mj.put("YM", "2026-02"); mj.put("PRJ_NM", "과제 & A"); mj.put("PERIOD", "2025-01-01 ~ 2026-12-31");
+		mj.put("PDF_LINK", "https://drive.google.com/file/d/X/view"); mj.put("DRIVE_FOLDER_ID", "F1-x");
+		Map<String, Object> me = new HashMap<>(), other = new HashMap<>();
+		me.put("STAFF_NM", "<b>홍</b>"); me.put("ROLE_CD", "HEAD"); me.put("ITEMS", Arrays.asList("<script>x</script>", "내 일 2")); me.put("FROM_DT", "2026-02-01"); me.put("TO_DT", "2026-02-28");
+		other.put("STAFF_NM", "김연구"); other.put("ROLE_CD", "MEMBER"); other.put("ITEMS", Arrays.asList("남의 일")); other.put("FROM_DT", "2026-02-10"); other.put("TO_DT", "2026-02-28");
+		Map<String, Object> done = new HashMap<>(); done.put("STEP_NM", "대표"); done.put("DONE_NM", "임대표"); done.put("DONE_DT", "2026-03-02 10:00:00");
+		String mail = BoLabService.mailHtml("<b>홍</b>", mj, Arrays.asList(done), Arrays.asList(me, other));
+		yes(!mail.contains("<script>") && mail.contains("&lt;b&gt;홍") && mail.contains("과제 &amp; A"), "마감 메일 이스케이프");
+		yes(mail.indexOf("내 작업 (2건)") < mail.indexOf("연구과제") && mail.indexOf("연구과제") < mail.indexOf("연구원별 업무요약"), "본인 작업이 맨 위");
+		yes(mail.contains("2026-02-01 ~ 2026-02-28") && mail.contains("김연구 <span style=\"color:#6c757d;\">연구원 · 02/10 ~ 02/28") && mail.contains("남의 일"), "연구 기간·연구원 기간·전체 요약");
+		yes(mail.contains("대표 임대표 <span style=\"color:#198754;\">승인 2026-03-02") && mail.contains("drive/folders/F1-x") && mail.contains("file/d/X/view"), "결재·드라이브 링크");
 
 		// PDF: 단계 수만큼 결재란, 서명, 마감, 에디터 서식 유지
 		Map<String, Object> j = new HashMap<>();

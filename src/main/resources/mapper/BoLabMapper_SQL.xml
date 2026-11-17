@@ -239,6 +239,9 @@
 	<!-- 대상 월에 소속 기간이 하루라도 걸친 사람. 메일 주소는 회사 메일을 먼저 쓴다 -->
 	<select id="selectMonthResearchers" resultType="hashMap">
 		SELECT S.STAFF_NM, R.ROLE_CD, MAX(S.COMPANY_EMAIL) AS COMPANY_EMAIL, MAX(S.EMAIL) AS EMAIL
+			<!-- 그 달 안에서의 소속 기간(마감 메일의 연구원 목록) -->
+			, DATE_FORMAT(GREATEST(MIN(R.START_DT), DATE(CONCAT(#{ym}, '-01'))), '%Y-%m-%d') AS FROM_DT
+			, DATE_FORMAT(LEAST(MAX(IFNULL(R.END_DT, '9999-12-31')), LAST_DAY(CONCAT(#{ym}, '-01'))), '%Y-%m-%d') AS TO_DT
 		FROM TB_EEP_LAB_RESEARCHER_M R
 		JOIN TB_EEP_HR_STAFF_M S ON S.STAFF_SQ = R.STAFF_SQ
 		WHERE R.TEAM_SQ = #{teamSq}
