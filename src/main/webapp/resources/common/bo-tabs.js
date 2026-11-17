@@ -142,10 +142,19 @@
 				var w = f.contentWindow, p = w.location.pathname;
 				// 로그인이 끊겼거나 관리자 화면이 아니면 탭 하나가 아니라 전체를 그 화면으로
 				if (p.indexOf('/admin/') !== 0 || !w.document.querySelector('.content-wrapper')) { location.href = w.location.href; return; }
-				t.url = p + w.location.search;
+				// #뒤(고른 연구팀 #t=1 처럼 화면 안에서 고른 것)까지 기억해야 뒤로 갔을 때 다시 고르지 않는다
+				t.url = p + w.location.search + w.location.hash;
 				if (t.backing) t.backing = false;
 				else if (!t.stack) t.stack = [t.url];
 				else if (t.stack[t.stack.length - 1] !== t.url) t.stack.push(t.url);
+				w.addEventListener('hashchange', function () {
+					t.url = w.location.pathname + w.location.search + w.location.hash;
+					if (t.backing) t.backing = false;
+					else if (t.stack && t.stack[t.stack.length - 1] !== t.url) t.stack.push(t.url);
+					if (t === active) history.replaceState(null, '', t.url);
+					render();
+					save();
+				});
 				t.title = menuName(t.url) || t.title;
 				f.title = t.title;
 				if (t === active) { history.replaceState(null, '', t.url); markMenu(t.url); }
