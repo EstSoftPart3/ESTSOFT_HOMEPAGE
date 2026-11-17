@@ -27,7 +27,8 @@ public final class InterviewCalendarParser {
 	private static final Pattern TITLE = Pattern.compile("^((?:\\[[^\\]]*\\]\\s*)*)-?\\s*(?:면접\\s*-\\s*)?([^\\s\\[\\]()/]+)\\s*[(/](.*)$");
 	private static final Pattern TAG = Pattern.compile("\\[([^\\]]*)\\]");
 	private static final Pattern LEAD_TAGS = Pattern.compile("^((?:\\[[^\\]]*\\]\\s*)*)");
-	private static final Pattern PHONE = Pattern.compile("01\\d-?\\d{3,4}-?\\d{4}");
+	private static final Pattern PHONE = Pattern.compile("01\\d[-. ]?\\d{3,4}[-. ]?\\d{4}");
+	private static final String TAG_WORDS = "신입|경력[^)\\]]*|취소|불참|합격|불합격";
 	private static final Pattern ICAL_URL = Pattern.compile("/ical/([^/]+)/private-([^/]+)/");
 	private static final Pattern YEARS =Pattern.compile("^(\\d+년\\s*)?(\\d+개월)?$");
 
@@ -125,22 +126,46 @@ public final class InterviewCalendarParser {
 
 	/** 신입면접 배치라서 앞쪽 대괄호 태그에 경력…([경력], [경력재지원] 등)이 있으면 가져오지 않는다 */
 	private static boolean hasCareerTag(String title) {
-		Matcher m = title == null ? null : LEAD_TAGS.matcher(title.trim());
+		Matcher m = title == null ? null : LEAD_TAGS.matcher(fixTypos(title));
 		if (m == null || !m.find()) {
 			return false;
 		}
 		Matcher tags = TAG.matcher(m.group(1));
 		while (tags.find()) {
-			for (String raw : tags.group(1).split("/")) {
+			for (String raw : tags.group(1).split("[/,]")) {
 				if (raw.trim().startsWith("경력")) return true;
 			}
 		}
 		return false;
 	}
 
+	/**
+	 * 손으로 쓰는 제목의 흔한 오타를 표준 형식([태그]이름(…))으로 고친다.
+	 * 전각 기호, 대괄호 대신 괄호 [신입]→(신입), 여는 대괄호 빠짐 신입], 닫는 대괄호 빠짐 [신입-이름 · [신입 이름
+	 */
+	static String fixTypos(String title) {
+		String s = title.trim()
+				.replace('（', '(').replace('）', ')').replace('［', '[').replace('］', ']').replace('【', '[').replace('】', ']')
+				.replace('〔', '[').replace('〕', ']').replace('／', '/').replace('，', ',').replace('－', '-').replace('–', '-').replace('—', '-');
+		s = s.replaceFirst("^\\((" + TAG_WORDS + ")\\)", "[$1]");
+		s = s.replaceFirst("^(" + TAG_WORDS + ")\\]", "[$1]");
+		int close = s.indexOf(']'), paren = s.indexOf('(');
+		// 대괄호가 안 닫혔으면 태그 바로 뒤의 '-' 나 공백을 닫는 대괄호로 본다
+		if (s.startsWith("[") && (close < 0 || (paren >= 0 && paren < close))) {
+			s = s.replaceFirst("^\\[([^\\]\\[()\\s-]+)\\s*-?\\s*", "[$1]");
+		}
+		return s;
+	}
+
+	/** 010 1234 5678, 010.1234.5678, 01012345678 을 010-1234-5678 로 */
+	private static String formatPhone(String phone) {
+		String d = phone.replaceAll("\\D", "");
+		return d.substring(0, 3) + "-" + d.substring(3, d.length() - 4) + "-" + d.substring(d.length() - 4);
+	}
+
 	/** 제목을 면접관리 칸 값으로 바꾼다. 형식이 다르거나 전화번호가 없으면 null */
 	public static Map<String, Object> parseTitle(String title) {
-		Matcher m = title == null ? null : TITLE.matcher(title.trim());
+		Matcher m = title == null ? null : TITLE.matcher(fixTypos(title));
 		if (m == null || !m.matches()) {
 			return null;
 		}
@@ -150,7 +175,7 @@ public final class InterviewCalendarParser {
 
 		Matcher tags = TAG.matcher(m.group(1));
 		while (tags.find()) {
-			for (String raw : tags.group(1).split("/")) {
+			for (String raw : tags.group(1).split("[/,]")) {
 				String tag = raw.trim();
 				if (tag.equals("신입")) career = "신입";
 				else if (tag.startsWith("경력")) career = "경력";
@@ -164,7 +189,7 @@ public final class InterviewCalendarParser {
 			String part = raw.trim();
 			Matcher phone = PHONE.matcher(part);
 			if (part.isEmpty()) continue;
-			if (phone.find()) row.put("PHONE", phone.group());
+			if (phone.find()) row.put("PHONE", formatPhone(phone.group()));
 			else if (part.equals("노쇼")) row.put("ATTEND_ST", "ABSENT");
 			else if (part.equals("신입")) career = "신입";
 			else if (part.startsWith("경력")) career = "경력";

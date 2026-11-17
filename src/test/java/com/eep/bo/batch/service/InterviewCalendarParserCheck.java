@@ -63,6 +63,29 @@ public class InterviewCalendarParserCheck {
 		eq(r, "PHONE", "010-1111-2222");
 		eq(r, "APLY_TARGET", "이에스티");
 
+		// 손으로 쓴 제목의 오타들: 모두 홍길동, 010-1111-2222, 신입으로 읽혀야 한다
+		for (String typo : new String[] {
+				"[신입-홍길동(사람인_공고/010-1111-2222)",     // 닫는 대괄호 대신 '-' (실제 사례)
+				"[신입-홍길동(사람인_공고/010-1111-2222",      // 거기에 닫는 괄호도 빠짐 (실제 사례)
+				"[신입 홍길동(사람인_공고/010-1111-2222)",     // 닫는 대괄호 대신 공백
+				"신입]홍길동(사람인_공고/010-1111-2222)",      // 여는 대괄호 빠짐
+				"(신입)홍길동(사람인_공고/010-1111-2222)",     // 대괄호 대신 괄호
+				"【신입】홍길동（사람인_공고／010-1111-2222）", // 전각 기호
+				"[신입] 홍길동 (사람인_공고/010 1111 2222)",   // 띄어쓰기, 번호 공백 구분
+				"[신입]홍길동(사람인_공고/010.1111.2222)",     // 번호 점 구분
+				"[신입]홍길동(사람인_공고/01011112222)" }) {     // 번호 붙여 씀
+			r = title(typo);
+			eq(r, "APLY_NM", "홍길동");
+			eq(r, "PHONE", "010-1111-2222");
+			eq(r, "CAREER", "신입");
+		}
+		r = title("[신입,취소]홍길동(사람인_공고/010-1111-2222)");
+		eq(r, "ATTEND_ST", "CANCEL");
+		Map<String, String> careerTypo = new java.util.HashMap<>();
+		careerTypo.put("TITLE", "[경력-홍길동(잡코리아_클라우드인프라/010-1111-2222)");
+		same(InterviewCalendarParser.excludeReason(careerTypo), "경력 면접", "닫는 대괄호 빠진 경력 면접도 제외");
+		check(InterviewCalendarParser.parseTitle("[경력-홍길동(잡코리아_클라우드인프라/)") == null, "전화번호 없으면 실패");
+
 		check(GoogleDriveApi.namedFor("홍길동_이력서_신입.pdf", "홍길동"), "이름으로 시작하는 이력서");
 		check(GoogleDriveApi.namedFor("홍길동 이력서.pdf", "홍길동"), "이름 뒤 공백");
 		check(!GoogleDriveApi.namedFor("홍길동_이력서.pdf", "홍길"), "다른 사람 이름의 앞부분이면 아님");
