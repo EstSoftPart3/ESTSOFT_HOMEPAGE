@@ -126,6 +126,29 @@ public class BoLabController {
 		return result(() -> lab.closeJournal(sq, login(session)));
 	}
 
+	@RequestMapping(value = "/admin/lab/resendJournalRequestData.do", method = RequestMethod.POST)
+	public ModelAndView resendJournalRequestData(@RequestParam("JRN_SQ") int sq, HttpSession session) {
+		return result(() -> lab.resendRequest(sq, login(session)));
+	}
+
+	// ── 승인 요청 메일 링크: /admin 밖이라 로그인 없이 열린다. 토큰이 그 결재자·그 일지·그 단계만 허락한다 ──
+
+	@RequestMapping(value = "/lab/approve.do", method = RequestMethod.GET)
+	public ModelAndView approveLink(@RequestParam(value = "t", required = false) String token, javax.servlet.http.HttpServletResponse response) {
+		response.setHeader("Cache-Control", "no-store");
+		response.setHeader("Referrer-Policy", "no-referrer");
+		response.setHeader("X-Robots-Tag", "noindex");
+		ModelAndView mv = new ModelAndView("bo/lab/approve_link");
+		mv.addObject("view", lab.linkView(token));
+		mv.addObject("token", token);
+		return mv;
+	}
+
+	@RequestMapping(value = "/lab/approveLinkData.do", method = RequestMethod.POST)
+	public ModelAndView approveLinkData(@RequestParam("t") String token, @RequestParam("ACTION") String action, @RequestParam(value = "NOTE", required = false) String note) {
+		return result(() -> lab.linkAct(token, action, note));
+	}
+
 	/** 마감 뒤 PDF 업로드·메일이 실패했을 때 다시 시도 */
 	@RequestMapping(value = "/admin/lab/uploadJournalData.do", method = RequestMethod.POST)
 	public ModelAndView uploadJournalData(@RequestParam("JRN_SQ") int sq, HttpSession session) {

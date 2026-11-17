@@ -132,7 +132,7 @@
 	<script>$(function() { hrDriveGear('LAB'); }); // 드라이브 폴더·파일 이름 규칙 ⚙</script>
 	<script>
 	var STATUS = { DRAFT: '작성 중', SUBMITTED: '결재 중', APPROVED: '결재 완료', CLOSED: '마감' };
-	var ACTION = { CREATE: '작성 시작', SAVE: '저장', SUBMIT: '제출', APPROVE: '확인', REJECT: '반려', CLOSE: '마감', UPLOAD: '드라이브 업로드', MAIL: '메일 발송', MAIL_FAIL: '메일 실패' };
+	var ACTION = { CREATE: '작성 시작', SAVE: '저장', SUBMIT: '제출', APPROVE: '확인', REJECT: '반려', CLOSE: '마감', UPLOAD: '드라이브 업로드', MAIL: '메일 발송', MAIL_FAIL: '메일 실패', REQ_MAIL: '승인 요청 메일', REQ_MAIL_FAIL: '승인 요청 메일 실패' };
 	var projects = [], teams = [], project = null, journal = null, editing = null, prjTab = 0, jrnTab = 0;
 	var oEditors = [], editorReady = false, editorHtml = '';
 
@@ -326,6 +326,13 @@
 			button((cur ? cur.STEP_NM : '') + ' 확인', 'btn-primary', function() { act('/admin/lab/approveJournalData.do'); });
 			if (r.needSign) $head.find('button:last').prop('disabled', true);
 		}
+		// 지금 단계 결재자에게 로그인 없이 승인하는 링크를 메일로 다시 보낸다(제출·단계 승인 때는 자동으로 간다)
+		if (st === 'SUBMITTED' && cur) button('승인 요청 메일 다시 보내기', 'btn-outline-primary', function() {
+			bootbox.confirm($('<div>').text((cur.EMPLY_NM || cur.EMPLY_ID) + ' 님(' + cur.STEP_NM + ')에게 승인 요청 메일을 보낼까요?').html(), function(ok) {
+				if (!ok) return;
+				act('/admin/lab/resendJournalRequestData.do', {}, function(res) { hrToast((res.result || '') + ' 님에게 승인 요청 메일을 보냈습니다'); showCurrent(); });
+			});
+		});
 		if (r.canClose) {
 			button('마감', 'btn-primary', function() {
 				var to = (r.recipients || []).map(function(x) { return x.STAFF_NM; }).join(', ');

@@ -108,6 +108,18 @@
 			, PRIMARY KEY (JRN_SQ, STEP_NO)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='일지 결재 단계. 제출할 때 결재라인을 복사해 이후 결재라인을 바꿔도 그대로 둔다';
 
+		CREATE TABLE IF NOT EXISTS TB_EEP_LAB_APPR_LINK (
+			  TOKEN_HASH char(64)    NOT NULL COMMENT '메일 링크 토큰의 SHA-256(토큰 원문은 저장하지 않는다)'
+			, JRN_SQ     int         NOT NULL
+			, STEP_NO    int         NOT NULL
+			, EMPLY_ID   varchar(50) NOT NULL COMMENT '이 링크로 결재할 수 있는 결재자'
+			, EXPIRE_DT  datetime    NOT NULL COMMENT 'KST'
+			, USED_DT    datetime    NULL     COMMENT '승인·반려에 쓴 시각(KST)'
+			, REG_DT     datetime    NOT NULL COMMENT 'KST'
+			, PRIMARY KEY (TOKEN_HASH)
+			, KEY IX_LAB_LINK_JRN (JRN_SQ)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='연구일지 승인 요청 메일 링크(로그인 없이 그 단계만 결재)';
+
 		ALTER TABLE TB_EEP_LAB_RESEARCHER_M ADD COLUMN IF NOT EXISTS TEAM_SQ int NULL AFTER RSCH_SQ;
 		ALTER TABLE TB_EEP_LAB_PROJECT_M ADD COLUMN IF NOT EXISTS TEAM_SQ int NULL AFTER PRJ_SQ;
 		ALTER TABLE TB_EEP_LAB_PROJECT_M MODIFY MANAGER_EMPLY_ID varchar(50) NULL, MODIFY CEO_EMPLY_ID varchar(50) NULL;
@@ -252,6 +264,31 @@
 		UPDATE TB_EEP_LAB_RESEARCHER_M
 		SET STAFF_SQ = #{STAFF_SQ}, ROLE_CD = #{ROLE_CD}, START_DT = #{START_DT}, END_DT = NULLIF(#{END_DT}, ''), UPDT_EMPLY_ID = #{UPDT_EMPLY_ID}, UPDT_DT = NOW()
 		WHERE RSCH_SQ = #{RSCH_SQ} AND TEAM_SQ = #{TEAM_SQ}
+	</update>
+
+	<!-- 승인 요청 메일 링크 -->
+
+	<select id="selectApproverMail" parameterType="string" resultType="hashMap">
+		SELECT E.EMPLY_ID, E.EMPLY_NM, COALESCE(NULLIF(TRIM(S.COMPANY_EMAIL), ''), NULLIF(TRIM(E.EMPLY_EMAIL), '')) AS ADDR
+		FROM TB_EEP_EMPLY_M E
+		LEFT JOIN TB_EEP_HR_STAFF_M S ON S.EMPLY_ID = E.EMPLY_ID
+		WHERE E.EMPLY_ID = #{emplyId}
+		LIMIT 1
+	</select>
+
+	<insert id="insertApprLink" parameterType="hashMap">
+		INSERT INTO TB_EEP_LAB_APPR_LINK (TOKEN_HASH, JRN_SQ, STEP_NO, EMPLY_ID, EXPIRE_DT, REG_DT)
+		VALUES (#{TOKEN_HASH}, #{JRN_SQ}, #{STEP_NO}, #{EMPLY_ID}, DATE_ADD(DATE_ADD(UTC_TIMESTAMP(), INTERVAL 9 HOUR), INTERVAL 7 DAY), DATE_ADD(UTC_TIMESTAMP(), INTERVAL 9 HOUR))
+	</insert>
+
+	<select id="selectApprLink" parameterType="string" resultType="hashMap">
+		SELECT TOKEN_HASH, JRN_SQ, STEP_NO, EMPLY_ID, DATE_FORMAT(USED_DT, '%Y-%m-%d %H:%i') AS USED_DT
+			, (EXPIRE_DT &lt; DATE_ADD(UTC_TIMESTAMP(), INTERVAL 9 HOUR)) AS EXPIRED
+		FROM TB_EEP_LAB_APPR_LINK WHERE TOKEN_HASH = #{hash}
+	</select>
+
+	<update id="updateApprLinkUsed" parameterType="string">
+		UPDATE TB_EEP_LAB_APPR_LINK SET USED_DT = DATE_ADD(UTC_TIMESTAMP(), INTERVAL 9 HOUR) WHERE TOKEN_HASH = #{hash} AND USED_DT IS NULL
 	</update>
 
 	<delete id="deleteResearcher" parameterType="hashMap">

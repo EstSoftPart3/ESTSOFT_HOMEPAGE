@@ -54,5 +54,9 @@ public interface BoLabMapper {
 	public int updateJournalUploadError(Map<String, Object> param);
 	public int updateJournalMailed(Map<String, Object> param);
 	public int insertJournalHistory(Map<String, Object> param);
+	public Map<String, Object> selectApproverMail(@Param("emplyId") String emplyId);
+	public int insertApprLink(Map<String, Object> param);
+	public Map<String, Object> selectApprLink(@Param("hash") String hash);
+	public int updateApprLinkUsed(@Param("hash") String hash);
 	public List<Map<String, Object>> selectMyApprovals(Map<String, Object> param);	//EMPLY_ID 가 지금 결재할 단계인 제출 일지(관리자 홈)
 }

@@ -345,6 +345,7 @@ public class BoLabService {
 			history(sq, "SUBMIT", SUBMITTED, null, null, login);
 			return null;
 		});
+		requestMail(sq, login);
 	}
 
 	/** 에디터의 빈 내용은 <p>&nbsp;</p> 처럼 태그만 남는다 */
@@ -354,6 +355,11 @@ public class BoLabService {
 
 	/** @return 처리 후 상태 (마지막 단계면 APPROVED) */
 	public String approveJournal(Object sq, Map<String, Object> login) {
+		return approve(sq, login, "");
+	}
+
+	/** @param via 이력 메모 뒤에 붙일 말(메일 링크로 처리했을 때 " · 메일 링크") */
+	private String approve(Object sq, Map<String, Object> login, String via) {
 		Map<String, Object> j = journal(sq);
 		Map<String, Object> step = stepForApprover(j, login);
 		Map<String, Object> sign = mapper.selectLatestSign(str(login.get("emplyId")));
@@ -370,22 +376,169 @@ public class BoLabService {
 			p.put("TO_STEP", last ? null : cur + 1);
 			p.put("TO", to);
 			if (mapper.updateStepDone(p) != 1 || mapper.updateJournalStep(p) != 1) throw new IllegalArgumentException("다른 사용자가 먼저 처리했습니다. 화면을 다시 열어 주세요.");
-			history(sq, "APPROVE", to, str(step.get("STEP_NM")), sign.get("SIGN_SQ"), login);
+			history(sq, "APPROVE", to, str(step.get("STEP_NM")) + via, sign.get("SIGN_SQ"), login);
 			return null;
 		});
+		if (!last) requestMail(sq, login);
 		return to;
 	}
 
 	public void rejectJournal(Object sq, String note, Map<String, Object> login) {
+		reject(sq, note, login, "");
+	}
+
+	private void reject(Object sq, String note, Map<String, Object> login, String via) {
 		if (!hasText(note)) throw new IllegalArgumentException("반려 사유를 입력해 주세요.");
 		Map<String, Object> j = journal(sq);
 		stepForApprover(j, login);
 		tx.execute(s -> {
 			move(sq, SUBMITTED, DRAFT);
 			mapper.deleteJournalSteps(key(sq));
-			history(sq, "REJECT", DRAFT, note, null, login);
+			history(sq, "REJECT", DRAFT, note.trim() + via, null, login);
 			return null;
 		});
+	}
+
+	// ── 승인 요청 메일: 지금 단계 결재자에게 로그인 없이 그 단계만 처리하는 링크를 보낸다 ──
+
+	static final String SITE = "https://www.estsw.co.kr";
+	private static final java.security.SecureRandom RANDOM = new java.security.SecureRandom();
+
+	/** 연구일지 화면의 '승인 요청 다시 보내기'. @return 받는 사람 */
+	public String resendRequest(Object sq, Map<String, Object> login) {
+		Map<String, Object> j = journal(sq);
+		if (!SUBMITTED.equals(j.get("STATUS_CD"))) throw new IllegalArgumentException("결재 중인 일지만 승인 요청을 보낼 수 있습니다.");
+		String error = requestMail(sq, login);
+		if (error != null) throw new IllegalArgumentException(error);
+		return str(currentStep(j, mapper.selectJournalSteps(key(sq))).get("EMPLY_NM"));
+	}
+
+	/** 제출·단계 승인 뒤에 부른다. 메일이 실패해도 결재는 되돌리지 않고 이력에 남긴다. @return 실패 메시지, 성공이면 null */
+	private String requestMail(Object sq, Map<String, Object> login) {
+		String who = "";
+		try {
+			Map<String, Object> j = journal(sq);
+			Map<String, Object> step = currentStep(j, mapper.selectJournalSteps(key(sq)));
+			String id = str(step.get("EMPLY_ID"));
+			Map<String, Object> to = mapper.selectApproverMail(id);
+			who = to == null ? id : str(to.get("EMPLY_NM"));
+			String addr = to == null ? "" : str(to.get("ADDR"));
+			if (!hasText(addr)) {
+				history(sq, "REQ_MAIL_FAIL", SUBMITTED, who + ": 메일 주소 없음", null, login);
+				return who + " 님의 메일 주소가 없습니다. 계정 관리나 직원관리에서 메일을 넣어 주세요.";
+			}
+			byte[] raw = new byte[32];
+			RANDOM.nextBytes(raw);
+			String token = Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
+			Map<String, Object> link = key(sq);
+			link.put("TOKEN_HASH", hash(token));
+			link.put("STEP_NO", step.get("STEP_NO"));
+			link.put("EMPLY_ID", id);
+			mapper.insertApprLink(link);
+			MimeMessage message = mailSender.createMimeMessage();
+			MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+			helper.setFrom(mailFrom);
+			helper.setTo(addr);
+			helper.setSubject("[연구일지 승인 요청] " + j.get("YM") + " " + j.get("PRJ_NM"));
+			helper.setText(requestHtml(who, j, mapper.selectJournalSteps(key(sq)), recipients(j), SITE + "/lab/approve.do?t=" + token), true);
+			mailSender.send(message);
+			history(sq, "REQ_MAIL", SUBMITTED, who + " <" + addr + ">", null, login);
+			return null;
+		} catch (RuntimeException | javax.mail.MessagingException e) {
+			System.out.println("LAB_REQ_MAIL_ERROR journal=" + sq + " " + e.getClass().getSimpleName());
+			try { history(sq, "REQ_MAIL_FAIL", SUBMITTED, who + " " + e.getClass().getSimpleName(), null, login); } catch (RuntimeException ignore) { }
+			return "승인 요청 메일을 보내지 못했습니다(" + e.getClass().getSimpleName() + ").";
+		}
+	}
+
+	static String hash(String token) {
+		try {
+			byte[] d = java.security.MessageDigest.getInstance("SHA-256").digest(token.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+			StringBuilder b = new StringBuilder();
+			for (byte x : d) b.append(String.format("%02x", x));
+			return b.toString();
+		} catch (java.security.NoSuchAlgorithmException e) {
+			throw new IllegalStateException(e);
+		}
+	}
+
+	/** 링크를 쓸 수 없으면 그 이유, 쓸 수 있으면 null */
+	static String linkProblem(Map<String, Object> link, Map<String, Object> j, Map<String, Object> step) {
+		if (link == null) return "잘못된 링크입니다.";
+		if (hasText(str(link.get("USED_DT")))) return "이미 처리한 링크입니다(" + link.get("USED_DT") + ").";
+		if ("1".equals(str(link.get("EXPIRED"))) || "true".equals(str(link.get("EXPIRED")))) return "링크가 만료되었습니다(7일). 승인 요청을 다시 받아 주세요.";
+		if (j == null || !SUBMITTED.equals(j.get("STATUS_CD"))) return "결재 중인 일지가 아닙니다. 이미 처리되었거나 반려되었습니다.";
+		if (!str(link.get("STEP_NO")).equals(str(j.get("CUR_STEP"))) || !str(link.get("EMPLY_ID")).equals(str(step.get("EMPLY_ID")))) return "지금은 이 링크로 결재할 단계가 아닙니다.";
+		return null;
+	}
+
+	/** 메일 링크 화면에 보일 내용. 쓸 수 없는 링크면 ERROR 만 담는다 */
+	public Map<String, Object> linkView(String token) {
+		Map<String, Object> out = new HashMap<>();
+		Map<String, Object> link = token == null || token.length() > 100 ? null : mapper.selectApprLink(hash(token));
+		Map<String, Object> j = link == null ? null : mapper.selectJournalOne(key(link.get("JRN_SQ")));
+		List<Map<String, Object>> steps = j == null ? new ArrayList<>() : mapper.selectJournalSteps(key(j.get("JRN_SQ")));
+		Map<String, Object> step = j == null ? new HashMap<>() : currentStep(j, steps);
+		String problem = linkProblem(link, j, step);
+		if (problem != null) {
+			out.put("ERROR", problem);
+			return out;
+		}
+		out.put("journal", j);
+		out.put("steps", steps);
+		out.put("step", step);
+		out.put("recipients", recipients(j));
+		out.put("needSign", mapper.selectLatestSign(str(step.get("EMPLY_ID"))) == null);
+		return out;
+	}
+
+	/** 메일 링크로 승인(APPROVE) 또는 반려(REJECT). 결재자 본인 계정으로 처리하고 이력에 '메일 링크'를 남긴다 */
+	public String linkAct(String token, String action, String note) {
+		Map<String, Object> v = linkView(token);
+		if (v.get("ERROR") != null) throw new IllegalArgumentException(str(v.get("ERROR")));
+		@SuppressWarnings("unchecked")
+		Map<String, Object> j = (Map<String, Object>) v.get("journal"), step = (Map<String, Object>) v.get("step");
+		Map<String, Object> login = new HashMap<>();
+		login.put("emplyId", step.get("EMPLY_ID"));
+		login.put("emplyNm", step.get("EMPLY_NM"));
+		Object sq = j.get("JRN_SQ");
+		String result;
+		if ("APPROVE".equals(action)) result = approve(sq, login, " · 메일 링크");
+		else if ("REJECT".equals(action)) { reject(sq, note, login, " · 메일 링크"); result = DRAFT; }
+		else throw new IllegalArgumentException("처리할 내용을 골라 주세요.");
+		mapper.updateApprLinkUsed(hash(token));
+		return result;
+	}
+
+	static String requestHtml(String who, Map<String, Object> j, List<Map<String, Object>> steps, List<Map<String, Object>> people, String url) {
+		StringBuilder line = new StringBuilder();
+		for (Map<String, Object> s : steps) {
+			boolean done = hasText(str(s.get("DONE_DT"))), now = str(s.get("STEP_NO")).equals(str(j.get("CUR_STEP")));
+			if (line.length() > 0) line.append(" → ");
+			line.append(esc(str(s.get("STEP_NO")) + "단계 " + str(s.get("STEP_NM")) + " " + str(s.get("EMPLY_NM")) + " "))
+				.append(done ? "<b style=\"color:#198754;\">승인</b>" : now ? "<b style=\"color:#0b6e8a;\">승인 대기</b>" : "대기");
+		}
+		StringBuilder rows = new StringBuilder();
+		for (Map<String, Object> p : people) {
+			@SuppressWarnings("unchecked")
+			List<String> items = (List<String>) p.get("ITEMS");
+			String work = items.isEmpty() ? "-" : items.size() <= 2 ? String.join(", ", items) : items.get(0) + ", " + items.get(1) + " 외 " + (items.size() - 2) + "건";
+			rows.append("<tr><td style=\"padding:6px 10px;border-top:1px solid #eef1f4;white-space:nowrap;font-weight:700;\">").append(esc(str(p.get("STAFF_NM"))))
+				.append("</td><td style=\"padding:6px 10px;border-top:1px solid #eef1f4;\">").append(esc(work)).append("</td></tr>");
+		}
+		String cell = "padding:6px 10px;";
+		return "<div style=\"max-width:560px;margin:0 auto;font-family:'Malgun Gothic',sans-serif;color:#212529;font-size:14px;line-height:1.6;\">"
+			+ "<div style=\"background:#0a4a78;color:#fff;padding:16px 20px;border-radius:8px 8px 0 0;\"><div style=\"font-size:12px;opacity:.8;\">이에스티소프트 연구소</div><div style=\"font-size:18px;font-weight:700;\">연구일지 승인 요청</div></div>"
+			+ "<div style=\"border:1px solid #dee2e6;border-top:0;padding:18px 20px;border-radius:0 0 8px 8px;\">"
+			+ "<p style=\"margin:0 0 12px;\">" + esc(who) + " 님, " + esc(str(j.get("YM"))) + " 연구일지가 승인을 기다리고 있습니다.</p>"
+			+ "<table style=\"width:100%;border-collapse:collapse;background:#f8f9fa;margin-bottom:14px;\">"
+			+ "<tr><td style=\"" + cell + "color:#6c757d;white-space:nowrap;\">과제</td><td style=\"" + cell + "\">" + esc(str(j.get("PRJ_NM"))) + "</td></tr>"
+			+ "<tr><td style=\"" + cell + "color:#6c757d;white-space:nowrap;\">작성</td><td style=\"" + cell + "\">" + esc(str(j.get("WRITER_NM"))) + "</td></tr>"
+			+ "<tr><td style=\"" + cell + "color:#6c757d;white-space:nowrap;\">결재</td><td style=\"" + cell + "\">" + line + "</td></tr></table>"
+			+ (rows.length() > 0 ? "<div style=\"font-weight:700;margin-bottom:4px;\">연구원별 업무</div><table style=\"width:100%;border-collapse:collapse;margin-bottom:18px;font-size:13px;\">" + rows + "</table>" : "")
+			+ "<div style=\"text-align:center;margin:8px 0 14px;\"><a href=\"" + esc(url) + "\" style=\"display:inline-block;background:#0b6e8a;color:#fff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:700;font-size:15px;\">내용 보고 승인하기</a></div>"
+			+ "<p style=\"margin:0;font-size:12px;color:#6c757d;\">버튼을 누르면 로그인 없이 이 일지의 승인 화면이 열립니다. 승인하면 등록된 서명이 찍힙니다.<br>"
+			+ "이 링크는 본인만 사용해 주세요. 7일이 지나거나 한 번 처리하면 만료됩니다.</p></div></div>";
 	}
 
 	private Map<String, Object> stepForApprover(Map<String, Object> j, Map<String, Object> login) {

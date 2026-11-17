@@ -74,6 +74,25 @@ public class BoLabServiceCheck {
 		yes(html.contains(">검토<") && html.contains(">대표<"), "단계 이름 열");
 		yes(html.contains("연구소장 (2026-11-12 09:00:00)"), "마감 기록");
 		yes(html.contains("2026-11-10 10:00:00") && !html.contains("2026-11-09 10:00:00"), "마지막 제출일");
+
+		// 승인 요청 메일 링크: 그 결재자·그 단계·결재 중일 때만, 한 번만, 7일까지
+		same(BoLabService.hash("abc"), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", "토큰 SHA-256");
+		Map<String, Object> link = new HashMap<>(), lj = new HashMap<>(), ls = new HashMap<>();
+		link.put("STEP_NO", 2); link.put("EMPLY_ID", "ceo"); link.put("EXPIRED", 0);
+		lj.put("STATUS_CD", "SUBMITTED"); lj.put("CUR_STEP", 2);
+		ls.put("EMPLY_ID", "ceo");
+		same(BoLabService.linkProblem(link, lj, ls), null, "링크 사용 가능");
+		yes(BoLabService.linkProblem(null, lj, ls) != null, "없는 링크");
+		link.put("EXPIRED", 1); yes(BoLabService.linkProblem(link, lj, ls).contains("만료"), "만료된 링크"); link.put("EXPIRED", 0);
+		link.put("USED_DT", "2026-11-17 10:00"); yes(BoLabService.linkProblem(link, lj, ls).contains("이미"), "쓴 링크"); link.remove("USED_DT");
+		lj.put("CUR_STEP", 3); yes(BoLabService.linkProblem(link, lj, ls) != null, "단계가 넘어간 링크"); lj.put("CUR_STEP", 2);
+		ls.put("EMPLY_ID", "other"); yes(BoLabService.linkProblem(link, lj, ls) != null, "결재자가 바뀐 단계"); ls.put("EMPLY_ID", "ceo");
+		lj.put("STATUS_CD", "DRAFT"); yes(BoLabService.linkProblem(link, lj, ls) != null, "반려된 일지"); lj.put("STATUS_CD", "SUBMITTED");
+		Map<String, Object> rj = new HashMap<>(j); rj.put("CUR_STEP", 3);
+		List<Map<String, Object>> rs = Arrays.asList(stepNo(1, "부서장", "오민형", "2026-11-11"), stepNo(2, "검토", "이부장", "2026-11-12"), stepNo(3, "대표", "<b>김대표</b>", null));
+		Map<String, Object> person = new HashMap<>(); person.put("STAFF_NM", "홍길동"); person.put("ITEMS", Arrays.asList("가", "나", "다"));
+		String reqMail = BoLabService.requestHtml("김대표", rj, rs, Arrays.asList(person), "https://x/lab/approve.do?t=AB_c-1");
+		yes(reqMail.contains("href=\"https://x/lab/approve.do?t=AB_c-1\"") && reqMail.contains("가, 나 외 1건") && reqMail.contains("승인 대기") && !reqMail.contains("<b>김대표</b>") && !reqMail.contains("<script>"), "승인 요청 메일 본문");
 		System.out.println("ALL OK");
 	}
 
@@ -83,6 +102,15 @@ public class BoLabServiceCheck {
 		m.put("DONE_NM", done);
 		m.put("DONE_DT", "2026-11-11 10:00:00");
 		m.put("SIGN_IMG", sign);
+		return m;
+	}
+
+	private static Map<String, Object> stepNo(int no, String nm, String who, String done) {
+		Map<String, Object> m = new HashMap<>();
+		m.put("STEP_NO", no);
+		m.put("STEP_NM", nm);
+		m.put("EMPLY_NM", who);
+		m.put("DONE_DT", done);
 		return m;
 	}
 
