@@ -125,7 +125,7 @@ public class BoHrController {
 	public ModelAndView traineeFromInterviewData(@RequestParam Map<String, Object> param, HttpSession session) {
 		param.put("UPDT_EMPLY_ID", loginId(session));
 		if (!BoHrService.TraineeFromIntv(param)) {
-			return json("error", "이미 교육생으로 등록된 면접자입니다.");
+			return json("error", "이미 교육생으로 등록됐거나 경력직인 면접자입니다. 경력직은 교육생으로 등록하지 않습니다.");
 		}
 		return withNote(json("result", "OK"), param);
 	}

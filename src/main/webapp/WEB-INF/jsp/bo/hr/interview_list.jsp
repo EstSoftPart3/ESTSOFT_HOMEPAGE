@@ -513,7 +513,7 @@
 		toggleReferrer();
 		$('#editTitle').text('면접자 상세 · 순번 ' + (row.SEQ_NO || '-'));
 		$('#btnDelete').show();
-		$('#btnTrainee').toggle(!row.TRN_SQ);
+		$('#btnTrainee').toggle(!row.TRN_SQ && row.HIRE_CD !== 'EXP'); // 경력직은 교육생 과정이 없다
 		if (!$('#editMemo').length) $('<div class="mt-2" id="editMemoBox"><div class="hr-section">메모</div><div id="editMemo"></div></div>').insertAfter('#editFields');
 		$('#editMemoBox').show();
 		hrMemoFeed($('#editMemo'), MEMO_API, row.INTV_SQ, load);
@@ -564,7 +564,18 @@
 		return chip('ic-badge', 'HR_HIRE', r.HIRE_CD) + '<span class="ic-name">' + esc(r.APLY_NM) + '</span>' + chip('ic-chip', 'HR_ATTEND', r.ATTEND_ST) + chip('ic-chip', 'HR_RESULT', r.RESULT_ST);
 	}
 
-	// 캘린더는 자기 화면의 날짜를 보여 주므로 연도·월·주차 대신 검색어·필터·탭만 적용한다
+	// 연도·월·주차를 바꾸면 캘린더가 그 주(주별)나 그 달(월별)로 간다. 값이 그대로면 사용자가 넘긴 화면을 둔다
+	var calKey = null;
+	function calGoto() {
+		var y = $('#yearSel').val(), mon = $('#monthSel').val(), week = $('#weekSel').val(), key = [y, mon, week].join('|');
+		if (key === calKey) return;
+		calKey = key;
+		if (week) { calendar.changeView('timeGridWeek', week.split('|')[0]); return; }
+		if (y && mon) calendar.changeView('dayGridMonth', y + '-' + mon + '-01');
+		else if (y) calendar.changeView('dayGridMonth', y + '-' + (y === moment().format('YYYY') ? moment().format('MM') : '01') + '-01');
+	}
+
+	// 캘린더 안 일정은 날짜 칸이 거르므로 검색어·필터·탭만 적용한다
 	function renderCal(test) {
 		var isCal = view === 'cal';
 		$('#viewSwitch button').each(function() { $(this).toggleClass('active', $(this).data('view') === view).attr('aria-pressed', $(this).data('view') === view); });
@@ -572,6 +583,7 @@
 		$('#listView').toggle(!isCal);
 		if (!isCal) return;
 		if (!calendar) calendar = makeCalendar();
+		calGoto();
 		var kw = $.trim($('#keyword').val()).toLowerCase();
 		var list = rows.filter(function(r) { return r.INTV_DT && (!kw || [r.APLY_NM, r.PHONE, r.MEMO].join(' ').toLowerCase().indexOf(kw) >= 0); }).filter(passFilters).filter(test);
 		calendar.batchRendering(function() {
@@ -591,6 +603,7 @@
 			plugins: ['dayGrid', 'timeGrid', 'interaction'],
 			locale: 'ko',
 			header: { left: 'prev,next today', center: 'title', right: 'timeGridWeek,dayGridMonth' },
+			buttonText: { week: '주별', month: '월별' },
 			defaultView: 'timeGridWeek',
 			hiddenDays: [0, 6],
 			minTime: '09:00:00', maxTime: '19:00:00', slotDuration: '00:30:00',

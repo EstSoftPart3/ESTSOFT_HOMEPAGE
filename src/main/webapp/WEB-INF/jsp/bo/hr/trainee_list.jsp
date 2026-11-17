@@ -312,7 +312,7 @@
 		$('#importKeyword').val('');
 		$('#importBody').empty();
 		$.post('/admin/hr/interviewListData.do', function(res) {
-			candidates = (res.list || []).filter(function(r) { return r.JOIN_ST === 'JOIN' && !r.TRN_SQ; });
+			candidates = (res.list || []).filter(function(r) { return r.JOIN_ST === 'JOIN' && !r.TRN_SQ && r.HIRE_CD !== 'EXP'; }); // 경력직은 교육생 과정이 없다
 			renderImport();
 			$('#importModal').modal('show');
 		});
