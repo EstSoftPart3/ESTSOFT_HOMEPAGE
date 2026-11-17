@@ -88,7 +88,9 @@ public class BoHrServiceImpl implements BoHrService {
 		if (str(param, "INTV_SQ").isEmpty()) {
 			BoHrDao.IntvInsert(param);
 		} else {
+			Map<String, Object> before = hrMapper.selectIntvResume(param);
 			BoHrDao.IntvUpdate(param);
+			moveResume(before, param.get("INTV_DT"), param);
 		}
 	}
 
@@ -162,6 +164,28 @@ public class BoHrServiceImpl implements BoHrService {
 		// 드라이브 '1. 대기자 관리/(0000.00.00) 이름'. 실패해도 등록은 그대로, 안내 문구만 돌려준다
 		if (ok) param.put("DRIVE_NOTE", staffDrive.traineeCreated(hrMapper.selectPersonName(param)));
 		return ok;
+	}
+
+	@Override
+	public boolean WaitFromIntv(Map<String, Object> param) {
+		if (staffMapper.insertWaitFromIntv(param) == 0) return false;
+		// 교육생과 같은 '1. 대기자 관리/(0000.00.00) 이름' 폴더. 직원으로 등록할 때 그 폴더를 이어 쓴다
+		param.put("DRIVE_NOTE", staffDrive.traineeCreated(hrMapper.selectPersonName(param)));
+		return true;
+	}
+
+	/** 면접일이 바뀌면 드라이브의 이력서 이름 폴더도 새 날짜 폴더로 옮긴다. 실패해도 저장은 그대로, 안내만 한다 */
+	private void moveResume(Map<String, Object> before, Object newDt, Map<String, Object> param) {
+		if (before == null || !hasText(newDt) || !hasText(before.get("INTV_DT")) || newDt.equals(before.get("INTV_DT"))) return;
+		// 같은 날·같은 이름 면접자가 예전 날짜에 남아 있으면 누구 폴더인지 알 수 없어 두고 간다
+		if (hrMapper.countIntvSameDay(before) > 0) return;
+		try {
+			if (batchService.moveResume((String) before.get("RESUME_FILE_ID"), (String) before.get("INTV_DT"), newDt.toString(), (String) before.get("APLY_NM"))) {
+				param.put("DRIVE_NOTE", "드라이브의 이력서 폴더도 " + newDt + " 폴더로 옮겼습니다.");
+			}
+		} catch (Exception e) {
+			param.put("DRIVE_NOTE", "면접일은 바꿨지만 드라이브 이력서 폴더는 옮기지 못했습니다. 드라이브에서 직접 옮겨 주세요.");
+		}
 	}
 
 	/** 교육생 상태가 바뀐 뒤 드라이브 폴더: 새 교육생이면 대기자 관리에 만들고, 교육종료·중도이탈이면 퇴사자 관리로 옮긴다 */
@@ -287,7 +311,9 @@ public class BoHrServiceImpl implements BoHrService {
 			param.put("VALUE", "NEW"); // 구분은 비울 수 없는 칸이라 비우면 신입으로 둔다
 		}
 		checkFieldCode(INTV_CODES, field, param);
+		Map<String, Object> before = "INTV_DT".equals(field) ? hrMapper.selectIntvResume(param) : null;
 		BoHrDao.IntvFieldUpdate(param);
+		moveResume(before, value, param);
 		// 추천·소개가 아니게 되면 남은 추천자명을 지운다
 		if ("APLY_ROUTE".equals(field) && !"REFERRAL".equals(value)) {
 			BoHrDao.IntvReferrerClear(param);

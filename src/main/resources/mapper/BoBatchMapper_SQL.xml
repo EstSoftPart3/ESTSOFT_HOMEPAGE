@@ -173,7 +173,7 @@
 	</select>
 
 	<select id="selectIntvByGcalId" parameterType="hashMap" resultType="hashMap">
-		SELECT INTV_SQ, DATE_FORMAT(INTV_DT, '%Y-%m-%d') AS INTV_DT, INTV_TM, ATTEND_ST, RESULT_ST
+		SELECT INTV_SQ, DATE_FORMAT(INTV_DT, '%Y-%m-%d') AS INTV_DT, INTV_TM, ATTEND_ST, RESULT_ST, APLY_NM, RESUME_FILE_ID
 		FROM TB_EEP_HR_INTV_M
 		WHERE GCAL_EVT_ID = #{GCAL_EVT_ID}
 	</select>

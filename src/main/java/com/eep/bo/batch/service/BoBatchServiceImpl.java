@@ -352,13 +352,18 @@ public class BoBatchServiceImpl implements BoBatchService {
 	public String saveResume(String intvDt, String name, String fileName, byte[] pdf) {
 		String[] drive = resumeDrive();
 		LocalDate date = LocalDate.parse(intvDt);
+		String folder = folders(drive, date.getYear() + "년도", date.getMonthValue() + "월", date.getDayOfMonth() + "일", name);
+		return (String) GoogleDriveApi.upload(fileName, "application/pdf", pdf, folder, drive[1]).get("id");
+	}
+
+	/** 이력서 최상위 폴더 아래로 폴더를 차례로 찾고 없으면 만든다. fillResume·resumeFile 이 찾는 경로와 같다 */
+	private String folders(String[] drive, String... parts) {
 		String folder = drive[0];
-		// fillResume·resumeFile 이 찾는 경로와 같게 만든다
-		for (String part : new String[] { date.getYear() + "년도", date.getMonthValue() + "월", date.getDayOfMonth() + "일", name }) {
+		for (String part : parts) {
 			String id = GoogleDriveApi.childFolderId(folder, part, drive[1]);
 			folder = id != null ? id : GoogleDriveApi.createFolder(part, folder, drive[1]);
 		}
-		return (String) GoogleDriveApi.upload(fileName, "application/pdf", pdf, folder, drive[1]).get("id");
+		return folder;
 	}
 
 	@Override
@@ -380,36 +385,59 @@ public class BoBatchServiceImpl implements BoBatchService {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public String trashResume(String fileId, String intvDt, String name) {
 		String[] drive = resumeDrive();
-		String target = null;
-		if (hasText(fileId)) {
-			// 올린 뒤 면접일을 옮겼어도 파일이 있는 곳에서 지운다. 부모가 이름 폴더면 폴더째
-			List<String> parents = (List<String>) GoogleDriveApi.file(fileId, drive[1]).get("parents");
-			String parent = parents == null || parents.isEmpty() ? null : parents.get(0);
-			target = parent != null && String.valueOf(name).equals(GoogleDriveApi.file(parent, drive[1]).get("name")) ? parent : fileId;
-		} else if (hasText(intvDt) && hasText(name)) {
-			String day = dayFolder(drive[0], LocalDate.parse(intvDt), drive[1]);
-			if (day != null) {
-				target = GoogleDriveApi.childFolderId(day, name, drive[1]);
-				if (target == null) {
-					Map<String, Object> pdf = GoogleDriveApi.resumePdf(day, name, drive[1]); // 이름 폴더 없이 날짜 폴더에 바로 둔 PDF
-					target = pdf == null ? null : (String) pdf.get("id");
-				}
-			}
-		}
+		String target = resumeTarget(drive, fileId, intvDt, name);
 		if (target == null) return null;
-		List<String> up = (List<String>) GoogleDriveApi.file(target, drive[1]).get("parents");
+		String from = parentOf(target, drive[1]);
 		GoogleDriveApi.trash(target, drive[1]);
-		// 비게 된 일·월 폴더까지 정리한다. 연도 폴더와 이력서 최상위 폴더는 두고, 다른 면접자가 있으면 멈춘다
-		String folder = up == null || up.isEmpty() ? null : up.get(0);
-		for (int level = 0; level < 2 && folder != null && !folder.equals(drive[0]) && GoogleDriveApi.children(folder, drive[1]).isEmpty(); level++) {
-			List<String> next = (List<String>) GoogleDriveApi.file(folder, drive[1]).get("parents");
-			GoogleDriveApi.trash(folder, drive[1]);
-			folder = next == null || next.isEmpty() ? null : next.get(0);
-		}
+		sweep(from, drive);
 		return target;
+	}
+
+	@Override
+	public boolean moveResume(String fileId, String oldDt, String newDt, String name) {
+		if (!hasText(newDt) || newDt.equals(oldDt)) return false;
+		String[] drive = resumeDrive();
+		String target = resumeTarget(drive, fileId, oldDt, name);
+		if (target == null) return false;
+		LocalDate date = LocalDate.parse(newDt);
+		String from = parentOf(target, drive[1]), to = folders(drive, date.getYear() + "년도", date.getMonthValue() + "월", date.getDayOfMonth() + "일");
+		if (to.equals(from)) return false; // 이미 그 날짜 폴더에 있다(사람이 먼저 옮겼거나 올린 뒤 그대로)
+		GoogleDriveApi.move(target, to, null, drive[1]);
+		sweep(from, drive);
+		return true;
+	}
+
+	/** 면접자의 이력서 자리: 이름 폴더, 없으면 날짜 폴더에 바로 둔 PDF. 못 찾으면 null */
+	private String resumeTarget(String[] drive, String fileId, String intvDt, String name) {
+		if (hasText(fileId)) {
+			// 올린 파일은 지금 있는 곳에서 찾는다(면접일을 옮긴 뒤에도 맞다). 부모가 이름 폴더면 폴더째
+			String parent = parentOf(fileId, drive[1]);
+			return parent != null && String.valueOf(name).equals(GoogleDriveApi.file(parent, drive[1]).get("name")) ? parent : fileId;
+		}
+		if (!hasText(intvDt) || !hasText(name)) return null;
+		String day = dayFolder(drive[0], LocalDate.parse(intvDt), drive[1]);
+		if (day == null) return null;
+		String person = GoogleDriveApi.childFolderId(day, name, drive[1]);
+		if (person != null) return person;
+		Map<String, Object> pdf = GoogleDriveApi.resumePdf(day, name, drive[1]);
+		return pdf == null ? null : (String) pdf.get("id");
+	}
+
+	@SuppressWarnings("unchecked")
+	private String parentOf(String id, String token) {
+		List<String> parents = (List<String>) GoogleDriveApi.file(id, token).get("parents");
+		return parents == null || parents.isEmpty() ? null : parents.get(0);
+	}
+
+	/** 비게 된 일·월 폴더를 휴지통으로 보낸다. 연도 폴더와 이력서 최상위 폴더는 두고, 다른 면접자가 있으면 멈춘다 */
+	private void sweep(String folder, String[] drive) {
+		for (int level = 0; level < 2 && folder != null && !folder.equals(drive[0]) && GoogleDriveApi.children(folder, drive[1]).isEmpty(); level++) {
+			String next = parentOf(folder, drive[1]);
+			GoogleDriveApi.trash(folder, drive[1]);
+			folder = next;
+		}
 	}
 
 	/** 면접 이력서 폴더(신입면접 배치 첫 세트와 같은 값)와 회사 공용 드라이브 토큰 */
@@ -444,6 +472,12 @@ public class BoBatchServiceImpl implements BoBatchService {
 				row.put(key, null);
 			}
 			BoBatchDao.IntvUpdate(row);
+			// 구글 캘린더 날짜로 되돌리거나 바뀔 때 이력서 폴더도 그 날짜로 맞춘다. 사람이 이미 옮겼으면 할 일이 없고, 실패해도 일정 반영은 그대로다
+			try {
+				moveResume((String) linked.get("RESUME_FILE_ID"), (String) linked.get("INTV_DT"), (String) row.get("INTV_DT"), (String) linked.get("APLY_NM"));
+			} catch (Exception e) {
+				// 다음에 날짜가 또 바뀌거나 화면에서 옮길 때 다시 시도된다
+			}
 			return "UPDATE";
 		}
 		Map<String, Object> manual = BoBatchDao.IntvToLink(row);

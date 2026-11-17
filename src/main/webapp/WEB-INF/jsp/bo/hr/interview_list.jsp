@@ -113,6 +113,8 @@
 					<div class="modal-footer">
 						<button type="button" class="btn btn-sm btn-outline-danger mr-auto" id="btnDelete" onclick="deleteEdit();">삭제</button>
 						<button type="button" class="btn btn-sm btn-outline-primary" id="btnTrainee" onclick="toTrainee();">교육생으로 등록</button>
+					<button type="button" class="btn btn-sm btn-outline-primary" id="btnWait" onclick="toWait();">대기자로 등록</button>
+					<span class="small text-muted align-self-center" id="waitDone" style="display:none;">대기자로 등록됨 (직원관리 대기 탭)</span>
 						<button type="submit" class="btn btn-sm btn-primary">저장</button>
 					</div>
 				</form>
@@ -513,7 +515,10 @@
 		toggleReferrer();
 		$('#editTitle').text('면접자 상세 · 순번 ' + (row.SEQ_NO || '-'));
 		$('#btnDelete').show();
-		$('#btnTrainee').toggle(!row.TRN_SQ && row.HIRE_CD !== 'EXP'); // 경력직은 교육생 과정이 없다
+		// 경력직은 교육생 과정 없이 바로 직원관리 대기자로 간다
+		$('#btnTrainee').toggle(!row.TRN_SQ && row.HIRE_CD !== 'EXP');
+		$('#btnWait').toggle(row.HIRE_CD === 'EXP' && !row.WAIT_STAFF_SQ);
+		$('#waitDone').toggle(!!row.WAIT_STAFF_SQ);
 		if (!$('#editMemo').length) $('<div class="mt-2" id="editMemoBox"><div class="hr-section">메모</div><div id="editMemo"></div></div>').insertAfter('#editFields');
 		$('#editMemoBox').show();
 		hrMemoFeed($('#editMemo'), MEMO_API, row.INTV_SQ, load);
@@ -534,7 +539,7 @@
 		auto.forEach(function(k) { $('#editForm [name=' + k + '], #editForm [data-multi=' + k + ']').addClass('ic-auto'); });
 		toggleReferrer();
 		$('#editTitle').text('새 면접자' + (auto.length ? ' · 이력서에서 ' + auto.length + '칸 채움(초록 칸)' : ''));
-		$('#btnDelete, #btnTrainee, #editMemoBox').hide();
+		$('#btnDelete, #btnTrainee, #btnWait, #waitDone, #editMemoBox').hide();
 		$('#editModal').modal('show');
 	}
 
@@ -733,6 +738,17 @@
 				$('#editModal').modal('hide');
 				load();
 				bootbox.alert('교육생으로 등록했습니다. 교육 시작일은 교육생 관리에서 확인해 주세요.');
+			});
+		});
+	}
+
+	// 경력직: 교육생을 거치지 않고 직원관리 대기 탭에 소속 '경력직' 카드로 들어간다
+	function toWait() {
+		bootbox.confirm($('<div>').text(editing.APLY_NM).html() + ' 님을 직원관리 대기자(소속: 경력직)로 등록할까요?', function(ok) {
+			if (ok) hrPost('/admin/hr/waitFromInterviewData.do', { INTV_SQ: editing.INTV_SQ }, function() {
+				$('#editModal').modal('hide');
+				load();
+				bootbox.alert('대기자로 등록했습니다. 직원관리의 대기 탭에서 확인해 주세요.');
 			});
 		});
 	}

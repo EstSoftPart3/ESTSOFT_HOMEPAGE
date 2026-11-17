@@ -37,4 +37,5 @@ public interface BoStaffMapper {
 
 	public Map<String, Object> selectStaffByTrainee(Map<String, Object> param);	//TRN_SQ 로 만든 대기 카드 (STAFF_SQ, STATUS_CD). 없으면 null
 	public int insertWaitFromTrainee(Map<String, Object> param);				//TRN_SQ 또는 INTV_SQ 교육생의 대기 카드. 이미 있으면 넣지 않는다
+	public int insertWaitFromIntv(Map<String, Object> param);					//경력직 면접자(INTV_SQ)의 대기 카드. 신입이거나 이미 있으면 넣지 않는다
 }

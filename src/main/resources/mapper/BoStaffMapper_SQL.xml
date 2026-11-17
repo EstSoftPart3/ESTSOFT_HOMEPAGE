@@ -116,4 +116,13 @@
 		WHERE <choose><when test="TRN_SQ != null">T.TRN_SQ = #{TRN_SQ}</when><otherwise>T.INTV_SQ = #{INTV_SQ}</otherwise></choose>
 		  AND NOT EXISTS (SELECT 1 FROM TB_EEP_HR_STAFF_M S WHERE S.TRN_SQ = T.TRN_SQ)
 	</insert>
+
+	<!-- 경력직 면접자는 교육생을 거치지 않고 바로 대기 카드가 된다. 소속은 '경력직' -->
+	<insert id="insertWaitFromIntv" parameterType="hashMap">
+		INSERT INTO TB_EEP_HR_STAFF_M (STATUS_CD, STAFF_NM, ORG_NM, PHONE, INTV_SQ, UPDT_EMPLY_ID, UPDT_DT)
+		SELECT 'WAIT', I.APLY_NM, '경력직', I.PHONE, I.INTV_SQ, #{UPDT_EMPLY_ID}, NOW()
+		FROM TB_EEP_HR_INTV_M I
+		WHERE I.INTV_SQ = #{INTV_SQ} AND I.HIRE_CD = 'EXP'
+		  AND NOT EXISTS (SELECT 1 FROM TB_EEP_HR_STAFF_M S WHERE S.INTV_SQ = I.INTV_SQ)
+	</insert>
 </mapper>

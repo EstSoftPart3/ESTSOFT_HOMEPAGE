@@ -52,4 +52,7 @@ public interface BoBatchService {
 
 	/** 면접자 이력서의 이름 폴더(없으면 PDF)를 휴지통으로 보내고 비게 된 일·월 폴더도 보낸다. @return 보낸 대상 ID, 없으면 null */
 	String trashResume(String fileId, String intvDt, String name);
+
+	/** 면접일이 oldDt 에서 newDt 로 바뀐 면접자의 이력서 이름 폴더(없으면 PDF)를 새 날짜 폴더로 옮기고 비게 된 예전 일·월 폴더를 휴지통으로 보낸다. @return 옮겼으면 true */
+	boolean moveResume(String fileId, String oldDt, String newDt, String name);
 }

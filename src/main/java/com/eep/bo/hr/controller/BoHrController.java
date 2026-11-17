@@ -54,7 +54,7 @@ public class BoHrController {
 			BoHrService.IntvSave(param);
 			ModelAndView mv = json("result", "OK");
 			mv.addObject("INTV_SQ", param.get("INTV_SQ")); // 새로 넣었으면 만든 번호(캘린더 이력서 올리기에 쓴다)
-			return mv;
+			return withNote(mv, param);
 		} catch (IllegalArgumentException e) {
 			return json("error", e.getMessage());
 		}
@@ -130,6 +130,16 @@ public class BoHrController {
 		return withNote(json("result", "OK"), param);
 	}
 
+	// 경력직 면접자 → 직원관리 대기자(소속 경력직). 주소는 면접관리 권한 패턴(/admin/hr/*nterview*)에 맞춘다
+	@RequestMapping(value = "/admin/hr/waitFromInterviewData.do", method = RequestMethod.POST)
+	public ModelAndView waitFromInterviewData(@RequestParam Map<String, Object> param, HttpSession session) {
+		param.put("UPDT_EMPLY_ID", loginId(session));
+		if (!BoHrService.WaitFromIntv(param)) {
+			return json("error", "이미 대기자로 등록됐거나 경력직이 아닌 면접자입니다.");
+		}
+		return withNote(json("result", "OK"), param);
+	}
+
 	@RequestMapping(value = "/admin/hr/traineeListData.do", method = RequestMethod.POST)
 	public ModelAndView traineeListData() {
 		ModelAndView mv = json("list", BoHrService.TraineeList());
@@ -168,7 +178,7 @@ public class BoHrController {
 		try {
 			param.put("UPDT_EMPLY_ID", loginId(session));
 			BoHrService.IntvFieldSave(param);
-			return json("result", "OK");
+			return withNote(json("result", "OK"), param); // 면접일을 바꾸면 드라이브 이력서 폴더를 옮긴 안내
 		} catch (IllegalArgumentException e) {
 			return json("error", e.getMessage());
 		}

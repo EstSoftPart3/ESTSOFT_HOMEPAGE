@@ -19,6 +19,7 @@ public interface BoHrService {
 	void IntvResumeSave(Object intvSq, String fileName, byte[] pdf);			//면접자 이력서를 드라이브에 올리고 위치를 기억
 	byte[] IntvResumeFile(Object intvSq);										//면접자 이력서 PDF. 없으면 null
 	boolean TraineeFromIntv(Map<String, Object> param);							//면접자를 교육생으로 등록. 이미 등록돼 있으면 false
+	boolean WaitFromIntv(Map<String, Object> param);							//경력직 면접자를 직원관리 대기자로 등록. 신입이거나 이미 등록돼 있으면 false
 
 	List<Map<String, Object>> TraineeList();									//교육생 전체 목록
 	void TraineeSave(Map<String, Object> param);								//교육생 등록·수정
