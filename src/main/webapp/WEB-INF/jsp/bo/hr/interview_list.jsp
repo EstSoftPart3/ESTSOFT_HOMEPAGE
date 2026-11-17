@@ -6,8 +6,19 @@
 <link rel="stylesheet" href="/resources/bo/plugins/fullcalendar-timegrid/main.min.css">
 <style>
 	#calView { position: relative; padding: 0 14px 14px; }
-	#calView .fc-event { cursor: pointer; font-size: 12px; }
-	#calView .fc-event.ic-cancel { background: #fff !important; color: #adb5bd !important; border: 1px dashed #adb5bd !important; text-decoration: line-through; }
+	/* 일정: 연한 바탕 + 왼쪽 굵은 띠(결과 색), 진한 글씨 */
+	#calView .fc-event { cursor: pointer; font-size: 13px; line-height: 1.4; color: #212529 !important; border-width: 0 0 0 4px !important; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,.15); padding: 1px 3px; }
+	#calView .fc-event .fc-time { color: #495057; font-weight: 600; font-size: 12px; }
+	#calView .fc-event .ic-name { font-weight: 700; }
+	#calView .fc-day-grid-event .fc-content { white-space: normal; }
+	#calView .fc-event.ic-cancel { background: #f8f9fa !important; border: 1px dashed #adb5bd !important; border-left-width: 4px !important; }
+	#calView .fc-event.ic-cancel .ic-name { text-decoration: line-through; color: #6c757d; }
+	.ic-badge, .ic-chip { display: inline-block; font-size: 11px; font-weight: 700; line-height: 16px; padding: 0 5px; margin-right: 3px; border-radius: 3px; color: #fff; vertical-align: 1px; }
+	.ic-chip { border-radius: 8px; margin: 0 0 0 3px; }
+	.ic-NEW { background: #0d6efd; } .ic-EXP { background: #6f42c1; }
+	.ic-ATTEND { background: #198754; } .ic-CANCEL, .ic-ABSENT { background: #6c757d; } .ic-CHANGE { background: #0dcaf0; color: #212529; }
+	.ic-PASS { background: #198754; } .ic-FAIL { background: #dc3545; } .ic-HOLD { background: #fd7e14; }
+	.ic-chip.ic-ATTEND { background: #fff; color: #198754; box-shadow: inset 0 0 0 1px #198754; }
 	#calView.is-file-over { outline: 2px dashed #28a745; outline-offset: -4px; }
 	.ic-drop { position: absolute; z-index: 5; pointer-events: none; border: 2px dashed #28a745; background: rgba(40,167,69,.12); border-radius: 4px; color: #1e7e34; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 	#editForm .ic-auto { background: #e8f5e9; }
@@ -542,8 +553,15 @@
 		if (r.ATTEND_ST === 'CANCEL' || r.ATTEND_ST === 'ABSENT') return 'ic-cancel';
 		return '';
 	}
+	// [바탕, 왼쪽 띠] 결과별. 결과 전은 파랑
 	function eventColor(r) {
-		return r.RESULT_ST === 'PASS' ? '#28a745' : r.RESULT_ST === 'FAIL' ? '#adb5bd' : r.RESULT_ST === 'HOLD' ? '#f0ad4e' : '#3788d8';
+		return { PASS: ['#e8f5ec', '#198754'], FAIL: ['#fbe9eb', '#dc3545'], HOLD: ['#fff3e6', '#fd7e14'] }[r.RESULT_ST] || ['#e7f1ff', '#0d6efd'];
+	}
+	function esc(s) { return $('<div>').text(s || '').html(); }
+	// 일정 안: [신입/경력 배지] 이름 (참석)(결과) — 코드마다 색이 다르다
+	function eventHtml(r) {
+		function chip(cls, grp, cd) { return cd ? '<span class="' + cls + ' ic-' + esc(cd) + '">' + esc(hrCodeName(grp, cd)) + '</span>' : ''; }
+		return chip('ic-badge', 'HR_HIRE', r.HIRE_CD) + '<span class="ic-name">' + esc(r.APLY_NM) + '</span>' + chip('ic-chip', 'HR_ATTEND', r.ATTEND_ST) + chip('ic-chip', 'HR_RESULT', r.RESULT_ST);
 	}
 
 	// 캘린더는 자기 화면의 날짜를 보여 주므로 연도·월·주차 대신 검색어·필터·탭만 적용한다
@@ -561,8 +579,9 @@
 			list.forEach(function(r) {
 				// [구분] 이름 · 참석 · 결과. 정해지지 않은 값은 뺀다
 			var title = (r.HIRE_CD ? '[' + hrCodeName('HR_HIRE', r.HIRE_CD) + '] ' : '') + [r.APLY_NM, hrCodeName('HR_ATTEND', r.ATTEND_ST), hrCodeName('HR_RESULT', r.RESULT_ST)].filter(Boolean).join(' · ');
+			var color = eventColor(r);
 			calendar.addEvent({ id: String(r.INTV_SQ), title: title, start: r.INTV_DT + (r.INTV_TM ? 'T' + r.INTV_TM : ''),
-					allDay: !r.INTV_TM, color: eventColor(r), classNames: [eventClass(r)], extendedProps: { row: r } });
+					allDay: !r.INTV_TM, backgroundColor: color[0], borderColor: color[1], textColor: '#212529', classNames: [eventClass(r)], extendedProps: { row: r } });
 			});
 		});
 	}
@@ -579,6 +598,9 @@
 			height: 'auto', nowIndicator: true,
 			editable: true, eventDurationEditable: false,
 			dateClick: function(info) { openNew(moment(info.date).format('YYYY-MM-DD'), info.allDay ? '' : moment(info.date).format('HH:mm')); },
+			eventRender: function(info) {
+				$(info.el).attr('title', info.event.title).find('.fc-title').html(eventHtml(info.event.extendedProps.row));
+			},
 			eventClick: function(info) { openEdit(info.event.extendedProps.row); },
 			eventDrop: function(info) { moveEvent(info); }
 		});
