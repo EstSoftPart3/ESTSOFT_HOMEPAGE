@@ -21,6 +21,7 @@
 <script src="/resources/bo/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script src="/resources/bo/plugins/bootbox/bootbox.all.min.js"></script>
 <script src="/resources/bo/plugins/bootbox/bootbox.locales.js"></script>
+<script src="/resources/common/bootbox-close.js?v=20261117"></script>
 
 <!-- DataTables -->
 <script src="/resources/bo/plugins/datatables/jquery.dataTables.min.js"></script>

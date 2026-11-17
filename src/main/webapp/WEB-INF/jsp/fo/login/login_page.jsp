@@ -161,6 +161,7 @@
       				title: "비밀번호를 변경해 주세요",
       				message: "아직 초기 비밀번호를 사용 중입니다. 계정 보호를 위해 변경을 권고합니다.",
       				closeButton: false,
+      				onEscape: goAfterLogin, // 바깥 클릭·Esc 는 '다음에 하기'와 같다
       				buttons: {
       					later: { label: "다음에 하기", className: "btn-default", callback: goAfterLogin },
       					change: { label: "변경하러 가기", className: "btn-primary", callback: function() { location.href = '/eep/account/changePassword.do'; } }
@@ -227,6 +228,7 @@
 
 <script src="/resources/bo/plugins/bootbox/bootbox.all.min.js"></script>
 <script src="/resources/bo/plugins/bootbox/bootbox.locales.js"></script>
+<script src="/resources/common/bootbox-close.js?v=20261117"></script>
 <script>
 var EG = { title: '로그인', tail: false, modals: {}, page: [
 	['.login-type', '직원 / 관리자 고르기', '홈페이지(내 장비 등)를 쓰려면 일반 직원,\n관리자 화면으로 가려면 관리자를 골라요. 관리자 권한이 있는 계정만 관리자로 들어가요.'],
