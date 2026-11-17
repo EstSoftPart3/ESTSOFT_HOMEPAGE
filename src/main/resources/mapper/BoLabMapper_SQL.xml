@@ -340,6 +340,16 @@
 		ORDER BY J.YM DESC
 	</select>
 
+	<!-- 과제의 모든 일지 처리 이력(최근 순) -->
+	<select id="selectProjectHistory" parameterType="hashMap" resultType="hashMap">
+		SELECT H.JRN_SQ, J.YM, H.ACTION_CD, H.ACTOR_ID, H.ACTOR_NM, H.NOTE, DATE_FORMAT(H.REG_DT, '%Y-%m-%d %H:%i') AS REG_DT
+		FROM TB_EEP_LAB_JOURNAL_H H
+		JOIN TB_EEP_LAB_JOURNAL_M J ON J.JRN_SQ = H.JRN_SQ
+		WHERE J.PRJ_SQ = #{PRJ_SQ}
+		ORDER BY H.HIS_SQ DESC
+		LIMIT 1000
+	</select>
+
 	<select id="selectJournalOne" parameterType="hashMap" resultType="hashMap">
 		SELECT J.JRN_SQ, J.PRJ_SQ, P.TEAM_SQ, J.YM, J.CONTENT, J.STATUS_CD, J.CUR_STEP, J.WRITER_NM, J.SNAP_MEMBERS, J.PDF_FILE_ID, J.PDF_LINK, J.UPLOAD_ERR, J.ORIGIN_LINK, J.ATTACH_NM
 			, DATE_FORMAT(J.MAIL_DT, '%Y-%m-%d %H:%i') AS MAIL_DT

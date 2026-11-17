@@ -47,27 +47,10 @@
 </style>
 
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
-				<div class="card-header"><h3 class="card-title bTitle"><b>연구일지</b></h3></div>
+				<%-- 연구일지는 '연구소 관리' 메뉴 안의 화면이다: 연구팀 → 연구과제(이 화면) → 연구일지(이 화면) --%>
+				<div class="card-header"><h3 class="card-title bTitle"><b>연구소 관리</b></h3></div>
 				<div class="card-body">
-					<div class="lab-view" id="viewList">
-						<div class="cal-panel">
-							<div class="cal-panel-body">
-								<div class="form-row align-items-end">
-									<div class="col-md-3 col-12 mb-2"><div class="lab-team"><label for="fTeam">연구팀</label><select id="fTeam" class="form-control form-control-sm"></select></div></div>
-									<div class="col-md-3 col-6 mb-2"><label for="fName">과제명</label><input type="search" id="fName" class="form-control form-control-sm"></div>
-									<div class="col-md-2 col-6 mb-2"><label for="fRun">진행</label><select id="fRun" class="form-control form-control-sm"><option value="">전체</option><option value="ON">진행 중</option><option value="OFF">종료</option></select></div>
-									<div class="col-md-1 col-6 mb-2"><button type="button" class="btn btn-sm btn-primary btn-block" onclick="drawList();">조회</button></div>
-									<div class="col-md-3 col-6 mb-2 text-right"><button type="button" class="btn btn-sm btn-primary" onclick="openProject();"><i class="fas fa-plus"></i> 과제 등록</button></div>
-								</div>
-							</div>
-						</div>
-						<div class="cal-panel"><div class="table-responsive px-3">
-							<table class="table table-sm table-hover cal-table mb-0">
-								<thead><tr><th>과제명</th><th>연구기간</th><th>연구장소</th><th>최근 일지</th><th>결재 상태</th><th>일지</th></tr></thead>
-								<tbody id="listBody"></tbody>
-							</table>
-						</div></div>
-					</div>
+					<div class="lab-crumb small text-muted mb-1" id="crumb"></div>
 					<div class="lab-view" id="viewProject" style="display:none;"></div>
 					<div class="lab-view" id="viewJournal" style="display:none;"></div>
 				</div>
@@ -133,29 +116,19 @@
 	<script>
 	var STATUS = { DRAFT: '작성 중', SUBMITTED: '결재 중', APPROVED: '결재 완료', CLOSED: '마감' };
 	var ACTION = { CREATE: '작성 시작', SAVE: '저장', SUBMIT: '제출', APPROVE: '확인', REJECT: '반려', CLOSE: '마감', UPLOAD: '드라이브 업로드', MAIL: '메일 발송', MAIL_FAIL: '메일 실패', REQ_MAIL: '승인 요청 메일', REQ_MAIL_FAIL: '승인 요청 메일 실패' };
-	var projects = [], teams = [], project = null, journal = null, editing = null, prjTab = 0, jrnTab = 0;
+	var teams = [], project = null, journal = null, editing = null, prjTab = 0, jrnTab = 0, work = null, workPick = '';
+	var MANAGE = '/admin/lab/openLabManage.do';
 	var oEditors = [], editorReady = false, editorHtml = '';
 
 	function pill(st) { return st ? $('<span class="lab-pill">').addClass(st).text(STATUS[st]) : ''; }
 	function today() { return new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); }
 
-	// ── 목록 ──
-	function drawList() {
-		var team = $('#fTeam').val(), name = $('#fName').val().trim().toLowerCase(), run = $('#fRun').val(), now = today();
-		var list = projects.filter(function(p) {
-			return String(p.TEAM_SQ) === team && (!name || p.PRJ_NM.toLowerCase().indexOf(name) >= 0) && (!run || (run === 'ON') === (p.END_DT >= now));
-		});
-		var $b = $('#listBody').empty();
-		if (!list.length) boEmpty($b, '과제가 없습니다.');
-		list.forEach(function(p) {
-			$('<tr>').append($('<td>').append($('<a class="lab-open">').attr('href', '#p=' + p.PRJ_SQ).text(p.PRJ_NM)),
-				$('<td>').text(p.START_DT + ' ~ ' + p.END_DT), $('<td>').text(p.PLACE), $('<td>').text(p.LAST_YM || ''),
-				$('<td>').append(pill(p.LAST_STATUS)), $('<td>').text(p.JRN_CNT + '건')).appendTo($b);
-		});
-	}
-
-	function loadList() {
-		hrPost('/admin/lab/projectListData.do', {}, function(res) { projects = res.result; drawList(); });
+	/** 위치 표시: 연구소 관리 › 연구팀 › 과제 › 월 (앞 단계는 링크) */
+	function crumb(p, ym) {
+		var $c = $('#crumb').empty().append($('<a>').attr('href', MANAGE).text('연구소 관리'), ' › ',
+			$('<a>').attr('href', MANAGE + '#t=' + p.TEAM_SQ).text(p.TEAM_NM || '연구팀'), ' › ');
+		if (ym) $c.append($('<a>').attr('href', '#p=' + p.PRJ_SQ).text(p.PRJ_NM), ' › ', document.createTextNode(ym));
+		else $c.append(document.createTextNode(p.PRJ_NM));
 	}
 
 	// ── 과제 상세 ──
@@ -254,11 +227,15 @@
 
 	function drawProject() {
 		var p = project.project, $v = $('#viewProject').empty();
-		$v.append($('<div class="lab-head">').append($('<h4>').text(p.PRJ_NM)));
-		$v.append(tabBar(['월간 일지', '과제 정보'], prjTab, function(i) { prjTab = i; drawProject(); }));
+		crumb(p);
+		$v.append($('<div class="lab-head">').append($('<h4>').text(p.PRJ_NM),
+			$('<button type="button" class="btn btn-sm btn-outline-secondary">과제 수정</button>').click(function() { openProject(p); }),
+			$('<button type="button" class="btn btn-sm btn-primary"><i class="fas fa-plus"></i> 일지 등록</button>').click(function() { openJournal(); })));
+		$v.append($('<p class="small text-muted mb-2">').append(document.createTextNode(p.START_DT + ' ~ ' + p.END_DT + (p.PLACE ? ' · ' + p.PLACE : '') + ' · '),
+			$('<a target="_blank" rel="noopener">드라이브 과제 폴더</a>').attr('href', 'https://drive.google.com/drive/folders/' + encodeURIComponent(p.DRIVE_FOLDER_ID))));
+		$v.append(tabBar(['연구일지 (' + project.journals.length + ')', '연구원별 업무요약', '처리 이력'], prjTab, function(i) { prjTab = i; drawProject(); }));
 		var $panel = $('<div class="cal-panel"><div class="cal-panel-body"></div></div>').appendTo($v), $b = $panel.find('.cal-panel-body');
 		if (prjTab === 0) {
-			$b.append($('<div class="lab-actions">').append($('<button type="button" class="btn btn-sm btn-primary"><i class="fas fa-plus"></i> 일지 등록</button>').click(function() { openJournal(); })));
 			var $t = $('<tbody>');
 			if (!project.journals.length) boEmpty($t, '일지가 없습니다.');
 			project.journals.forEach(function(j) {
@@ -268,22 +245,58 @@
 					$('<td>').append(pill(j.STATUS_CD)), $('<td>').append(pdf), $('<td>').append(origin)).appendTo($t);
 			});
 			$b.append($('<div class="table-responsive">').append($('<table class="table table-sm table-hover cal-table mb-0"><thead><tr><th>대상 월</th><th>작성자</th><th>작성일</th><th>결재 상태</th><th>PDF</th><th>첨부파일</th></tr></thead></table>').append($t)));
+		} else if (!work || String(work.PRJ_SQ) !== String(p.PRJ_SQ)) {
+			$b.append('<p class="text-muted mb-0">불러오는 중…</p>');
+			hrPost('/admin/lab/projectWorkData.do', { PRJ_SQ: p.PRJ_SQ }, function(res) { work = res.result; work.PRJ_SQ = p.PRJ_SQ; drawProject(); });
+		} else if (prjTab === 1) {
+			drawProjectSummary($b);
 		} else {
-			$b.append($('<div class="lab-actions">').append($('<button type="button" class="btn btn-sm btn-primary">수정</button>').click(function() { openProject(p); })));
-			$b.append(info([['연구팀', p.TEAM_NM], ['과제명', p.PRJ_NM], ['연구기간', p.START_DT + ' ~ ' + p.END_DT], ['연구장소', p.PLACE],
-				['드라이브', $('<a target="_blank" rel="noopener">폴더 열기</a>').attr('href', 'https://drive.google.com/drive/folders/' + encodeURIComponent(p.DRIVE_FOLDER_ID))]]));
+			var $h = $('<tbody>');
+			if (!work.history.length) boEmpty($h, '처리 이력이 없습니다.');
+			work.history.forEach(function(h) {
+				$('<tr>').append($('<td>').text(h.REG_DT), $('<td>').append($('<a class="lab-open">').attr('href', '#j=' + h.JRN_SQ).text(h.YM)),
+					$('<td>').text(h.ACTION_CD === 'APPROVE' ? (h.NOTE || '') + ' 확인' : ACTION[h.ACTION_CD] || h.ACTION_CD), $('<td>').text(h.ACTOR_NM || h.ACTOR_ID),
+					$('<td style="white-space:normal;">').text(h.ACTION_CD === 'APPROVE' ? '' : h.NOTE || '')).appendTo($h);
+			});
+			$b.append($('<div class="table-responsive">').append($('<table class="table table-sm cal-table mb-0"><thead><tr><th>일시</th><th>일지</th><th>처리</th><th>처리자</th><th>메모</th></tr></thead></table>').append($h)));
 		}
-		$v.append(backBar('#'));
+		$v.append(backBar(MANAGE + '#t=' + p.TEAM_SQ));
+	}
+
+	/** 과제의 연구원별 업무요약: 한 달 / 한 해 / 과제 전체로 골라 사람별로 모은다 */
+	function drawProjectSummary($b) {
+		var months = work.months, years = {};
+		months.forEach(function(m) { years[m.YM.slice(0, 4)] = true; });
+		if (!workPick && months.length) workPick = months[0].YM;
+		var $sel = $('<select class="form-control form-control-sm" style="max-width:220px;" aria-label="요약할 기간">');
+		months.forEach(function(m) { $sel.append($('<option>').val(m.YM).text(m.YM)); });
+		Object.keys(years).sort().reverse().forEach(function(y) { $sel.append($('<option>').val(y).text(y + '년 전체')); });
+		$sel.append($('<option value="ALL">과제 전체</option>'));
+		$sel.val(workPick).on('change', function() { workPick = this.value; drawProject(); });
+		$b.append($('<div class="mb-2">').append($sel));
+		var picked = months.filter(function(m) { return workPick === 'ALL' || m.YM.indexOf(workPick) === 0; });
+		if (picked.length === 1) { drawSummary($b, { journal: { YM: picked[0].YM }, recipients: picked[0].people }); return; }
+		// 여러 달이면 사람별로 합치고 항목 앞에 달을 붙인다
+		var byName = {}, order = [];
+		picked.slice().reverse().forEach(function(m) {
+			m.people.forEach(function(x) {
+				if (!byName[x.STAFF_NM]) { byName[x.STAFF_NM] = { STAFF_NM: x.STAFF_NM, ROLE_CD: x.ROLE_CD, ITEMS: [] }; order.push(x.STAFF_NM); }
+				if (x.ROLE_CD === 'HEAD') byName[x.STAFF_NM].ROLE_CD = 'HEAD';
+				x.ITEMS.forEach(function(i) { byName[x.STAFF_NM].ITEMS.push(m.YM + ' · ' + i); });
+			});
+		});
+		drawSummary($b, { journal: { YM: workPick === 'ALL' ? '과제 전체' : workPick + '년' }, recipients: order.map(function(n) { return byName[n]; }) });
 	}
 
 	function loadProject(sq, then) {
 		hrPost('/admin/lab/projectDetailData.do', { PRJ_SQ: sq }, function(res) { project = res.result; if (then) then(); else drawProject(); });
 	}
 
-	function openProject(p) {
+	/** @param teamSq 새 과제의 연구팀(연구소 관리의 '과제 등록'에서 #new=팀 으로 들어온다) */
+	function openProject(p, teamSq) {
 		$('#projectTitle').text(p ? '과제 수정' : '과제 등록');
 		['PRJ_SQ', 'PRJ_NM', 'START_DT', 'END_DT', 'PLACE', 'DRIVE_FOLDER_ID'].forEach(function(f) { $('#' + f).val(p && p[f] || ''); });
-		$('#TEAM_SQ').val(p ? p.TEAM_SQ : $('#fTeam').val());
+		$('#TEAM_SQ').val(p ? p.TEAM_SQ : teamSq);
 		$('#projectModal').modal('show');
 	}
 
@@ -291,9 +304,9 @@
 		var data = {};
 		['PRJ_SQ', 'TEAM_SQ', 'PRJ_NM', 'START_DT', 'END_DT', 'PLACE', 'DRIVE_FOLDER_ID'].forEach(function(f) { data[f] = $('#' + f).val(); });
 		hrPost('/admin/lab/saveProjectData.do', data, function() {
-			$('#projectModal').modal('hide');
-			loadList();
+			$('#projectModal').off('hidden.bs.modal.back').modal('hide');
 			if (data.PRJ_SQ) loadProject(data.PRJ_SQ);
+			else location.href = MANAGE + '#t=' + data.TEAM_SQ;
 		});
 	}
 
@@ -312,6 +325,7 @@
 
 	function drawJournal() {
 		var r = journal, j = r.journal, st = j.STATUS_CD, $v = $('#viewJournal').empty();
+		crumb(project.project, j.YM);
 		var $head = $('<div class="lab-head">').append($('<h4>').text(j.YM + ' 월간 연구일지 · ' + j.PRJ_NM)).appendTo($v);
 		function button(label, cls, fn) { $('<button type="button" class="btn btn-sm">').addClass(cls).text(label).click(fn).appendTo($head); }
 		if (st === 'DRAFT') {
@@ -414,7 +428,6 @@
 			hrPost('/admin/lab/createJournalData.do', { PRJ_SQ: project.project.PRJ_SQ, YM: $('#jYm').val(), CONTENT: html }, function(res) {
 				enable();
 				$('#journalModal').modal('hide');
-				loadList();
 				location.hash = '#j=' + res.result;
 			}, enable);
 		}
@@ -439,9 +452,14 @@
 
 	// ── 화면 전환 ──
 	function showCurrent() {
-		var m = /^#(p|j)=(\d+)$/.exec(location.hash);
+		var m = /^#(p|j|new)=(\d+)$/.exec(location.hash);
 		$('.lab-view').hide();
-		if (!m) { $('#viewList').show(); loadList(); }
+		// 과제 목록은 연구소 관리의 연구과제 탭에 있다(예전 연구일지 메뉴 주소로 들어와도 그리로 보낸다)
+		if (!m) { location.replace(MANAGE); return; }
+		if (m[1] === 'new') {
+			openProject(null, m[2]);
+			$('#projectModal').one('hidden.bs.modal.back', function() { location.href = MANAGE + '#t=' + m[2]; });
+		}
 		else if (m[1] === 'p') { $('#viewProject').show(); loadProject(m[2]); }
 		else {
 			$('#viewJournal').show();
@@ -454,12 +472,11 @@
 		window.scrollTo(0, 0);
 	}
 
-	$(window).on('hashchange', function() { prjTab = 0; jrnTab = 0; showCurrent(); });
-	$('#fTeam, #fRun').on('change', drawList);
-	$('#fName').on('input', drawList);
-	hrPost('/admin/lab/optionsData.do', {}, function(res) {
+	$(window).on('hashchange', function() { prjTab = 0; jrnTab = 0; work = null; workPick = ''; showCurrent(); });
+	if (!/^#(p|j|new)=\d+$/.test(location.hash)) location.replace(MANAGE);
+	else hrPost('/admin/lab/optionsData.do', {}, function(res) {
 		teams = res.result.teams.filter(function(t) { return t.USE_YN === 'Y'; });
-		teams.forEach(function(t) { $('#fTeam, #TEAM_SQ').append($('<option>').val(t.TEAM_SQ).text(t.TEAM_NM)); });
+		teams.forEach(function(t) { $('#TEAM_SQ').append($('<option>').val(t.TEAM_SQ).text(t.TEAM_NM)); });
 		showCurrent();
 	});
 	</script>

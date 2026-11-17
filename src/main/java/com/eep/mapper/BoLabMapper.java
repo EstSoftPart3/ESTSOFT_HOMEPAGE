@@ -41,6 +41,7 @@ public interface BoLabMapper {
 	public List<Map<String, Object>> selectJournals(Map<String, Object> param);
 	public Map<String, Object> selectJournalOne(Map<String, Object> param);
 	public List<Map<String, Object>> selectJournalHistory(Map<String, Object> param);
+	public List<Map<String, Object>> selectProjectHistory(Map<String, Object> param);
 	public List<Map<String, Object>> selectJournalSteps(Map<String, Object> param);
 	public int insertJournalSteps(Map<String, Object> param);
 	public int deleteJournalSteps(Map<String, Object> param);

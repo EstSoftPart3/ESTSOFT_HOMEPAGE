@@ -81,6 +81,11 @@ public class BoLabController {
 		return result(() -> lab.projectDetail(prjSq));
 	}
 
+	@RequestMapping(value = "/admin/lab/projectWorkData.do", method = RequestMethod.POST)
+	public ModelAndView projectWorkData(@RequestParam("PRJ_SQ") int prjSq) {
+		return result(() -> lab.projectWork(prjSq));
+	}
+
 	@RequestMapping(value = "/admin/lab/saveProjectData.do", method = RequestMethod.POST)
 	public ModelAndView saveProjectData(@RequestParam Map<String, Object> param, HttpSession session) {
 		return result(() -> { lab.saveProject(param, login(session)); return "OK"; });

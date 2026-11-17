@@ -137,7 +137,9 @@
 
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
 	<script>
-	var TABS = ['기본 정보', '연구원', '소속 현황', '결재라인'];
+	// 순서를 바꾸면 #t=팀&tab=번호 링크가 달라진다(결재라인=3 은 연구일지 화면의 서명 안내가 쓴다)
+	var TABS = ['연구과제', '연구원', '소속 현황', '결재라인', '기본 정보'];
+	var JRN_STATUS = { DRAFT: '작성 중', SUBMITTED: '결재 중', APPROVED: '결재 완료', CLOSED: '마감' };
 	// 비고는 메모로 옮겼다. 목록 💬 버튼과 기본 정보 아래 메모 칸에서 쌓는다
 	var MEMO_API = hrMemoApi('/admin/lab/', 'team');
 	// 연구원 역할(공통코드 LAB_ROLE). HEAD(연구소장)는 마감 권한과 이어져 코드값을 바꾸면 안 된다
@@ -179,8 +181,25 @@
 			$('<button type="button" role="tab">').attr('aria-selected', i === tab ? 'true' : 'false').text(n).click(function() { tab = i; drawTeam(); }).appendTo($tabs);
 		});
 		var $b = $('<div class="cal-panel"><div class="cal-panel-body"></div></div>').appendTo($v).find('.cal-panel-body');
-		[drawInfo, drawMembers, drawTimeline, drawApproval][tab]($b);
+		[drawProjects, drawMembers, drawTimeline, drawApproval, drawInfo][tab]($b);
 		$v.append($('<div class="lab-back">').append('<a class="btn btn-sm btn-outline-secondary" href="#">목록</a>'));
+	}
+
+	/** 연구과제: 진행 중인 과제가 위로. 과제를 누르면 과제 상세(연구일지 목록·업무요약·처리 이력)로 */
+	function drawProjects($b) {
+		var t = detail.team, now = today();
+		$b.append(actions(['과제 등록', function() { location.href = '/admin/lab/openJournalList.do#new=' + t.TEAM_SQ; }]));
+		var list = (detail.projects || []).slice().sort(function(a, b) { return (b.END_DT >= now) - (a.END_DT >= now) || (b.START_DT > a.START_DT ? 1 : -1); });
+		var $t = $('<tbody>');
+		if (!list.length) boEmpty($t, '과제가 없습니다.');
+		list.forEach(function(p) {
+			var on = p.END_DT >= now;
+			$('<tr>').append($('<td>').append($('<a class="lab-open">').attr('href', '/admin/lab/openJournalList.do#p=' + p.PRJ_SQ).text(p.PRJ_NM)),
+				$('<td>').text(p.START_DT + ' ~ ' + p.END_DT), $('<td>').text(p.JRN_CNT + '건'),
+				$('<td>').append(p.LAST_YM ? [document.createTextNode(p.LAST_YM + ' '), $('<span class="lab-pill">').addClass(p.LAST_STATUS).text(JRN_STATUS[p.LAST_STATUS] || '')] : ''),
+				$('<td>').append($('<span class="lab-pill">').toggleClass('SUBMITTED', on).text(on ? '진행 중' : '종료'))).appendTo($t);
+		});
+		$b.append($('<div class="table-responsive">').append($('<table class="table table-sm table-hover cal-table mb-0"><thead><tr><th>연구과제</th><th>기간</th><th>연구일지</th><th>최근 일지</th><th>진행</th></tr></thead></table>').append($t)));
 	}
 
 	function drawInfo($b) {

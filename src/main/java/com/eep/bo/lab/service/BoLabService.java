@@ -104,6 +104,9 @@ public class BoLabService {
 		out.put("line", mapper.selectApprovalLine(key));
 		out.put("me", login.get("emplyId"));
 		out.put("canSignAll", system.access(str(login.get("emplyId"))).superUser);
+		List<Map<String, Object>> projects = new ArrayList<>();
+		for (Map<String, Object> p : mapper.selectProjects()) if (str(p.get("TEAM_SQ")).equals(str(teamSq))) projects.add(p);
+		out.put("projects", projects);
 		return out;
 	}
 
@@ -225,6 +228,22 @@ public class BoLabService {
 		if (prj == null) throw new IllegalArgumentException("과제를 찾지 못했습니다.");
 		out.put("project", prj);
 		out.put("journals", mapper.selectJournals(key));
+		return out;
+	}
+
+	/** 과제 상세의 '연구원별 업무요약'(일지마다 사람별 항목)과 '처리 이력'(모든 일지). 탭을 열 때만 읽는다 */
+	public Map<String, Object> projectWork(Object prjSq) {
+		Map<String, Object> key = one("PRJ_SQ", prjSq), out = new HashMap<>();
+		List<Map<String, Object>> months = new ArrayList<>();
+		for (Map<String, Object> row : mapper.selectJournals(key)) {
+			Map<String, Object> j = journal(row.get("JRN_SQ")), m = new HashMap<>();
+			m.put("YM", j.get("YM"));
+			m.put("JRN_SQ", j.get("JRN_SQ"));
+			m.put("people", recipients(j));
+			months.add(m);
+		}
+		out.put("months", months);
+		out.put("history", mapper.selectProjectHistory(key));
 		return out;
 	}
 

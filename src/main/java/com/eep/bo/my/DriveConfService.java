@@ -51,7 +51,7 @@ public class DriveConfService {
 		SCREENS.put("PARTNER", new String[] { "매출·매입처", "/admin/partner/openPartnerList.do" });
 		FIELDS.put("PARTNER", new String[][] {
 			{ "TEMP", "서류 글자 읽기용 임시 폴더 (읽고 바로 지움)", "", "", "folder" } });
-		SCREENS.put("LAB", new String[] { "연구일지", "/admin/lab/openJournalList.do" });
+		SCREENS.put("LAB", new String[] { "연구소 관리(연구일지)", "/admin/lab/openLabManage.do" });
 		FIELDS.put("LAB", new String[][] {
 			{ "SUB", "과제 폴더 안 하위 폴더 이름 (과제마다 만들어짐)", "02. 연구일지", "", "" },
 			{ "FILE", "마감 PDF 이름", "{연월} 월간연구일지_{과제명}", "{연월},{과제명}", "" } });
