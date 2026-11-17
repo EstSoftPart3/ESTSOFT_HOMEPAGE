@@ -642,31 +642,67 @@ public class BoLabService {
 				history(sq, "MAIL_FAIL", CLOSED, nm + " <" + addr + "> " + e.getClass().getSimpleName(), null, login);
 			}
 		}
+		sendCeoCopy(j, steps, people, pdf, fileName, login);
 		mapper.updateJournalMailed(key(sq));
+	}
+
+	/** 대표에게 참조용 1통. 대표 = 단계 이름에 '대표'가 든 결재자, 없으면 마지막 단계. 연구원으로 이미 받았으면 보내지 않는다 */
+	private void sendCeoCopy(Map<String, Object> j, List<Map<String, Object>> steps, List<Map<String, Object>> people, byte[] pdf, String fileName, Map<String, Object> login) {
+		Object sq = j.get("JRN_SQ");
+		Map<String, Object> ceo = ceoStep(steps);
+		if (ceo == null) return;
+		Map<String, Object> to = mapper.selectApproverMail(str(ceo.get("EMPLY_ID")));
+		String nm = to == null ? str(ceo.get("EMPLY_ID")) : str(to.get("EMPLY_NM")), addr = to == null ? "" : str(to.get("ADDR"));
+		if (!hasText(addr)) {
+			history(sq, "MAIL_FAIL", CLOSED, "참조 " + nm + ": 메일 주소 없음", null, login);
+			return;
+		}
+		for (Map<String, Object> p : people) if (addr.equalsIgnoreCase(str(p.get("ADDR")))) return;
+		try {
+			MimeMessage message = mailSender.createMimeMessage();
+			MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+			helper.setFrom(mailFrom);
+			helper.setTo(addr);
+			helper.setSubject("[참조] [연구일지] " + j.get("YM") + " " + j.get("PRJ_NM") + " 마감");
+			helper.setText(mailHtml(nm, j, steps, people), true);
+			helper.addAttachment(fileName, new ByteArrayResource(pdf));
+			mailSender.send(message);
+			history(sq, "MAIL", CLOSED, "참조 " + nm + " <" + addr + ">", null, login);
+		} catch (Exception e) {
+			history(sq, "MAIL_FAIL", CLOSED, "참조 " + nm + " <" + addr + "> " + e.getClass().getSimpleName(), null, login);
+		}
+	}
+
+	static Map<String, Object> ceoStep(List<Map<String, Object>> steps) {
+		for (Map<String, Object> s : steps) if (str(s.get("STEP_NM")).contains("대표")) return s;
+		return steps.isEmpty() ? null : steps.get(steps.size() - 1);
 	}
 
 	/** 마감 메일(받는 사람마다): 본인 작업을 맨 위에, 그 아래 과제·기간·연구원·결재, 전체 연구원 업무요약. 승인 요청 메일과 같은 모양 */
 	@SuppressWarnings("unchecked")
 	static String mailHtml(String name, Map<String, Object> j, List<Map<String, Object>> steps, List<Map<String, Object>> people) {
 		String ym = str(j.get("YM")), td = "padding:7px 10px;vertical-align:top;", key = td + "color:#6c757d;white-space:nowrap;width:72px;";
-		List<String> mine = new ArrayList<>();
+		List<String> mine = null; // 연구원이 아니면(대표 참조) 내 작업 칸을 뺀다
 		for (Map<String, Object> p : people) if (name.equals(str(p.get("STAFF_NM")))) mine = (List<String>) p.get("ITEMS");
 		StringBuilder b = new StringBuilder("<div style=\"max-width:600px;margin:0 auto;font-family:'Malgun Gothic',sans-serif;color:#212529;font-size:14px;line-height:1.6;\">")
 			.append("<div style=\"background:#0a4a78;color:#fff;padding:16px 20px;border-radius:8px 8px 0 0;\"><div style=\"font-size:12px;opacity:.8;\">이에스티소프트 연구소</div>")
 			.append("<div style=\"font-size:18px;font-weight:700;\">").append(esc(ym)).append(" 월간 연구일지 마감</div></div>")
 			.append("<div style=\"border:1px solid #dee2e6;border-top:0;padding:18px 20px;border-radius:0 0 8px 8px;\">")
-			.append("<p style=\"margin:0 0 12px;\">").append(esc(name)).append(" 님, ").append(esc(ym)).append(" 연구일지가 결재를 마치고 마감되었습니다.</p>");
+			.append("<p style=\"margin:0 0 12px;\">").append(esc(name)).append(" 님, ").append(esc(ym)).append(" 연구일지가 결재를 마치고 마감되었습니다.")
+			.append(mine == null ? " 참조로 보내 드립니다." : "").append("</p>");
 
 		// 1. 본인 작업
-		b.append("<div style=\"background:#e7f3f8;border-left:4px solid #0b6e8a;border-radius:6px;padding:12px 14px;margin-bottom:16px;\">")
-			.append("<div style=\"font-weight:700;color:#0a4a78;margin-bottom:4px;\">이번 달 내 작업 (").append(mine.size()).append("건)</div>");
-		if (mine.isEmpty()) b.append("<div style=\"color:#6c757d;\">일지에서 본인 담당 항목을 찾지 못했습니다.</div>");
-		else {
-			b.append("<ul style=\"margin:0;padding-left:18px;\">");
-			for (String i : mine) b.append("<li>").append(esc(i)).append("</li>");
-			b.append("</ul>");
+		if (mine != null) {
+			b.append("<div style=\"background:#e7f3f8;border-left:4px solid #0b6e8a;border-radius:6px;padding:12px 14px;margin-bottom:16px;\">")
+				.append("<div style=\"font-weight:700;color:#0a4a78;margin-bottom:4px;\">이번 달 내 작업 (").append(mine.size()).append("건)</div>");
+			if (mine.isEmpty()) b.append("<div style=\"color:#6c757d;\">일지에서 본인 담당 항목을 찾지 못했습니다.</div>");
+			else {
+				b.append("<ul style=\"margin:0;padding-left:18px;\">");
+				for (String i : mine) b.append("<li>").append(esc(i)).append("</li>");
+				b.append("</ul>");
+			}
+			b.append("</div>");
 		}
-		b.append("</div>");
 
 		// 2. 과제·기간·연구원·결재
 		StringBuilder who = new StringBuilder();

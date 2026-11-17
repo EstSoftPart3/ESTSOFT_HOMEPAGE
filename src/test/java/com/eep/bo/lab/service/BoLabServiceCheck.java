@@ -67,6 +67,13 @@ public class BoLabServiceCheck {
 		yes(mail.indexOf("내 작업 (2건)") < mail.indexOf("연구과제") && mail.indexOf("연구과제") < mail.indexOf("연구원별 업무요약"), "본인 작업이 맨 위");
 		yes(mail.contains("2026-02-01 ~ 2026-02-28") && mail.contains("김연구 <span style=\"color:#6c757d;\">연구원 · 02/10 ~ 02/28") && mail.contains("남의 일"), "연구 기간·연구원 기간·전체 요약");
 		yes(mail.contains("대표 임대표 <span style=\"color:#198754;\">승인 2026-03-02") && mail.contains("drive/folders/F1-x") && mail.contains("file/d/X/view"), "결재·드라이브 링크");
+		String cc = BoLabService.mailHtml("임대표", mj, Arrays.asList(done), Arrays.asList(me, other));
+		yes(cc.contains("참조로 보내 드립니다") && !cc.contains("내 작업") && cc.contains("남의 일") && cc.contains("내 일 2"), "대표 참조 메일: 내 작업 칸 없음, 전체 요약 있음");
+		Map<String, Object> s1 = new HashMap<>(), s2 = new HashMap<>(), s3 = new HashMap<>();
+		s1.put("STEP_NM", "부서장"); s2.put("STEP_NM", "대표이사"); s3.put("STEP_NM", "검토");
+		same(BoLabService.ceoStep(Arrays.asList(s1, s2, s3)), s2, "대표 단계 = 이름에 대표");
+		same(BoLabService.ceoStep(Arrays.asList(s1, s3)), s3, "대표 단계 없으면 마지막 단계");
+		same(BoLabService.ceoStep(new java.util.ArrayList<>()), null, "결재 단계 없음");
 
 		// PDF: 단계 수만큼 결재란, 서명, 마감, 에디터 서식 유지
 		Map<String, Object> j = new HashMap<>();
