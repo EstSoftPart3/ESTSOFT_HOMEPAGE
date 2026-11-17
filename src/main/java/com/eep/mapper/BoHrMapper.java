@@ -20,6 +20,7 @@ public interface BoHrMapper {
 	public int deleteIntv(Map<String, Object> param);							//면접자 삭제
 	public Map<String, Object> selectIntvResume(Map<String, Object> param);		//면접자 이력서 찾기용 면접일자·이름·파일 ID
 	public int updateIntvResume(Map<String, Object> param);						//캘린더로 올린 이력서 파일 ID
+	public int countIntvSameDay(Map<String, Object> param);						//같은 면접일·이름 면접자 수(이력서 폴더를 같이 씀)
 	public int insertTraineeFromIntv(Map<String, Object> param);				//면접자 -> 교육생 등록
 
 	public List<Map<String, Object>> selectTraineeList();						//교육생 전체 목록

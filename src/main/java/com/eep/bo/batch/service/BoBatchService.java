@@ -49,4 +49,7 @@ public interface BoBatchService {
 
 	/** 파일 ID 가 있으면 그 파일, 없으면 배치와 같은 규칙(날짜·이름 폴더)으로 찾은 이력서 PDF. 없으면 null */
 	byte[] resumeFile(String fileId, String intvDt, String name);
+
+	/** 면접자 이력서의 이름 폴더(없으면 PDF)를 휴지통으로 보내고 비게 된 일·월 폴더도 보낸다. @return 보낸 대상 ID, 없으면 null */
+	String trashResume(String fileId, String intvDt, String name);
 }

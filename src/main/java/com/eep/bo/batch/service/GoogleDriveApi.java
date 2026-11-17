@@ -150,6 +150,14 @@ public class GoogleDriveApi {
 		patchRest.exchange(URI.create(url.toString()), HttpMethod.PATCH, new HttpEntity<byte[]>(body, headers), Map.class);
 	}
 
+	/** 폴더·파일을 휴지통으로 보낸다(30일 안에 드라이브에서 되살릴 수 있다) */
+	public void trash(String fileId, String token) {
+		HttpHeaders headers = auth(token);
+		headers.set("Content-Type", "application/json; charset=UTF-8");
+		patchRest.exchange(URI.create(API_URL + "/files/" + enc(fileId) + "?supportsAllDrives=true&fields=id"), HttpMethod.PATCH,
+				new HttpEntity<byte[]>("{\"trashed\":true}".getBytes(java.nio.charset.StandardCharsets.UTF_8), headers), Map.class);
+	}
+
 	/** 파일을 바로 지운다(휴지통을 거치지 않는다) */
 	public void delete(String fileId, String token) {
 		rest.exchange(URI.create(API_URL + "/files/" + enc(fileId) + "?supportsAllDrives=true"), HttpMethod.DELETE, new HttpEntity<Void>(auth(token)), Void.class);

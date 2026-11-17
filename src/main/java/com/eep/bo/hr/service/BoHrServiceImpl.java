@@ -139,7 +139,17 @@ public class BoHrServiceImpl implements BoHrService {
 
 	@Override
 	public void IntvDelete(Map<String, Object> param) {
+		Map<String, Object> row = hrMapper.selectIntvResume(param);
 		BoHrDao.IntvDelete(param);
+		// 드라이브 이력서는 휴지통으로. 같은 날·같은 이름 면접자가 남아 있으면 그 사람 것이므로 둔다. 실패해도 삭제는 그대로, 안내만 한다
+		if (row == null || hrMapper.countIntvSameDay(row) > 0) return;
+		try {
+			if (batchService.trashResume((String) row.get("RESUME_FILE_ID"), (String) row.get("INTV_DT"), (String) row.get("APLY_NM")) != null) {
+				param.put("DRIVE_NOTE", "드라이브의 이력서 폴더를 휴지통으로 보냈습니다(30일 안에 되살릴 수 있음).");
+			}
+		} catch (Exception e) {
+			param.put("DRIVE_NOTE", "면접자는 삭제했지만 드라이브 이력서는 지우지 못했습니다. 드라이브에서 직접 지워 주세요.");
+		}
 	}
 
 	@Override

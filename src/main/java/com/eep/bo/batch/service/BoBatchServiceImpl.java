@@ -379,6 +379,39 @@ public class BoBatchServiceImpl implements BoBatchService {
 		return GoogleDriveApi.download(file, drive[1]);
 	}
 
+	@Override
+	@SuppressWarnings("unchecked")
+	public String trashResume(String fileId, String intvDt, String name) {
+		String[] drive = resumeDrive();
+		String target = null;
+		if (hasText(fileId)) {
+			// 올린 뒤 면접일을 옮겼어도 파일이 있는 곳에서 지운다. 부모가 이름 폴더면 폴더째
+			List<String> parents = (List<String>) GoogleDriveApi.file(fileId, drive[1]).get("parents");
+			String parent = parents == null || parents.isEmpty() ? null : parents.get(0);
+			target = parent != null && String.valueOf(name).equals(GoogleDriveApi.file(parent, drive[1]).get("name")) ? parent : fileId;
+		} else if (hasText(intvDt) && hasText(name)) {
+			String day = dayFolder(drive[0], LocalDate.parse(intvDt), drive[1]);
+			if (day != null) {
+				target = GoogleDriveApi.childFolderId(day, name, drive[1]);
+				if (target == null) {
+					Map<String, Object> pdf = GoogleDriveApi.resumePdf(day, name, drive[1]); // 이름 폴더 없이 날짜 폴더에 바로 둔 PDF
+					target = pdf == null ? null : (String) pdf.get("id");
+				}
+			}
+		}
+		if (target == null) return null;
+		List<String> up = (List<String>) GoogleDriveApi.file(target, drive[1]).get("parents");
+		GoogleDriveApi.trash(target, drive[1]);
+		// 비게 된 일·월 폴더까지 정리한다. 연도 폴더와 이력서 최상위 폴더는 두고, 다른 면접자가 있으면 멈춘다
+		String folder = up == null || up.isEmpty() ? null : up.get(0);
+		for (int level = 0; level < 2 && folder != null && !folder.equals(drive[0]) && GoogleDriveApi.children(folder, drive[1]).isEmpty(); level++) {
+			List<String> next = (List<String>) GoogleDriveApi.file(folder, drive[1]).get("parents");
+			GoogleDriveApi.trash(folder, drive[1]);
+			folder = next == null || next.isEmpty() ? null : next.get(0);
+		}
+		return target;
+	}
+
 	/** 면접 이력서 폴더(신입면접 배치 첫 세트와 같은 값)와 회사 공용 드라이브 토큰 */
 	private String[] resumeDrive() {
 		List<Map<String, Object>> sets = BoBatchDao.IcalList();

@@ -118,7 +118,7 @@ public class BoHrController {
 	@RequestMapping(value = "/admin/hr/deleteInterviewData.do", method = RequestMethod.POST)
 	public ModelAndView deleteInterviewData(@RequestParam Map<String, Object> param) {
 		BoHrService.IntvDelete(param);
-		return json("result", "OK");
+		return withNote(json("result", "OK"), param);
 	}
 
 	@RequestMapping(value = "/admin/hr/traineeFromInterviewData.do", method = RequestMethod.POST)

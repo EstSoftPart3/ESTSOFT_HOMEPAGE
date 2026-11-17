@@ -575,6 +575,28 @@
 		else if (y) calendar.changeView('dayGridMonth', y + '-' + (y === moment().format('YYYY') ? moment().format('MM') : '01') + '-01');
 	}
 
+	// 반대로 캘린더를 화살표·오늘·주별·월별로 넘기면 위의 연도·월·주차(와 통계)를 그 화면에 맞춘다
+	function calSync(v) {
+		if (calKey === null) return; // 처음 그릴 때는 위 필터가 캘린더를 정한다
+		var y, mon, week = '';
+		if (v.type === 'timeGridWeek') {
+			var thu = moment(v.currentStart).add(3, 'days').isoWeekday(4); // 주차는 목요일이 든 달
+			y = thu.format('YYYY'); mon = thu.format('MM');
+			week = thu.clone().subtract(3, 'days').format('YYYY-MM-DD') + '|' + thu.clone().add(3, 'days').format('YYYY-MM-DD');
+		} else {
+			y = moment(v.currentStart).format('YYYY'); mon = moment(v.currentStart).format('MM');
+		}
+		var key = [y, mon, week].join('|');
+		if (key === calKey) return;
+		calKey = key;
+		if (!$('#yearSel option').filter(function() { return this.value === y; }).length) $('#yearSel').append($('<option>').val(y).text(y + '년'));
+		$('#yearSel').val(y);
+		$('#monthSel').val(mon);
+		fillWeeks();
+		$('#weekSel').val(week);
+		setTimeout(render, 0); // 캘린더가 날짜 칸을 다 그린 뒤 일정·목록·통계를 다시 그린다
+	}
+
 	// 캘린더 안 일정은 날짜 칸이 거르므로 검색어·필터·탭만 적용한다
 	function renderCal(test) {
 		var isCal = view === 'cal';
@@ -610,6 +632,7 @@
 			defaultTimedEventDuration: '01:00',
 			height: 'auto', nowIndicator: true,
 			editable: true, eventDurationEditable: false,
+			datesRender: function(info) { calSync(info.view); },
 			dateClick: function(info) { openNew(moment(info.date).format('YYYY-MM-DD'), info.allDay ? '' : moment(info.date).format('HH:mm')); },
 			eventRender: function(info) {
 				$(info.el).attr('title', info.event.title).find('.fc-title').html(eventHtml(info.event.extendedProps.row));
@@ -699,7 +722,7 @@
 	}
 
 	function deleteEdit() {
-		bootbox.confirm(editing.APLY_NM + ' 면접자를 삭제할까요? 되돌릴 수 없습니다.', function(ok) {
+		bootbox.confirm($('<div>').text(editing.APLY_NM).html() + ' 면접자를 삭제할까요? 되돌릴 수 없습니다.<br><small class="text-muted">드라이브의 이력서 이름 폴더와 비게 되는 날짜 폴더는 휴지통으로 갑니다(30일 안에 되살릴 수 있음).</small>', function(ok) {
 			if (ok) hrPost('/admin/hr/deleteInterviewData.do', { INTV_SQ: editing.INTV_SQ }, function() { $('#editModal').modal('hide'); load(); });
 		});
 	}

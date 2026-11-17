@@ -70,6 +70,10 @@
 		UPDATE TB_EEP_HR_INTV_M SET RESUME_FILE_ID = #{RESUME_FILE_ID} WHERE INTV_SQ = #{INTV_SQ}
 	</update>
 
+	<select id="countIntvSameDay" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*) FROM TB_EEP_HR_INTV_M WHERE INTV_DT = #{INTV_DT} AND APLY_NM = #{APLY_NM}
+	</select>
+
 	<delete id="deleteIntv" parameterType="hashMap">
 		DELETE FROM TB_EEP_HR_INTV_M WHERE INTV_SQ = #{INTV_SQ}
 	</delete>
