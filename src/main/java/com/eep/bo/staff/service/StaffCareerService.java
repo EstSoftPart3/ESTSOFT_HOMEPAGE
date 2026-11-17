@@ -63,6 +63,17 @@ public class StaffCareerService {
 		tx = new TransactionTemplate(new DataSourceTransactionManager(ds));
 	}
 
+	/** 버전 구분(순정 ORIG·가필 EDIT)과 가필의 기준 순정 버전·자동생성 설정 칸. 기존 버전은 모두 순정 */
+	@javax.annotation.PostConstruct
+	public void ensureSchema() {
+		try {
+			jdbc.execute("ALTER TABLE TB_EEP_HR_STAFF_PRJ_VER_H ADD COLUMN IF NOT EXISTS VER_KIND VARCHAR(10) NOT NULL DEFAULT 'ORIG' COMMENT '순정 ORIG, 가필 EDIT',"
+					+ " ADD COLUMN IF NOT EXISTS BASE_VER INT NULL COMMENT '가필의 기준 순정 버전', ADD COLUMN IF NOT EXISTS GEN_CONF TEXT NULL COMMENT '프로필 자동생성 설정 JSON'");
+		} catch (RuntimeException e) {
+			System.out.println("STAFF_CAREER_SCHEMA_ERROR " + e.getClass().getSimpleName());
+		}
+	}
+
 	// ── 조회 ──
 
 	/** 지금(작업 중) 수행이력. 직접 입력한 줄 + 사내 투입에서 온 줄, 진행중 먼저·최근순 */
@@ -150,6 +161,9 @@ public class StaffCareerService {
 			out.put("dirty", items.isEmpty() ? null : diff(Collections.<Map<String, Object>> emptyList(), items));
 		}
 		out.put("ver", ver);
+		Map<String, Object> edit = latest(staffSq, "EDIT");
+		if (edit != null) edit.remove("SNAPSHOT");
+		out.put("edit", edit);
 		out.put("logs", jdbc.queryForList("SELECT ACT_CD, PRJ_NM, DETAIL, REG_EMPLY_ID, DATE_FORMAT(REG_DT, '%m-%d %H:%i') AS REG_DT FROM TB_EEP_HR_STAFF_PRJ_LOG_H WHERE STAFF_SQ = ? ORDER BY LOG_SQ DESC LIMIT 30", staffSq));
 		out.put("chips", chips(staffSq));
 		return out;
@@ -243,15 +257,15 @@ public class StaffCareerService {
 
 	// ── 버전 ──
 
-	/** 최신 버전과 다를 때만 새 버전을 만든다. @return 새 버전 번호 */
+	/** 최신 순정 버전과 다를 때만 새 순정 버전을 만든다. @return 새 버전 번호 */
 	public int saveVersion(Object staffSq, String loginId) {
 		return tx.execute(st -> {
 			List<Map<String, Object>> items = items(staffSq);
 			Map<String, Object> last = latest(staffSq);
 			String summary = diff(last == null ? Collections.<Map<String, Object>> emptyList() : parse((String) last.get("SNAPSHOT")), items);
 			if (summary == null) throw new IllegalArgumentException("바뀐 내용이 없습니다. 최신 버전과 같아 버전을 올리지 않았습니다.");
-			int no = last == null ? 1 : ((Number) last.get("VER_NO")).intValue() + 1;
-			jdbc.update("INSERT INTO TB_EEP_HR_STAFF_PRJ_VER_H (STAFF_SQ, VER_NO, SNAPSHOT, SUMMARY, PRJ_CNT, REG_EMPLY_ID, REG_DT) VALUES (?, ?, ?, ?, ?, ?, NOW())",
+			int no = nextNo(staffSq);
+			jdbc.update("INSERT INTO TB_EEP_HR_STAFF_PRJ_VER_H (STAFF_SQ, VER_NO, VER_KIND, SNAPSHOT, SUMMARY, PRJ_CNT, REG_EMPLY_ID, REG_DT) VALUES (?, ?, 'ORIG', ?, ?, ?, ?, NOW())",
 					staffSq, no, json(snapshot(items)), cut(summary, 500), items.size(), loginId);
 			log(staffSq, "VERSION", null, "v" + no + " 저장 · " + summary, loginId);
 			return no;
@@ -259,23 +273,92 @@ public class StaffCareerService {
 	}
 
 	public List<Map<String, Object>> versions(Object staffSq) {
-		return jdbc.queryForList("SELECT VER_NO, SUMMARY, PRJ_CNT, REG_EMPLY_ID, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%i') AS REG_DT FROM TB_EEP_HR_STAFF_PRJ_VER_H WHERE STAFF_SQ = ? ORDER BY VER_NO DESC", staffSq);
+		return jdbc.queryForList("SELECT VER_NO, VER_KIND, BASE_VER, SUMMARY, PRJ_CNT, REG_EMPLY_ID, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%i') AS REG_DT FROM TB_EEP_HR_STAFF_PRJ_VER_H WHERE STAFF_SQ = ? ORDER BY VER_NO DESC", staffSq);
 	}
 
-	/** 그 버전의 수행이력. verNo 가 비면 최신 버전, 버전이 없으면 지금 내용 */
+	/** 그 버전의 수행이력. verNo 가 비면 최신 순정 버전(버전이 없으면 지금 내용), EDIT 면 최신 가필 버전 */
 	public List<Map<String, Object>> versionItems(Object staffSq, String verNo) {
-		List<Map<String, Object>> v = verNo == null || verNo.isEmpty()
-				? jdbc.queryForList("SELECT SNAPSHOT FROM TB_EEP_HR_STAFF_PRJ_VER_H WHERE STAFF_SQ = ? ORDER BY VER_NO DESC LIMIT 1", staffSq)
-				: jdbc.queryForList("SELECT SNAPSHOT FROM TB_EEP_HR_STAFF_PRJ_VER_H WHERE STAFF_SQ = ? AND VER_NO = ?", staffSq, verNo);
-		if (v.isEmpty()) {
-			if (verNo != null && !verNo.isEmpty()) throw new IllegalArgumentException("버전을 찾지 못했습니다.");
-			return items(staffSq);
+		if ("EDIT".equals(verNo)) {
+			Map<String, Object> e = latest(staffSq, "EDIT");
+			if (e == null) throw new IllegalArgumentException("가필 버전이 없습니다. ✨ 프로필 자동생성에서 만들어 주세요.");
+			return parse((String) e.get("SNAPSHOT"));
 		}
+		if (verNo == null || verNo.isEmpty()) {
+			Map<String, Object> o = latest(staffSq);
+			return o == null ? items(staffSq) : parse((String) o.get("SNAPSHOT"));
+		}
+		List<Map<String, Object>> v = jdbc.queryForList("SELECT SNAPSHOT FROM TB_EEP_HR_STAFF_PRJ_VER_H WHERE STAFF_SQ = ? AND VER_NO = ?", staffSq, verNo);
+		if (v.isEmpty()) throw new IllegalArgumentException("버전을 찾지 못했습니다.");
 		return parse((String) v.get(0).get("SNAPSHOT"));
 	}
 
-	/** 작업 중 내용을 그 버전으로 바꾼다. 사내 투입에서 온 줄의 이름·기간은 투입현황을 따르므로 직접 입력한 줄과 보탠 개발환경만 되돌린다 */
+	// ── 프로필 자동생성(가필) ──
+
+	/**
+	 * 최신 순정 버전(없으면 지금 내용)에서 실제 있는 프로젝트만 골라 순서·기술 표시만 바꾼다. 없는 프로젝트·기간은 만들지 않는다.
+	 * conf: skills[] 필수 기술, years(0 전체) 최근 N년 안에 끝났거나 진행중, max(0 전체), sort match|recent, deploy·ext 포함 범위, show front|only
+	 */
+	public List<Map<String, Object>> generate(Object staffSq, Map<String, Object> conf) {
+		List<String> skills = new ArrayList<>();
+		if (conf.get("skills") instanceof List) for (Object o : (List<?>) conf.get("skills")) if (!s(o).trim().isEmpty()) skills.add(s(o).trim());
+		int years = num(conf.get("years")), max = num(conf.get("max"));
+		boolean deploy = !Boolean.FALSE.equals(conf.get("deploy")), ext = !Boolean.FALSE.equals(conf.get("ext")), only = "only".equals(conf.get("show"));
+		String cutYm = years > 0 ? LocalDate.now().minusYears(years).toString().substring(0, 7) : "";
+		List<Map<String, Object>> out = new ArrayList<>();
+		for (Map<String, Object> it : versionItems(staffSq, "")) {
+			boolean isDeploy = "DEPLOY".equals(it.get("SRC"));
+			if (isDeploy ? !deploy : !ext) continue;
+			String end = s(it.get("END_YM"));
+			if (!cutYm.isEmpty() && !end.isEmpty() && end.compareTo(cutYm) < 0) continue;
+			Map<String, Object> m = new LinkedHashMap<>(it);
+			int hit = 0;
+			for (String c : TECH) {
+				List<String> on = new ArrayList<>(), off = new ArrayList<>();
+				for (String t : tokens(s(it.get(c)))) (skills.contains(t) ? on : off).add(t);
+				hit += on.size();
+				if (!skills.isEmpty()) {
+					if (!only) on.addAll(off);
+					m.put(c, String.join(", ", on));
+				}
+			}
+			m.put("MATCH", hit);
+			out.add(m);
+		}
+		// 정렬은 안정 정렬이라 같은 일치 수 안에서는 원래 순서(진행중 먼저·최근순)를 지킨다
+		if ("match".equals(conf.get("sort"))) out.sort((a, b) -> num(b.get("MATCH")) - num(a.get("MATCH")));
+		return max > 0 && out.size() > max ? new ArrayList<>(out.subList(0, max)) : out;
+	}
+
+	/** 자동생성 결과를 가필 버전으로 남긴다(순정은 그대로). @return 새 버전 번호 */
+	public int saveGenerated(Object staffSq, String confJson, String loginId) {
+		Map<String, Object> conf = parseMap(confJson);
+		return tx.execute(st -> {
+			List<Map<String, Object>> items = generate(staffSq, conf);
+			if (items.isEmpty()) throw new IllegalArgumentException("조건에 맞는 프로젝트가 없습니다. 연차·포함 범위를 넓혀 주세요.");
+			Map<String, Object> base = latest(staffSq);
+			Object baseNo = base == null ? null : base.get("VER_NO");
+			String d = diff(base == null ? items(staffSq) : parse((String) base.get("SNAPSHOT")), items);
+			String summary = (baseNo == null ? "작업 중 내용" : "v" + baseNo) + " 기준 자동생성 · " + (d == null ? "순서만 바꿈" : d);
+			int no = nextNo(staffSq);
+			jdbc.update("INSERT INTO TB_EEP_HR_STAFF_PRJ_VER_H (STAFF_SQ, VER_NO, VER_KIND, BASE_VER, GEN_CONF, SNAPSHOT, SUMMARY, PRJ_CNT, REG_EMPLY_ID, REG_DT) VALUES (?, ?, 'EDIT', ?, ?, ?, ?, ?, ?, NOW())",
+					staffSq, no, baseNo, confJson, json(snapshot(items)), cut(summary, 500), items.size(), loginId);
+			log(staffSq, "VERSION", null, "v" + no + " 가필 저장 · " + summary, loginId);
+			return no;
+		});
+	}
+
+	/** 자동생성 결과로 바로 워드 */
+	public byte[] generatedWord(Object staffSq, String confJson) {
+		List<Map<String, Object>> items = generate(staffSq, parseMap(confJson));
+		if (items.isEmpty()) throw new IllegalArgumentException("조건에 맞는 프로젝트가 없습니다.");
+		return word(staffSq, items);
+	}
+
+	/** 작업 중 내용을 그 순정 버전으로 바꾼다. 사내 투입에서 온 줄의 이름·기간은 투입현황을 따르므로 직접 입력한 줄과 보탠 개발환경만 되돌린다 */
 	public void restore(Object staffSq, String verNo, String loginId) {
+		if (jdbc.queryForObject("SELECT COUNT(*) FROM TB_EEP_HR_STAFF_PRJ_VER_H WHERE STAFF_SQ = ? AND VER_NO = ? AND VER_KIND = 'EDIT'", Integer.class, staffSq, verNo) > 0) {
+			throw new IllegalArgumentException("가필 버전은 제출용이라 작업 중 내용으로 되돌릴 수 없습니다. 순정 버전을 골라 주세요.");
+		}
 		List<Map<String, Object>> snap = versionItems(staffSq, verNo == null || verNo.isEmpty() ? "0" : verNo);
 		tx.execute(st -> {
 			jdbc.update("DELETE FROM TB_EEP_HR_STAFF_PRJ_R WHERE STAFF_SQ = ?", staffSq);
@@ -341,11 +424,14 @@ public class StaffCareerService {
 
 	/** 회사 양식 워드. verNo 가 비면 최신 버전(버전이 없으면 지금 내용). 주민번호는 가리고 전화·메일은 원본 양식처럼 넣지 않는다 */
 	public byte[] word(Object staffSq, String verNo) {
+		return word(staffSq, versionItems(staffSq, verNo));
+	}
+
+	private byte[] word(Object staffSq, List<Map<String, Object>> items) {
 		Map<String, Object> q = new HashMap<>();
 		q.put("STAFF_SQ", staffSq);
 		Map<String, Object> st = staffMapper.selectStaffOne(q);
 		if (st == null) throw new IllegalArgumentException("직원을 찾지 못했습니다.");
-		List<Map<String, Object>> items = versionItems(staffSq, verNo);
 		List<Map<String, Object>> extra = staffMapper.selectStaffItemList(q);
 		Map<String, String> info = new HashMap<>();
 		info.put("성명", s(st.get("STAFF_NM")));
@@ -408,9 +494,39 @@ public class StaffCareerService {
 		jdbc.update("UPDATE TB_EEP_HR_STAFF_PRJ_R SET " + set + "UPDT_EMPLY_ID = ?, UPDT_DT = NOW() WHERE PRJ_SQ = ? AND STAFF_SQ = ?", args.toArray());
 	}
 
+	/** 최신 순정 버전(작업 중 내용과 비교·새 버전 기준) */
 	private Map<String, Object> latest(Object staffSq) {
-		List<Map<String, Object>> v = jdbc.queryForList("SELECT VER_NO, SNAPSHOT, PRJ_CNT, REG_EMPLY_ID, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%i') AS REG_DT FROM TB_EEP_HR_STAFF_PRJ_VER_H WHERE STAFF_SQ = ? ORDER BY VER_NO DESC LIMIT 1", staffSq);
+		return latest(staffSq, "ORIG");
+	}
+
+	private Map<String, Object> latest(Object staffSq, String kind) {
+		List<Map<String, Object>> v = jdbc.queryForList("SELECT VER_NO, BASE_VER, SNAPSHOT, PRJ_CNT, REG_EMPLY_ID, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%i') AS REG_DT FROM TB_EEP_HR_STAFF_PRJ_VER_H WHERE STAFF_SQ = ? AND VER_KIND = ? ORDER BY VER_NO DESC LIMIT 1", staffSq, kind);
 		return v.isEmpty() ? null : v.get(0);
+	}
+
+	/** 버전 번호는 순정·가필이 같이 이어진다 */
+	private int nextNo(Object staffSq) {
+		Integer n = jdbc.queryForObject("SELECT MAX(VER_NO) FROM TB_EEP_HR_STAFF_PRJ_VER_H WHERE STAFF_SQ = ?", Integer.class, staffSq);
+		return n == null ? 1 : n + 1;
+	}
+
+	/** 자동생성에서 고르는 기술 칸(개발환경) */
+	static final String[] TECH = { "LANG_NM", "FRAMEWORK_NM", "DBMS_NM", "TOOL_NM", "OS_NM", "MACHINE_NM", "ETC_NM" };
+
+	private static int num(Object o) {
+		try {
+			return o instanceof Number ? ((Number) o).intValue() : Integer.parseInt(s(o).trim());
+		} catch (NumberFormatException e) {
+			return 0;
+		}
+	}
+
+	static Map<String, Object> parseMap(String json) {
+		try {
+			return JSON.readValue(json == null || json.isEmpty() ? "{}" : json, new TypeReference<Map<String, Object>>() { });
+		} catch (java.io.IOException e) {
+			throw new IllegalArgumentException("자동생성 설정을 읽지 못했습니다.");
+		}
 	}
 
 	private void log(Object staffSq, String act, String prjNm, String detail, String loginId) {

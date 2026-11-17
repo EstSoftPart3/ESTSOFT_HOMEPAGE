@@ -230,9 +230,37 @@
 					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
 				</div>
 				<div class="modal-body">
-					<p class="small text-muted mb-2">「새 버전으로 저장」을 누를 때만 버전이 생깁니다. <b>보기</b>는 그 버전의 수행이력을 읽기 전용으로 보여 주고, <b>이 버전으로</b>는 작업 중 내용을 그 버전으로 바꿉니다(옛 버전은 지워지지 않습니다).</p>
-					<div class="table-responsive"><table class="table table-sm mb-0" data-nosort><thead><tr><th>버전</th><th>저장한 때</th><th>저장한 사람</th><th>프로젝트</th><th>직전 버전과 달라진 점</th><th><span class="sr-only">관리</span></th></tr></thead><tbody id="scVerBody"></tbody></table></div>
+					<p class="small text-muted mb-2"><b>순정</b>은 사내 기록·가져온 원본 그대로, <b>가필</b>은 ✨ 프로필 자동생성으로 만든 제출용입니다(<b>보기</b>에서 기준 순정과 달라진 칸이 노랗게 보이고, 되돌리기는 순정만). 「새 버전으로 저장」을 누를 때만 순정 버전이 생깁니다. <b>보기</b>는 그 버전의 수행이력을 읽기 전용으로 보여 주고, <b>이 버전으로</b>는 작업 중 내용을 그 버전으로 바꿉니다(옛 버전은 지워지지 않습니다).</p>
+					<div class="table-responsive"><table class="table table-sm mb-0" data-nosort><thead><tr><th>버전</th><th>구분</th><th>저장한 때</th><th>저장한 사람</th><th>프로젝트</th><th>직전 버전과 달라진 점</th><th><span class="sr-only">관리</span></th></tr></thead><tbody id="scVerBody"></tbody></table></div>
 					<div id="scVerView" class="mt-3"></div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="modal fade" id="scGenModal" tabindex="-1" role="dialog" aria-labelledby="scGenTitle" aria-hidden="true">
+		<div class="modal-dialog modal-xl" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="scGenTitle">✨ 프로필 자동생성</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
+				</div>
+				<div class="modal-body">
+					<p class="small text-muted mb-2">최신 <b>순정</b> 버전에 있는 프로젝트만 골라 순서·기술 표시를 바꿉니다. 없는 프로젝트·기간은 만들지 않고, 순정 버전은 그대로 둡니다.</p>
+					<div class="sc-sk sc-gen">
+						<span class="k">필수 기술</span><div id="scGenSkills"></div>
+						<span class="k">연차</span><div id="scGenYears" data-one></div>
+						<span class="k">최대 프로젝트</span><div id="scGenMax" data-one></div>
+						<span class="k">정렬</span><div id="scGenSort" data-one></div>
+						<span class="k">포함 범위</span><div id="scGenScope"></div>
+						<span class="k">기술 표시</span><div id="scGenShow" data-one></div>
+					</div>
+					<div class="hr-section mt-3" id="scGenSum">미리보기</div>
+					<div id="scGenView"></div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-outline-secondary" id="scGenWord">📄 워드로 바로 받기</button>
+					<button type="button" class="btn btn-primary" id="scGenSave">가필 버전으로 저장</button>
 				</div>
 			</div>
 		</div>
@@ -276,7 +304,7 @@
 
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
 	<script>$(function() { hrDriveGear('STAFF'); }); // 드라이브 폴더·파일 이름 규칙 ⚙</script>
-	<script src="/resources/common/staff-career.js?v=20261116"></script>
+	<script src="/resources/common/staff-career.js?v=20261117"></script>
 
 	<script>
 	// 공통코드 HR_STAFF_STATUS 의 이름·순서. 코드가 없을 때만 기본값
@@ -809,12 +837,13 @@
 		var $save = btn('btn-primary', '💾 새 버전으로 저장', function() { saveVersion(sq); }).prop('disabled', !d.dirty).attr('title', d.dirty ? '' : '최신 버전과 같아 저장할 것이 없습니다');
 		$c.append($('<div class="st-hero">')
 			.append(stat('총 경력', scCareer(d.items) || '-')).append(stat('프로젝트', d.items.length + '건'))
-			.append(stat('버전', d.ver ? 'v' + d.ver.VER_NO : '없음'))
+			.append(stat('버전', (d.ver ? '순정 v' + d.ver.VER_NO : '없음') + (d.edit ? ' · 가필 v' + d.edit.VER_NO : '')))
 			.append($('<div class="st-btns">')
 				.append(btn('btn-outline-primary', '<i class="fas fa-plus"></i> 이력 추가', function() { openCareer(null); }))
 				.append($save)
 				.append(btn('btn-outline-secondary', '🕘 버전', function() { openVersions(sq); }))
-				.append(btn('btn-outline-secondary', '📄 워드 받기', function() { careerWord(sq, ''); }))
+				.append(btn('btn-outline-primary', '✨ 프로필 자동생성', function() { openGen(sq); }))
+				.append(btn('btn-outline-secondary', '📄 워드 받기', function() { chooseWord(sq); }))
 				.append(btn('btn-outline-secondary', '<i class="fab fa-google-drive"></i> 워드 올리기', function() { careerWordDrive(sq); }))
 				.append(btn('btn-outline-secondary', '⤒ 워드 가져오기', function() { openImport(); }))));
 		if (d.dirty) $c.append($('<div class="st-dirty" role="status">').append($('<b>').text('작업 중')).append($('<span>').text(d.dirty + ' · 아직 버전으로 저장하지 않았습니다' + (d.ver ? ' (최신 v' + d.ver.VER_NO + ' · ' + d.ver.REG_DT + ')' : ''))));
@@ -883,6 +912,7 @@
 			});
 		$('#scImpFile').on('change', readImport);
 		$('#scImpApply').on('click', applyImport);
+		genInit();
 	}
 
 	function syncOngoing() {
@@ -956,18 +986,95 @@
 			var list = res.result || [];
 			list.forEach(function(v, i) {
 				function b(text, fn) { return $('<button type="button" class="btn btn-sm btn-outline-secondary mr-1">').text(text).attr('aria-label', 'v' + v.VER_NO + ' ' + text).on('click', fn); }
-				$b.append($('<tr>').append($('<td>').append($('<b>').text('v' + v.VER_NO)).append(i === 0 ? ' <span class="sc-pill in">최신</span>' : ''), $('<td class="text-nowrap">').text(v.REG_DT), $('<td>').text(v.REG_EMPLY_ID || ''), $('<td>').text(v.PRJ_CNT + '건'), $('<td>').text(v.SUMMARY || ''),
-					$('<td class="text-nowrap text-right">').append(b('보기', function() { viewVersion(sq, v.VER_NO); })).append(b('워드', function() { careerWord(sq, v.VER_NO); })).append(b('이 버전으로', function() { restoreVersion(sq, v.VER_NO); }))));
+				var edit = v.VER_KIND === 'EDIT';
+				$b.append($('<tr>').append($('<td>').append($('<b>').text('v' + v.VER_NO)).append(i === 0 ? ' <span class="sc-pill in">최신</span>' : ''),
+					$('<td class="text-nowrap">').append($('<span class="sc-pill">').toggleClass('warn', edit).text(edit ? '가필' : '순정')).append(edit && v.BASE_VER ? $('<small class="text-muted">').text(' v' + v.BASE_VER + ' 기준') : ''), $('<td class="text-nowrap">').text(v.REG_DT), $('<td>').text(v.REG_EMPLY_ID || ''), $('<td>').text(v.PRJ_CNT + '건'), $('<td>').text(v.SUMMARY || ''),
+					$('<td class="text-nowrap text-right">').append(b('보기', function() { viewVersion(sq, v.VER_NO, edit ? v.BASE_VER : null); })).append(b('워드', function() { careerWord(sq, v.VER_NO); })).append(edit ? '' : b('이 버전으로', function() { restoreVersion(sq, v.VER_NO); }))));
 			});
 			if (!list.length) boEmpty($b, '저장한 버전이 없습니다. 수행이력 탭에서 「새 버전으로 저장」 을 누르면 생깁니다.');
 			$('#scVerModal').modal('show');
 		});
 	}
 
-	function viewVersion(sq, verNo) {
+	// 가필(baseNo 있음)은 기준 순정 버전과 달라진 칸을 노랗게
+	function viewVersion(sq, verNo, baseNo) {
 		hrPost('/admin/staff/careerVersionData.do', { STAFF_SQ: sq, VER_NO: verNo }, function(res) {
-			scTable($('#scVerView').empty().append($('<div class="hr-section">').text('v' + verNo + ' 의 수행이력 (읽기 전용)')), res.result || [], {});
+			function show(cells) {
+				scTable($('#scVerView').empty().append($('<div class="hr-section">').text('v' + verNo + ' 의 수행이력 (읽기 전용)' + (baseNo ? ' · 노란 칸은 v' + baseNo + '(순정)과 다른 곳' : ''))), res.result || [], { cells: cells });
+			}
+			if (!baseNo) return show(null);
+			hrPost('/admin/staff/careerVersionData.do', { STAFF_SQ: sq, VER_NO: baseNo }, function(b) { show(scCells(b.result || [], res.result || [])); });
 		});
+	}
+
+	// 기준과 비교해 줄(프로젝트명+시작월)마다 달라진 칸
+	var SC_COLS = ['PRJ_NM', 'CLIENT_NM', 'COMPANY_NM', 'WORK_NM', 'WORK_AREA', 'ROLE_NM', 'START_YM', 'END_YM', 'IND_NM', 'APP_NM', 'MACHINE_NM', 'OS_NM', 'LANG_NM', 'DBMS_NM', 'TOOL_NM', 'FRAMEWORK_NM', 'ETC_NM'];
+	function scCells(base, items) {
+		var by = {}, out = {};
+		base.forEach(function(it) { by[scKey(it)] = it; });
+		items.forEach(function(it) {
+			var b = by[scKey(it)];
+			out[scKey(it)] = SC_COLS.filter(function(c) { return !b || String(b[c] || '') !== String(it[c] || ''); });
+		});
+		return out;
+	}
+
+	// 📄 워드 받기: 순정 최신 / 가필 최신 / 버전 창에서 고르기
+	function chooseWord(sq) {
+		var d = career.d, opts = [{ text: '순정 최신' + (d.ver ? ' (v' + d.ver.VER_NO + ')' : ' (버전 없음 · 지금 내용)'), value: 'ORIG' }];
+		if (d.edit) opts.push({ text: '가필 최신 (v' + d.edit.VER_NO + ')', value: 'EDIT' });
+		opts.push({ text: '고른 버전 (버전 창에서 「워드」)', value: 'PICK' });
+		bootbox.prompt({ title: '어느 수행이력으로 워드를 만들까요?', inputType: 'select', inputOptions: opts, value: 'ORIG', callback: function(v) {
+			if (v === 'PICK') openVersions(sq);
+			else if (v) careerWord(sq, v === 'EDIT' ? 'EDIT' : '');
+		} });
+	}
+
+	// ── ✨ 프로필 자동생성 (서버가 최신 순정 버전에서 고르고 정렬만 한다) ──
+	var scGen = null;
+	function genConf() {
+		function one(id) { return $('#' + id + ' .sc-chip.on').attr('data-v'); }
+		return { skills: $('#scGenSkills .sc-chip.on').map(function() { return $(this).attr('data-v'); }).get(), years: +one('scGenYears') || 0, max: +one('scGenMax') || 0, sort: one('scGenSort'),
+			deploy: $('#scGenScope [data-v=deploy]').hasClass('on'), ext: $('#scGenScope [data-v=ext]').hasClass('on'), show: one('scGenShow') };
+	}
+	function genChips(id, list, on) {
+		$('#' + id).empty().append(list.map(function(x) { var v = String(x[0]); return $('<button type="button" class="sc-chip gray">').attr('data-v', v).toggleClass('on', on.indexOf(v) >= 0).attr('aria-pressed', on.indexOf(v) >= 0).text(x[1]); }));
+	}
+	function openGen(sq) {
+		var d = career.d, list = [], seen = {};
+		// 칩: 이 사람 수행이력에서 많이 쓴 기술(숫자는 프로젝트 수) 먼저, 그다음 회사에서 자주 쓰는 기술
+		scEnv.slice(0, 4).forEach(function(e) { scCount(d.items, e[0]).forEach(function(t) { if (!seen[t[0]]) { seen[t[0]] = 1; list.push([t[0], t[0] + ' ' + t[1]]); } }); });
+		scEnv.slice(0, 4).forEach(function(e) { (d.chips[e[0]] || []).slice(0, 12).forEach(function(v) { if (!seen[v]) { seen[v] = 1; list.push([v, v]); } }); });
+		scGen = { sq: sq };
+		genChips('scGenSkills', list, []);
+		genChips('scGenYears', [[1, '1년'], [3, '3년'], [5, '5년'], [7, '7년'], [10, '10년'], [0, '전체']], ['0']);
+		genChips('scGenMax', [[5, '5개'], [10, '10개'], [15, '15개'], [0, '전체']], ['0']);
+		genChips('scGenSort', [['match', '기술 일치순'], ['recent', '최신순']], ['match']);
+		genChips('scGenScope', [['deploy', '사내 투입'], ['ext', '외부 이력']], ['deploy', 'ext']);
+		genChips('scGenShow', [['front', '고른 기술을 앞으로'], ['only', '고른 기술만']], ['front']);
+		$('#scGenModal').modal('show');
+		genPreview();
+	}
+	function genPreview() {
+		var conf = genConf();
+		hrPost('/admin/staff/careerGenData.do', { STAFF_SQ: scGen.sq, GEN: JSON.stringify(conf) }, function(res) {
+			var items = res.result || [], hit = items.filter(function(it) { return it.MATCH > 0; }).length;
+			$('#scGenSum').text('미리보기 · ' + items.length + '건' + (conf.skills.length ? ' · 고른 기술이 들어간 프로젝트 ' + hit + '건' : ''));
+			scTable($('#scGenView').empty(), items, { pick: conf.skills, empty: '조건에 맞는 프로젝트가 없습니다. 연차·포함 범위를 넓혀 보세요.' });
+			$('#scGenSave, #scGenWord').prop('disabled', !items.length);
+		});
+	}
+	function genInit() {
+		$('#scGenModal').on('click', '.sc-chip', function() {
+			var $c = $(this), $box = $c.parent(), one = $box.is('[data-one]');
+			if (one) $box.children().removeClass('on').attr('aria-pressed', false);
+			$c.toggleClass('on', one || !$c.hasClass('on')).attr('aria-pressed', $c.hasClass('on'));
+			genPreview();
+		});
+		$('#scGenSave').on('click', function() {
+			hrPost('/admin/staff/saveCareerGenData.do', { STAFF_SQ: scGen.sq, GEN: JSON.stringify(genConf()) }, function(res) { $('#scGenModal').modal('hide'); toast('가필 v' + res.result + ' 로 저장했습니다 (순정은 그대로)'); loadCareer(scGen.sq); });
+		});
+		$('#scGenWord').on('click', function() { location.href = '/admin/staff/careerWord.do?STAFF_SQ=' + scGen.sq + '&GEN=' + encodeURIComponent(JSON.stringify(genConf())); });
 	}
 
 	function restoreVersion(sq, verNo) {

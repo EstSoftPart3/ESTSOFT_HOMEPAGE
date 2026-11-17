@@ -15,7 +15,7 @@
 		'.sc-table .sc-rail::after { content: ""; position: absolute; left: 8px; top: 50%; margin-top: -5px; width: 10px; height: 10px; border-radius: 50%; background: #c5ced8; border: 2px solid #fff; }',
 		'.sc-table .sc-now .sc-rail::after { background: #0b6e8a; box-shadow: 0 0 0 3px #e8f6fa; }',
 		'.sc-table .sc-now td { background: #f6fcfe; }',
-		'.sc-table tr.sc-add td { background: #e6f5ec; } .sc-table tr.sc-chg td { background: #fdf1dc; }',
+		'.sc-table tr.sc-add td { background: #e6f5ec; } .sc-table tr.sc-chg td { background: #fdf1dc; } .sc-table td.sc-cell-chg { background: #fff3b0 !important; box-shadow: inset 0 0 0 1px #e0a800; }',
 		'.sc-per b { display: block; } .sc-per small, .sc-work small { color: #6b7785; }',
 		'.sc-nm { font-weight: 700; font-size: 13.5px; background: none; border: 0; padding: 0; color: #1c2530; text-align: left; white-space: normal; }',
 		'button.sc-nm { color: #0b6e8a; text-decoration: underline; cursor: pointer; }',
@@ -66,7 +66,7 @@
 		return Object.keys(c).map(function(k) { return c[k]; }).sort(function(a, b) { return b[1] - a[1] || b[2] - a[2]; });
 	};
 
-	// o: { edit(it), copy(it), del(it), fill(it), check: true(맨 앞 체크박스, class sc-chk·값은 PRJ_SQ), marks: { 키: 'add'|'chg' }, pick: 강조할 기술 }
+	// o: { edit(it), copy(it), del(it), fill(it), check: true(맨 앞 체크박스, class sc-chk·값은 PRJ_SQ), marks: { 키: 'add'|'chg' }, pick: 강조할 기술(하나 또는 배열), cells: { 키: [달라진 칸] } 노란 칸 }
 	window.scTable = function($box, items, o) {
 		o = o || {};
 		var act = o.edit || o.copy || o.del;
@@ -74,32 +74,34 @@
 			.append(o.check ? '<th style="width:26px;"><span class="sr-only">선택</span></th>' : '')
 			.append('<th><span class="sr-only">흐름</span></th><th>참여기간</th><th>프로젝트명</th><th>업무 상세</th><th>고객사</th><th>역할</th><th>산업·응용</th><th>개발환경</th>')
 			.append(act ? '<th><span class="sr-only">관리</span></th>' : '')));
-		var $b = $('<tbody>').appendTo($t), cols = 8 + (o.check ? 1 : 0) + (act ? 1 : 0), year = null;
+		var $b = $('<tbody>').appendTo($t), cols = 8 + (o.check ? 1 : 0) + (act ? 1 : 0), year = null, picks = [].concat(o.pick || []);
+		// 그 줄에서 달라진 칸이 들어 있는 td 를 노랗게
+		function chg($td, it, fs) { var c = o.cells && o.cells[key(it)]; if (c && fs.some(function(f) { return c.indexOf(f) >= 0; })) $td.addClass('sc-cell-chg').attr('title', '기준 순정 버전과 다름'); return $td; }
 		items.forEach(function(it) {
 			var y = it.END_YM ? String(it.START_YM).substring(0, 4) : '진행중', now = !it.END_YM;
 			if (y !== year) { year = y; $b.append($('<tr class="sc-yr">').append($('<td>').attr('colspan', cols).text(y))); }
 			var $tr = $('<tr>').toggleClass('sc-now', now).addClass(o.marks && o.marks[key(it)] ? 'sc-' + o.marks[key(it)] : '').appendTo($b);
 			if (o.check) $tr.append($('<td>').append(it.PRJ_SQ ? $('<input type="checkbox" class="sc-chk">').val(it.PRJ_SQ).attr('aria-label', it.PRJ_NM + ' 선택') : ''));
 			$tr.append('<td class="sc-rail"></td>');
-			$tr.append($('<td class="sc-per">').append($('<b>').text(ymDot(it.START_YM) + ' ~ ' + (it.END_YM ? ymDot(it.END_YM) : '진행중'))).append($('<small>').text(span(months(it)))));
+			$tr.append(chg($('<td class="sc-per">').append($('<b>').text(ymDot(it.START_YM) + ' ~ ' + (it.END_YM ? ymDot(it.END_YM) : '진행중'))).append($('<small>').text(span(months(it)))), it, ['START_YM', 'END_YM']));
 			$tr.append($('<td>').append(o.edit ? $('<button type="button" class="sc-nm">').attr('title', '눌러서 수정').text(it.PRJ_NM || '(프로젝트명 없음)').on('click', function() { o.edit(it); })
 				: $('<span class="sc-nm">').text(it.PRJ_NM || '(프로젝트명 없음)')));
 			var $w = $('<td class="sc-work">').append($('<div>').text(it.WORK_NM || '')).append($('<small>').text(it.WORK_AREA || ''));
 			if (it.SRC === 'DEPLOY') $w.append($('<div>').append('<span class="sc-pill in" title="투입현황에 등록된 건입니다. 프로젝트명·고객사·기간은 투입현황을 따릅니다">사내 투입 연동</span>'));
-			$tr.append($w);
-			$tr.append($('<td>').append(it.CLIENT_NM ? $('<span class="sc-pill cl">').text(it.CLIENT_NM) : '')
-				.append(it.COMPANY_NM ? $('<div>').append($('<small style="color:#6b7785">').text(it.COMPANY_NM)) : ''));
-			$tr.append($('<td>').append(tokens(it.ROLE_NM).map(function(t) { return $('<span class="sc-pill">').text(t); })));
-			$tr.append($('<td>').text([tokens(it.IND_NM).join(', '), tokens(it.APP_NM).join(', ')].filter(Boolean).join(' · ') || '—'));
+			$tr.append(chg($w, it, ['WORK_NM', 'WORK_AREA']));
+			$tr.append(chg($('<td>').append(it.CLIENT_NM ? $('<span class="sc-pill cl">').text(it.CLIENT_NM) : '')
+				.append(it.COMPANY_NM ? $('<div>').append($('<small style="color:#6b7785">').text(it.COMPANY_NM)) : ''), it, ['CLIENT_NM', 'COMPANY_NM']));
+			$tr.append(chg($('<td>').append(tokens(it.ROLE_NM).map(function(t) { return $('<span class="sc-pill">').text(t); })), it, ['ROLE_NM']));
+			$tr.append(chg($('<td>').text([tokens(it.IND_NM).join(', '), tokens(it.APP_NM).join(', ')].filter(Boolean).join(' · ') || '—'), it, ['IND_NM', 'APP_NM']));
 			var $e = $('<td class="sc-tech">');
 			ENV.forEach(function(c, i) {
-				tokens(it[c[0]]).forEach(function(t) { $e.append($('<span class="sc-chip">').toggleClass('gray', i > 3).toggleClass('on', o.pick === t).attr('title', c[1]).text(t)); });
+				tokens(it[c[0]]).forEach(function(t) { $e.append($('<span class="sc-chip">').toggleClass('gray', i > 3).toggleClass('on', picks.indexOf(t) >= 0).attr('title', c[1]).text(t)); });
 			});
 			if (!$e.children().length) {
 				$e.append('<span class="sc-pill warn">개발환경 미입력</span>');
 				if (o.fill) $e.append($('<button type="button" class="btn btn-link btn-sm p-0">').text('채우기').attr('aria-label', it.PRJ_NM + ' 개발환경 채우기').on('click', function() { o.fill(it); }));
 			}
-			$tr.append($e);
+			$tr.append(chg($e, it, ENV.map(function(c) { return c[0]; })));
 			if (act) {
 				var $a = $('<td class="text-right">');
 				if (o.edit) $a.append($('<button type="button" class="sc-act">').attr({ 'aria-label': it.PRJ_NM + ' 수정', title: '수정' }).html('<i class="fas fa-pen"></i>').on('click', function() { o.edit(it); }));

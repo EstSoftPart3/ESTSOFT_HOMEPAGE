@@ -293,12 +293,25 @@ public class BoStaffController {
 		return json("result", career.importApply(staffSq, StaffCareerService.parse(rows), fileNm, loginId(session)));
 	}
 
-	/** 회사 양식 워드 내려받기. VER_NO 가 없으면 최신 버전 */
+	/** 프로필 자동생성 미리보기(저장하지 않음). GEN 은 설정 JSON */
+	@RequestMapping(value = "/admin/staff/careerGenData.do", method = RequestMethod.POST)
+	public ModelAndView careerGenData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("GEN") String gen) {
+		return json("result", career.generate(staffSq, StaffCareerService.parseMap(gen)));
+	}
+
+	/** 자동생성 결과를 가필 버전으로 저장(순정은 그대로) */
+	@RequestMapping(value = "/admin/staff/saveCareerGenData.do", method = RequestMethod.POST)
+	public ModelAndView saveCareerGenData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("GEN") String gen, HttpSession session) {
+		return json("result", career.saveGenerated(staffSq, gen, loginId(session)));
+	}
+
+	/** 회사 양식 워드 내려받기. VER_NO 가 없으면 최신 순정 버전, EDIT 면 최신 가필 버전, GEN(자동생성 설정)이 있으면 그 결과로 바로 */
 	@RequestMapping(value = "/admin/staff/careerWord.do", method = RequestMethod.GET)
-	public void careerWord(@RequestParam("STAFF_SQ") int staffSq, @RequestParam(value = "VER_NO", required = false) String verNo, HttpServletResponse response, HttpSession session) throws IOException {
+	public void careerWord(@RequestParam("STAFF_SQ") int staffSq, @RequestParam(value = "VER_NO", required = false) String verNo, @RequestParam(value = "GEN", required = false) String gen,
+			HttpServletResponse response, HttpSession session) throws IOException {
 		byte[] data;
 		try {
-			data = career.word(staffSq, verNo);
+			data = gen != null && !gen.isEmpty() ? career.generatedWord(staffSq, gen) : career.word(staffSq, verNo);
 		} catch (IllegalArgumentException e) {
 			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
 			response.setContentType("text/plain; charset=UTF-8");
