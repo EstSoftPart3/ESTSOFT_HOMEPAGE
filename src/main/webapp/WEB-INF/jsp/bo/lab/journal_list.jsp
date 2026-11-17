@@ -65,7 +65,9 @@
 				</div>
 				<div class="modal-body">
 					<input type="hidden" id="PRJ_SQ">
-					<div class="form-group"><label for="TEAM_SQ">연구팀</label><select id="TEAM_SQ" class="form-control form-control-sm" required></select></div>
+					<%-- 연구팀은 들어온 곳(연구소 관리의 연구팀)으로 정해져 있어 고르지 않고 보여 주기만 한다 --%>
+					<input type="hidden" id="TEAM_SQ">
+					<div class="form-group"><label for="TEAM_NM_VIEW">연구팀</label><input id="TEAM_NM_VIEW" class="form-control form-control-sm" readonly></div>
 					<div class="form-group"><label for="PRJ_NM">과제명</label><input id="PRJ_NM" class="form-control form-control-sm" maxlength="200" required></div>
 					<div class="form-row">
 						<div class="form-group col-6"><label for="START_DT">연구 시작일</label><input type="date" id="START_DT" class="form-control form-control-sm" required></div>
@@ -296,7 +298,9 @@
 	function openProject(p, teamSq) {
 		$('#projectTitle').text(p ? '과제 수정' : '과제 등록');
 		['PRJ_SQ', 'PRJ_NM', 'START_DT', 'END_DT', 'PLACE', 'DRIVE_FOLDER_ID'].forEach(function(f) { $('#' + f).val(p && p[f] || ''); });
-		$('#TEAM_SQ').val(p ? p.TEAM_SQ : teamSq);
+		var sq = p ? p.TEAM_SQ : teamSq, t = teams.filter(function(x) { return String(x.TEAM_SQ) === String(sq); })[0];
+		$('#TEAM_SQ').val(sq);
+		$('#TEAM_NM_VIEW').val(t ? t.TEAM_NM : (p && p.TEAM_NM) || '');
 		$('#projectModal').modal('show');
 	}
 
@@ -475,8 +479,7 @@
 	$(window).on('hashchange', function() { prjTab = 0; jrnTab = 0; work = null; workPick = ''; showCurrent(); });
 	if (!/^#(p|j|new)=\d+$/.test(location.hash)) location.replace(MANAGE);
 	else hrPost('/admin/lab/optionsData.do', {}, function(res) {
-		teams = res.result.teams.filter(function(t) { return t.USE_YN === 'Y'; });
-		teams.forEach(function(t) { $('#TEAM_SQ').append($('<option>').val(t.TEAM_SQ).text(t.TEAM_NM)); });
+		teams = res.result.teams;
 		showCurrent();
 	});
 	</script>
