@@ -1,6 +1,17 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_head.jspf"%>
+<link rel="stylesheet" href="/resources/bo/plugins/fullcalendar/main.min.css">
+<link rel="stylesheet" href="/resources/bo/plugins/fullcalendar-daygrid/main.min.css">
+<link rel="stylesheet" href="/resources/bo/plugins/fullcalendar-timegrid/main.min.css">
+<style>
+	#calView { position: relative; padding: 0 14px 14px; }
+	#calView .fc-event { cursor: pointer; font-size: 12px; }
+	#calView .fc-event.ic-cancel { background: #fff !important; color: #adb5bd !important; border: 1px dashed #adb5bd !important; text-decoration: line-through; }
+	#calView.is-file-over { outline: 2px dashed #28a745; outline-offset: -4px; }
+	.ic-drop { position: absolute; z-index: 5; pointer-events: none; border: 2px dashed #28a745; background: rgba(40,167,69,.12); border-radius: 4px; color: #1e7e34; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+	#editForm .ic-auto { background: #e8f5e9; }
+</style>
 
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-header">
@@ -56,8 +67,18 @@
 					</div>
 
 					<div class="cal-panel">
-						<div class="cate-tabs" id="tabs" role="tablist" aria-label="면접 결과"></div>
-						<div class="table-responsive">
+						<div class="d-flex justify-content-between align-items-center flex-wrap pr-3">
+							<div class="cate-tabs" id="tabs" role="tablist" aria-label="면접 결과"></div>
+							<div class="btn-group btn-group-sm" id="viewSwitch" role="group" aria-label="보기 전환">
+								<button type="button" class="btn btn-outline-secondary" data-view="list"><i class="fas fa-list"></i> 목록</button>
+								<button type="button" class="btn btn-outline-secondary" data-view="cal"><i class="far fa-calendar-alt"></i> 캘린더</button>
+							</div>
+						</div>
+						<div id="calView" style="display:none;">
+							<div class="small text-muted mb-2">빈 시간을 누르면 새 면접자를, 이력서 PDF를 시간 칸에 끌어 놓으면 이력서 내용을 채워 새 면접자 창을 열어요. 일정을 끌면 면접일시가 바로 바뀌어요.</div>
+							<div id="calendar"></div>
+						</div>
+						<div class="table-responsive" id="listView">
 							<table class="table table-sm table-hover cal-table mb-0">
 								<thead id="listHead"></thead>
 								<tbody id="listBody"></tbody>
@@ -87,6 +108,11 @@
 	</div>
 
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
+	<script src="/resources/bo/plugins/fullcalendar/main.min.js"></script>
+	<script src="/resources/bo/plugins/fullcalendar/locales-all.min.js"></script>
+	<script src="/resources/bo/plugins/fullcalendar-daygrid/main.min.js"></script>
+	<script src="/resources/bo/plugins/fullcalendar-timegrid/main.min.js"></script>
+	<script src="/resources/bo/plugins/fullcalendar-interaction/main.min.js"></script>
 
 	<script>
 	// 면접시간 선택지: 09:00 ~ 18:00, 30분 간격. 이전에 다른 값으로 넣은 시간은 hrControl·hrFillForm 이 선택지에 덧붙인다
@@ -435,6 +461,7 @@
 			if (t[0] === current) test = t[2];
 			hrTab(t[0], t[1], base.filter(t[2]).length, t[0] === current).appendTo($tabs);
 		});
+		renderCal(test);
 		var $body = $('#listBody').empty(), list = sortRows(base.filter(test));
 		if (!list.length) { boEmpty($body, '조건에 맞는 면접자가 없습니다.'); return; }
 		list.forEach(function(r) {
@@ -463,17 +490,146 @@
 	function openEdit(row) {
 		editing = row;
 		hrFillForm('#editForm', FIELDS, row);
+		$('#editForm .ic-auto').removeClass('ic-auto');
 		toggleReferrer();
 		$('#editTitle').text('면접자 상세 · 순번 ' + (row.SEQ_NO || '-'));
+		$('#btnDelete').show();
 		$('#btnTrainee').toggle(!row.TRN_SQ);
-		if (!$('#editMemo').length) $('<div class="mt-2"><div class="hr-section">메모</div><div id="editMemo"></div></div>').insertAfter('#editFields');
+		if (!$('#editMemo').length) $('<div class="mt-2" id="editMemoBox"><div class="hr-section">메모</div><div id="editMemo"></div></div>').insertAfter('#editFields');
+		$('#editMemoBox').show();
 		hrMemoFeed($('#editMemo'), MEMO_API, row.INTV_SQ, load);
 		$('#editModal').modal('show');
 	}
 
+	// 캘린더에서 새 면접자: 누른(놓은) 날짜·시간과 이력서에서 읽은 값을 채운 상세 창. 저장을 눌러야 등록된다
+	function openNew(dt, tm, fields) {
+		fields = fields || {};
+		editing = {};
+		hrFillForm('#editForm', FIELDS, $.extend({ APLY_TARGET: '이에스티', APLY_ROUTE: fields.APLY_ROUTE || (fields.APLY_NM ? '' : firstRoute()) }, fields, { INTV_DT: dt, INTV_TM: tm }));
+		$('#editForm .ic-auto').removeClass('ic-auto');
+		var auto = Object.keys(fields);
+		auto.forEach(function(k) { $('#editForm [name=' + k + '], #editForm [data-multi=' + k + ']').addClass('ic-auto'); });
+		toggleReferrer();
+		$('#editTitle').text('새 면접자' + (auto.length ? ' · 이력서에서 ' + auto.length + '칸 채움(초록 칸)' : ''));
+		$('#btnDelete, #btnTrainee, #editMemoBox').hide();
+		$('#editModal').modal('show');
+	}
+
+	// ── 캘린더 보기 ──
+	var calendar = null, view = 'list';
+	try { view = localStorage.getItem('hrIntvView') === 'cal' ? 'cal' : 'list'; } catch (e) {}
+
+	$(document).on('click', '#viewSwitch button', function() {
+		view = $(this).data('view');
+		try { localStorage.setItem('hrIntvView', view); } catch (e) {}
+		render();
+	});
+
+	// 결과가 정해지면 색으로, 취소·불참은 점선으로 보인다
+	function eventClass(r) {
+		if (r.ATTEND_ST === 'CANCEL' || r.ATTEND_ST === 'ABSENT') return 'ic-cancel';
+		return '';
+	}
+	function eventColor(r) {
+		return r.RESULT_ST === 'PASS' ? '#28a745' : r.RESULT_ST === 'FAIL' ? '#adb5bd' : r.RESULT_ST === 'HOLD' ? '#f0ad4e' : '#3788d8';
+	}
+
+	// 캘린더는 자기 화면의 날짜를 보여 주므로 연도·월·주차 대신 검색어·필터·탭만 적용한다
+	function renderCal(test) {
+		var isCal = view === 'cal';
+		$('#viewSwitch button').each(function() { $(this).toggleClass('active', $(this).data('view') === view).attr('aria-pressed', $(this).data('view') === view); });
+		$('#calView').toggle(isCal);
+		$('#listView').toggle(!isCal);
+		if (!isCal) return;
+		if (!calendar) calendar = makeCalendar();
+		var kw = $.trim($('#keyword').val()).toLowerCase();
+		var list = rows.filter(function(r) { return r.INTV_DT && (!kw || [r.APLY_NM, r.PHONE, r.MEMO].join(' ').toLowerCase().indexOf(kw) >= 0); }).filter(passFilters).filter(test);
+		calendar.batchRendering(function() {
+			calendar.getEvents().forEach(function(e) { e.remove(); });
+			list.forEach(function(r) {
+				calendar.addEvent({ id: String(r.INTV_SQ), title: r.APLY_NM + (r.APLY_ROUTE ? ' · ' + hrCodeName('HR_ROUTE', r.APLY_ROUTE) : ''), start: r.INTV_DT + (r.INTV_TM ? 'T' + r.INTV_TM : ''),
+					allDay: !r.INTV_TM, color: eventColor(r), classNames: [eventClass(r)], extendedProps: { row: r } });
+			});
+		});
+	}
+
+	function makeCalendar() {
+		var c = new FullCalendar.Calendar(document.getElementById('calendar'), {
+			plugins: ['dayGrid', 'timeGrid', 'interaction'],
+			locale: 'ko',
+			header: { left: 'prev,next today', center: 'title', right: 'timeGridWeek,dayGridMonth' },
+			defaultView: 'timeGridWeek',
+			hiddenDays: [0, 6],
+			minTime: '09:00:00', maxTime: '19:00:00', slotDuration: '00:30:00',
+			defaultTimedEventDuration: '01:00',
+			height: 'auto', nowIndicator: true,
+			editable: true, eventDurationEditable: false,
+			dateClick: function(info) { openNew(moment(info.date).format('YYYY-MM-DD'), info.allDay ? '' : moment(info.date).format('HH:mm')); },
+			eventClick: function(info) { openEdit(info.event.extendedProps.row); },
+			eventDrop: function(info) { moveEvent(info); }
+		});
+		c.render();
+		return c;
+	}
+
+	// 놓는 순간 면접일자·시간을 저장한다. 실패하면 제자리로 되돌린다
+	function moveEvent(info) {
+		var r = info.event.extendedProps.row, dt = moment(info.event.start).format('YYYY-MM-DD'), tm = info.event.allDay ? '' : moment(info.event.start).format('HH:mm');
+		var url = '/admin/hr/saveInterviewFieldData.do';
+		hrPost(url, { INTV_SQ: r.INTV_SQ, FIELD: 'INTV_DT', VALUE: dt }, function() {
+			r.INTV_DT = dt;
+			hrPost(url, { INTV_SQ: r.INTV_SQ, FIELD: 'INTV_TM', VALUE: tm }, function() { r.INTV_TM = tm; render(); }, function() { render(); });
+		}, function() { info.revert(); });
+	}
+
+	// ── 이력서 PDF 끌어 놓기 ── 놓은 위치의 날짜 칸과 30분 칸을 찾는다(주간 보기만 시간까지)
+	function slotAt(x, y) {
+		function hit(el) { var b = el.getBoundingClientRect(); return x >= b.left && x <= b.right && y >= b.top && y <= b.bottom; }
+		var day = $('#calendar td.fc-day[data-date]').filter(function() { return hit(this); })[0];
+		if (!day) return null;
+		var slat = $('#calendar .fc-slats tr[data-time]').filter(function() { return hit(this); })[0];
+		return { day: day, slat: slat, date: day.getAttribute('data-date'), time: slat ? slat.getAttribute('data-time').substr(0, 5) : '' };
+	}
+
+	function showDrop(s) {
+		var $box = $('#calView'), base = $box[0].getBoundingClientRect(), d = s.day.getBoundingClientRect();
+		var top = s.slat ? s.slat.getBoundingClientRect().top : d.top, height = s.slat ? s.slat.getBoundingClientRect().height * 2 : d.height;
+		var $mark = $box.find('.ic-drop');
+		if (!$mark.length) $mark = $('<div class="ic-drop" aria-hidden="true">').appendTo($box);
+		$mark.css({ left: d.left - base.left, width: d.width, top: top - base.top, height: height }).text((s.time || moment(s.date).format('M/D')) + '에 등록');
+	}
+
+	function hasFiles(e) { var t = e.originalEvent.dataTransfer && e.originalEvent.dataTransfer.types; return !!t && $.inArray('Files', t) >= 0; }
+
+	$(document).on('dragover', '#calView', function(e) {
+		if (!hasFiles(e)) return;
+		e.preventDefault();
+		var s = slotAt(e.originalEvent.clientX, e.originalEvent.clientY);
+		$('#calView').addClass('is-file-over');
+		if (s) showDrop(s); else $('#calView .ic-drop').remove();
+	});
+	$(document).on('dragleave', '#calView', function(e) {
+		if (e.originalEvent.relatedTarget && $.contains(this, e.originalEvent.relatedTarget)) return;
+		$('#calView').removeClass('is-file-over').find('.ic-drop').remove();
+	});
+	$(document).on('drop', '#calView', function(e) {
+		if (!hasFiles(e)) return;
+		e.preventDefault();
+		$('#calView').removeClass('is-file-over').find('.ic-drop').remove();
+		var s = slotAt(e.originalEvent.clientX, e.originalEvent.clientY), file = e.originalEvent.dataTransfer.files[0];
+		if (!s) { bootbox.alert('캘린더의 날짜·시간 칸 위에 놓아 주세요.'); return; }
+		if (!file || !/\.pdf$/i.test(file.name)) { bootbox.alert('<b>PDF만 올릴 수 있습니다</b><br>이력서 PDF 파일을 끌어 놓아 주세요.'); return; }
+		var fd = new FormData();
+		fd.append('file', file);
+		$.ajax({ url: '/admin/hr/readInterviewResumeData.do', type: 'POST', data: fd, processData: false, contentType: false }).done(function(res) {
+			if (res.error) { bootbox.alert($('<div>').text(res.error).html()); return; }
+			openNew(s.date, s.time, res.fields);
+		});
+	});
+
 	function saveEdit() {
 		var data = hrFormData('#editForm');
-		data.push({ name: 'INTV_SQ', value: editing.INTV_SQ });
+		if (editing.INTV_SQ) data.push({ name: 'INTV_SQ', value: editing.INTV_SQ });
 		hrPost('/admin/hr/saveInterviewData.do', data, function() { $('#editModal').modal('hide'); load(); });
 	}
 

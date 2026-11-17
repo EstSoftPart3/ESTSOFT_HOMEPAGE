@@ -10,8 +10,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.ModelAndView;
 
+import com.common.upload.Upload;
 import com.eep.bo.hr.service.BoHrService;
 
 @Controller
@@ -52,6 +54,19 @@ public class BoHrController {
 			return json("result", "OK");
 		} catch (IllegalArgumentException e) {
 			return json("error", e.getMessage());
+		}
+	}
+
+	// 캘린더에 끌어 놓은 이력서 PDF 를 읽기만 한다. 주소는 면접관리 권한 패턴(/admin/hr/*nterview*)에 맞춘다
+	@RequestMapping(value = "/admin/hr/readInterviewResumeData.do", method = RequestMethod.POST)
+	public ModelAndView readInterviewResumeData(@RequestParam("file") MultipartFile file) {
+		try {
+			Upload.check(file, "pdf");
+			return json("fields", BoHrService.ReadResume(file.getBytes(), file.getOriginalFilename()));
+		} catch (IllegalArgumentException e) {
+			return json("error", e.getMessage());
+		} catch (java.io.IOException e) {
+			return json("error", "파일을 받지 못했습니다. 다시 끌어 놓아 주세요.");
 		}
 	}
 

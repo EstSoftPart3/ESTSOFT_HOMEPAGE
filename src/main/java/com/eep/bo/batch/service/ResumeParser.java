@@ -18,6 +18,12 @@ public final class ResumeParser {
 
 	private static final Pattern NOISE = Pattern.compile("saramin\\.co\\.kr|^about:blank|^\\d{2}\\. \\d{1,2}\\. \\d{1,2}\\. 오[전후] .*(인쇄|인쇄하기)$");
 	private static final Pattern PERSON = Pattern.compile("^(?:(남|여),\\s*)?\\d{4}년?\\s*\\((?:만\\s*)?(\\d{1,2})세\\)$");
+	// 형식을 모르는 이력서: 줄 어디에든 "(이름) 남, 1997년 (만 29세)" 같은 조각이 있으면 쓴다
+	private static final Pattern PERSON_ANY = Pattern.compile("(?:([가-힣]{2,4})\\s+)?(남|여)\\s*[,/·]?\\s*(?:19|20)\\d{2}\\s*년?\\s*\\(?\\s*(?:만\\s*)?(\\d{1,2})\\s*세");
+	private static final Pattern PHONE = Pattern.compile("(?<!\\d)(01[016789])[-. ]?(\\d{3,4})[-. ]?(\\d{4})(?!\\d)");
+	private static final Pattern ADDR_LABEL = Pattern.compile("^(?:주소|현주소|거주지)\\s*[:：]?\\s*(.+)$");
+	// 파일명의 이름: "개발자 모집_홍길동_20261117.pdf", "홍길동 지원자 이력서.pdf", "홍길동_이력서.pdf"
+	private static final Pattern FILE_NAME = Pattern.compile("(?:^|[_\\s-])([가-힣]{2,4})(?=_\\d{6,8}|\\s*(?:님\\s*)?(?:지원자|이력서)|[_\\s-]+이력서)");
 	private static final Pattern MAIL = Pattern.compile("^[\\w.+-]+@[\\w.-]+$");
 	private static final Pattern EDU_HEAD = Pattern.compile("^학력\\s+(?:대학|고등|대학원|중학|초등|검정|박사|석사)\\S*(?:\\(\\S+\\))?\\s*(\\S*)$");
 	private static final Pattern EDU_ROW = Pattern.compile("^(?:\\d{4}\\.\\d{2}\\s*~\\s*(?:\\d{4}\\.\\d{2})?\\s*|(?:졸업예정|졸업|중퇴|휴학|재학중?)\\s+)(.+)$");
@@ -39,6 +45,46 @@ public final class ResumeParser {
 	private static final int MAX_JOBS = 6;
 
 	private ResumeParser() {
+	}
+
+	/**
+	 * 형식을 모르는 이력서까지 받는 화면용. parse 결과에 이름(APLY_NM)·연락처(PHONE)·지원 사이트(APLY_ROUTE)를 더한다.
+	 * 이름은 파일명이 먼저고, 없으면 성별·나이 줄 앞의 이름을 쓴다.
+	 */
+	public static Map<String, Object> parseAny(String text, String fileName) {
+		Map<String, Object> row = parse(text);
+		Matcher any = PERSON_ANY.matcher(text);
+		if (any.find()) {
+			row.putIfAbsent("GENDER", "남".equals(any.group(2)) ? "M" : "F");
+			row.putIfAbsent("AGE", any.group(3));
+			if (any.group(1) != null) {
+				row.put("APLY_NM", any.group(1));
+			}
+		}
+		Matcher name = FILE_NAME.matcher(fileName == null ? "" : fileName.replaceAll("\\.pdf$", ""));
+		if (name.find()) {
+			row.put("APLY_NM", name.group(1));
+		}
+		Matcher phone = PHONE.matcher(text);
+		if (phone.find()) {
+			row.put("PHONE", phone.group(1) + "-" + phone.group(2) + "-" + phone.group(3));
+		}
+		if (!row.containsKey("ADDR")) {
+			for (String line : text.replace("\r", "").split("\n")) {
+				Matcher addr = ADDR_LABEL.matcher(line.trim());
+				if (addr.matches()) {
+					row.put("ADDR", cut(addr.group(1).trim(), 200));
+					break;
+				}
+			}
+		}
+		String lower = text.toLowerCase();
+		if (lower.contains("saramin")) {
+			row.put("APLY_ROUTE", "SARAMIN");
+		} else if (lower.contains("jobkorea")) {
+			row.put("APLY_ROUTE", "JOBKOREA");
+		}
+		return row;
 	}
 
 	/** @return 찾은 칸만 든 맵: GENDER, AGE, ADDR, EDU, CAREER, LANG, LANG_NOTE */

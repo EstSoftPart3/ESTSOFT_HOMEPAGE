@@ -9,12 +9,17 @@ import java.util.Map;
 
 import javax.sql.DataSource;
 
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
+import org.apache.pdfbox.text.PDFTextStripper;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import com.eep.bo.batch.service.ResumeParser;
 import com.eep.bo.hr.dao.BoHrDao;
 import com.eep.bo.staff.service.BoStaffService;
 import com.eep.mapper.BoEquipmentMapper;
@@ -82,6 +87,20 @@ public class BoHrServiceImpl implements BoHrService {
 			BoHrDao.IntvInsert(param);
 		} else {
 			BoHrDao.IntvUpdate(param);
+		}
+	}
+
+	@Override
+	public Map<String, Object> ReadResume(byte[] pdf, String fileName) {
+		// 원문과 파일은 남기지 않고 칸 값만 돌려준다
+		try (PDDocument doc = PDDocument.load(pdf)) {
+			PDFTextStripper stripper = new PDFTextStripper();
+			stripper.setSortByPosition(true);
+			return ResumeParser.parseAny(stripper.getText(doc), fileName);
+		} catch (InvalidPasswordException e) {
+			throw new IllegalArgumentException("암호가 걸린 PDF입니다. 암호를 해제한 뒤 다시 끌어 놓아 주세요.");
+		} catch (java.io.IOException e) {
+			throw new IllegalArgumentException("PDF를 읽지 못했습니다. 파일이 손상되지 않았는지 확인해 주세요.");
 		}
 	}
 

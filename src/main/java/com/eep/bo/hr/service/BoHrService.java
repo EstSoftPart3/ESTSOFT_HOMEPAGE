@@ -15,6 +15,7 @@ public interface BoHrService {
 	List<Map<String, Object>> IntvList();										//면접자 전체 목록
 	void IntvSave(Map<String, Object> param);									//면접자 등록·수정
 	void IntvDelete(Map<String, Object> param);									//면접자 삭제
+	Map<String, Object> ReadResume(byte[] pdf, String fileName);				//이력서 PDF 에서 면접자 칸 값 읽기(저장 안 함)
 	boolean TraineeFromIntv(Map<String, Object> param);							//면접자를 교육생으로 등록. 이미 등록돼 있으면 false
 
 	List<Map<String, Object>> TraineeList();									//교육생 전체 목록
