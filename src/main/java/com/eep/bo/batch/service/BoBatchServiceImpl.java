@@ -318,13 +318,15 @@ public class BoBatchServiceImpl implements BoBatchService {
 		LocalDate date = LocalDate.parse((String) d.get("INTV_DT"));
 		String day = dayFolders.containsKey(date.toString()) ? dayFolders.get(date.toString()) : dayFolder(root, date, token);
 		dayFolders.put(date.toString(), day);
-		String person = day == null ? null : GoogleDriveApi.childFolderId(day, (String) d.get("APLY_NM"), token);
-		if (person == null) {
-			return "이력서 폴더 없음";
+		if (day == null) {
+			return "날짜 폴더 없음";
 		}
-		Map<String, Object> file = GoogleDriveApi.resumePdf(person, token);
+		String name = (String) d.get("APLY_NM");
+		String person = GoogleDriveApi.childFolderId(day, name, token);
+		// 이름 폴더를 만든 날과 날짜 폴더에 PDF 를 바로 둔 날이 섞여 있다
+		Map<String, Object> file = person != null ? GoogleDriveApi.resumePdf(person, null, token) : GoogleDriveApi.resumePdf(day, name, token);
 		if (file == null) {
-			return "PDF 없음";
+			return person != null ? "PDF 없음" : "이력서 없음(이름 폴더·이름으로 시작하는 PDF 둘 다 없음)";
 		}
 		Map<String, Object> found;
 		try (PDDocument pdf = PDDocument.load(GoogleDriveApi.download(file, token))) {

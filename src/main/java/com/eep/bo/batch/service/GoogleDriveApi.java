@@ -282,10 +282,16 @@ public class GoogleDriveApi {
 		return null;
 	}
 
-	/** 폴더 안의 PDF 중 이름에 '이력서' 가 든 것을 우선해 하나 고른다. 없으면 null. {id, name, size} */
-	public Map<String, Object> resumePdf(String folderId, String token) {
+	/**
+	 * 폴더 안의 PDF 중 이름에 '이력서' 가 든 것을 우선해 하나 고른다. 없으면 null. {id, name, size}
+	 * @param person 날짜 폴더에 이름 폴더 없이 PDF 가 바로 있을 때, 파일 이름이 이 사람 이름으로 시작하는 것만 본다. 이름 폴더 안이면 null
+	 */
+	public Map<String, Object> resumePdf(String folderId, String person, String token) {
 		Map<String, Object> first = null;
 		for (Map<String, Object> file : list("'" + quote(folderId) + "' in parents and mimeType = 'application/pdf' and trashed = false", token)) {
+			if (person != null && !namedFor(String.valueOf(file.get("name")), person)) {
+				continue;
+			}
 			if (String.valueOf(file.get("name")).contains("이력서")) {
 				return file;
 			}
@@ -294,6 +300,11 @@ public class GoogleDriveApi {
 			}
 		}
 		return first;
+	}
+
+	/** 파일 이름이 사람 이름으로 시작하고 바로 뒤가 글자가 아닌지(김찬 ≠ 김찬호_이력서.pdf) */
+	static boolean namedFor(String fileName, String person) {
+		return fileName.startsWith(person) && fileName.length() > person.length() && !Character.isLetterOrDigit(fileName.charAt(person.length()));
 	}
 
 	public byte[] download(Map<String, Object> file, String token) {

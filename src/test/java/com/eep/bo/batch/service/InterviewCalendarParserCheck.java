@@ -63,6 +63,11 @@ public class InterviewCalendarParserCheck {
 		eq(r, "PHONE", "010-1111-2222");
 		eq(r, "APLY_TARGET", "이에스티");
 
+		check(GoogleDriveApi.namedFor("홍길동_이력서_신입.pdf", "홍길동"), "이름으로 시작하는 이력서");
+		check(GoogleDriveApi.namedFor("홍길동 이력서.pdf", "홍길동"), "이름 뒤 공백");
+		check(!GoogleDriveApi.namedFor("홍길동_이력서.pdf", "홍길"), "다른 사람 이름의 앞부분이면 아님");
+		check(!GoogleDriveApi.namedFor("김철수_이력서.pdf", "홍길동"), "다른 사람");
+
 		r = title("[신입]ooo(010-1111-2222)");
 		eq(r, "APLY_NM", "ooo");
 		eq(r, "APLY_TARGET", "이에스티");
