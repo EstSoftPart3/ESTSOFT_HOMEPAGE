@@ -65,8 +65,8 @@ public class BoLabController {
 	}
 
 	@RequestMapping(value = "/admin/lab/saveSignData.do", method = RequestMethod.POST)
-	public ModelAndView saveSignData(@RequestParam("IMG") String image, HttpSession session) {
-		return result(() -> { lab.saveSign(image, login(session)); return "OK"; });
+	public ModelAndView saveSignData(@RequestParam("IMG") String image, @RequestParam(value = "EMPLY_ID", required = false) String target, HttpSession session) {
+		return result(() -> { lab.saveSign(image, target, login(session)); return "OK"; });
 	}
 
 	// ── 연구일지 ──

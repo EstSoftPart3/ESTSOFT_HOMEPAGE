@@ -61,6 +61,8 @@ public class BoLabService {
 	@Autowired
 	private DriveConfService driveConf;
 	@Autowired
+	private com.eep.bo.system.service.BoSystemService system;
+	@Autowired
 	private DataSource dataSource;
 	@Autowired
 	private JavaMailSender mailSender;
@@ -101,6 +103,7 @@ public class BoLabService {
 		out.put("researchers", mapper.selectResearchers(key));
 		out.put("line", mapper.selectApprovalLine(key));
 		out.put("me", login.get("emplyId"));
+		out.put("canSignAll", system.access(str(login.get("emplyId"))).superUser);
 		return out;
 	}
 
@@ -164,10 +167,13 @@ public class BoLabService {
 
 	// ── 서명 ──
 
-	/** 항상 로그인한 본인 계정에만 쌓는다 */
-	public void saveSign(String image, Map<String, Object> login) {
+	/** 본인 서명은 누구나, 다른 결재자 서명은 슈퍼관리자만 대리 등록한다. 누가 올렸는지 REG_EMPLY_ID 로 남긴다 */
+	public void saveSign(String image, String target, Map<String, Object> login) {
 		checkSign(image);
-		Map<String, Object> p = one("EMPLY_ID", login.get("emplyId"));
+		String me = str(login.get("emplyId")), who = hasText(target) ? target : me;
+		if (!who.equals(me) && !system.access(me).superUser) throw new IllegalArgumentException("다른 결재자의 서명은 슈퍼관리자만 등록할 수 있습니다.");
+		Map<String, Object> p = one("EMPLY_ID", who);
+		p.put("REG_EMPLY_ID", me);
 		p.put("SIGN_IMG", image);
 		mapper.insertSign(p);
 	}

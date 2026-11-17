@@ -382,19 +382,22 @@
 		hrPost('/admin/lab/saveApprovalData.do', $.param(data, true), function() { toast('결재라인을 저장했습니다'); reload(); }, reload);
 	}
 
-	// ── 서명: 본인 줄에서만. 이미지를 끌어다 놓거나, 파일을 고르거나, 직접 그린다 ──
+	// ── 서명: 본인 줄에서, 슈퍼관리자는 모든 줄에서(대리 등록). 이미지를 끌어다 놓거나, 파일을 고르거나, 직접 그린다 ──
 	function signCell(s) {
 		var mine = s.EMPLY_ID && s.EMPLY_ID === detail.me, $c = $('<div class="lab-sign">');
 		if (!s.EMPLY_ID) return $c.append('<small>결재자를 고르세요</small>');
 		if (s.SIGN_IMG) $c.append($('<img>').attr({ src: s.SIGN_IMG, alt: (s.EMPLY_NM || s.EMPLY_ID) + ' 서명' }));
-		if (!mine) {
+		if (s.SIGN_IMG && s.SIGN_REG_ID && s.SIGN_REG_ID !== s.EMPLY_ID) $c.append($('<small class="text-muted">').text('대리 등록: ' + s.SIGN_REG_ID));
+		if (!mine && !detail.canSignAll) {
 			if (!s.SIGN_IMG) $c.addClass('none').append('<span class="warn">서명 미등록</span><small>본인이 로그인해 자기 줄에서 등록</small>');
 			return $c;
 		}
-		var $file = $('<input type="file" accept="image/png,image/jpeg" class="d-none">').on('change', function() { if (this.files[0]) fileToSign(this.files[0]); this.value = ''; });
-		$c.append($('<small>').append(s.SIGN_IMG ? '내 서명 · 바꾸려면 ' : '내 서명을 등록하세요 · ', '이미지를 끌어다 놓거나 ',
+		var who = mine ? '내 서명' : (s.EMPLY_NM || s.EMPLY_ID) + ' 서명(대리 등록)';
+		var $file = $('<input type="file" accept="image/png,image/jpeg" class="d-none">').on('change', function() { if (this.files[0]) fileToSign(this.files[0], s); this.value = ''; });
+		if (!s.SIGN_IMG && !mine) $c.addClass('none').append('<span class="warn">서명 미등록</span>');
+		$c.append($('<small>').append(s.SIGN_IMG ? who + ' · 바꾸려면 ' : who + '을 등록하세요 · ', '이미지를 끌어다 놓거나 ',
 			$('<a href="#">파일 선택</a>').click(function(e) { e.preventDefault(); $file.click(); }), ' · ',
-			$('<a href="#">직접 그리기</a>').click(function(e) { e.preventDefault(); drawPad($c); })), $file);
+			$('<a href="#">직접 그리기</a>').click(function(e) { e.preventDefault(); drawPad($c, s); })), $file);
 		$c.on('dragover', function(e) {
 			if ([].indexOf.call(e.originalEvent.dataTransfer.types || [], 'Files') < 0) return;
 			e.preventDefault(); e.stopPropagation(); $c.addClass('drop');
@@ -404,13 +407,13 @@
 			var f = e.originalEvent.dataTransfer.files[0];
 			if (!f) return;
 			e.preventDefault(); e.stopPropagation(); $c.removeClass('drop');
-			fileToSign(f);
+			fileToSign(f, s);
 		});
 		return $c;
 	}
 
 	// 큰 사진도 서명 칸 크기의 PNG 로 줄여서 저장한다
-	function fileToSign(file) {
+	function fileToSign(file, s) {
 		if (!/^image\/(png|jpeg)$/.test(file.type)) { bootbox.alert('PNG 나 JPG 이미지만 올릴 수 있습니다.'); return; }
 		if (file.size > 5 * 1024 * 1024) { bootbox.alert('5MB 이하 이미지만 올릴 수 있습니다.'); return; }
 		var url = URL.createObjectURL(file), img = new Image();
@@ -420,13 +423,13 @@
 			s = Math.min(c.width / img.width, c.height / img.height, 1);
 			c.getContext('2d').drawImage(img, (c.width - img.width * s) / 2, (c.height - img.height * s) / 2, img.width * s, img.height * s);
 			URL.revokeObjectURL(url);
-			saveSign(c.toDataURL('image/png'));
+			saveSign(c.toDataURL('image/png'), s);
 		};
 		img.onerror = function() { URL.revokeObjectURL(url); bootbox.alert('이미지를 읽지 못했습니다.'); };
 		img.src = url;
 	}
 
-	function drawPad($c) {
+	function drawPad($c, s) {
 		var canvas = $('<canvas width="440" height="160" aria-label="마우스나 터치로 서명하는 영역" role="img">')[0], ctx = canvas.getContext('2d'), down = false, drawn = false;
 		function at(e) { var b = canvas.getBoundingClientRect(); return [(e.clientX - b.left) * canvas.width / b.width, (e.clientY - b.top) * canvas.height / b.height]; }
 		canvas.addEventListener('pointerdown', function(e) { down = true; canvas.setPointerCapture(e.pointerId); var p = at(e); ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.strokeStyle = '#111'; ctx.beginPath(); ctx.moveTo(p[0], p[1]); });
@@ -436,11 +439,11 @@
 		$c.empty().append(canvas, $('<span class="d-flex flex-wrap" style="gap:6px;">').append(
 			$('<button type="button" class="btn btn-sm btn-outline-secondary">지우기</button>').click(function() { ctx.clearRect(0, 0, canvas.width, canvas.height); drawn = false; }),
 			$('<button type="button" class="btn btn-sm btn-outline-secondary">취소</button>').click(drawTeam),
-			$('<button type="button" class="btn btn-sm btn-primary">저장</button>').click(function() { if (!drawn) { bootbox.alert('서명을 그려 주세요.'); return; } saveSign(canvas.toDataURL('image/png')); })));
+			$('<button type="button" class="btn btn-sm btn-primary">저장</button>').click(function() { if (!drawn) { bootbox.alert('서명을 그려 주세요.'); return; } saveSign(canvas.toDataURL('image/png'), s); })));
 	}
 
-	function saveSign(img) {
-		hrPost('/admin/lab/saveSignData.do', { IMG: img }, function() { toast('서명을 등록했습니다'); reload(); });
+	function saveSign(img, s) {
+		hrPost('/admin/lab/saveSignData.do', { IMG: img, EMPLY_ID: s.EMPLY_ID }, function() { toast('서명을 등록했습니다'); reload(); });
 	}
 
 	function reload(then) {
