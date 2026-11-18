@@ -510,6 +510,8 @@
 			var p = e.parentElement;
 			if (!p || e.classList.contains('bo-act-top') || e !== p.lastElementChild || p.firstElementChild === e) return;
 			if (!e.children.length || [].some.call(e.children, function (k) { return !k.matches('.btn, button'); })) return;
+			// '목록' 으로 돌아가는 버튼 줄은 화면 맨 아래에 둔다
+			if ([].some.call(e.children, function (k) { return k.textContent.trim() === '목록'; })) return;
 			if (e.closest('.modal, table, form, .form-row, .btn-group, .input-group, .dropdown-menu, .eg-tour')) return;
 			if (/sticky|fixed|absolute/.test(getComputedStyle(e).position)) return;
 			var er = e.getBoundingClientRect(), pr = p.getBoundingClientRect();
