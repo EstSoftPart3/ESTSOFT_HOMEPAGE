@@ -182,7 +182,7 @@
 		// 틀고정·글꼴이 자리 잡은 뒤 폭이 조금 달라져 한 번 더 잰다
 		sizeTops();
 		setTimeout(sizeTops, 300);
-		if (BO) { filters(); actionsTop(); checkMore(); }
+		if (BO) { filters(); pinFilter(); actionsTop(); checkMore(); }
 	}
 
 	// ── 칸 위치 이동 (BO 목록 표, plans/list-common-all-spec.html) ──
@@ -508,7 +508,7 @@
 	function actionsTop() {
 		[].forEach.call(document.querySelectorAll('.content-wrapper div, .content-wrapper footer'), function (e) {
 			var p = e.parentElement;
-			if (!p || e.classList.contains('bo-act-top') || e !== p.lastElementChild || p.firstElementChild === e) return;
+			if (!p || e.classList.contains('bo-act-top') || e.hasAttribute('data-bottom') || e !== p.lastElementChild || p.firstElementChild === e) return;
 			if (!e.children.length || [].some.call(e.children, function (k) { return !k.matches('.btn, button'); })) return;
 			// '목록' 으로 돌아가는 버튼 줄은 화면 맨 아래에 둔다
 			if ([].some.call(e.children, function (k) { return k.textContent.trim() === '목록'; })) return;
@@ -519,6 +519,32 @@
 			e.classList.add('bo-act-top');
 			p.insertBefore(e, p.firstElementChild);
 		});
+	}
+
+	// ── 검색필터 고정: 화면의 첫 검색 칸(표가 없는 칸)을 내려도 위에 붙여 두고, 붙은 동안은 한 줄로 줄인다 ──
+	function pinFilter() {
+		if (document.querySelector('.flt-pin')) return;
+		var row = [].filter.call(document.querySelectorAll('.content-wrapper .cal-panel-body > .form-row:first-child'), function (r) {
+			var panel = r.closest('.cal-panel');
+			return panel && !r.closest('.modal') && r.offsetParent !== null && r.querySelector('input[type=search], select') && !panel.querySelector('table');
+		})[0];
+		if (!row) return;
+		var panel = row.closest('.cal-panel'), mark = document.createElement('div');
+		panel.classList.add('flt-pin');
+		panel.parentNode.insertBefore(mark, panel); // 줄어들어도 움직이지 않는 기준점(붙었는지 판단)
+		function top() {
+			if (document.documentElement.classList.contains('in-tab')) return 0;
+			var h = document.querySelector('.main-header');
+			return h ? h.getBoundingClientRect().bottom : 0;
+		}
+		function on() {
+			var t = top();
+			panel.style.top = t + 'px';
+			panel.classList.toggle('flt-stuck', mark.getBoundingClientRect().top < t);
+		}
+		window.addEventListener('scroll', on, { passive: true });
+		window.addEventListener('resize', on);
+		on();
 	}
 
 	// ── 검색필터 접기 ──

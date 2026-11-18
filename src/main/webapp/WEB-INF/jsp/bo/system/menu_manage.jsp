@@ -10,6 +10,8 @@
 					<div class="sys-split">
 						<div class="cal-panel">
 							<div class="cal-panel-head"><span>메뉴 구조 <small id="sortMsg" class="sys-pill info" role="status"></small></span><span>
+								<button type="button" class="btn btn-sm btn-outline-secondary" onclick="foldAll(true);" title="모두 접으면 최상위 순서만 쉽게 바꿀 수 있습니다"><i class="fas fa-compress-alt" aria-hidden="true"></i> 모두 접기</button>
+								<button type="button" class="btn btn-sm btn-outline-secondary" onclick="foldAll(false);"><i class="fas fa-expand-alt" aria-hidden="true"></i> 모두 펴기</button>
 								<button type="button" class="btn btn-sm btn-outline-secondary" onclick="newMenu(true);"><i class="fas fa-plus" aria-hidden="true"></i> 그룹</button>
 								<button type="button" class="btn btn-sm btn-primary" onclick="newMenu(false);"><i class="fas fa-plus" aria-hidden="true"></i> 메뉴</button>
 							</span></div>
@@ -23,7 +25,7 @@
 									<div class="col-md-8 mb-2"><label for="fName">이름 *</label><input id="fName" name="MENU_NM" class="form-control form-control-sm" maxlength="50" required></div>
 									<div class="col-md-4 mb-2"><label for="fParent">상위 메뉴</label><select id="fParent" name="REL_CODE" class="form-control form-control-sm" aria-describedby="parentHelp"></select></div>
 									<div class="col-12 mb-2"><small id="parentHelp" class="form-text text-muted mt-0" role="status"></small></div>
-									<div class="col-12 mb-2 only-item"><label for="fUrl">화면 주소 <small>(2단계에서 비워 두면 하위 메뉴를 담는 묶음)</small></label><input id="fUrl" name="MENU_URL" class="form-control form-control-sm sys-mono" maxlength="200" placeholder="/admin/업무/openList.do"></div>
+									<div class="col-12 mb-2 only-item"><label for="fUrl">화면 주소 <small>(비워 두면 하위 메뉴를 담는 그룹·묶음, 3단계는 필수)</small></label><input id="fUrl" name="MENU_URL" class="form-control form-control-sm sys-mono" maxlength="200" placeholder="/admin/업무/openList.do"></div>
 									<div class="col-12 mb-2 only-item"><label for="fPattern">접근 경로 (쉼표로 구분, 데이터 요청 주소까지 포함)</label><textarea id="fPattern" name="AUTH_PATTERN" rows="3" class="form-control form-control-sm sys-mono" maxlength="1000" placeholder="/admin/업무/**"></textarea></div>
 									<div class="col-12 mb-2 only-icon"><label id="iconLabel">아이콘</label><input type="hidden" id="fIcon" name="ICON_NM"><input type="search" id="iconSearch" class="form-control form-control-sm mb-2" placeholder="분류 또는 영문 이름으로 검색 (예: 장비, user)" aria-label="아이콘 검색" maxlength="30" autocomplete="off"><div id="iconGrid" class="sys-icons" role="radiogroup" aria-labelledby="iconLabel"></div></div>
 									<div class="col-md-3 mb-2"><label for="fSort">순서</label><input id="fSort" name="SORT_NO" type="number" min="0" class="form-control form-control-sm" required></div>
@@ -69,24 +71,68 @@
 	function childrenOf(code) { return menus.filter(function(m) { return m.REL_CODE === code; }); }
 	function isFolder(m) { return m.REL_CODE && !m.MENU_URL; }
 
+	// 접은 그룹·묶음(이 브라우저에 기억). 접힌 곳 안으로는 끌어 넣을 수 없어 최상위 순서만 바꿀 때 편하다
+	var folded = {};
+	try { folded = JSON.parse(localStorage.getItem('menuFold') || '{}') || {}; } catch (e) {}
+	function foldBtn(code, name) {
+		return $('<button type="button" class="sys-fold">').attr({ 'aria-expanded': !folded[code], 'aria-label': name + (folded[code] ? ' 펴기' : ' 접기') })
+			.html(folded[code] ? '<i class="fas fa-chevron-right" aria-hidden="true"></i>' : '<i class="fas fa-chevron-down" aria-hidden="true"></i>')
+			.on('click', function() { setFold(code, !folded[code]); });
+	}
+	function setFold(code, on) {
+		if (on) folded[code] = 1; else delete folded[code];
+		try { localStorage.setItem('menuFold', JSON.stringify(folded)); } catch (e) {}
+		renderTree();
+	}
+	function foldAll(on) {
+		folded = {};
+		if (on) menus.forEach(function(m) { if (!m.MENU_URL) folded[m.MENU_CODE] = 1; });
+		setFold('', false);
+	}
+
 	function renderTree() {
 		var $t = $('#tree').empty();
 		groups().forEach(function(g) {
-			$t.append($('<div class="sys-group">').append(node(g, 'sys-node-group'), itemList(g.MENU_CODE, 'lv2')));
+			// 최상위 화면 메뉴는 하위가 없다
+			if (g.MENU_URL) { $t.append($('<div class="sys-group">').append(node(g, 'sys-node-group'))); return; }
+			$t.append($('<div class="sys-group">').toggleClass('folded', !!folded[g.MENU_CODE]).append(node(g, 'sys-node-group'), foldBtn(g.MENU_CODE, g.MENU_NM), itemList(g.MENU_CODE, 'lv2')));
 		});
-		// cancel: 기본값이 button 드래그를 막는다
-		var drag = { axis: 'y', cancel: '', distance: 5, tolerance: 'pointer', placeholder: 'sys-drop', forcePlaceholderSize: true, stop: saveOrder };
-		// 그룹을 다른 그룹 안에 놓으면 하위 메뉴째 2단계 묶음이 된다. 4단계가 되면 서버가 거부하고 되돌린다.
-		// 그룹끼리 순서는 이름 줄 위에서만 바꿔야 그룹 안쪽에 놓을 수 있다
+		// cancel: 기본값이 button 드래그를 막는다. 놓을 자리에 '몇 단계·어느 메뉴 안'을 보이고, 놓을 수 없는 자리면 놓아도 되돌린다
+		var drag = { axis: 'y', cancel: '.sys-fold', distance: 5, tolerance: 'pointer', placeholder: 'sys-drop', start: markDrop, change: markDrop, over: markDrop, stop: dropped };
+		// 그룹을 다른 그룹 안에 놓으면 하위 메뉴째 2단계 묶음이 된다. 그룹끼리 순서는 이름 줄 위에서만 바꿔야 그룹 안쪽에 놓을 수 있다
 		$t.sortable($.extend({ items: '> .sys-group', handle: '> .sys-node-group', toleranceElement: '> .sys-node-group', connectWith: '.sys-items.lv2' }, drag));
-		$t.find('.sys-items').sortable($.extend({ items: '> .sys-node-item, > .sys-sub', connectWith: '.sys-items' }, drag));
+		// 화면 메뉴·묶음은 최상위(#tree)로도 옮길 수 있다
+		$t.find('.sys-items').sortable($.extend({ items: '> .sys-node-item, > .sys-sub', connectWith: '.sys-items, #tree' }, drag));
 		savedOrder = treeOrder();
+	}
+
+	/** 끌고 있는 메뉴가 놓일 단계와 그 아래 깊이로 놓을 수 있는지 판단해 자리 표시에 적는다 */
+	var dropBad = false;
+	function markDrop(e, ui) {
+		var $n = ui.item.is('.sys-node') ? ui.item : ui.item.find('.sys-node').first();
+		var $p = ui.placeholder, $list = $p.parent(), m = byCode($n.attr('data-code')) || {};
+		var depth = $list.is('#tree') ? 1 : $list.hasClass('lv2') ? 2 : 3;
+		function height(code) { var k = childrenOf(code); return 1 + (k.length ? Math.max.apply(null, k.map(function(c) { return height(c.MENU_CODE); })) : 0); }
+		var deepest = depth + height(m.MENU_CODE) - 1, under = $list.prev('.sys-node').find('span').first().text();
+		dropBad = deepest > 3 || (depth === 3 && !m.MENU_URL);
+		var label = depth === 1 ? '↕ 최상위(1단계) 순서' : '→ "' + under + '" 안 ' + depth + '단계';
+		if (dropBad) label += ' — 놓을 수 없음' + (m.MENU_URL ? '' : '(하위까지 3단계를 넘거나 주소 없는 묶음은 3단계 불가)');
+		$p.attr({ 'data-depth': depth, 'data-label': label }).toggleClass('bad', dropBad);
+	}
+	function dropped(e, ui) {
+		if (dropBad) {
+			dropBad = false;
+			draggedAt = Date.now();
+			refreshTree('그 자리에는 놓을 수 없어 되돌렸습니다');
+			return;
+		}
+		saveOrder();
 	}
 
 	function itemList(parent, level) {
 		var $list = $('<div class="sys-items">').addClass(level);
 		childrenOf(parent).forEach(function(m) {
-			$list.append(isFolder(m) ? $('<div class="sys-sub">').append(node(m, 'sys-node-folder'), itemList(m.MENU_CODE, 'lv3')) : node(m, 'sys-node-item'));
+			$list.append(isFolder(m) ? $('<div class="sys-sub">').toggleClass('folded', !!folded[m.MENU_CODE]).append(node(m, 'sys-node-folder'), foldBtn(m.MENU_CODE, m.MENU_NM), itemList(m.MENU_CODE, 'lv3')) : node(m, 'sys-node-item'));
 		});
 		return $list;
 	}
@@ -165,10 +211,10 @@
 	function byCode(code) { return menus.filter(function(m) { return m.MENU_CODE === code; })[0]; }
 	function hasScreen(code) { return childrenOf(code).some(function(c) { return c.USE_YN !== 'N' && (c.MENU_URL || hasScreen(c.MENU_CODE)); }); }
 	function hiddenAbove(m) { for (var p = byCode(m.REL_CODE); p; p = byCode(p.REL_CODE)) if (p.USE_YN === 'N') return true; return false; }
-	function nameOf(code) { var m = byCode(code); return m ? m.MENU_NM : '없음 (그룹)'; }
+	function nameOf(code) { var m = byCode(code); return m ? m.MENU_NM : '없음 (최상위)'; }
 
 	function renderParents() {
-		var $p = $('#fParent').empty().append('<option value="">없음 (그룹)</option>');
+		var $p = $('#fParent').empty().append('<option value="">없음 (최상위)</option>');
 		// 이름이 같은 숨김 메뉴(옛 '연구소' 등)와 헷갈리지 않게 표시한다
 		function label(m) { return m.MENU_NM + (m.USE_YN === 'N' ? ' (숨김)' : ''); }
 		groups().forEach(function(g) {
@@ -183,13 +229,13 @@
 		var deep = kids.some(function(k) { return childrenOf(k.MENU_CODE).length; }), why = [];
 		$('#fParent option').each(function() {
 			var v = this.value, sub = !!(byCode(v) || {}).REL_CODE, off = false;
-			if (!v) off = screen;                                  // 화면 메뉴는 그룹이 될 수 없다
+			if (!v) off = false;                                   // 최상위는 그룹이든 화면 메뉴든 된다
+			else if (screen && kids.length) off = true;            // (서버 검사와 같다) 하위가 있는 메뉴는 주소를 가질 수 없다
 			else if (v === code || (byCode(v) || {}).REL_CODE === code) off = true; // 자기 자신·자기 아래
 			else if (sub) off = kids.length > 0;                   // 묶음 아래에는 화면 메뉴만(4단계 방지)
 			else off = deep;                                       // 하위에 묶음이 있으면 그룹으로만 남는다
 			this.disabled = off && this.value !== ($('#fParent').val() || '');
 		});
-		if (screen) why.push('화면 주소가 있는 메뉴라 상위 메뉴 없이(그룹으로) 둘 수 없습니다.');
 		if (kids.length) why.push('하위 메뉴 ' + kids.length + '개가 함께 옮겨집니다' + (deep ? '. 하위에 묶음이 있어 다른 메뉴 아래로는 옮길 수 없습니다.' : ', 묶음(└) 아래로는 옮길 수 없습니다.'));
 		$('#parentHelp').text(why.join(' '));
 	}
@@ -197,10 +243,10 @@
 	function applyKind() {
 		var parent = $('#fParent').val(), group = !parent;
 		var depth3 = menus.some(function(m) { return m.MENU_CODE === parent && m.REL_CODE; });
-		$('.only-item').prop('hidden', group);
+		// 최상위도 화면 주소를 넣으면 그룹 없이 바로 열리는 화면 메뉴가 된다
 		$('.only-icon').prop('hidden', depth3);
 		$('#fUrl').prop('required', depth3);
-		if (group && !$('#fIcon').val()) $('#fIcon').val('fa-folder');
+		if (group && !$('#fIcon').val() && !$.trim($('#fUrl').val())) $('#fIcon').val('fa-folder');
 		limitParents();
 		renderIcons();
 	}

@@ -177,6 +177,10 @@
           <li class="nav-item"><a href="/admin/home.do" class="nav-link bo-home"><i class="nav-icon fas fa-home"></i><p class="sTitle">홈</p></a></li>
           	<%-- 硫붾돱? 沅뚰븳? boLoggerInterceptor 媛 ?ｋ뒗 boMenus 濡?洹몃┛?? 愿由??붾㈃: 怨꾩젙 諛?沅뚰븳 > 硫붾돱 愿由?--%>
           	<c:forEach var="group" items="${boMenus}">
+          	<c:choose>
+          	<%-- 최상위 화면 메뉴: 그룹 없이 바로 --%>
+          	<c:when test="${not empty group.MENU_URL}"><c:set var="leaf" value="${group}"/><%@ include file="/WEB-INF/jsp/bo/boinclude/include_left_leaf.jspf"%></c:when>
+          	<c:otherwise>
           	<li class="nav-item has-treeview">
 	            <a href="#" class="nav-link">
 	              <i class="nav-icon fas <c:out value="${group.ICON_NM}"/>"></i>
@@ -201,6 +205,8 @@
 	              </c:forEach>
 	            </ul>
           	</li>
+          	</c:otherwise>
+          	</c:choose>
           	</c:forEach>
 
 			</ul>
@@ -218,7 +224,7 @@
 	// AdminLTE 는 window load 뒤에 접은 상태를 복원해 화면 전환마다 펼쳐졌다 접히므로 그리기 전에 먼저 적용한다
 	if (localStorage.getItem('remember.lte.pushmenu') === 'sidebar-collapse') document.body.classList.add('sidebar-collapse');
 	[].forEach.call(document.querySelectorAll('aside .has-treeview'), function(li) { li.classList.remove('menu-open'); });
-	var links = [].slice.call(document.querySelectorAll('aside .nav-treeview a.nav-link:not([href="#"])'));
+	var links = [].slice.call(document.querySelectorAll('aside .nav-sidebar a.nav-link:not([href="#"]):not(.bo-home)'));
 	var path = location.pathname, dir = path.substring(0, path.lastIndexOf('/') + 1);
 	// 홈은 메뉴 트리 밖에 있어 아래 폴더 찾기(/admin/)가 아무 메뉴나 잡지 않게 먼저 끝낸다
 	if (path === '/admin/home.do') { document.querySelector('aside a.bo-home').classList.add('active'); return; }

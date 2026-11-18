@@ -37,7 +37,13 @@ public class BoSystemServiceCheck {
 		rejectsOrder("", menus);
 		rejectsOrder("G1:,A:G1,H1:,HI:H1", menus); // HT 누락
 		rejectsOrder("G1:,A:G1,A:G1,H1:,HI:H1,HT:H1", menus); // 중복
-		rejectsOrder("A:,G1:A,H1:,HI:H1,HT:H1", menus); // 화면을 그룹으로
+		rejectsOrder("A:,G1:A,H1:,HI:H1,HT:H1", menus); // 화면 아래에 메뉴
+		List<Map<String, Object>> top = BoSystemService.menuOrderRows("A:,G1:,H1:,HI:H1,HT:H1", menus);
+		check(top.get(0).get("REL_CODE") == null && "1".equals(top.get(0).get("MENU_DEPTH")), "화면 메뉴를 최상위로");
+		List<Map<String, Object>> topMenus = Arrays.asList(menu("A", null, "/admin/a/openA.do", "/admin/a/**"), menu("H1", null, null, null), menu("HI", "H1", "/admin/hr/openInterviewList.do", "/admin/hr/*nterview*"));
+		BoSystemService.Access topA = BoSystemService.Access.of(topMenus, Arrays.asList(grant("X", "A")));
+		check(topA.tree.size() == 1 && topA.allows("/admin/a/data.do") && !topA.allows("/admin/hr/openInterviewList.do"), "최상위 화면 메뉴 표시·권한");
+		check(BoSystemService.Access.of(topMenus, Arrays.asList(grant("X", "HI"))).tree.size() == 1, "권한 없는 최상위 화면 숨김");
 		rejectsOrder("G1:,A:G1,X:G1,H1:,HI:H1,HT:H1", menus); // 없는 메뉴
 
 		List<Map<String, Object>> core = new ArrayList<>(withHiddenGroup(menus));
@@ -85,8 +91,7 @@ public class BoSystemServiceCheck {
 		BoSystemService.checkMenuChange("S", "G", "/admin/lab/open.do", saved);
 		BoSystemService.checkMenuChange("G", null, null, saved);
 		BoSystemService.checkMenuChange(null, "G", "/admin/new/open.do", saved);
-		rejectsChange("S", null, "/admin/lab/open.do", saved); // 화면 메뉴 → 그룹(주소를 같이 보냄)
-		rejectsChange("S", null, null, saved);                 // 화면 메뉴 → 그룹(주소 없이 보내도 기존 주소가 있으면)
+		BoSystemService.checkMenuChange("S", null, "/admin/lab/open.do", saved); // 화면 메뉴 → 최상위(주소 유지)
 		rejectsChange(null, "G", "/admin/lab/open.do", saved); // 같은 화면 주소
 		rejectsChange("G", "G", null, saved);                  // 자기 자신이 상위
 		rejectsChange("X", "G", null, saved);                  // 그사이 지워진 메뉴

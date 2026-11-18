@@ -87,6 +87,14 @@ public class BoSystemService {
 			}
 			// 그룹에서 내려가며 모으므로 숨겨서 목록에 없는 상위의 하위 메뉴는 자연히 빠진다
 			for (Map<String, Object> root : byParent.getOrDefault(null, new ArrayList<>())) {
+				// 최상위 화면 메뉴는 그룹 없이 왼쪽 메뉴에 바로 나온다
+				if (root.get("MENU_URL") != null) {
+					if (superUser || granted.contains(root.get("MENU_CODE"))) {
+						access.tree.add(root);
+						access.items.add(root);
+					}
+					continue;
+				}
 				Map<String, Object> group = access.branch(root, byParent, granted);
 				if (!children(group).isEmpty()) {
 					access.tree.add(group);
@@ -159,17 +167,12 @@ public class BoSystemService {
 		String url = trim(p.get("MENU_URL")), patterns = trim(p.get("AUTH_PATTERN")), icon = trim(p.get("ICON_NM"));
 		require(name != null && name.length() <= 50, "메뉴명을 50자 이내로 입력해 주세요.");
 		require(icon == null || ICON.matcher(icon).matches(), "아이콘은 fa-로 시작하는 이름으로 입력해 주세요.");
-		boolean group = parent == null;
 		List<Map<String, Object>> after = new ArrayList<>(mapper.selectAllMenus());
 		checkMenuChange(code, parent, url, after);
-		if (group) {
+		require(url == null || (url.length() <= 200 && URL.matcher(url).matches() && !url.startsWith("//")), "화면 주소는 /로 시작하는 내부 주소로 입력해 주세요.");
+		validatePatterns(patterns);
+		if (url == null) {
 			patterns = null;
-		} else {
-			require(url == null || (url.length() <= 200 && URL.matcher(url).matches() && !url.startsWith("//")), "화면 주소는 /로 시작하는 내부 주소로 입력해 주세요.");
-			validatePatterns(patterns);
-			if (url == null) {
-				patterns = null;
-			}
 		}
 		p.put("MENU_CODE", code != null ? code : "MN" + System.currentTimeMillis());
 		p.put("MENU_NM", name);
@@ -198,9 +201,7 @@ public class BoSystemService {
 		}
 		require(code == null || old != null, "메뉴가 변경되었습니다. 새로고침 후 다시 시도해 주세요.");
 		require(code == null || !code.equals(parent), "자기 자신을 상위 메뉴로 고를 수 없습니다.");
-		if (parent == null) {
-			require(url == null && (old == null || old.get("MENU_URL") == null), "화면 주소가 있는 메뉴는 그룹(상위 없음)이 될 수 없습니다. 상위 메뉴를 골라 주세요.");
-		}
+		// 화면 메뉴는 최상위로도 옮길 수 있다(주소·접근 경로를 그대로 두므로 사라지지 않는다)
 	}
 
 	/** 아이콘은 2단계까지만 쓰고 3단계는 동그라미로 표시한다 */
@@ -218,7 +219,6 @@ public class BoSystemService {
 		menus.forEach(m -> byCode.put((String) m.get("MENU_CODE"), m));
 		Map<String, Integer> depths = new HashMap<>();
 		for (Map<String, Object> m : menus) {
-			require(m.get("REL_CODE") != null || m.get("MENU_URL") == null, "화면 주소가 있는 메뉴는 그룹이 될 수 없습니다.");
 			int depth = 1;
 			boolean visible = !"N".equals(m.get("USE_YN"));
 			for (Map<String, Object> at = m; at.get("REL_CODE") != null; depth++) {
@@ -228,7 +228,7 @@ public class BoSystemService {
 				require(at.get("MENU_URL") == null, "화면 주소가 있는 메뉴 아래에는 메뉴를 둘 수 없습니다.");
 				visible &= !"N".equals(at.get("USE_YN"));
 			}
-			require(depth < 3 || m.get("MENU_URL") != null, "3단계 메뉴는 화면 주소를 입력해 주세요.");
+			require(depth < 3 || m.get("MENU_URL") != null, "3단계에는 화면 메뉴만 둘 수 있습니다. 주소 없는 그룹·묶음(" + m.get("MENU_NM") + ")은 2단계까지만 들어갑니다.");
 			require(visible || !CORE_MENUS.contains(m.get("MENU_CODE")), "메뉴·권한 관리에 필요한 메뉴는 숨길 수 없습니다.");
 			depths.put((String) m.get("MENU_CODE"), depth);
 		}

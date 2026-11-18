@@ -46,7 +46,7 @@
   <link rel="stylesheet" href="/resources/bo/plugins/jsgrid/jsgrid-theme.min.css">
 
 
-<script src="/resources/common/ui-table.js?v=20261118list"></script>
+<script src="/resources/common/ui-table.js?v=20261118pin"></script>
 <script src="/resources/common/bo-list.js?v=20261113"></script>
 <script src="/resources/common/bo-view.js?v=20261117"></script>
 <script src="/resources/common/bo-tabs.js?v=20261118home"></script>

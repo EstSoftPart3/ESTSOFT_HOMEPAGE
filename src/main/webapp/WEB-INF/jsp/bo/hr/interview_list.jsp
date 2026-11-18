@@ -31,23 +31,6 @@
 
 				<div class="card-body">
 					<div class="cal-panel">
-						<button type="button" class="cal-panel-head hr-dash-head" data-toggle="collapse" data-target="#dashBox" aria-expanded="true" aria-controls="dashBox">
-							<span><i class="fas fa-chart-bar"></i> 대시보드 (검색 기준)</span>
-							<i class="fas fa-chevron-up" aria-hidden="true"></i>
-						</button>
-						<div id="dashBox" class="collapse show">
-							<div class="cal-panel-body">
-								<div class="hr-dash-title" id="dashTitle"></div>
-								<div class="hr-dash-cond" id="dashCond"></div>
-								<div class="hr-dash" id="dashStats"></div>
-								<div class="text-right mb-2">
-									<button type="button" class="btn btn-sm btn-outline-primary" id="btnCopyDash" onclick="copyDash();"><i class="far fa-copy"></i> <span>보고 내용 복사</span></button>
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<div class="cal-panel">
 						<div class="cal-panel-body">
 							<div class="form-row align-items-end">
 								<div class="col-md-1 col-6 mb-2" data-keep>
@@ -87,7 +70,7 @@
 							</div>
 						</div>
 						<div id="calView" style="display:none;">
-							<div class="small text-muted mb-2">빈 시간을 누르면 새 면접자를, 이력서 PDF를 시간 칸에 끌어 놓으면 이력서 내용을 채워 새 면접자 창을 열어요. 일정을 끌면 면접일시가 바로 바뀌어요.</div>
+							<div class="small text-muted mb-1" style="font-size:11.5px;">빈 시간을 누르면 새 면접자를, 이력서 PDF를 시간 칸에 끌어 놓으면 이력서 내용을 채워 새 면접자 창을 열어요. 일정을 끌면 면접일시가 바로 바뀌어요.</div>
 							<div id="calendar"></div>
 						</div>
 						<div class="table-responsive" id="listView">
@@ -95,6 +78,18 @@
 								<thead id="listHead"></thead>
 								<tbody id="listBody"></tbody>
 							</table>
+						</div>
+					</div>
+					<%-- 대시보드는 아래 버튼 → 팝업. 내용은 숨긴 자리에서 계속 그려 두고 팝업에 옮겨 보인다 --%>
+					<div class="text-right" data-bottom>
+						<button type="button" class="btn btn-sm btn-outline-primary" id="btnDash"><i class="fas fa-chart-bar" aria-hidden="true"></i> 대시보드 (검색 기준)</button>
+					</div>
+					<div id="dashBox" hidden>
+						<div class="hr-dash-title" id="dashTitle"></div>
+						<div class="hr-dash-cond" id="dashCond"></div>
+						<div class="hr-dash" id="dashStats"></div>
+						<div class="text-right">
+							<button type="button" class="btn btn-sm btn-outline-primary" id="btnCopyDash" onclick="copyDash();"><i class="far fa-copy"></i> <span>보고 내용 복사</span></button>
 						</div>
 					</div>
 				</div>
@@ -334,9 +329,15 @@
 		});
 	}
 
+	$('#btnDash').on('click', function() {
+		var $box = $('#dashBox'), $inner = $box.children().detach();
+		bootbox.dialog({ title: '<i class="fas fa-chart-bar"></i> 대시보드 (검색 기준)', message: $inner, size: 'large', onEscape: true })
+			.on('hidden.bs.modal', function() { $box.append($inner); });
+	});
+
 	// http 로 접속해도 되도록 clipboard API 대신 execCommand 를 쓴다
 	function copyDash() {
-		var $btn = $('#btnCopyDash'), $t = $('<textarea aria-hidden="true" style="position:fixed;top:0;left:-9999px;">').val(dashText(dashCounts(shown), dashTitle())).appendTo('body');
+		var $btn = $('#btnCopyDash'), $t = $('<textarea aria-hidden="true" style="position:fixed;top:0;left:-9999px;">').val(dashText(dashCounts(shown), dashTitle())).appendTo($btn.closest('.modal-body')[0] || 'body'); // 팝업 안에서는 팝업이 초점을 붙잡아 body 칸은 고를 수 없다
 		$t[0].select();
 		var ok = false;
 		try { ok = document.execCommand('copy'); } catch (e) {}

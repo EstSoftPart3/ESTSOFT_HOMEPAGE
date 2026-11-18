@@ -68,6 +68,21 @@
   	.flt-closed > .form-row:first-child > * { flex: 0 0 auto; width: auto; max-width: none; margin-bottom: 0 !important; }
   	.flt-closed input[type=search] { min-width: 260px; }
   	.flt-tg { margin-left: auto; }
+  	/* 검색필터 고정(ui-table.js pinFilter): 내려도 위에 붙고, 붙은 동안은 라벨·추가 조건을 숨겨 한 줄(넘치면 가로 스크롤) */
+  	.flt-pin { position: sticky; z-index: 1020; }
+  	.flt-stuck { box-shadow: 0 6px 14px rgba(0,0,0,.08); }
+  	.flt-stuck > .cal-panel-body { padding-top: 6px !important; padding-bottom: 6px !important; }
+  	.flt-stuck .flt-more, .flt-stuck .flt-tg, .flt-stuck .cal-panel-body > .form-row:first-child label { display: none !important; }
+  	.flt-stuck > .cal-panel-body > :not(.form-row:first-child), .flt-stuck > .cal-panel-head { display: none; }
+  	.flt-stuck > .cal-panel-body > .form-row:first-child { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
+  	.flt-stuck > .cal-panel-body > .form-row:first-child > * { flex: 0 0 auto; width: auto; max-width: none; margin-bottom: 0 !important; }
+  	/* 달력 머리(풀캘린더): 제목·버튼을 작게, 버튼은 관리자 화면 버튼 모양으로 */
+  	.fc .fc-toolbar.fc-header-toolbar, .fc-toolbar.fc-header-toolbar { margin-bottom: 8px !important; }
+  	.fc .fc-toolbar h2, .fc .fc-toolbar-title { font-size: 17px !important; font-weight: 700; }
+  	.fc .fc-button { padding: 3px 10px !important; font-size: 12.5px !important; line-height: 1.4 !important; background: #fff !important; border-color: #ced4da !important; color: #343a40 !important; box-shadow: none !important; text-transform: none; }
+  	.fc .fc-button:hover { background: #eef9fc !important; border-color: #0b6e8a !important; color: #0b6e8a !important; }
+  	.fc .fc-button-active, .fc .fc-button.fc-button-active { background: #0b6e8a !important; border-color: #0b6e8a !important; color: #fff !important; }
+  	.fc .fc-button:disabled { opacity: .5; }
   	/* ui-table.js 가 칸 맨 위로 올린 버튼 줄 */
   	.bo-act-top { margin: 0 0 .6rem !important; }
   	/* 피드백·업데이트 내역(bo-feedback.js) */

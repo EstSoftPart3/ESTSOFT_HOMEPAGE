@@ -99,18 +99,20 @@
 		var $tree = $('<div>').appendTo($b), syncs = [];
 		function syncAll() { syncs.forEach(function(sync) { sync(); }); }
 		// 그룹·묶음 체크박스는 하위 화면 일괄 선택용이고 저장되는 것은 화면 메뉴뿐이다
+		function screen(m, level) {
+			var $c = $('<input type="checkbox" class="menu-box">').val(m.MENU_CODE).prop({ disabled: locked, checked: locked || have.indexOf(m.MENU_CODE) >= 0 });
+			var $label = $('<label class="sys-check item">').addClass('lv' + level).append($c).append($('<span>').text(m.MENU_NM));
+			if (m.USE_YN === 'N') $label.append('<span class="sys-pill">숨김</span>');
+			$tree.append($label);
+			$c.on('change', function() { dirty = true; syncAll(); });
+			return $c;
+		}
 		function branch(g, level) {
 			var $box = $('<input type="checkbox">').prop('disabled', locked);
 			var $group = $('<label class="sys-check group">').addClass('lv' + level).append($box).append($('<span>').text(g.MENU_NM)).appendTo($tree);
 			var $children = $();
 			childrenOf(g.MENU_CODE).forEach(function(m) {
-				if (!m.MENU_URL) { $children = $children.add(branch(m, level + 1)); return; }
-				var $c = $('<input type="checkbox" class="menu-box">').val(m.MENU_CODE).prop({ disabled: locked, checked: locked || have.indexOf(m.MENU_CODE) >= 0 });
-				var $label = $('<label class="sys-check item">').addClass('lv' + (level + 1)).append($c).append($('<span>').text(m.MENU_NM));
-				if (m.USE_YN === 'N') $label.append('<span class="sys-pill">숨김</span>');
-				$tree.append($label);
-				$c.on('change', function() { dirty = true; syncAll(); });
-				$children = $children.add($c);
+				$children = $children.add(m.MENU_URL ? screen(m, level + 1) : branch(m, level + 1));
 			});
 			syncs.push(function() {
 				var on = $children.filter(':checked').length;
@@ -120,7 +122,7 @@
 			if (!$children.length) $group.remove();
 			return $children;
 		}
-		groups().forEach(function(g) { branch(g, 1); });
+		groups().forEach(function(g) { if (g.MENU_URL) screen(g, 1).closest('label').addClass('group'); else branch(g, 1); }); // 최상위 화면 메뉴
 		syncAll();
 		if (!locked) {
 			$('<div class="text-right mb-2">').append($('<button type="button" class="btn btn-sm btn-primary">저장</button>').on('click', saveMenus)).appendTo($b);
@@ -165,9 +167,9 @@
 		var $head = $('<tr>').append('<th>메뉴</th>'), $body = $('<tbody>');
 		data.roles.forEach(function(r) { $head.append($('<th>').text(r.ROLE_NM)); });
 		function rows(g, deep) {
-			var children = childrenOf(g.MENU_CODE);
+			var children = g.MENU_URL ? [g] : childrenOf(g.MENU_CODE); // 최상위 화면 메뉴는 자기 줄 하나
 			if (!children.length) return;
-			$('<tr class="group">').append($('<td>').attr('colspan', data.roles.length + 1).text(g.MENU_NM)).appendTo($body);
+			if (!g.MENU_URL) $('<tr class="group">').append($('<td>').attr('colspan', data.roles.length + 1).text(g.MENU_NM)).appendTo($body);
 			children.forEach(function(m) {
 				if (!m.MENU_URL) { rows(m, true); return; }
 				var $tr = $('<tr>').append($('<td>').toggleClass('sys-lv3', deep).text(m.MENU_NM));
