@@ -38,9 +38,6 @@
 	#hmCalendar .fc-day-grid .fc-row { min-height: 0 !important; }
 	#hmCalendar .fc-day-grid .fc-content-skeleton { padding-bottom: 1px; }
 	#hmCalendar .fc-day-number { font-size: 11px; padding: 1px 4px !important; }
-	#hmCalendar .fc-more { font-size: 11px; font-weight: 700; color: #0b6e8a; }
-	/* 접힌(요약) 월 보기: 날짜 칸에 2건 + 더보기, 한 화면에 한 달이 들어오게 */
-	#hmCalCard.compact #hmCalendar .fc-event { font-size: 10.5px; line-height: 1.2; }
 	/* 업무 화면 상세 팝업을 홈 위에 그대로 띄우는 투명 틀(include_top 의 ?popup=1) */
 	.hm-pop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; border: 0; z-index: 1060; background: transparent; }
 	.hm-pop-wait { position: fixed; inset: 0; z-index: 1059; background: rgba(0,0,0,.25); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; }
@@ -186,7 +183,6 @@
 		var kinds = [];
 		Object.keys(CAL_SRC).forEach(function(k) { if (can(k)) kinds = kinds.concat(CAL_SRC[k]); });
 		if (!kinds.length) return;
-		var $btn = $('<button type="button" class="btn btn-sm btn-outline-secondary ml-auto" id="hmCalToggle">');
 		var $chips = $('<div class="hm-cal-chips" id="hmCalChips">');
 		kinds.forEach(function(k) {
 			$chips.append($('<button type="button" class="hm-cal-chip">').data('k', k).attr('title', '눌러서 ' + CAL_KIND[k][0] + ' 일정 끄기·켜기')
@@ -194,7 +190,7 @@
 				.on('click', function() { calOff[k] = !calOff[k]; store('hmCalOff', JSON.stringify(calOff)); calPaint(); }));
 		});
 		var $el = $('<div id="hmCalendar">');
-		var $c = $('<div class="hm-card wide" id="hmCalCard">').append($('<header>').text('📅 일정').append($btn)).append($('<div class="hm-body">').append($chips).append($el));
+		var $c = $('<div class="hm-card wide" id="hmCalCard">').append($('<header>').text('📅 일정')).append($('<div class="hm-body">').append($chips).append($el));
 		$c.insertBefore('#hmKpis'); // 홈 맨 위
 		calendar = new FullCalendar.Calendar($el[0], {
 			plugins: ['dayGrid', 'timeGrid'], locales: window.FullCalendarLocales ? [FullCalendarLocales.ko] : [], locale: 'ko',
@@ -202,22 +198,12 @@
 			header: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
 			buttonText: { today: '오늘', month: '월', week: '주', day: '일' },
 			height: 'auto', nowIndicator: true, minTime: '08:00:00', maxTime: '20:00:00', slotDuration: '01:00:00',
-			eventLimit: 3, eventLimitText: function(n) { return '+' + n + ' 더보기'; },
-			// '+n 더보기'는 팝업 대신 달력 전체를 펼친다(날짜 칸이 일정 수만큼 높아짐)
-			eventLimitClick: function() { setOpen(true); },
+			// 월 보기 행 높이를 폭에 비례해 강제하지 않게(일정 수만큼만, 빈 주는 날짜 숫자 줄만): monthMode 는 auto 여도 폭÷aspectRatio 를 6주로 나눠 넣는다
+			aspectRatio: 50,
 			datesRender: function(info) { store('hmCalView', info.view.type); },
 			eventClick: function(info) { info.jsEvent.preventDefault(); calPop(info.event.extendedProps.ev); }
 		});
-		// 접기·펴기 = 월 달력 높이: 접으면 날짜 칸마다 2건 + 더보기(한 화면에 한 달), 펴면 모든 일정이 보이게 칸이 늘어난다. 상태 기억
-		function setOpen(open) {
-			$c.toggleClass('compact', !open);
-			$btn.text(open ? '▴ 접기 (요약)' : '▾ 펼치기 (일정 모두)').attr('aria-expanded', open);
-			store('hmCalFull', open ? '1' : '0');
-			calendar.setOption('eventLimit', open ? false : 3);
-		}
-		$btn.on('click', function() { setOpen($c.hasClass('compact')); });
 		calendar.render();
-		setOpen(store('hmCalFull') === '1'); // 예전 hmCalOpen(카드 숨기기)과 다른 뜻이라 새 키, 처음은 접힌 요약
 		calPaint();
 		if (can('RECRUIT')) {
 			fetch('/admin/recruit/listData.do', function(res) {
