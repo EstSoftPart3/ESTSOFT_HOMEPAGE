@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -284,6 +285,14 @@ public class BoSystemService {
 			rows.add(row);
 		}
 		require(remaining.isEmpty(), stale);
+		// 끌어 놓기 한 번은 메뉴 하나의 위치만 바꾼다(하위는 따라간다). 여러 개의 상위가 한꺼번에 바뀌면 화면 오류로 보고 막는다(2026-11-18 전부 최상위가 된 사고)
+		int moved = 0;
+		for (Map<String, Object> r : rows) {
+			Map<String, Object> before = null;
+			for (Map<String, Object> m : menus) if (m.get("MENU_CODE").equals(r.get("MENU_CODE"))) before = m;
+			if (!Objects.equals(before.get("REL_CODE"), r.get("REL_CODE"))) moved++;
+		}
+		require(moved <= 1, "한 번에 메뉴 하나만 옮길 수 있습니다(" + moved + "개의 위치가 바뀌려 해 저장하지 않았습니다). 새로고침 후 다시 시도해 주세요.");
 		Map<String, Integer> depths = validateMenuTree(rows);
 		rows.forEach(r -> setDepth(r, depths));
 		return rows;

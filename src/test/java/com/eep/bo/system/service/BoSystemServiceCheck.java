@@ -31,7 +31,9 @@ public class BoSystemServiceCheck {
 		rejects("/eep/**");
 		rejects("/admin/**");
 
-		List<Map<String, Object>> rows = BoSystemService.menuOrderRows("H1:,HT:H1,A:H1,G1:,H2:,HI:H2", withHiddenGroup(menus));
+		List<Map<String, Object>> rows = BoSystemService.menuOrderRows("H1:,HT:H1,A:H1,G1:,H2:,HI:H1", withHiddenGroup(menus));
+		rejectsOrder("H1:,HT:H1,A:H1,G1:,H2:,HI:H2", withHiddenGroup(menus)); // 한 번에 둘 이동(A, HI)
+		rejectsOrder("G1:,A:,H1:,HI:,HT:", menus); // 2026-11-18 사고: 전부 최상위로
 		check(rows.size() == 6 && "H1".equals(rows.get(0).get("MENU_CODE")) && rows.get(0).get("REL_CODE") == null && (int) rows.get(0).get("SORT_NO") == 10 && "1".equals(rows.get(0).get("MENU_DEPTH")), "그룹 순서");
 		check("A".equals(rows.get(2).get("MENU_CODE")) && "H1".equals(rows.get(2).get("REL_CODE")) && (int) rows.get(2).get("SORT_NO") == 2 && "2".equals(rows.get(2).get("MENU_DEPTH")), "다른 그룹으로 이동");
 		rejectsOrder("", menus);

@@ -113,7 +113,7 @@
 		var $p = ui.placeholder, $list = $p.parent(), m = byCode($n.attr('data-code')) || {};
 		var depth = $list.is('#tree') ? 1 : $list.hasClass('lv2') ? 2 : 3;
 		function height(code) { var k = childrenOf(code); return 1 + (k.length ? Math.max.apply(null, k.map(function(c) { return height(c.MENU_CODE); })) : 0); }
-		var deepest = depth + height(m.MENU_CODE) - 1, under = $list.prev('.sys-node').find('span').first().text();
+		var deepest = depth + height(m.MENU_CODE) - 1, under = $list.parent().children('.sys-node').find('span').first().text();
 		dropBad = deepest > 3 || (depth === 3 && !m.MENU_URL);
 		var label = depth === 1 ? '↕ 최상위(1단계) 순서' : '→ "' + under + '" 안 ' + depth + '단계';
 		if (dropBad) label += ' — 놓을 수 없음' + (m.MENU_URL ? '' : '(하위까지 3단계를 넘거나 주소 없는 묶음은 3단계 불가)');
@@ -139,7 +139,8 @@
 
 	function treeOrder() {
 		return $('#tree .sys-node').map(function() {
-			return $(this).attr('data-code') + ':' + ($(this).closest('.sys-items').prev('.sys-node').attr('data-code') || '');
+			// 상위는 목록을 감싼 그룹·묶음의 이름 줄(목록 바로 앞이 아니다 — 사이에 접기 버튼이 있다)
+			return $(this).attr('data-code') + ':' + ($(this).closest('.sys-items').parent().children('.sys-node').attr('data-code') || '');
 		}).get().join(',');
 	}
 
