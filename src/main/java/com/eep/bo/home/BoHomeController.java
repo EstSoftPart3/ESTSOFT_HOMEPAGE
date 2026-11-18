@@ -42,7 +42,8 @@ public class BoHomeController {
 		CARDS.put("JOURNAL", "/admin/lab/journalDetailData.do");
 		CARDS.put("EQP", "/admin/equipment/equipmentListData.do");
 		CARDS.put("MEMBER", "/admin/member/memberListData.do");
-		CARDS.put("CAL", "/admin/calendar/eventListData.do");	// 캘린더의 확정 일정
+		// 홈 달력은 우리 시스템에 등록된 정보만 보인다(구글 캘린더는 주 데이터가 아님). 모집은 모집 관리에 등록된 인터뷰·마감
+		CARDS.put("RECRUIT", "/admin/recruit/listData.do");
 		MEMOS.put("STAFF", "/admin/staff/memoListData.do");
 		MEMOS.put("INTV", "/admin/hr/interviewMemoListData.do");
 		MEMOS.put("TRAINEE", "/admin/hr/traineeMemoListData.do");

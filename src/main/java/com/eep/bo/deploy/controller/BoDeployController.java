@@ -52,6 +52,12 @@ public class BoDeployController {
 	@Autowired
 	private SecretFilter secret;
 
+	@Autowired
+	private com.eep.bo.recruit.service.RecruitService recruitService;
+
+	@Autowired
+	private com.eep.bo.staff.service.StaffCareerService career;
+
 	// ── 투입현황 ──
 
 	@RequestMapping("/admin/deploy/openDeployList.do")
@@ -66,8 +72,17 @@ public class BoDeployController {
 		Map<String, Object> out = v.filterMap(deployService.deployList(canPay(id)), "all", "current", "memoCounts", "chgCounts");
 		out.put("me", id);
 		out.putAll(v.filterMap(deployService.options(id), "staff"));
+		// 대기 현황의 「프로필 버전」「지원 중 모집」 칸
+		out.put("profiles", v.filter(recruitService.profiles()));
+		out.put("recruitApplies", v.filter(recruitService.activeApplies()));
 		out.put("secretViewer", v.secret);
 		return json("data", out);
+	}
+
+	/** 대기 현황 프로필 버전 칩: 그 버전 워드 받기 */
+	@RequestMapping(value = "/admin/deploy/profileWord.do", method = RequestMethod.GET)
+	public void profileWord(@RequestParam("STAFF_SQ") int staffSq, @RequestParam(value = "VER_NO", defaultValue = "") String verNo, HttpServletResponse response, HttpSession session) throws IOException {
+		com.eep.bo.recruit.controller.BoRecruitController.word(career, secret.view(loginId(session)), staffSq, verNo, response);
 	}
 
 	@RequestMapping(value = "/admin/deploy/saveDeployData.do", method = RequestMethod.POST)

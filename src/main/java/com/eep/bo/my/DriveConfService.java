@@ -55,6 +55,14 @@ public class DriveConfService {
 		FIELDS.put("LAB", new String[][] {
 			{ "SUB", "과제 폴더 안 하위 폴더 이름 (과제마다 만들어짐)", "02. 연구일지", "", "" },
 			{ "FILE", "마감 PDF 이름", "{연월} 월간연구일지_{과제명}", "{연월},{과제명}", "" } });
+		SCREENS.put("RECRUIT", new String[] { "모집 관리", "/admin/recruit/openRecruitList.do" });
+		FIELDS.put("RECRUIT", new String[][] {
+			{ "ROOT", "모집 최상위 폴더", "", "", "folder" },
+			{ "YEAR", "연도 폴더 이름", "{연도}년도", "{연도}", "" },
+			{ "MONTH", "월 폴더 이름", "{월}월", "{월}", "" },
+			{ "POST", "모집 폴더 이름", "({등록일}) {고객사}_{사업명}", "{등록일},{고객사},{사업명}", "" },
+			{ "SUB", "첨부 하위 폴더 이름 (모집 폴더마다)", "첨부", "", "" },
+			{ "WORD", "지원 프로필 워드 이름", "{성명}_수행이력_{버전}", "{성명},{버전}", "" } });
 	}
 	private static final Pattern FOLDER_URL = Pattern.compile("(?:folders/|id=)([A-Za-z0-9_-]{10,})");
 	private static final Pattern FOLDER_ID = Pattern.compile("[A-Za-z0-9_-]{10,}");

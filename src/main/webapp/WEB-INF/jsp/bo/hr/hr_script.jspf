@@ -81,13 +81,15 @@ function hrDriveGear(screen) {
 }
 
 // 이름표 예시 값. 서버가 실제로 넣는 형식과 같다(입사일 점, 올린날짜 8자리, 연월 YYYY-MM)
-var HR_DRIVE_SAMPLE = { '성명': '홍길동', '입사일': '2026.03.02', '서류명': '주민등록등본', '올린날짜': '20261116', '원래이름': '노트북구매영수증', '연월': '2026-11', '과제명': 'AI 플랫폼 개발' };
+var HR_DRIVE_SAMPLE = { '성명': '홍길동', '입사일': '2026.03.02', '서류명': '주민등록등본', '올린날짜': '20261116', '원래이름': '노트북구매영수증', '연월': '2026-11', '과제명': 'AI 플랫폼 개발',
+	'연도': '2026', '월': '11', '등록일': '11.10', '고객사': 'OO생명보험사', '사업명': '유지보수', '버전': '순정v2' };
 // 화면별로 실제 만들어지는 경로 예시: [제목, [칸 키 또는 '키+.확장자' 또는 '@고정 글자']]
 var HR_DRIVE_PATHS = {
 	STAFF: [['교육생 폴더', ['ROOT', 'WAIT', 'TRAINEE']], ['정규직 서류', ['ROOT', 'REG', 'PERSON', 'DOCS', 'FILE+.pdf']], ['계약직·프리 이력카드', ['ROOT', 'CON', 'PERSON', 'WORD+.docx']], ['퇴사자', ['ROOT', 'LEFT', 'PERSON']]],
 	EQUIP: [['구매영수증', ['ROOT', 'RECEIPT', 'FILE+.pdf']], ['기타 첨부', ['ROOT', 'ETC', 'FILE+.jpg']], ['서명한 대여증서', ['ROOT', 'SIGN', '@(서명한 증서 파일)']]],
 	LAB: [['마감 PDF', ['@(과제 폴더)', 'SUB', 'FILE+.pdf']]],
-	PARTNER: [['서류 글자 읽기', ['TEMP', '@(읽는 동안만 잠깐 생겼다 지워지는 파일)']]]
+	PARTNER: [['서류 글자 읽기', ['TEMP', '@(읽는 동안만 잠깐 생겼다 지워지는 파일)']]],
+	RECRUIT: [['지원 프로필', ['ROOT', 'YEAR', 'MONTH', 'POST', 'WORD+.docx']], ['모집 첨부', ['ROOT', 'YEAR', 'MONTH', 'POST', 'SUB', '@요구사항.pdf']]]
 };
 function hrDriveRender(pattern) {
 	return String(pattern || '').replace(/\{([^{}]+)\}/g, function(all, k) { return (HR_DRIVE_SAMPLE[k] || '').replace(/\//g, '·'); }).trim();

@@ -129,10 +129,10 @@
 	var CAL_KIND = {
 		INTV_NEW: ['신입면접', '#0b6e8a'], INTV_EXP: ['경력면접', '#00838f'], DEPLOY_IN: ['투입', '#2f7d32'], DEPLOY_OUT: ['철수', '#c62828'], PROB: ['수습 해제', '#b8860b'],
 		EDU: ['교육 시작', '#6b3fa0'], AVAIL: ['인터뷰', '#9c6ad6'], JOIN: ['입사', '#1565c0'], LEAVE: ['퇴사', '#78858f'],
-		PAY: ['급여 지급', '#d35400'], EVT: ['확정 일정', '#00897b']
+		PAY: ['급여 지급', '#d35400'], RC_INTV: ['모집 인터뷰', '#e8590c'], RC_CLOSE: ['모집 마감', '#c2255c']
 	};
-	// 카드(권한) → 그 카드가 넣는 일정 종류
-	var CAL_SRC = { STAFF: ['JOIN', 'LEAVE'], DEPLOY: ['DEPLOY_IN', 'DEPLOY_OUT', 'PROB'], INTV: ['INTV_NEW', 'INTV_EXP'], TRAINEE: ['EDU', 'AVAIL'], PAY: ['PAY'], CAL: ['EVT'] };
+	// 카드(권한) → 그 카드가 넣는 일정 종류. 모두 우리 시스템에 등록된 정보(구글 캘린더 일정은 넣지 않는다)
+	var CAL_SRC = { STAFF: ['JOIN', 'LEAVE'], DEPLOY: ['DEPLOY_IN', 'DEPLOY_OUT', 'PROB'], INTV: ['INTV_NEW', 'INTV_EXP'], TRAINEE: ['EDU', 'AVAIL'], PAY: ['PAY'], RECRUIT: ['RC_INTV', 'RC_CLOSE'] };
 	var calEvents = [], calOff = {}, calendar = null, calTimer = null, calDay = null;
 	function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
 	try { calOff = JSON.parse(store('hmCalOff') || '{}') || {}; } catch (e) { calOff = {}; }
@@ -218,10 +218,16 @@
 		}
 		$btn.on('click', function() { setOpen($c.hasClass('closed')); });
 		setOpen(store('hmCalOpen') !== '0');
-		if (can('CAL')) {
-			fetch('/admin/calendar/eventListData.do?fromDt=' + moment().subtract(6, 'months').format('YYYY-MM-DD') + '&toDt=' + moment().add(6, 'months').format('YYYY-MM-DD'), function(res) {
-				(res.list || []).forEach(function(e) {
-					calAdd('EVT', e.START_DT, e.EVT_TITLE, '/admin/calendar/openCalendarList.do', e.ALL_DAY_YN === 'Y' ? null : (e.START_DT || '').substr(11, 5), [['장소', e.EVT_LOC], ['끝', e.END_DT]]);
+		if (can('RECRUIT')) {
+			fetch('/admin/recruit/listData.do', function(res) {
+				var d = res.result || {}, rc = {};
+				(d.recruits || []).forEach(function(r) {
+					rc[r.RECRUIT_SQ] = r;
+					if (r.STATUS_CD !== 'CLOSED') calAdd('RC_CLOSE', r.CLOSE_DT, r.CLIENT_NM || '모집', '/admin/recruit/openRecruitList.do?open=' + r.RECRUIT_SQ, null, [['사업', r.PRJ_NM], ['등급·인원', r.GRADE_TXT]]);
+				});
+				(d.applies || []).forEach(function(a) {
+					var r = rc[a.RECRUIT_SQ] || {};
+					if (a.STEP_CD === 'INTV' && a.INTV_DT) calAdd('RC_INTV', a.INTV_DT, a.STAFF_NM + ' · ' + (r.CLIENT_NM || ''), '/admin/recruit/openRecruitList.do?open=' + a.RECRUIT_SQ, a.INTV_DT.substr(11, 5), [['장소', a.INTV_PLACE], ['사업', r.PRJ_NM]]);
 				});
 			});
 		}

@@ -51,7 +51,8 @@ public class MailConfService {
 			{ LAB_REQ, "연구일지", "승인 요청", "제출·단계 승인", "다음 결재자" },
 			{ LAB_RESEND, "연구일지", "승인 요청 다시 보내기", "상세 버튼", "지금 결재자" },
 			{ LAB_CLOSE, "연구일지", "마감 메일", "마감 후 드라이브 업로드", "그 달 연구원" },
-			{ LAB_CEO, "연구일지", "대표 참조", "마감 메일과 함께", "결재라인 '대표' 단계" } };
+			{ LAB_CEO, "연구일지", "대표 참조", "마감 메일과 함께", "결재라인 '대표' 단계" },
+			{ "RECRUIT_INTV", "모집", "인터뷰 일정 안내", "인터뷰확정·변경·취소", "지원자 회사 메일" } };
 	private static final Pattern EMAIL = Pattern.compile("[^@\\s<>\",]+@[^@\\s<>\",]+\\.[^@\\s<>\",]+");
 	private static final String DEFAULT_FROM_NM = "주식회사 이에스티소프트";
 

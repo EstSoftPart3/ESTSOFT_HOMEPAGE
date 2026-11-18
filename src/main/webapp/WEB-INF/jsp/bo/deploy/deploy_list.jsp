@@ -957,23 +957,39 @@
 
 	function renderIdle(list) {
 		var KIND = { WAIT: ['대기', 'warn'], NONE: ['이력 없음', ''], FUTURE: ['투입 예정', 'rent'] };
-		var $t = $('<table class="table table-sm cal-table mb-0">').append('<thead><tr><th>성명</th><th>구분</th><th>직급·소속</th><th>거주지역</th><th>희망지역</th><th>입사일</th><th>대기 기간</th><th>프로젝트 이력</th><th><span class="sr-only">작업</span></th></tr></thead>');
+		var $t = $('<table class="table table-sm cal-table mb-0">').append('<thead><tr><th>성명</th><th>구분</th><th>직급·소속</th><th>거주지역</th><th>희망지역</th><th>프로필 버전</th><th>지원 중 모집</th><th>입사일</th><th>대기 기간</th><th>프로젝트 이력</th><th><span class="sr-only">작업</span></th></tr></thead>');
 		var $b = $('<tbody>').appendTo($t);
 		if (!list.length) boEmpty($b, '대기 중인 직원이 없습니다.');
+		var STEP = { DOC: '서류검토', INTV_WAIT: '인터뷰대기', INTV: '인터뷰확정', JOIN_WAIT: '투입대기' };
+		// 프로필 버전 칩(누르면 그 버전 워드), 지원 중 모집(누르면 모집 관리) — 모집 관리(RecruitService)가 채운다
+		function verCell(sq) {
+			var ps = (data.profiles || []).filter(function(p) { return String(p.STAFF_SQ) === String(sq); });
+			if (!ps.length) return $('<td>').append('<span class="dp-pill">없음</span>');
+			return $('<td class="text-nowrap">').append(ps.slice(0, 3).map(function(p) {
+				return $('<a class="dp-prj mr-1">').attr({ href: '/admin/deploy/profileWord.do?STAFF_SQ=' + sq + '&VER_NO=' + p.VER_NO, title: p.REG_DT + ' · 눌러서 워드 받기' }).css(p.VER_KIND === 'EDIT' ? { borderColor: '#b197fc', color: '#6741d9', background: '#f3f0ff' } : {})
+					.text((p.VER_KIND === 'EDIT' ? '가필 v' : '순정 v') + p.VER_NO);
+			}));
+		}
+		function applyCell(sq) {
+			var as = (data.recruitApplies || []).filter(function(a) { return String(a.STAFF_SQ) === String(sq); });
+			return $('<td class="text-nowrap">').append(as.length ? as.map(function(a) {
+				return $('<div>').append($('<a target="_blank" rel="noopener">').attr('href', '/admin/recruit/openRecruitList.do?open=' + a.RECRUIT_SQ).text((a.CLIENT_NM || '모집') + ' · ' + STEP[a.STEP_CD] + (a.STEP_CD === 'INTV' && a.INTV_DT ? ' 🎤' + a.INTV_DT : '') + ' ↗'));
+			}) : '-');
+		}
 		list.forEach(function(it) {
 			var s = it.s, k = KIND[it.kind];
 			var wait = it.kind === 'FUTURE' ? moment(it.future.START_DT).diff(today, 'days') + '일 뒤 투입' : it.days + '일' + (it.kind === 'NONE' ? ' (입사 후)' : '');
 			var $tr = $('<tr>').toggleClass('dp-secret', !!s.SECRET).append($('<td>').append($('<button type="button" class="dp-name">').text(s.STAFF_NM).on('click', function() { if (it.last || it.future) openDetail(it.future || it.last); })))
 				.append($('<td>').append($('<span class="dp-pill">').addClass(k[1]).text(k[0])))
 				.append($('<td>').text([s.POSITION_NM, s.DEPT_NM || s.ORG_NM].filter(Boolean).join(' · ')))
-				.append(regionCell(s.ADDR)).append(wantCell(s)).append($('<td>').text(s.JOIN_DT || ''))
+				.append(regionCell(s.ADDR)).append(wantCell(s)).append(verCell(s.STAFF_SQ)).append(applyCell(s.STAFF_SQ)).append($('<td>').text(s.JOIN_DT || ''))
 				.append($('<td>').append($('<span>').toggleClass('text-danger font-weight-bold', it.kind !== 'FUTURE' && it.days > 14).text(wait)))
 				.append($('<td>').append(prjBtn(s.STAFF_SQ, s.STAFF_NM)))
 				.append($('<td class="text-nowrap">').append(it.kind === 'FUTURE'
 					? $('<button type="button" class="btn btn-sm btn-outline-secondary">투입 수정</button>').on('click', function() { openDetail(it.future); })
-					: $('<button type="button" class="btn btn-sm btn-primary">+ 투입 등록</button>').on('click', function() { regForm($tr, s, it.last, 9); })));
+					: $('<button type="button" class="btn btn-sm btn-primary">+ 투입 등록</button>').on('click', function() { regForm($tr, s, it.last, 11); })));
 			$b.append($tr.append(payCells(s.STAFF_SQ)));
-			if (it.kind === 'FUTURE') $b.append(childRow('└ 투입 예정', it.future, 9, 'D-' + moment(it.future.START_DT).diff(today, 'days')));
+			if (it.kind === 'FUTURE') $b.append(childRow('└ 투입 예정', it.future, 11, 'D-' + moment(it.future.START_DT).diff(today, 'days')));
 		});
 		$('#altView').empty().append(withPay($t));
 	}
