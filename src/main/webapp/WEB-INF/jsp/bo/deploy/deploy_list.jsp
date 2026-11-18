@@ -171,6 +171,7 @@
 					</div>
 					<div class="modal-footer">
 						<button type="button" class="btn btn-sm btn-outline-danger mr-auto" onclick="deleteDetail();">삭제</button>
+						<button type="button" class="btn btn-sm btn-outline-primary" id="dExtend" onclick="extendDetail();">연장</button>
 						<button type="button" class="btn btn-sm btn-outline-warning" onclick="leaveDeploy();">철수 처리</button>
 						<button type="button" class="btn btn-sm btn-outline-secondary" onclick="nextDeploy();">철수 후 다음 투입 등록</button>
 						<button type="submit" class="btn btn-sm btn-primary">저장</button>
@@ -890,6 +891,36 @@
 				load();
 			});
 		} });
+	}
+
+	// 연장: 철수 임박의 연장과 같은 저장(같은 건의 철수일을 늘리고, 단가는 급여 권한자가 넣었을 때만 바꿈)
+	function extendDetail() {
+		var sq = Number($('#detailForm [name=DEPLOY_SQ]').val()), x = data.all.filter(function(d) { return d.DEPLOY_SQ === sq; })[0];
+		if (!x) return;
+		if (!x.END_DT) { bootbox.alert('철수일이 미정인 건은 연장할 필요가 없습니다. 철수일 칸을 넣고 저장하세요.'); return; }
+		var $end = $('<input class="form-control form-control-sm" type="date" id="extEnd">').attr('min', moment(x.END_DT).add(1, 'days').format('YYYY-MM-DD'));
+		var $box = $('<div>').append($('<label class="small text-muted mb-1" for="extEnd">').text('새 철수일 (지금 ' + x.END_DT + ')')).append($end);
+		var $sale, $cost;
+		if (data.canPay) {
+			$sale = $('<input class="form-control form-control-sm" inputmode="numeric" id="extSale">').attr('placeholder', '비우면 그대로 ' + dpWon(x.SALE_PRICE));
+			$cost = $('<input class="form-control form-control-sm" inputmode="numeric" id="extCost">').attr('placeholder', '비우면 그대로 ' + dpWon(x.COST_PRICE));
+			$box.append($('<label class="small text-muted mb-1 mt-2" for="extSale">').text('월 매출단가 🔒')).append($sale)
+				.append($('<label class="small text-muted mb-1 mt-2" for="extCost">').text('월 계약단가 🔒')).append($cost);
+		}
+		var $memo = $('<input class="form-control form-control-sm" id="extMemo" placeholder="선택 · 메모 끝에 [연장 날짜]로 덧붙습니다">');
+		$box.append($('<label class="small text-muted mb-1 mt-2" for="extMemo">').text('메모')).append($memo);
+		function save() {
+			if (!$end.val() || $end.val() <= x.END_DT) { $end.focus(); bootbox.alert('새 철수일은 지금 철수일(' + x.END_DT + ') 뒤여야 합니다.'); return; }
+			hrPost('/admin/deploy/extendDeployData.do', { DEPLOY_SQ: x.DEPLOY_SQ, END_DT: $end.val(), SALE_PRICE: $sale ? $sale.val() : '', COST_PRICE: $cost ? $cost.val() : '', MEMO: $memo.val() }, function() {
+				$('#dpInfo').modal('hide'); $('#detailModal').modal('hide'); load();
+			});
+		}
+		$box.prepend($('<div class="bo-actions mb-2">').append($('<span class="mr-auto">')).append($('<button type="button" class="btn btn-sm btn-primary">연장 저장</button>').on('click', save)));
+		$box.on('keydown', 'input', function(e) { if (e.key === 'Enter' && !e.originalEvent.isComposing) { e.preventDefault(); save(); } });
+		$('#dpInfo').one('shown.bs.modal', function() { $end.focus(); });
+		var $dlg = $('#dpInfo .modal-dialog').css('max-width', '420px');
+		$('#dpInfo').one('hidden.bs.modal', function() { $dlg.css('max-width', ''); });
+		dpInfo(x.STAFF_NM + ' · 연장', $box);
 	}
 
 	// ── 휴직 ──
