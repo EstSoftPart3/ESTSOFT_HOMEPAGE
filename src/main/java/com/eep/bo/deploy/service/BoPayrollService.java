@@ -87,6 +87,21 @@ public class BoPayrollService {
 		return out;
 	}
 
+	/** 홈 달력: from~to 달의 급여 지급일(정하지 않았으면 익월 15일)과 마감 여부. 급여를 다시 계산하지 않고 읽기만 한다 */
+	public List<Map<String, Object>> payDates(String from, String to) {
+		List<Map<String, Object>> out = new java.util.ArrayList<>();
+		for (YearMonth m = YearMonth.parse(from), end = YearMonth.parse(to); !m.isAfter(end) && out.size() < 24; m = m.plusMonths(1)) {
+			Map<String, Object> q = one("YM", m.toString());
+			String payDt = mapper.selectPayDate(q);
+			Map<String, Object> r = new HashMap<>();
+			r.put("YM", m.toString());
+			r.put("PAY_DT", payDt != null && !payDt.isEmpty() ? payDt : m.plusMonths(1).atDay(15).toString());
+			r.put("CLOSED", "Y".equals(mapper.selectClosed(q)));
+			out.add(r);
+		}
+		return out;
+	}
+
 	private static Map<String, Long> counts(List<Map<String, Object>> rows) {
 		Map<String, Long> m = new HashMap<>();
 		rows.forEach(r -> m.put(String.valueOf(r.get("STAFF_SQ")), n(r.get("CNT"))));

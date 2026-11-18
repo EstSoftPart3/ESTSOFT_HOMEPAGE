@@ -34,16 +34,16 @@
 	#hmCalCard { margin-bottom: 12px; }
 	#hmCalendar { font-size: 12px; }
 	#hmCalendar .fc-toolbar { margin-bottom: 6px; } #hmCalendar .fc-toolbar h2 { font-size: 16px; }
-	#hmCalendar .fc-event { cursor: pointer; font-size: 11px; line-height: 1.35; padding: 0 2px; }
+	#hmCalendar .fc-event { cursor: pointer; font-size: 11px; line-height: 1.3; padding: 0 2px; }
 	#hmCalendar .fc-day-grid .fc-row { min-height: 0 !important; }
-	#hmCalendar .fc-day-grid .fc-content-skeleton { padding-bottom: 2px; }
+	#hmCalendar .fc-day-grid .fc-content-skeleton { padding-bottom: 1px; }
+	#hmCalendar .fc-day-number { font-size: 11px; padding: 1px 4px !important; }
 	#hmCalendar .fc-more { font-size: 11px; font-weight: 700; color: #0b6e8a; }
-	#hmCalCard.closed .hm-body { display: none; }
-	/* 더보기로 펼친 날짜: 그 주 줄 바로 아래 */
-	.hm-cal-day { border: 1px solid #0b6e8a; border-radius: 6px; background: #f3fbfd; margin: 2px 0 4px; padding: 6px 8px; }
-	.hm-cal-day .hd { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-	.hm-cal-day ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 3px 10px; }
-	.hm-cal-day li button { width: 100%; text-align: left; border: 0; border-left: 4px solid #999; background: #fff; padding: 2px 6px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	/* 접힌(요약) 월 보기: 날짜 칸에 2건 + 더보기, 한 화면에 한 달이 들어오게 */
+	#hmCalCard.compact #hmCalendar .fc-event { font-size: 10.5px; line-height: 1.2; }
+	/* 업무 화면 상세 팝업을 홈 위에 그대로 띄우는 투명 틀(include_top 의 ?popup=1) */
+	.hm-pop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; border: 0; z-index: 1060; background: transparent; }
+	.hm-pop-wait { position: fixed; inset: 0; z-index: 1059; background: rgba(0,0,0,.25); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; }
 	@media (max-width: 991px) { .hm-grid, .hm-money { grid-template-columns: 1fr; } }
 </style>
 <link rel="stylesheet" href="/resources/bo/plugins/fullcalendar/main.min.css">
@@ -127,20 +127,21 @@
 
 	// ── 일정 캘린더: 각 카드가 불러온 목록의 날짜를 모은다(그 화면 권한이 있는 일정만) ──
 	var CAL_KIND = {
-		INTV_NEW: ['신입면접', '#0b6e8a'], INTV_EXP: ['경력면접', '#00838f'], DEPLOY_IN: ['투입', '#2f7d32'], DEPLOY_OUT: ['철수', '#c62828'], PROB: ['수습 해제', '#b8860b'],
+		INTV_NEW: ['신입면접', '#0b6e8a'], INTV_EXP: ['경력면접', '#d6336c'], DEPLOY_IN: ['투입', '#2f7d32'], DEPLOY_OUT: ['철수', '#c62828'], PROB: ['수습 해제', '#b8860b'],
 		EDU: ['교육 시작', '#6b3fa0'], AVAIL: ['인터뷰', '#9c6ad6'], JOIN: ['입사', '#1565c0'], LEAVE: ['퇴사', '#78858f'],
-		PAY: ['급여 지급', '#d35400'], RC_INTV: ['모집 인터뷰', '#e8590c'], RC_CLOSE: ['모집 마감', '#c2255c']
+		PAY: ['급여 지급', '#d35400'], RC_INTV: ['모집 인터뷰', '#e8590c'], RC_CLOSE: ['모집 마감', '#795548']
 	};
 	// 카드(권한) → 그 카드가 넣는 일정 종류. 모두 우리 시스템에 등록된 정보(구글 캘린더 일정은 넣지 않는다)
 	var CAL_SRC = { STAFF: ['JOIN', 'LEAVE'], DEPLOY: ['DEPLOY_IN', 'DEPLOY_OUT', 'PROB'], INTV: ['INTV_NEW', 'INTV_EXP'], TRAINEE: ['EDU', 'AVAIL'], PAY: ['PAY'], RECRUIT: ['RC_INTV', 'RC_CLOSE'] };
-	var calEvents = [], calOff = {}, calendar = null, calTimer = null, calDay = null;
+	var calEvents = [], calOff = {}, calendar = null, calTimer = null;
 	function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
 	try { calOff = JSON.parse(store('hmCalOff') || '{}') || {}; } catch (e) { calOff = {}; }
 	// date: yyyy-MM-dd(뒤는 무시), time: HH:mm 이면 시간 일정, info: 팝업에 보일 [[이름, 값]]
-	function calAdd(kind, date, title, href, time, info) {
+	// pop: 업무 화면의 상세 팝업 주소(그 화면이 주소로 상세를 여는 것: 인사카드 ?STAFF_SQ, 투입 ?open, 면접 ?INTV_SQ, 교육생 ?TRN_SQ, 모집 ?open). 없으면 홈 요약 팝업
+	function calAdd(kind, date, title, href, time, info, pop) {
 		if (!date || !/^\d{4}-\d{2}-\d{2}/.test(date)) return;
 		var t = /^\d{2}:\d{2}$/.test(time || '') ? time : null;
-		calEvents.push({ kind: kind, start: date.substr(0, 10) + (t ? 'T' + t : ''), allDay: !t, name: title, title: CAL_KIND[kind][0] + ' ' + title, url: href, info: info || [] });
+		calEvents.push({ kind: kind, start: date.substr(0, 10) + (t ? 'T' + t : ''), allDay: !t, name: title, title: CAL_KIND[kind][0] + ' ' + title, url: href, info: info || [], pop: pop || null });
 		clearTimeout(calTimer);
 		calTimer = setTimeout(calPaint, 50);
 	}
@@ -155,11 +156,24 @@
 		calendar.addEventSource(calShown().map(function(e) {
 			return { title: e.title, start: e.start, allDay: e.allDay, backgroundColor: CAL_KIND[e.kind][1], borderColor: CAL_KIND[e.kind][1], textColor: '#fff', extendedProps: { ev: e } };
 		}));
-		calDayPanel();
 	}
 	function dayText(d) { return moment(d).format('M월 D일') + ' (' + '일월화수목금토'.charAt(moment(d).day()) + ')'; }
-	// 일정 팝업: 화면을 넘기지 않고 홈에서 본다. 필요하면 '화면에서 열기'
+	// 일정 팝업: 업무 화면의 상세 팝업을 홈 위에 그대로 띄운다(그 화면을 ?embed=1&popup=1 로 투명하게 열어 팝업만 보이게).
+	// 그 화면에서 상세를 못 찾으면(기간 밖 등) 홈 요약 팝업으로 대신한다
 	function calPop(e) {
+		if (!e.pop) return calSummary(e);
+		var $wait = $('<div class="hm-pop-wait" role="status">불러오는 중…</div>').appendTo('body');
+		var $f = $('<iframe class="hm-pop" title="상세">').attr('src', e.pop + (e.pop.indexOf('?') < 0 ? '?' : '&') + 'embed=1&popup=1').appendTo('body');
+		function done() { $(window).off('message.hmpop'); $f.remove(); $wait.remove(); }
+		$(window).on('message.hmpop', function(m) {
+			var d = m.originalEvent.data, src = m.originalEvent.source;
+			if (!d || !d.boPopup || src !== $f[0].contentWindow) return;
+			if (d.boPopup === 'open') { $wait.remove(); $f[0].focus(); }
+			else if (d.boPopup === 'close') done();
+			else if (d.boPopup === 'empty') { done(); calSummary(e); }
+		});
+	}
+	function calSummary(e) {
 		var $t = $('<table class="table table-sm mb-0">');
 		[['종류', CAL_KIND[e.kind][0]], ['일시', dayText(e.start) + (e.allDay ? '' : ' ' + e.start.substr(11, 5))]].concat(e.info).forEach(function(r) {
 			if (r[1]) $t.append($('<tr>').append($('<th style="width:90px">').text(r[0])).append($('<td>').text(r[1])));
@@ -167,21 +181,6 @@
 		bootbox.dialog({ title: e.title, message: $t, onEscape: true, backdrop: true, buttons: {
 			open: { label: '화면에서 열기', className: 'btn-sm btn-outline-primary', callback: function() { if (e.url && !openTab(e.url, {})) location.href = e.url; } },
 			close: { label: '닫기', className: 'btn-sm btn-secondary' } } });
-	}
-	// 월 보기 날짜 칸은 3건 + 더보기(eventLimit 은 더보기 줄까지 센다). '+n 더보기'를 누르면 그 날의 전체 일정을 그 주 줄 바로 아래에 펼치고, 다시 누르거나 접기로 닫는다
-	function calDayPanel() {
-		$('#hmCalDay').remove();
-		if (!calDay || !calendar || calendar.view.type !== 'dayGridMonth') return;
-		var $row = $('#hmCalendar .fc-day[data-date="' + calDay + '"]').closest('.fc-row');
-		if (!$row.length) { calDay = null; return; }
-		var list = calShown().filter(function(e) { return e.start.substr(0, 10) === calDay; }).sort(function(a, b) { return (a.allDay ? '' : a.start).localeCompare(b.allDay ? '' : b.start); });
-		var $p = $('<div id="hmCalDay" class="hm-cal-day">').append($('<div class="hd">').append($('<b>').text(dayText(calDay) + ' 일정 ' + list.length + '건'))
-			.append($('<button type="button" class="btn btn-sm btn-outline-secondary ml-auto">▴ 접기</button>').on('click', function() { calDay = null; calDayPanel(); })));
-		var $u = $('<ul>').appendTo($p);
-		list.forEach(function(e) {
-			$u.append($('<li>').append($('<button type="button">').css('border-left-color', CAL_KIND[e.kind][1]).text((e.allDay ? '' : e.start.substr(11, 5) + ' ') + e.title).on('click', function() { calPop(e); })));
-		});
-		$p.insertAfter($row);
 	}
 	function calCard() {
 		var kinds = [];
@@ -203,31 +202,33 @@
 			header: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
 			buttonText: { today: '오늘', month: '월', week: '주', day: '일' },
 			height: 'auto', nowIndicator: true, minTime: '08:00:00', maxTime: '20:00:00', slotDuration: '01:00:00',
-			eventLimit: 4, eventLimitText: function(n) { return '+' + n + ' 더보기'; },
-			eventLimitClick: function(arg) { var d = moment(arg.date).format('YYYY-MM-DD'); calDay = calDay === d ? null : d; calDayPanel(); },
-			datesRender: function(info) { store('hmCalView', info.view.type); calDay = null; $('#hmCalDay').remove(); },
+			eventLimit: 3, eventLimitText: function(n) { return '+' + n + ' 더보기'; },
+			// '+n 더보기'는 팝업 대신 달력 전체를 펼친다(날짜 칸이 일정 수만큼 높아짐)
+			eventLimitClick: function() { setOpen(true); },
+			datesRender: function(info) { store('hmCalView', info.view.type); },
 			eventClick: function(info) { info.jsEvent.preventDefault(); calPop(info.event.extendedProps.ev); }
 		});
-		// 접기·펴기(상태 기억). 접힌 채 열면 펼칠 때 그린다
-		var rendered = false;
+		// 접기·펴기 = 월 달력 높이: 접으면 날짜 칸마다 2건 + 더보기(한 화면에 한 달), 펴면 모든 일정이 보이게 칸이 늘어난다. 상태 기억
 		function setOpen(open) {
-			$c.toggleClass('closed', !open);
-			$btn.text(open ? '▴ 접기' : '▾ 펼치기').attr('aria-expanded', open);
-			store('hmCalOpen', open ? '1' : '0');
-			if (open && !rendered) { rendered = true; calendar.render(); calPaint(); } else if (open) calendar.updateSize();
+			$c.toggleClass('compact', !open);
+			$btn.text(open ? '▴ 접기 (요약)' : '▾ 펼치기 (일정 모두)').attr('aria-expanded', open);
+			store('hmCalFull', open ? '1' : '0');
+			calendar.setOption('eventLimit', open ? false : 3);
 		}
-		$btn.on('click', function() { setOpen($c.hasClass('closed')); });
-		setOpen(store('hmCalOpen') !== '0');
+		$btn.on('click', function() { setOpen($c.hasClass('compact')); });
+		calendar.render();
+		setOpen(store('hmCalFull') === '1'); // 예전 hmCalOpen(카드 숨기기)과 다른 뜻이라 새 키, 처음은 접힌 요약
+		calPaint();
 		if (can('RECRUIT')) {
 			fetch('/admin/recruit/listData.do', function(res) {
 				var d = res.result || {}, rc = {};
 				(d.recruits || []).forEach(function(r) {
 					rc[r.RECRUIT_SQ] = r;
-					if (r.STATUS_CD !== 'CLOSED') calAdd('RC_CLOSE', r.CLOSE_DT, r.CLIENT_NM || '모집', '/admin/recruit/openRecruitList.do?open=' + r.RECRUIT_SQ, null, [['사업', r.PRJ_NM], ['등급·인원', r.GRADE_TXT]]);
+					if (r.STATUS_CD !== 'CLOSED') calAdd('RC_CLOSE', r.CLOSE_DT, r.CLIENT_NM || '모집', '/admin/recruit/openRecruitList.do?open=' + r.RECRUIT_SQ, null, [['사업', r.PRJ_NM], ['등급·인원', r.GRADE_TXT]], '/admin/recruit/openRecruitList.do?open=' + r.RECRUIT_SQ);
 				});
 				(d.applies || []).forEach(function(a) {
 					var r = rc[a.RECRUIT_SQ] || {};
-					if (a.STEP_CD === 'INTV' && a.INTV_DT) calAdd('RC_INTV', a.INTV_DT, a.STAFF_NM + ' · ' + (r.CLIENT_NM || ''), '/admin/recruit/openRecruitList.do?open=' + a.RECRUIT_SQ, a.INTV_DT.substr(11, 5), [['장소', a.INTV_PLACE], ['사업', r.PRJ_NM]]);
+					if (a.STEP_CD === 'INTV' && a.INTV_DT) calAdd('RC_INTV', a.INTV_DT, a.STAFF_NM + ' · ' + (r.CLIENT_NM || ''), '/admin/recruit/openRecruitList.do?open=' + a.RECRUIT_SQ, a.INTV_DT.substr(11, 5), [['장소', a.INTV_PLACE], ['사업', r.PRJ_NM]], '/admin/recruit/openRecruitList.do?open=' + a.RECRUIT_SQ);
 				});
 			});
 		}
@@ -269,8 +270,9 @@
 			kpi('staff', '재직 인원', work.length, '정규직 ' + reg + ' · 프리 ' + free, URL.staff);
 			(res.list || []).forEach(function(r) {
 				var info = [['소속', r.ORG_NM], ['부서', r.DEPT_NM], ['직급', r.POSITION_NM], ['입사일', r.JOIN_DT], ['퇴사일', r.LEAVE_DT]];
-				calAdd('JOIN', r.JOIN_DT, r.STAFF_NM, staffHref(r.STAFF_SQ), null, info);
-				calAdd('LEAVE', r.LEAVE_DT, r.STAFF_NM, staffHref(r.STAFF_SQ), null, info);
+				var sp = can('STAFF') ? URL.staff + '?STAFF_SQ=' + r.STAFF_SQ : null; // 인사카드 팝업
+				calAdd('JOIN', r.JOIN_DT, r.STAFF_NM, staffHref(r.STAFF_SQ), null, info, sp);
+				calAdd('LEAVE', r.LEAVE_DT, r.STAFF_NM, staffHref(r.STAFF_SQ), null, info, sp);
 			});
 		});
 	}
@@ -286,9 +288,10 @@
 				var who = x.STAFF_NM + (x.CLIENT_NM ? ' (' + x.CLIENT_NM + ')' : '');
 				var info = [['고객사', x.CLIENT_NM], ['프로젝트', x.PRJ_NM], ['형태', empType[x.EMP_TYPE_CD] || x.EMP_TYPE_CD], ['근무지역', x.WORK_AREA],
 					['투입기간', (x.START_DT || '') + ' ~ ' + (x.END_DT || '미정')], ['수습해제일', x.PROB_END_DT]];
-				calAdd('DEPLOY_IN', x.START_DT, who, staffHref(x.STAFF_SQ), null, info);
-				calAdd('DEPLOY_OUT', x.END_DT, who, staffHref(x.STAFF_SQ), null, info);
-				if (x.EMP_TYPE_CD === 'PROBATION') calAdd('PROB', x.PROB_END_DT, x.STAFF_NM, staffHref(x.STAFF_SQ), null, info);
+				var dp = URL.deploy + '?open=' + x.DEPLOY_SQ; // 투입 상세 팝업
+				calAdd('DEPLOY_IN', x.START_DT, who, staffHref(x.STAFF_SQ), null, info, dp);
+				calAdd('DEPLOY_OUT', x.END_DT, who, staffHref(x.STAFF_SQ), null, info, dp);
+				if (x.EMP_TYPE_CD === 'PROBATION') calAdd('PROB', x.PROB_END_DT, x.STAFF_NM, staffHref(x.STAFF_SQ), null, info, dp);
 			});
 			function deps(sq) { return d.all.filter(function(x) { return x.STAFF_SQ === sq; }); }
 			function active(x) { return !moment(x.START_DT).isAfter(today) && (!x.END_DT || !moment(x.END_DT).isBefore(today)); }
@@ -339,7 +342,7 @@
 				calAdd(r.HIRE_CD === 'EXP' ? 'INTV_EXP' : 'INTV_NEW', r.INTV_DT, r.APLY_NM, URL.intv + '?INTV_SQ=' + r.INTV_SQ, r.INTV_TM, [
 					['구분', hire[r.HIRE_CD] || r.HIRE_CD], ['나이', r.AGE], ['연락처', r.PHONE], ['경로', (rt[r.APLY_ROUTE] || r.APLY_ROUTE || '') + (r.REFERRER ? ' (' + r.REFERRER + ')' : '')],
 					['참석', at[r.ATTEND_ST] || r.ATTEND_ST], ['결과', rs[r.RESULT_ST] || r.RESULT_ST], ['합격통보', nt[r.NOTICE_ST] || r.NOTICE_ST], ['입사', jn[r.JOIN_ST] || r.JOIN_ST], ['출근일', r.JOIN_DT],
-					['메모', (r.MEMO || '').split('\n')[0]]]);
+					['메모', (r.MEMO || '').split('\n')[0]]], URL.intv + '?INTV_SQ=' + r.INTV_SQ);
 			});
 			var from = moment().startOf('isoWeek').format('YYYY-MM-DD'), to = moment().endOf('isoWeek').format('YYYY-MM-DD'), d = today.format('YYYY-MM-DD');
 			var list = (res.list || []).filter(function(r) { return r.INTV_DT >= from && r.INTV_DT <= to; })
@@ -364,8 +367,8 @@
 			var ing = (res.list || []).filter(function(r) { return r.STATUS_CD === 'ING'; });
 			var stNm = { ING: '교육진행중', END: '교육종료', DROP: '중도이탈' }, iv = hrCodeMap('HR_INTERVIEW');
 			function tInfo(r) { return [['상태', stNm[r.STATUS_CD] || r.STATUS_CD], ['교육 시작', r.EDU_START_DT], ['인터뷰', iv[r.INTERVIEW_YN] || r.INTERVIEW_YN], ['인터뷰 가능일', r.INTERVIEW_AVAIL], ['나이', r.AGE], ['메모', (r.MEMO || '').split('\n')[0]]]; }
-			(res.list || []).forEach(function(r) { calAdd('EDU', r.EDU_START_DT, r.TRN_NM, URL.trainee, null, tInfo(r)); });
-			ing.forEach(function(r) { calAdd('AVAIL', r.INTERVIEW_AVAIL, r.TRN_NM, URL.trainee, null, tInfo(r)); });
+			(res.list || []).forEach(function(r) { calAdd('EDU', r.EDU_START_DT, r.TRN_NM, URL.trainee, null, tInfo(r), URL.trainee + '?TRN_SQ=' + r.TRN_SQ); });
+			ing.forEach(function(r) { calAdd('AVAIL', r.INTERVIEW_AVAIL, r.TRN_NM, URL.trainee, null, tInfo(r), URL.trainee + '?TRN_SQ=' + r.TRN_SQ); });
 			var weeks = [['1', '1주차'], ['2', '2주차'], ['3', '3주차'], ['OVER', '3주차 초과'], ['NONE', '시작일 없음']];
 			var cnt = {};
 			ing.forEach(function(r) { var w = r.EDU_WEEK || (r.EDU_START_DT ? '1' : 'NONE'); cnt[w] = (cnt[w] || 0) + 1; });
@@ -382,10 +385,16 @@
 	function payCard() {
 		var ym = moment().format('YYYY-MM'), label = moment().format('M월'), href = URL.pay + '?ym=' + ym;
 		var $b = card(label + ' 급여', URL.pay);
+		// 달력: 지난 3달~이번 달 급여의 지급일(이번 달 급여는 보통 다음 달에 지급). 지급일은 급여관리에서 정하고, 없으면 익월 15일
+		fetch('/admin/pay/payDatesData.do?FROM=' + moment().subtract(3, 'months').format('YYYY-MM') + '&TO=' + ym, function(res) {
+			(res.result || []).forEach(function(p) {
+				var m = moment(p.YM + '-01');
+				calAdd('PAY', p.PAY_DT, m.format('M월') + ' 급여', URL.pay + '?ym=' + p.YM, null, [['급여 달', m.format('YYYY년 M월')], ['상태', p.CLOSED ? '마감' : '작성중']]);
+			});
+		});
 		fetch('/admin/pay/monthData.do?YM=' + ym, function(res) {
 			if (!res.result) { $b.html('<div class="hm-empty">급여를 불러오지 못했습니다.</div>'); return; }
 			var r = res.result, rows = r.rows || [];
-			calAdd('PAY', r.PAY_DT, label + ' 급여', href, null, [['상태', r.closed ? '마감' : '작성중'], ['인원', rows.length + '명']]);
 			function sum(k) { return rows.reduce(function(s, x) { return s + Number(x[k] || 0); }, 0); }
 			var flags = rows.filter(function(x) { return x.FLAGS && x.FLAGS.length; }).length;
 			$b.closest('.hm-card').find('header').append(pill(r.closed ? '마감' : '작성중', r.closed ? 'ok' : 'warn'));

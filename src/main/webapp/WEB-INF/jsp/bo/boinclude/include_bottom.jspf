@@ -22,6 +22,17 @@
 <script src="/resources/bo/plugins/bootbox/bootbox.all.min.js"></script>
 <script src="/resources/bo/plugins/bootbox/bootbox.locales.js"></script>
 <script src="/resources/common/bootbox-close.js?v=20261117"></script>
+<script>
+// ?popup=1(include_top): 팝업이 뜨면 'open', 모두 닫히면 'close', 8초 안에 아무 팝업도 안 뜨면 'empty' 를 부모(홈)에 알린다
+if (document.documentElement.classList.contains('in-pop')) (function() {
+	var shown = false;
+	function tell(kind) { try { window.parent.postMessage({ boPopup: kind }, location.origin); } catch (e) {} }
+	$(document).on('shown.bs.modal', function() { if (!shown) { shown = true; tell('open'); } })
+		// 저장 뒤 같은 화면이 팝업을 다시 여는 경우(닫고 새로 그림)가 있어 잠깐 기다렸다가 본다
+		.on('hidden.bs.modal', function() { setTimeout(function() { if (!$('.modal.show').length) tell('close'); }, 1000); });
+	setTimeout(function() { if (!shown) tell('empty'); }, 8000);
+})();
+</script>
 
 <!-- DataTables -->
 <script src="/resources/bo/plugins/datatables/jquery.dataTables.min.js"></script>

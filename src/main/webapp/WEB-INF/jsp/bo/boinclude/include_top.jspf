@@ -164,7 +164,14 @@
   	// 바깥 틀(bo-tabs.js)의 탭 안에서 열렸으면 그리기 전에 표시해 둔다
   	// ?embed=1: 다른 화면의 팝업(iframe) 안에 띄운 화면도 같은 방식으로 메뉴를 숨긴다(매출·매입 현황)
   	try { if (/[?&]embed=1\b/.test(location.search) || (window.top !== window.self && window.top.BO_TABS)) document.documentElement.className += ' in-tab'; } catch (e) {}
+  	// ?popup=1: 홈 달력 일정처럼 다른 화면 위에 이 화면의 상세 팝업만 띄운다. 화면 본문은 숨기고 팝업만 보인다(닫히면 include_bottom 이 부모에게 알림)
+  	try { if (/[?&]popup=1\b/.test(location.search) && window.parent !== window.self) document.documentElement.className += ' in-tab in-pop'; } catch (e) {}
   </script>
+  <style>
+  	html.in-pop, html.in-pop body, html.in-pop .wrapper, html.in-pop .content-wrapper { background: transparent !important; }
+  	html.in-pop .wrapper, html.in-pop .eg-fab, html.in-pop .eg-top { visibility: hidden; }
+  	html.in-pop .modal, html.in-pop .modal-backdrop, html.in-pop .rc-menu, html.in-pop #hrToast { visibility: visible; }
+  </style>
   <link href="/resources/navereditor/css/smart_editor2.css" rel="stylesheet" type="text/css">
 	
 	<!-- 네이버 에디터 -->

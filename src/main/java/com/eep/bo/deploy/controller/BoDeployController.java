@@ -339,6 +339,11 @@ public class BoDeployController {
 		});
 	}
 
+	@RequestMapping(value = "/admin/pay/payDatesData.do", method = RequestMethod.POST)
+	public ModelAndView payDatesData(@RequestParam("FROM") String from, @RequestParam("TO") String to) {
+		return run(() -> payrollService.payDates(from, to));
+	}
+
 	@RequestMapping(value = "/admin/pay/payDateData.do", method = RequestMethod.POST)
 	public ModelAndView payDateData(@RequestParam("YM") String ym, @RequestParam("PAY_DT") String date, HttpSession session) {
 		return run(() -> {

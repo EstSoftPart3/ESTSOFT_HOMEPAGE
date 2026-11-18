@@ -154,8 +154,13 @@
 				});
 			}
 			render();
+			// ?TRN_SQ= 로 들어오면 그 교육생 상세를 연다(홈 달력 일정 팝업). 처음 한 번만
+			var linked = !linkedDone && /[?&]TRN_SQ=(\d+)/.exec(location.search), row = linked && rows.filter(function(r) { return String(r.TRN_SQ) === linked[1]; })[0];
+			linkedDone = true;
+			if (row) openEdit(row);
 		});
 	}
+	var linkedDone = false;
 
 	function resetFilters() {
 		$('#keyword').val('');
