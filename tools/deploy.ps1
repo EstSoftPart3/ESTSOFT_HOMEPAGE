@@ -111,7 +111,7 @@ echo "main=`$main adm=`$adm started=`$(echo "`$log" | grep -c 'Server startup in
 "@
 		$why = $r
 		if ($r -match 'severe=[1-9]') { break }
-		if ($r -match 'main=200 adm=([123]\d\d) started=[1-9]') { $ok = $true }
+		if ($r -match 'main=[23]\d\d adm=[23]\d\d started=[1-9]') { $ok = $true }   # 메인·관리자 모두 302(이동)가 정상
 	}
 	if (-not $ok) {
 		Remote "set -e; cd $dir; cp -p $bak est_eep.war; docker restart homepage >/dev/null; echo ok" | Out-Null
