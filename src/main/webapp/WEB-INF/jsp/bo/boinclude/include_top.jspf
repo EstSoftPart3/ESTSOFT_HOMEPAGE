@@ -151,7 +151,20 @@
   	.modal-content { border: 0; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.18); }
   	.modal-header { border-bottom-color: #edf0f2; padding: .85rem 1.1rem; }
   	.modal-header .modal-title { font-size: 16px; font-weight: 700; }
+  	/* 저장·삭제 버튼은 편집 영역 우측 상단: 팝업 바닥글을 머리글 바로 아래로 올린다(오른쪽 아래 ↑·? 버튼에 가리지 않게) */
+  	/* 질문·알림만 하는 짧은 확인창(bootbox alert·confirm·prompt)은 읽고 누르게 아래 그대로 둔다 */
   	.modal-footer { border-top-color: #edf0f2; background: #fafbfc; border-radius: 0 0 12px 12px; }
+  	.modal:not(.bootbox-alert):not(.bootbox-confirm):not(.bootbox-prompt) .modal-content > form:not(.modal-content) { display: contents; }
+  	.modal:not(.bootbox-alert):not(.bootbox-confirm):not(.bootbox-prompt) .modal-header { order: -2; }
+  	.modal:not(.bootbox-alert):not(.bootbox-confirm):not(.bootbox-prompt) .modal-footer { order: -1; border-top: 0; border-bottom: 1px solid #edf0f2; border-radius: 0; padding: .45rem .9rem; }
+  	.modal:not(.bootbox-alert):not(.bootbox-confirm):not(.bootbox-prompt) .modal-footer > .btn.mr-auto { margin-right: 0 !important; }
+  	/* 화면 직접 폼의 버튼 묶음(카드·패널 머리 오른쪽). 긴 폼은 머리를 sticky 로 붙여 스크롤해도 보인다 */
+  	.bo-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; margin-left: auto; }
+  	.bo-sticky { position: sticky; top: 0; z-index: 3; background: #fff; }
+  	.cal-panel:has(.bo-sticky), .card:has(.bo-sticky) { overflow: clip; } /* overflow:hidden 이면 sticky 가 안 붙는다 */
+  	/* 안전망: 맨 끝까지 내려도 마지막 버튼이 ↑·? 버튼보다 위에 오게 아래 여백 */
+  	.content-wrapper > .content { padding-bottom: 140px; }
+  	.modal { padding-bottom: 140px; }
   	/* 바닥글: 작고 옅게 */
   	.main-footer { padding: .55rem 1rem; font-size: 12px; color: #8a949c; background: #fff; border-top-color: #e9ecef; }
   	.main-footer strong { font-weight: 600; } .main-footer a { color: #5f6b75 !important; }

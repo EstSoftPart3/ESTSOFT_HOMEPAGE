@@ -23,15 +23,15 @@
 						</header>
 						<div class="brd-extra" id="extra" hidden></div>
 						<%-- 외부 사용자가 쓴 글도 있어 스크립트 없이(sandbox) 보여 준다 --%>
-						<iframe class="brd-body" id="body" title="본문" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
-						<footer class="brd-bar">
+						<div class="brd-bar">
 							<a class="btn btn-sm btn-outline-secondary" id="btnList" href="#"><i class="fas fa-arrow-left"></i> 목록</a>
 							<span class="mr-auto"></span>
 							<a class="btn btn-sm btn-outline-secondary" id="btnReply" href="#" hidden><i class="fas fa-reply"></i> 답글</a>
 							<button type="button" class="btn btn-sm btn-outline-secondary" id="btnBlind" hidden><i class="fas fa-eye-slash"></i> <span></span></button>
 							<a class="btn btn-sm btn-dark" id="btnEdit" href="#"><i class="fas fa-pen"></i> 수정</a>
 							<button type="button" class="btn btn-sm btn-outline-danger" id="btnDelete"><i class="fas fa-trash-alt"></i> 삭제</button>
-						</footer>
+						</div>
+						<iframe class="brd-body" id="body" title="본문" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
 					</article>
 
 					<section class="cal-panel" id="thread" hidden>

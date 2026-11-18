@@ -426,10 +426,10 @@
 			})));
 			$t.append($tr);
 		});
-		$b.append($('<div class="table-responsive">').append($('<table class="table table-sm cal-table cd-set mb-2"><thead><tr><th>사용일</th><th>상태</th><th class="text-right">금액</th><th>사용처 코드</th><th>사용처</th><th>내용</th><th>대상</th><th><span class="sr-only">삭제</span></th></tr></thead></table>').append($t)));
-		$b.append($('<div class="d-flex justify-content-end flex-wrap" style="gap:6px;">').append(
+		$b.append($('<div class="bo-actions mb-2">').append(
 			$('<button type="button" class="btn btn-sm btn-outline-primary">중간 저장</button>').click(function() { savePeriod(false); }),
 			$('<button type="button" class="btn btn-sm btn-primary">마감</button>').click(function() { savePeriod(true); })));
+		$b.append($('<div class="table-responsive">').append($('<table class="table table-sm cal-table cd-set mb-2"><thead><tr><th>사용일</th><th>상태</th><th class="text-right">금액</th><th>사용처 코드</th><th>사용처</th><th>내용</th><th>대상</th><th><span class="sr-only">삭제</span></th></tr></thead></table>').append($t)));
 	}
 
 	function setFile(f) {

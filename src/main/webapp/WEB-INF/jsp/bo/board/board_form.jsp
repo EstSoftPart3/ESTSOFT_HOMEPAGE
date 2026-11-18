@@ -12,6 +12,12 @@
 					<form class="cal-panel" id="form" novalidate
 						data-emply-sq="<c:out value="${loginInfo.loginInfo[0].emplySq}"/>" data-emply-nm="<c:out value="${loginInfo.loginInfo[0].emplyNm}"/>">
 						<header class="brd-head"><h2 class="brd-title mb-0" id="heading"></h2></header>
+						<div class="brd-bar bo-sticky">
+							<a class="btn btn-sm btn-outline-secondary" id="btnCancel" href="#">취소</a>
+							<span class="mr-auto"></span>
+							<span class="small text-muted mr-2" id="writer"></span>
+							<button type="submit" class="btn btn-sm btn-primary" id="btnSave"><i class="fas fa-check"></i> 저장</button>
+						</div>
 
 						<details class="brd-quote" id="quote" hidden>
 							<summary><b>원글</b> · <span id="quoteTitle"></span></summary>
@@ -48,13 +54,6 @@
 								<div><textarea rows="20" cols="40" id="naverEditor" style="width: 100%;"></textarea></div>
 							</div>
 						</div>
-
-						<footer class="brd-bar sticky">
-							<a class="btn btn-sm btn-outline-secondary" id="btnCancel" href="#">취소</a>
-							<span class="mr-auto"></span>
-							<span class="small text-muted mr-2" id="writer"></span>
-							<button type="submit" class="btn btn-sm btn-primary" id="btnSave"><i class="fas fa-check"></i> 저장</button>
-						</footer>
 					</form>
 				</div>
 			<%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>

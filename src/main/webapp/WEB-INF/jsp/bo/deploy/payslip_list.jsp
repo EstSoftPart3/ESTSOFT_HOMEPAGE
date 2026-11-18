@@ -54,16 +54,16 @@
 						</div>
 						<div class="ps-two px-3 pb-3">
 							<div>
+								<div class="bo-actions mb-2">
+									<button type="button" class="btn btn-sm btn-outline-secondary mr-auto" id="btnTaxDefault">기본 문구로 되돌리기</button>
+									<span class="small text-muted" id="tSaved"></span>
+									<button type="button" class="btn btn-sm btn-primary" id="btnTaxSave">저장</button>
+								</div>
 								<div class="ps-form" style="grid-template-columns:80px 1fr">
 									<label>받는 주소</label><div><span id="tTo"></span> <span class="small text-muted">· 시스템관리 › 메일 설정에서 바꿉니다</span></div>
 									<label for="tSubject">제목 *</label><input id="tSubject" class="form-control form-control-sm" maxlength="300">
 									<label>넣을 값</label><div id="tVars"></div>
 									<label for="tBody">내용 *</label><textarea id="tBody" class="form-control form-control-sm" rows="8"></textarea>
-								</div>
-								<div class="d-flex flex-wrap mt-2" style="gap:6px">
-									<button type="button" class="btn btn-sm btn-outline-secondary" id="btnTaxDefault">기본 문구로 되돌리기</button>
-									<span class="small text-muted align-self-center" id="tSaved"></span>
-									<button type="button" class="btn btn-sm btn-primary ml-auto" id="btnTaxSave">저장</button>
 								</div>
 								<div class="small text-muted mt-2" id="tAccount"></div>
 							</div>
@@ -139,14 +139,14 @@
 					<div data-pane="body" hidden>
 						<div class="ps-two">
 							<div>
+								<div class="bo-actions mb-2">
+									<button type="button" class="btn btn-sm btn-outline-secondary mr-auto" id="btnDefault">기본 문구로 되돌리기</button>
+									<button type="button" class="btn btn-sm btn-outline-secondary" id="btnTest">✉ 시험 발송 (내 메일로)</button>
+									<button type="button" class="btn btn-sm btn-primary" id="btnBody">저장</button>
+								</div>
 								<div class="ps-form" style="grid-template-columns:60px 1fr;margin-bottom:8px"><label for="cSubject">제목</label><input id="cSubject" class="form-control form-control-sm" maxlength="300"></div>
 								<div class="mb-1"><span class="small text-muted">넣을 수 있는 값 (누르면 커서 자리에 들어갑니다. 금액은 PDF 에만 넣을 수 있습니다)</span><div id="cVars"></div></div>
 								<textarea id="psEditor" rows="14" style="width:100%" aria-label="메일 내용"></textarea>
-								<div class="d-flex flex-wrap mt-2" style="gap:6px">
-									<button type="button" class="btn btn-sm btn-outline-secondary" id="btnDefault">기본 문구로 되돌리기</button>
-									<button type="button" class="btn btn-sm btn-outline-secondary ml-auto" id="btnTest">✉ 시험 발송 (내 메일로)</button>
-									<button type="button" class="btn btn-sm btn-primary" id="btnBody">저장</button>
-								</div>
 							</div>
 							<div>
 								<div class="small text-muted mb-1">받는 모습 미리보기 (예시 직원 값)</div>

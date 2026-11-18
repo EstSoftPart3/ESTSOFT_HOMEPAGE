@@ -125,7 +125,7 @@
 		groups().forEach(function(g) { if (g.MENU_URL) screen(g, 1).closest('label').addClass('group'); else branch(g, 1); }); // 최상위 화면 메뉴
 		syncAll();
 		if (!locked) {
-			$('<div class="text-right mb-2">').append($('<button type="button" class="btn btn-sm btn-primary">저장</button>').on('click', saveMenus)).appendTo($b);
+			$('<div class="bo-actions bo-sticky py-1 mb-2">').append($('<button type="button" class="btn btn-sm btn-primary">저장</button>').on('click', saveMenus)).prependTo($b);
 		}
 	}
 

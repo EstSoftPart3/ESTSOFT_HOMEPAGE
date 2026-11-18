@@ -18,7 +18,10 @@
 							<div class="cal-panel-body sys-tree" id="tree"></div>
 						</div>
 						<div class="cal-panel">
-							<div class="cal-panel-head"><span id="formTitle">메뉴를 선택해 주세요</span></div>
+							<div class="cal-panel-head bo-sticky"><span id="formTitle">메뉴를 선택해 주세요</span><span class="bo-actions" id="menuActs" hidden>
+								<button type="button" class="btn btn-sm btn-outline-danger" id="delBtn" onclick="deleteMenu();">삭제</button>
+								<button type="submit" form="menuForm" class="btn btn-sm btn-primary">저장</button>
+							</span></div>
 							<form id="menuForm" class="cal-panel-body" onsubmit="saveMenu(); return false;" hidden>
 								<input type="hidden" name="MENU_CODE" id="fCode">
 								<div class="form-row">
@@ -31,10 +34,6 @@
 									<div class="col-md-3 mb-2"><label for="fSort">순서</label><input id="fSort" name="SORT_NO" type="number" min="0" class="form-control form-control-sm" required></div>
 									<div class="col-md-4 mb-2"><label for="fUse">표시</label><select id="fUse" name="USE_YN" class="form-control form-control-sm"><option value="Y">사용</option><option value="N">숨김</option></select></div>
 									<div class="col-md-4 mb-2 only-item"><label for="fNew">열기</label><select id="fNew" name="NEW_WIN_YN" class="form-control form-control-sm"><option value="N">현재 창</option><option value="Y">새 창</option></select></div>
-								</div>
-								<div class="text-right mb-2">
-									<button type="button" class="btn btn-sm btn-outline-danger" id="delBtn" onclick="deleteMenu();">삭제</button>
-									<button type="submit" class="btn btn-sm btn-primary">저장</button>
 								</div>
 							</form>
 						</div>
@@ -255,7 +254,7 @@
 	$('#fUrl').on('input', limitParents);
 
 	function fill(m, title) {
-		$('#menuForm').prop('hidden', false);
+		$('#menuForm, #menuActs').prop('hidden', false);
 		$('#formTitle').text(title);
 		$('#fCode').val(m.MENU_CODE || '');
 		$('#fName').val(m.MENU_NM || '');
@@ -316,7 +315,7 @@
 			clean = $('#menuForm').serialize();
 			if (code) selected = null; // load 가 같은 메뉴를 다시 채우게
 			load(code);
-			if (!code) { selected = null; $('#menuForm').prop('hidden', true); $('#formTitle').text('저장했습니다'); }
+			if (!code) { selected = null; $('#menuForm, #menuActs').prop('hidden', true); $('#formTitle').text('저장했습니다'); }
 		});
 	}
 
@@ -325,7 +324,7 @@
 			if (!ok) return;
 			hrPost('/admin/system/menu/deleteMenuData.do', { MENU_CODE: $('#fCode').val() }, function() {
 				selected = null;
-				$('#menuForm').prop('hidden', true);
+				$('#menuForm, #menuActs').prop('hidden', true);
 				$('#formTitle').text('메뉴를 선택해 주세요');
 				load();
 			});

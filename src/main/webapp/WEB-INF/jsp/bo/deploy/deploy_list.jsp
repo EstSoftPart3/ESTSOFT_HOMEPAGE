@@ -576,7 +576,7 @@
 		function send(cd, a) { hrPost('/admin/deploy/saveDirectData.do', { DEPLOY_SQ: r.DEPLOY_SQ, CLIENT_DIRECT_CD: cd, CLIENT_DIRECT_AMT: a }, function() { $('#dpInfo').modal('hide'); load(); }); }
 		var $box = $('<div>').append($('<label class="small text-muted mb-1" for="dirCd">').text('종류')).append($cd)
 			.append($('<label class="small text-muted mb-1 mt-2" for="dirAmt">').text('금액')).append($amt).append($calc)
-			.append($('<div class="d-flex mt-3" style="gap:6px">')
+			.prepend($('<div class="bo-actions mb-2">')
 				.append(r.CLIENT_DIRECT_AMT ? $('<button type="button" class="btn btn-sm btn-outline-danger mr-auto">직접계약 없음으로</button>').on('click', function() { send('', ''); }) : $('<span class="mr-auto">'))
 				.append($('<button type="button" class="btn btn-sm btn-primary">저장</button>').on('click', function() {
 					if (!$cd.val()) { $cd.focus(); return; }

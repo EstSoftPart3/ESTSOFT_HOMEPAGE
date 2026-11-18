@@ -10,8 +10,8 @@
 	.brd-red { background: #fdecee; color: #dc3545; }
 	.brd-blind { background: #f3eefc; color: #6f42c1; }
 	.brd-body { display: block; width: 100%; height: 160px; border: 0; }
-	.brd-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 12px 20px; background: #fafbfc; border-top: 1px solid rgba(17,17,17,.06); }
-	.brd-bar.sticky { position: sticky; bottom: 0; z-index: 5; }
+	.brd-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 12px 20px; background: #fafbfc; border-bottom: 1px solid rgba(17,17,17,.06); }
+	.brd-bar.bo-sticky { z-index: 5; } /* 버튼 줄은 제목 바로 아래, 스크롤해도 위에 붙는다 */
 	.brd-thread { display: flex; gap: 10px; align-items: center; font-size: 13px; padding: 8px 20px; }
 	.brd-thread .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.brd-thread .m { color: #6c757d; font-size: 12px; white-space: nowrap; }
