@@ -80,6 +80,8 @@
     .mode-switch-item:focus-visible { outline: 2px solid #16D5FF; outline-offset: 2px; }
     /* 메뉴 접기/펴기 버튼 */
     /* 메뉴 접기·뒤로가기 공통 둥근 버튼(bo-pill) */
+    /* 상단 줄 높이를 왼쪽 로고 줄·탭 화면 시작(3.5rem+1px)과 맞춘다. 버튼이 34px 라 줄이 낮아져 틈으로 뒤 화면이 비쳤다 */
+    .main-header { min-height: calc(3.5rem + 1px); align-items: center; }
     .main-header .bo-pill { display: inline-flex; align-items: center; align-self: center; gap: 6px; height: 34px !important; margin: 0 3px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(17,17,17,.12); background: #fff; color: #444 !important; font-size: 12.5px; font-weight: 600; line-height: 1.5; white-space: nowrap; transition: background-color .25s, color .25s, border-color .25s; }
     .main-header .bo-pill:hover:not(:disabled), .main-header .bo-pill:focus-visible { background: #eef9fc; border-color: #0b6e8a; color: #0b6e8a !important; outline: none; }
     .bo-push-ico { transition: transform .35s cubic-bezier(.65, 0, .35, 1); }
