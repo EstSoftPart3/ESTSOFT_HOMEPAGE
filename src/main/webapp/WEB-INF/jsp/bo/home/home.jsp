@@ -418,7 +418,7 @@
 			defaultView: ['dayGridMonth', 'timeGridWeek', 'timeGridDay'].indexOf(store('hmCalView')) >= 0 ? store('hmCalView') : 'dayGridMonth',
 			header: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
 			buttonText: { today: '오늘', month: '월', week: '주', day: '일' },
-			height: 'auto', nowIndicator: true, minTime: '08:00:00', maxTime: '20:00:00', slotDuration: '01:00:00', snapDuration: '00:15:00',
+			height: 'auto', nowIndicator: true, minTime: '08:00:00', maxTime: '20:00:00', slotDuration: '01:00:00', snapDuration: '00:30:00',
 			// 월 보기 행 높이를 폭에 비례해 강제하지 않게(일정 수만큼만, 빈 주는 날짜 숫자 줄만): monthMode 는 auto 여도 폭÷aspectRatio 를 6주로 나눠 넣는다
 			aspectRatio: 50,
 			datesRender: function(info) { store('hmCalView', info.view.type); clearTimeout(calTimer); calTimer = setTimeout(calPaint, 0); },
@@ -430,12 +430,12 @@
 		calendar.render();
 		calPaint();
 		weekList();
-		// 주·일 보기: 마우스 자리의 시:분을 커서 옆에(끌어 고르기와 같은 15분 단위, 08~20시)
+		// 주·일 보기: 마우스 자리의 시:분을 커서 옆에(끌어 고르기와 같은 30분 단위, 08~20시)
 		var $tip = $('<div class="hm-hover-tm" aria-hidden="true">').appendTo('body');
 		$el.on('mousemove', '.fc-time-grid', function(e) {
 			var r = $(this).find('.fc-slats')[0].getBoundingClientRect(), f = (e.clientY - r.top) / r.height;
 			if (f < 0 || f >= 1) return $tip.hide();
-			var m = 8 * 60 + Math.floor(f * 12 * 4) * 15;
+			var m = 8 * 60 + Math.floor(f * 12 * 2) * 30;
 			$tip.text(('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + m % 60).slice(-2)).css({ left: e.pageX + 14, top: e.pageY + 10 }).show();
 		}).on('mouseleave', '.fc-time-grid', function() { $tip.hide(); });
 		if (can('RECRUIT')) {
