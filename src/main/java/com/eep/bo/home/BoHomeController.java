@@ -42,6 +42,7 @@ public class BoHomeController {
 		CARDS.put("JOURNAL", "/admin/lab/journalDetailData.do");
 		CARDS.put("EQP", "/admin/equipment/equipmentListData.do");
 		CARDS.put("MEMBER", "/admin/member/memberListData.do");
+		CARDS.put("CAL", "/admin/calendar/eventListData.do");	// 캘린더의 확정 일정
 		MEMOS.put("STAFF", "/admin/staff/memoListData.do");
 		MEMOS.put("INTV", "/admin/hr/interviewMemoListData.do");
 		MEMOS.put("TRAINEE", "/admin/hr/traineeMemoListData.do");

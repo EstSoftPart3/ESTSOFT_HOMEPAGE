@@ -25,8 +25,20 @@
 	.hm-money { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; } .hm-money a { display: block; background: #fafbfc; border-radius: 8px; padding: 6px 10px; color: #111; }
 	.hm-money span { color: #5f6b75; font-size: 11.5px; } .hm-money b { display: block; font-size: 16px; font-variant-numeric: tabular-nums; }
 	.hm-empty { color: #8a949c; padding: 8px 0; }
+	/* 일정 캘린더 */
+	.hm-cal-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+	.hm-cal-chip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid rgba(17,17,17,.15); background: #fff; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 700; color: #444; }
+	.hm-cal-chip i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+	.hm-cal-chip[aria-pressed=false] { opacity: .45; text-decoration: line-through; }
+	.hm-cal-chip .cnt { font-weight: 400; color: #5f6b75; }
+	#hmCalendar { font-size: 12.5px; }
+	#hmCalendar .fc-event { cursor: pointer; }
+	#hmCalCard.closed .hm-body { display: none; }
 	@media (max-width: 991px) { .hm-grid, .hm-money { grid-template-columns: 1fr; } }
 </style>
+<link rel="stylesheet" href="/resources/bo/plugins/fullcalendar/main.min.css">
+<link rel="stylesheet" href="/resources/bo/plugins/fullcalendar-daygrid/main.min.css">
+<link rel="stylesheet" href="/resources/bo/plugins/fullcalendar-timegrid/main.min.css">
 
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-body">
@@ -40,6 +52,10 @@
 			<%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
 
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
+	<script src="/resources/bo/plugins/fullcalendar/main.min.js"></script>
+	<script src="/resources/bo/plugins/fullcalendar-daygrid/main.min.js"></script>
+	<script src="/resources/bo/plugins/fullcalendar-timegrid/main.min.js"></script>
+	<script src="/resources/bo/plugins/fullcalendar/locales/ko.js" charset="utf-8"></script>
 	<script>
 	// 서버가 넣은 것: cards(열 수 있는 카드), journals(내 결재 차례), memos(최근 메모)
 	var HOME = ${homeJson};
@@ -90,13 +106,90 @@
 	}
 
 	// 바로가기는 화면 탭으로 연다(대시보드가 탭 안에 있어도 맨 위 창의 탭). Ctrl·Shift·가운데 클릭은 브라우저 그대로
-	$(document).on('click', '#hmKpis a, #hmCards a', function(e) {
-		var href = $(this).attr('href'), w = null;
+	function openTab(href, e) {
+		var w = null;
 		try { w = window.top.BO_OPEN ? window.top : null; } catch (x) {}
-		if (!w || !href || href === '#' || e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-		e.preventDefault();
+		if (!w || !href || href === '#' || e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return false;
 		w.BO_OPEN(href);
-	});
+		return true;
+	}
+	$(document).on('click', '#hmKpis a, #hmCards a', function(e) { if (openTab($(this).attr('href'), e)) e.preventDefault(); });
+
+	// ── 일정 캘린더: 각 카드가 불러온 목록의 날짜를 모은다(그 화면 권한이 있는 일정만) ──
+	var CAL_KIND = {
+		INTV: ['면접', '#0b6e8a'], DEPLOY_IN: ['투입', '#2f7d32'], DEPLOY_OUT: ['철수', '#c62828'], PROB: ['수습 해제', '#b8860b'],
+		EDU: ['교육 시작', '#6b3fa0'], AVAIL: ['인터뷰 가능', '#9c6ad6'], JOIN: ['입사', '#1565c0'], LEAVE: ['퇴사', '#78858f'],
+		PAY: ['급여 지급', '#d35400'], EVT: ['확정 일정', '#00897b']
+	};
+	// 카드(권한) → 그 카드가 넣는 일정 종류
+	var CAL_SRC = { STAFF: ['JOIN', 'LEAVE'], DEPLOY: ['DEPLOY_IN', 'DEPLOY_OUT', 'PROB'], INTV: ['INTV'], TRAINEE: ['EDU', 'AVAIL'], PAY: ['PAY'], CAL: ['EVT'] };
+	var calEvents = [], calOff = {}, calendar = null, calTimer = null;
+	function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+	try { calOff = JSON.parse(store('hmCalOff') || '{}') || {}; } catch (e) { calOff = {}; }
+	// date: yyyy-MM-dd(뒤는 무시), time: HH:mm 이면 시간 일정
+	function calAdd(kind, date, title, href, time) {
+		if (!date || !/^\d{4}-\d{2}-\d{2}/.test(date)) return;
+		var t = /^\d{2}:\d{2}$/.test(time || '') ? time : null;
+		calEvents.push({ kind: kind, start: date.substr(0, 10) + (t ? 'T' + t : ''), allDay: !t, title: CAL_KIND[kind][0] + ' ' + title, url: href });
+		clearTimeout(calTimer);
+		calTimer = setTimeout(calPaint, 50);
+	}
+	function calPaint() {
+		$('#hmCalChips .hm-cal-chip').each(function() {
+			var k = $(this).data('k');
+			$(this).attr('aria-pressed', !calOff[k]).find('.cnt').text(calEvents.filter(function(e) { return e.kind === k; }).length);
+		});
+		if (!calendar) return;
+		calendar.removeAllEvents();
+		calendar.addEventSource(calEvents.filter(function(e) { return !calOff[e.kind]; }).map(function(e) {
+			return { title: e.title, start: e.start, allDay: e.allDay, url: e.url, backgroundColor: CAL_KIND[e.kind][1], borderColor: CAL_KIND[e.kind][1], textColor: '#fff' };
+		}));
+	}
+	function calCard() {
+		var kinds = [];
+		Object.keys(CAL_SRC).forEach(function(k) { if (can(k)) kinds = kinds.concat(CAL_SRC[k]); });
+		if (!kinds.length) return;
+		var $btn = $('<button type="button" class="btn btn-sm btn-outline-secondary ml-auto" id="hmCalToggle">');
+		var $chips = $('<div class="hm-cal-chips" id="hmCalChips">');
+		kinds.forEach(function(k) {
+			$chips.append($('<button type="button" class="hm-cal-chip">').data('k', k).attr('title', '눌러서 ' + CAL_KIND[k][0] + ' 일정 끄기·켜기')
+				.append($('<i>').css('background', CAL_KIND[k][1])).append(document.createTextNode(CAL_KIND[k][0] + ' ')).append('<span class="cnt">…</span>')
+				.on('click', function() { calOff[k] = !calOff[k]; store('hmCalOff', JSON.stringify(calOff)); calPaint(); }));
+		});
+		var $el = $('<div id="hmCalendar">');
+		var $c = $('<div class="hm-card wide" id="hmCalCard">').append($('<header>').text('📅 일정').append($btn)).append($('<div class="hm-body">').append($chips).append($el));
+		if ($('#hmUpdCard').length) $c.insertAfter('#hmUpdCard'); else $c.prependTo('#hmCards');
+		calendar = new FullCalendar.Calendar($el[0], {
+			plugins: ['dayGrid', 'timeGrid'], locales: window.FullCalendarLocales ? [FullCalendarLocales.ko] : [], locale: 'ko',
+			defaultView: ['dayGridMonth', 'timeGridWeek', 'timeGridDay'].indexOf(store('hmCalView')) >= 0 ? store('hmCalView') : 'dayGridMonth',
+			header: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
+			buttonText: { today: '오늘', month: '월', week: '주', day: '일' },
+			height: 'auto', eventLimit: 4, nowIndicator: true, minTime: '08:00:00', maxTime: '20:00:00',
+			datesRender: function(info) { store('hmCalView', info.view.type); },
+			eventClick: function(info) {
+				info.jsEvent.preventDefault();
+				var url = info.event.url;
+				if (url && !openTab(url, info.jsEvent)) window.open(url, info.jsEvent.ctrlKey || info.jsEvent.metaKey || info.jsEvent.shiftKey ? '_blank' : '_self');
+			}
+		});
+		// 접기·펴기(상태 기억). 접힌 채 열면 펼칠 때 그린다
+		var rendered = false;
+		function setOpen(open) {
+			$c.toggleClass('closed', !open);
+			$btn.text(open ? '▴ 접기' : '▾ 펼치기').attr('aria-expanded', open);
+			store('hmCalOpen', open ? '1' : '0');
+			if (open && !rendered) { rendered = true; calendar.render(); calPaint(); } else if (open) calendar.updateSize();
+		}
+		$btn.on('click', function() { setOpen($c.hasClass('closed')); });
+		setOpen(store('hmCalOpen') !== '0');
+		if (can('CAL')) {
+			fetch('/admin/calendar/eventListData.do?fromDt=' + moment().subtract(6, 'months').format('YYYY-MM-DD') + '&toDt=' + moment().add(6, 'months').format('YYYY-MM-DD'), function(res) {
+				(res.list || []).forEach(function(e) {
+					calAdd('EVT', e.START_DT, e.EVT_TITLE + (e.EVT_LOC ? ' @' + e.EVT_LOC : ''), '/admin/calendar/openCalendarList.do', e.ALL_DAY_YN === 'Y' ? null : (e.START_DT || '').substr(11, 5));
+				});
+			});
+		}
+	}
 
 	$(function() {
 		$('#hmToday').text(today.format('YYYY년 M월 D일') + ' (' + '일월화수목금토'.charAt(today.day()) + ')');
@@ -110,6 +203,7 @@
 		if (can('MEMBER')) memberTodo();
 		if (HOME.memos.length) memoCard();
 		updateCard();
+		calCard();
 		paintTodo();
 	});
 
@@ -131,6 +225,10 @@
 			var work = (res.list || []).filter(function(r) { return r.STATUS_CD === 'WORK'; });
 			var reg = work.filter(function(r) { return r.ORG_NM === '정규직'; }).length, free = work.filter(function(r) { return r.ORG_NM === '프리'; }).length;
 			kpi('staff', '재직 인원', work.length, '정규직 ' + reg + ' · 프리 ' + free, URL.staff);
+			(res.list || []).forEach(function(r) {
+				calAdd('JOIN', r.JOIN_DT, r.STAFF_NM, staffHref(r.STAFF_SQ));
+				calAdd('LEAVE', r.LEAVE_DT, r.STAFF_NM, staffHref(r.STAFF_SQ));
+			});
 		});
 	}
 
@@ -140,6 +238,12 @@
 		var $b = card('철수 임박·대기', URL.deploy);
 		fetch('/admin/deploy/deployListData.do', function(res) {
 			var d = res.data;
+			d.all.forEach(function(x) {
+				var who = x.STAFF_NM + (x.CLIENT_NM ? ' (' + x.CLIENT_NM + ')' : '');
+				calAdd('DEPLOY_IN', x.START_DT, who, staffHref(x.STAFF_SQ));
+				calAdd('DEPLOY_OUT', x.END_DT, who, staffHref(x.STAFF_SQ));
+				if (x.EMP_TYPE_CD === 'PROBATION') calAdd('PROB', x.PROB_END_DT, x.STAFF_NM, staffHref(x.STAFF_SQ));
+			});
 			function deps(sq) { return d.all.filter(function(x) { return x.STAFF_SQ === sq; }); }
 			function active(x) { return !moment(x.START_DT).isAfter(today) && (!x.END_DT || !moment(x.END_DT).isBefore(today)); }
 			var activeCnt = d.current.filter(function(r) { return r.STATE === 'ACTIVE'; }).length;
@@ -184,6 +288,7 @@
 		kpiSlot('intv');
 		var $b = card('이번 주 면접', URL.intv);
 		fetch('/admin/hr/interviewListData.do', function(res) {
+			(res.list || []).forEach(function(r) { calAdd('INTV', r.INTV_DT, r.APLY_NM, URL.intv + '?INTV_SQ=' + r.INTV_SQ, r.INTV_TM); });
 			var from = moment().startOf('isoWeek').format('YYYY-MM-DD'), to = moment().endOf('isoWeek').format('YYYY-MM-DD'), d = today.format('YYYY-MM-DD');
 			var list = (res.list || []).filter(function(r) { return r.INTV_DT >= from && r.INTV_DT <= to; })
 				.sort(function(a, b) { return (a.INTV_DT + (a.INTV_TM || '')).localeCompare(b.INTV_DT + (b.INTV_TM || '')); });
@@ -205,6 +310,8 @@
 		var $b = card('교육생 주차별', URL.trainee);
 		fetch('/admin/hr/traineeListData.do', function(res) {
 			var ing = (res.list || []).filter(function(r) { return r.STATUS_CD === 'ING'; });
+			(res.list || []).forEach(function(r) { calAdd('EDU', r.EDU_START_DT, r.TRN_NM, URL.trainee); });
+			ing.forEach(function(r) { calAdd('AVAIL', r.INTERVIEW_AVAIL, r.TRN_NM, URL.trainee); });
 			var weeks = [['1', '1주차'], ['2', '2주차'], ['3', '3주차'], ['OVER', '3주차 초과'], ['NONE', '시작일 없음']];
 			var cnt = {};
 			ing.forEach(function(r) { var w = r.EDU_WEEK || (r.EDU_START_DT ? '1' : 'NONE'); cnt[w] = (cnt[w] || 0) + 1; });
@@ -224,6 +331,7 @@
 		fetch('/admin/pay/monthData.do?YM=' + ym, function(res) {
 			if (!res.result) { $b.html('<div class="hm-empty">급여를 불러오지 못했습니다.</div>'); return; }
 			var r = res.result, rows = r.rows || [];
+			calAdd('PAY', r.PAY_DT, label + ' 급여', href);
 			function sum(k) { return rows.reduce(function(s, x) { return s + Number(x[k] || 0); }, 0); }
 			var flags = rows.filter(function(x) { return x.FLAGS && x.FLAGS.length; }).length;
 			$b.closest('.hm-card').find('header').append(pill(r.closed ? '마감' : '작성중', r.closed ? 'ok' : 'warn'));
