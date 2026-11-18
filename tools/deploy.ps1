@@ -14,7 +14,6 @@ param(
 	[int]$Keep = 20
 )
 $ErrorActionPreference = 'Stop'
-$OutputEncoding = New-Object System.Text.UTF8Encoding $false   # ssh 로 넘기는 스크립트 앞에 BOM 이 붙지 않게
 $repo = Split-Path $PSScriptRoot -Parent
 $mvn = 'C:\dev\tools\maven\apache-maven-3.9.9\bin\mvn.cmd'
 $env:JAVA_HOME = 'C:\dev\tools\jdk\jdk8u504-b01'
@@ -23,7 +22,9 @@ $lock = "$dir/.deploy.lock"
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 
 function Remote([string]$script) {
-	$out = ($script -replace "`r", '') | ssh devserver bash -s
+	# PowerShell 5.1 은 파이프로 넘길 때 BOM 을 붙여서 base64 로 넘긴다
+	$b64 = [Convert]::ToBase64String((New-Object System.Text.UTF8Encoding $false).GetBytes(($script -replace "`r", '')))
+	$out = ssh devserver "echo $b64 | base64 -d | bash"
 	if ($LASTEXITCODE -ne 0) { throw "서버 명령 실패($LASTEXITCODE): $out" }
 	return ($out -join "`n")
 }
