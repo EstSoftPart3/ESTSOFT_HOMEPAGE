@@ -31,9 +31,19 @@
 	.hm-cal-chip i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 	.hm-cal-chip[aria-pressed=false] { opacity: .45; text-decoration: line-through; }
 	.hm-cal-chip .cnt { font-weight: 400; color: #5f6b75; }
-	#hmCalendar { font-size: 12.5px; }
-	#hmCalendar .fc-event { cursor: pointer; }
+	#hmCalCard { margin-bottom: 12px; }
+	#hmCalendar { font-size: 12px; }
+	#hmCalendar .fc-toolbar { margin-bottom: 6px; } #hmCalendar .fc-toolbar h2 { font-size: 16px; }
+	#hmCalendar .fc-event { cursor: pointer; font-size: 11px; line-height: 1.35; padding: 0 2px; }
+	#hmCalendar .fc-day-grid .fc-row { min-height: 0 !important; }
+	#hmCalendar .fc-day-grid .fc-content-skeleton { padding-bottom: 2px; }
+	#hmCalendar .fc-more { font-size: 11px; font-weight: 700; color: #0b6e8a; }
 	#hmCalCard.closed .hm-body { display: none; }
+	/* 더보기로 펼친 날짜: 그 주 줄 바로 아래 */
+	.hm-cal-day { border: 1px solid #0b6e8a; border-radius: 6px; background: #f3fbfd; margin: 2px 0 4px; padding: 6px 8px; }
+	.hm-cal-day .hd { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+	.hm-cal-day ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 3px 10px; }
+	.hm-cal-day li button { width: 100%; text-align: left; border: 0; border-left: 4px solid #999; background: #fff; padding: 2px 6px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 	@media (max-width: 991px) { .hm-grid, .hm-money { grid-template-columns: 1fr; } }
 </style>
 <link rel="stylesheet" href="/resources/bo/plugins/fullcalendar/main.min.css">
@@ -117,23 +127,24 @@
 
 	// ── 일정 캘린더: 각 카드가 불러온 목록의 날짜를 모은다(그 화면 권한이 있는 일정만) ──
 	var CAL_KIND = {
-		INTV: ['면접', '#0b6e8a'], DEPLOY_IN: ['투입', '#2f7d32'], DEPLOY_OUT: ['철수', '#c62828'], PROB: ['수습 해제', '#b8860b'],
-		EDU: ['교육 시작', '#6b3fa0'], AVAIL: ['인터뷰 가능', '#9c6ad6'], JOIN: ['입사', '#1565c0'], LEAVE: ['퇴사', '#78858f'],
+		INTV_NEW: ['신입면접', '#0b6e8a'], INTV_EXP: ['경력면접', '#00838f'], DEPLOY_IN: ['투입', '#2f7d32'], DEPLOY_OUT: ['철수', '#c62828'], PROB: ['수습 해제', '#b8860b'],
+		EDU: ['교육 시작', '#6b3fa0'], AVAIL: ['인터뷰', '#9c6ad6'], JOIN: ['입사', '#1565c0'], LEAVE: ['퇴사', '#78858f'],
 		PAY: ['급여 지급', '#d35400'], EVT: ['확정 일정', '#00897b']
 	};
 	// 카드(권한) → 그 카드가 넣는 일정 종류
-	var CAL_SRC = { STAFF: ['JOIN', 'LEAVE'], DEPLOY: ['DEPLOY_IN', 'DEPLOY_OUT', 'PROB'], INTV: ['INTV'], TRAINEE: ['EDU', 'AVAIL'], PAY: ['PAY'], CAL: ['EVT'] };
-	var calEvents = [], calOff = {}, calendar = null, calTimer = null;
+	var CAL_SRC = { STAFF: ['JOIN', 'LEAVE'], DEPLOY: ['DEPLOY_IN', 'DEPLOY_OUT', 'PROB'], INTV: ['INTV_NEW', 'INTV_EXP'], TRAINEE: ['EDU', 'AVAIL'], PAY: ['PAY'], CAL: ['EVT'] };
+	var calEvents = [], calOff = {}, calendar = null, calTimer = null, calDay = null;
 	function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
 	try { calOff = JSON.parse(store('hmCalOff') || '{}') || {}; } catch (e) { calOff = {}; }
-	// date: yyyy-MM-dd(뒤는 무시), time: HH:mm 이면 시간 일정
-	function calAdd(kind, date, title, href, time) {
+	// date: yyyy-MM-dd(뒤는 무시), time: HH:mm 이면 시간 일정, info: 팝업에 보일 [[이름, 값]]
+	function calAdd(kind, date, title, href, time, info) {
 		if (!date || !/^\d{4}-\d{2}-\d{2}/.test(date)) return;
 		var t = /^\d{2}:\d{2}$/.test(time || '') ? time : null;
-		calEvents.push({ kind: kind, start: date.substr(0, 10) + (t ? 'T' + t : ''), allDay: !t, title: CAL_KIND[kind][0] + ' ' + title, url: href });
+		calEvents.push({ kind: kind, start: date.substr(0, 10) + (t ? 'T' + t : ''), allDay: !t, name: title, title: CAL_KIND[kind][0] + ' ' + title, url: href, info: info || [] });
 		clearTimeout(calTimer);
 		calTimer = setTimeout(calPaint, 50);
 	}
+	function calShown() { return calEvents.filter(function(e) { return !calOff[e.kind]; }); }
 	function calPaint() {
 		$('#hmCalChips .hm-cal-chip').each(function() {
 			var k = $(this).data('k');
@@ -141,9 +152,36 @@
 		});
 		if (!calendar) return;
 		calendar.removeAllEvents();
-		calendar.addEventSource(calEvents.filter(function(e) { return !calOff[e.kind]; }).map(function(e) {
-			return { title: e.title, start: e.start, allDay: e.allDay, url: e.url, backgroundColor: CAL_KIND[e.kind][1], borderColor: CAL_KIND[e.kind][1], textColor: '#fff' };
+		calendar.addEventSource(calShown().map(function(e) {
+			return { title: e.title, start: e.start, allDay: e.allDay, backgroundColor: CAL_KIND[e.kind][1], borderColor: CAL_KIND[e.kind][1], textColor: '#fff', extendedProps: { ev: e } };
 		}));
+		calDayPanel();
+	}
+	function dayText(d) { return moment(d).format('M월 D일') + ' (' + '일월화수목금토'.charAt(moment(d).day()) + ')'; }
+	// 일정 팝업: 화면을 넘기지 않고 홈에서 본다. 필요하면 '화면에서 열기'
+	function calPop(e) {
+		var $t = $('<table class="table table-sm mb-0">');
+		[['종류', CAL_KIND[e.kind][0]], ['일시', dayText(e.start) + (e.allDay ? '' : ' ' + e.start.substr(11, 5))]].concat(e.info).forEach(function(r) {
+			if (r[1]) $t.append($('<tr>').append($('<th style="width:90px">').text(r[0])).append($('<td>').text(r[1])));
+		});
+		bootbox.dialog({ title: e.title, message: $t, onEscape: true, backdrop: true, buttons: {
+			open: { label: '화면에서 열기', className: 'btn-sm btn-outline-primary', callback: function() { if (e.url && !openTab(e.url, {})) location.href = e.url; } },
+			close: { label: '닫기', className: 'btn-sm btn-secondary' } } });
+	}
+	// 월 보기 날짜 칸은 3건 + 더보기(eventLimit 은 더보기 줄까지 센다). '+n 더보기'를 누르면 그 날의 전체 일정을 그 주 줄 바로 아래에 펼치고, 다시 누르거나 접기로 닫는다
+	function calDayPanel() {
+		$('#hmCalDay').remove();
+		if (!calDay || !calendar || calendar.view.type !== 'dayGridMonth') return;
+		var $row = $('#hmCalendar .fc-day[data-date="' + calDay + '"]').closest('.fc-row');
+		if (!$row.length) { calDay = null; return; }
+		var list = calShown().filter(function(e) { return e.start.substr(0, 10) === calDay; }).sort(function(a, b) { return (a.allDay ? '' : a.start).localeCompare(b.allDay ? '' : b.start); });
+		var $p = $('<div id="hmCalDay" class="hm-cal-day">').append($('<div class="hd">').append($('<b>').text(dayText(calDay) + ' 일정 ' + list.length + '건'))
+			.append($('<button type="button" class="btn btn-sm btn-outline-secondary ml-auto">▴ 접기</button>').on('click', function() { calDay = null; calDayPanel(); })));
+		var $u = $('<ul>').appendTo($p);
+		list.forEach(function(e) {
+			$u.append($('<li>').append($('<button type="button">').css('border-left-color', CAL_KIND[e.kind][1]).text((e.allDay ? '' : e.start.substr(11, 5) + ' ') + e.title).on('click', function() { calPop(e); })));
+		});
+		$p.insertAfter($row);
 	}
 	function calCard() {
 		var kinds = [];
@@ -158,19 +196,17 @@
 		});
 		var $el = $('<div id="hmCalendar">');
 		var $c = $('<div class="hm-card wide" id="hmCalCard">').append($('<header>').text('📅 일정').append($btn)).append($('<div class="hm-body">').append($chips).append($el));
-		if ($('#hmUpdCard').length) $c.insertAfter('#hmUpdCard'); else $c.prependTo('#hmCards');
+		$c.insertBefore('#hmKpis'); // 홈 맨 위
 		calendar = new FullCalendar.Calendar($el[0], {
 			plugins: ['dayGrid', 'timeGrid'], locales: window.FullCalendarLocales ? [FullCalendarLocales.ko] : [], locale: 'ko',
 			defaultView: ['dayGridMonth', 'timeGridWeek', 'timeGridDay'].indexOf(store('hmCalView')) >= 0 ? store('hmCalView') : 'dayGridMonth',
 			header: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
 			buttonText: { today: '오늘', month: '월', week: '주', day: '일' },
-			height: 'auto', eventLimit: 4, nowIndicator: true, minTime: '08:00:00', maxTime: '20:00:00',
-			datesRender: function(info) { store('hmCalView', info.view.type); },
-			eventClick: function(info) {
-				info.jsEvent.preventDefault();
-				var url = info.event.url;
-				if (url && !openTab(url, info.jsEvent)) window.open(url, info.jsEvent.ctrlKey || info.jsEvent.metaKey || info.jsEvent.shiftKey ? '_blank' : '_self');
-			}
+			height: 'auto', nowIndicator: true, minTime: '08:00:00', maxTime: '20:00:00', slotDuration: '01:00:00',
+			eventLimit: 4, eventLimitText: function(n) { return '+' + n + ' 더보기'; },
+			eventLimitClick: function(arg) { var d = moment(arg.date).format('YYYY-MM-DD'); calDay = calDay === d ? null : d; calDayPanel(); },
+			datesRender: function(info) { store('hmCalView', info.view.type); calDay = null; $('#hmCalDay').remove(); },
+			eventClick: function(info) { info.jsEvent.preventDefault(); calPop(info.event.extendedProps.ev); }
 		});
 		// 접기·펴기(상태 기억). 접힌 채 열면 펼칠 때 그린다
 		var rendered = false;
@@ -185,7 +221,7 @@
 		if (can('CAL')) {
 			fetch('/admin/calendar/eventListData.do?fromDt=' + moment().subtract(6, 'months').format('YYYY-MM-DD') + '&toDt=' + moment().add(6, 'months').format('YYYY-MM-DD'), function(res) {
 				(res.list || []).forEach(function(e) {
-					calAdd('EVT', e.START_DT, e.EVT_TITLE + (e.EVT_LOC ? ' @' + e.EVT_LOC : ''), '/admin/calendar/openCalendarList.do', e.ALL_DAY_YN === 'Y' ? null : (e.START_DT || '').substr(11, 5));
+					calAdd('EVT', e.START_DT, e.EVT_TITLE, '/admin/calendar/openCalendarList.do', e.ALL_DAY_YN === 'Y' ? null : (e.START_DT || '').substr(11, 5), [['장소', e.EVT_LOC], ['끝', e.END_DT]]);
 				});
 			});
 		}
@@ -226,8 +262,9 @@
 			var reg = work.filter(function(r) { return r.ORG_NM === '정규직'; }).length, free = work.filter(function(r) { return r.ORG_NM === '프리'; }).length;
 			kpi('staff', '재직 인원', work.length, '정규직 ' + reg + ' · 프리 ' + free, URL.staff);
 			(res.list || []).forEach(function(r) {
-				calAdd('JOIN', r.JOIN_DT, r.STAFF_NM, staffHref(r.STAFF_SQ));
-				calAdd('LEAVE', r.LEAVE_DT, r.STAFF_NM, staffHref(r.STAFF_SQ));
+				var info = [['소속', r.ORG_NM], ['부서', r.DEPT_NM], ['직급', r.POSITION_NM], ['입사일', r.JOIN_DT], ['퇴사일', r.LEAVE_DT]];
+				calAdd('JOIN', r.JOIN_DT, r.STAFF_NM, staffHref(r.STAFF_SQ), null, info);
+				calAdd('LEAVE', r.LEAVE_DT, r.STAFF_NM, staffHref(r.STAFF_SQ), null, info);
 			});
 		});
 	}
@@ -238,11 +275,14 @@
 		var $b = card('철수 임박·대기', URL.deploy);
 		fetch('/admin/deploy/deployListData.do', function(res) {
 			var d = res.data;
+			var empType = hrCodeMap('HR_EMP_TYPE');
 			d.all.forEach(function(x) {
 				var who = x.STAFF_NM + (x.CLIENT_NM ? ' (' + x.CLIENT_NM + ')' : '');
-				calAdd('DEPLOY_IN', x.START_DT, who, staffHref(x.STAFF_SQ));
-				calAdd('DEPLOY_OUT', x.END_DT, who, staffHref(x.STAFF_SQ));
-				if (x.EMP_TYPE_CD === 'PROBATION') calAdd('PROB', x.PROB_END_DT, x.STAFF_NM, staffHref(x.STAFF_SQ));
+				var info = [['고객사', x.CLIENT_NM], ['프로젝트', x.PRJ_NM], ['형태', empType[x.EMP_TYPE_CD] || x.EMP_TYPE_CD], ['근무지역', x.WORK_AREA],
+					['투입기간', (x.START_DT || '') + ' ~ ' + (x.END_DT || '미정')], ['수습해제일', x.PROB_END_DT]];
+				calAdd('DEPLOY_IN', x.START_DT, who, staffHref(x.STAFF_SQ), null, info);
+				calAdd('DEPLOY_OUT', x.END_DT, who, staffHref(x.STAFF_SQ), null, info);
+				if (x.EMP_TYPE_CD === 'PROBATION') calAdd('PROB', x.PROB_END_DT, x.STAFF_NM, staffHref(x.STAFF_SQ), null, info);
 			});
 			function deps(sq) { return d.all.filter(function(x) { return x.STAFF_SQ === sq; }); }
 			function active(x) { return !moment(x.START_DT).isAfter(today) && (!x.END_DT || !moment(x.END_DT).isBefore(today)); }
@@ -288,7 +328,13 @@
 		kpiSlot('intv');
 		var $b = card('이번 주 면접', URL.intv);
 		fetch('/admin/hr/interviewListData.do', function(res) {
-			(res.list || []).forEach(function(r) { calAdd('INTV', r.INTV_DT, r.APLY_NM, URL.intv + '?INTV_SQ=' + r.INTV_SQ, r.INTV_TM); });
+			var hire = hrCodeMap('HR_HIRE'), rt = hrCodeMap('HR_ROUTE'), at = hrCodeMap('HR_ATTEND'), rs = hrCodeMap('HR_RESULT'), nt = hrCodeMap('HR_NOTICE'), jn = hrCodeMap('HR_JOIN');
+			(res.list || []).forEach(function(r) {
+				calAdd(r.HIRE_CD === 'EXP' ? 'INTV_EXP' : 'INTV_NEW', r.INTV_DT, r.APLY_NM, URL.intv + '?INTV_SQ=' + r.INTV_SQ, r.INTV_TM, [
+					['구분', hire[r.HIRE_CD] || r.HIRE_CD], ['나이', r.AGE], ['연락처', r.PHONE], ['경로', (rt[r.APLY_ROUTE] || r.APLY_ROUTE || '') + (r.REFERRER ? ' (' + r.REFERRER + ')' : '')],
+					['참석', at[r.ATTEND_ST] || r.ATTEND_ST], ['결과', rs[r.RESULT_ST] || r.RESULT_ST], ['합격통보', nt[r.NOTICE_ST] || r.NOTICE_ST], ['입사', jn[r.JOIN_ST] || r.JOIN_ST], ['출근일', r.JOIN_DT],
+					['메모', (r.MEMO || '').split('\n')[0]]]);
+			});
 			var from = moment().startOf('isoWeek').format('YYYY-MM-DD'), to = moment().endOf('isoWeek').format('YYYY-MM-DD'), d = today.format('YYYY-MM-DD');
 			var list = (res.list || []).filter(function(r) { return r.INTV_DT >= from && r.INTV_DT <= to; })
 				.sort(function(a, b) { return (a.INTV_DT + (a.INTV_TM || '')).localeCompare(b.INTV_DT + (b.INTV_TM || '')); });
@@ -310,8 +356,10 @@
 		var $b = card('교육생 주차별', URL.trainee);
 		fetch('/admin/hr/traineeListData.do', function(res) {
 			var ing = (res.list || []).filter(function(r) { return r.STATUS_CD === 'ING'; });
-			(res.list || []).forEach(function(r) { calAdd('EDU', r.EDU_START_DT, r.TRN_NM, URL.trainee); });
-			ing.forEach(function(r) { calAdd('AVAIL', r.INTERVIEW_AVAIL, r.TRN_NM, URL.trainee); });
+			var stNm = { ING: '교육진행중', END: '교육종료', DROP: '중도이탈' }, iv = hrCodeMap('HR_INTERVIEW');
+			function tInfo(r) { return [['상태', stNm[r.STATUS_CD] || r.STATUS_CD], ['교육 시작', r.EDU_START_DT], ['인터뷰', iv[r.INTERVIEW_YN] || r.INTERVIEW_YN], ['인터뷰 가능일', r.INTERVIEW_AVAIL], ['나이', r.AGE], ['메모', (r.MEMO || '').split('\n')[0]]]; }
+			(res.list || []).forEach(function(r) { calAdd('EDU', r.EDU_START_DT, r.TRN_NM, URL.trainee, null, tInfo(r)); });
+			ing.forEach(function(r) { calAdd('AVAIL', r.INTERVIEW_AVAIL, r.TRN_NM, URL.trainee, null, tInfo(r)); });
 			var weeks = [['1', '1주차'], ['2', '2주차'], ['3', '3주차'], ['OVER', '3주차 초과'], ['NONE', '시작일 없음']];
 			var cnt = {};
 			ing.forEach(function(r) { var w = r.EDU_WEEK || (r.EDU_START_DT ? '1' : 'NONE'); cnt[w] = (cnt[w] || 0) + 1; });
@@ -331,7 +379,7 @@
 		fetch('/admin/pay/monthData.do?YM=' + ym, function(res) {
 			if (!res.result) { $b.html('<div class="hm-empty">급여를 불러오지 못했습니다.</div>'); return; }
 			var r = res.result, rows = r.rows || [];
-			calAdd('PAY', r.PAY_DT, label + ' 급여', href);
+			calAdd('PAY', r.PAY_DT, label + ' 급여', href, null, [['상태', r.closed ? '마감' : '작성중'], ['인원', rows.length + '명']]);
 			function sum(k) { return rows.reduce(function(s, x) { return s + Number(x[k] || 0); }, 0); }
 			var flags = rows.filter(function(x) { return x.FLAGS && x.FLAGS.length; }).length;
 			$b.closest('.hm-card').find('header').append(pill(r.closed ? '마감' : '작성중', r.closed ? 'ok' : 'warn'));
