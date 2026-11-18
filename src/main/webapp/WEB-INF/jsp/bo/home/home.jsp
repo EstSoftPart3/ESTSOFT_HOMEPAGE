@@ -9,28 +9,38 @@
 	.hm-kpi:hover, .hm-kpi:focus { border-color: #0b6e8a; text-decoration: none; color: #111; }
 	.hm-kpi span { color: #5f6b75; font-size: 12px; } .hm-kpi b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; line-height: 1.3; }
 	.hm-kpi small { color: #5f6b75; } .hm-kpi.warn b { color: #7a5600; } .hm-kpi.bad b { color: #a32020; }
-	/* 홈은 가로 4칸, 카드마다 1~4칸(data-span) */
-	.hm-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-	.hm-grid > .hm-card { grid-column: span 2; }
-	.hm-grid > .hm-card[data-span="1"] { grid-column: span 1; } .hm-grid > .hm-card[data-span="3"] { grid-column: span 3; } .hm-grid > .hm-card[data-span="4"] { grid-column: 1 / -1; }
-	.hm-card { background: #fff; border: 1px solid rgba(17,17,17,.1); border-radius: 10px; overflow: hidden; min-width: 0; }
-	.hm-card header { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid rgba(17,17,17,.08); font-weight: 700; }
-	.hm-card header a { font-weight: 400; font-size: 12px; }
-	/* 위젯: 접기·펼치기, 배치 바꾸기(⠿ 끌기 또는 ⠿ 에서 ↑↓), 넓게·좁게. 배치는 내 계정에 저장 */
-	.hm-card header .hm-sp { flex: 1; }
-	.hm-ctl { border: 1px solid rgba(17,17,17,.15); background: #fff; border-radius: 4px; font-size: 11px; line-height: 18px; padding: 0 6px; color: #5f6b75; font-weight: 400; }
-	.hm-ctl:hover { border-color: #0b6e8a; color: #0b6e8a; }
-	/* 머리 줄: 누르면 접기·펼치기, 끌면 순서 옮기기 */
-	#hmCards > .hm-card > header { cursor: pointer; user-select: none; }
-	#hmCards > .hm-card > header:hover { background: #f7fafb; }
-	.hm-grip { cursor: grab; letter-spacing: -2px; color: #9aa4ac; font-weight: 400; }
-	.hm-span { display: inline-flex; } .hm-span .hm-ctl { border-radius: 0; margin-left: -1px; padding: 0 5px; }
-	.hm-span .hm-ctl:first-child { border-radius: 4px 0 0 4px; } .hm-span .hm-ctl:last-child { border-radius: 0 4px 4px 0; }
-	.hm-span .hm-ctl[aria-pressed=true] { background: #0b6e8a; border-color: #0b6e8a; color: #fff; position: relative; }
-	.hm-card.hm-dragging { opacity: .4; }
-	.hm-card.fold .hm-body { display: none; } .hm-card.fold header { border-bottom: 0; }
-	.hm-tools { display: flex; gap: 6px; flex-wrap: wrap; }
-	.hm-card .hm-body { padding: 6px 12px 10px; }
+	/* 홈 격자: 스마트폰 위젯처럼 가로 8칸 × 세로 칸(60px), 위젯마다 가로×세로(--w, --h). 빈 곳은 뒤 위젯이 채운다(dense).
+	   내용이 칸보다 많으면 위젯 안에서 스크롤. 좁은 창은 4칸으로 줄이고(넓은 위젯은 4칸으로), 폰 너비는 한 줄에 하나·높이는 내용만큼 */
+	.hm-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); grid-auto-rows: 60px; grid-auto-flow: row dense; gap: 12px; }
+	.hm-grid > .hm-card { grid-column: span var(--w, 4); grid-row: span var(--h, 3); display: flex; flex-direction: column; }
+	.hm-grid > .hm-card.hm-off { display: none; }
+	.hm-card { background: #fff; border: 1px solid rgba(17,17,17,.1); border-radius: 10px; overflow: hidden; min-width: 0; min-height: 0; }
+	.hm-card header { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid rgba(17,17,17,.08); font-weight: 700; flex: none; white-space: nowrap; overflow: hidden; }
+	.hm-card header a { font-weight: 400; font-size: 12px; margin-left: auto; }
+	.hm-card .hm-body { padding: 6px 12px 10px; flex: 1; min-height: 0; overflow: auto; }
+	@media (max-width: 1199px) { .hm-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } .hm-grid > .hm-card { grid-column: span min(var(--w, 4), 4); } }
+	@media (max-width: 767px) { .hm-grid { grid-template-columns: 1fr; grid-auto-rows: auto; } .hm-grid > .hm-card { grid-column: 1 / -1; grid-row: auto; } .hm-card .hm-body { overflow: visible; } }
+	/* 오른쪽 가운데 반투명 「위젯」 탭 → 위젯 메뉴(보이기·순서·크기·초기화, 바뀌면 바로 저장) */
+	#hmWgTab { position: fixed; right: 0; top: 50%; transform: translateY(-50%); z-index: 1040; border: 0; background: rgba(11,110,138,.55); color: #fff; border-radius: 8px 0 0 8px; padding: 12px 6px; writing-mode: vertical-rl; font-weight: 700; letter-spacing: 2px; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+	#hmWgTab:hover, #hmWgTab:focus { background: rgba(11,110,138,.85); }
+	#hmWg { position: fixed; right: 0; top: 50%; transform: translateY(-50%); z-index: 1045; width: 360px; max-width: 100vw; max-height: 90vh; display: none; flex-direction: column; background: rgba(255,255,255,.93); backdrop-filter: blur(8px); border: 1px solid rgba(17,17,17,.12); border-right: 0; border-radius: 10px 0 0 10px; box-shadow: -6px 0 24px rgba(0,0,0,.15); }
+	#hmWg.open { display: flex; }
+	#hmWg > header { display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid rgba(17,17,17,.08); font-weight: 700; }
+	#hmWg > header span { flex: 1; } #hmWg > header button { border: 0; background: none; font-size: 18px; line-height: 1; color: #5f6b75; }
+	#hmWg ul { list-style: none; margin: 0; padding: 4px 8px; overflow-y: auto; flex: 1; }
+	#hmWg li.wg { display: flex; align-items: center; gap: 6px; padding: 5px 4px; border-bottom: 1px dashed rgba(17,17,17,.1); }
+	#hmWg li.wg .g { color: #9aa4ac; cursor: grab; letter-spacing: -2px; }
+	#hmWg li.wg .nm { flex: 1; margin: 0; font-weight: 400; cursor: pointer; }
+	#hmWg li.wg.off .nm { color: #9aa4ac; text-decoration: line-through; }
+	#hmWg li.wg.drag { opacity: .4; }
+	#hmWg .sz { border: 1px solid #ccd3d8; border-radius: 4px; background: #fff; padding: 0 8px; font-size: 11px; font-weight: 700; color: #0b6e8a; }
+	#hmWg .sz[aria-expanded=true] { background: #0b6e8a; color: #fff; border-color: #0b6e8a; }
+	#hmWg li.pk { padding: 4px 4px 8px; }
+	.hm-pk .t { display: flex; justify-content: space-between; font-size: 11px; color: #5f6b75; margin-bottom: 4px; } .hm-pk .t b { color: #0b6e8a; font-size: 13px; }
+	.hm-pk .m { display: grid; grid-template-columns: repeat(8, 22px); grid-auto-rows: 16px; gap: 3px; }
+	.hm-pk .m button { border: 1px solid #d5dbe0; border-radius: 3px; background: #f7f9fa; padding: 0; }
+	.hm-pk .m button.min { background: #cfe6ee; border-color: #9cc9d6; } .hm-pk .m button.on { background: #0b6e8a; border-color: #0b6e8a; }
+	#hmWg > footer { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-top: 1px solid rgba(17,17,17,.08); font-size: 11px; color: #5f6b75; }
 	.hm-card .table { margin: 0; font-size: 12.5px; }
 	.hm-todo { list-style: none; margin: 0; padding: 0; }
 	.hm-todo li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed rgba(17,17,17,.12); flex-wrap: wrap; }
@@ -51,19 +61,13 @@
 	#hmCalendar .fc-event.hm-my { font-weight: 700; }
 	#hmCalendar .fc-event.hm-my.done { color: #9aa4ac !important; border-color: #cfd5da !important; text-decoration: line-through; }
 	.hm-hover-tm { position: absolute; z-index: 1050; display: none; pointer-events: none; background: #333; color: #fff; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; }
-	.hm-cal-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 10px; align-items: start; }
-	.hm-cal-wrap.shut { grid-template-columns: minmax(0, 1fr) 34px; }
-	#hmWeek { border: 1px solid rgba(17,17,17,.12); border-radius: 8px; background: #fff; }
-	#hmWeek > header { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid rgba(17,17,17,.08); font-weight: 700; font-size: 12.5px; }
-	#hmWeek ul { list-style: none; margin: 0; padding: 2px 8px 6px; max-height: 70vh; overflow-y: auto; }
+	#hmWeek ul { list-style: none; margin: 0; padding: 0; }
 	#hmWeek li { display: flex; gap: 6px; align-items: flex-start; padding: 4px 0; border-bottom: 1px dashed rgba(17,17,17,.1); font-size: 12px; }
 	#hmWeek li.day { color: #0b6e8a; font-weight: 700; font-size: 11.5px; border: 0; padding: 6px 0 0; }
 	#hmWeek li.day.today::after { content: ' 오늘'; color: #b8860b; }
 	#hmWeek li a { color: #111; } #hmWeek li.done a { color: #9aa4ac; text-decoration: line-through; }
 	#hmWeek li small { display: block; color: #5f6b75; }
 	#hmWeek .hm-empty { padding: 8px 0; }
-	.hm-cal-wrap.shut #hmWeek ul { display: none; }
-	.hm-cal-wrap.shut #hmWeek > header { writing-mode: vertical-rl; border: 0; padding: 8px 6px; cursor: pointer; }
 	.hm-tk .form-row-x { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 	.hm-tk label.hm-dow { font-weight: 400; margin: 0 4px 0 0; }
 	#hmCalendar .fc-toolbar { margin-bottom: 6px; } #hmCalendar .fc-toolbar h2 { font-size: 16px; }
@@ -74,10 +78,7 @@
 	/* 업무 화면 상세 팝업을 홈 위에 그대로 띄우는 투명 틀(include_top 의 ?popup=1) */
 	.hm-pop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; border: 0; z-index: 1060; background: transparent; }
 	.hm-pop-wait { position: fixed; inset: 0; z-index: 1059; background: rgba(0,0,0,.25); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; }
-	@media (max-width: 991px) { .hm-grid, .hm-money, .hm-cal-wrap, .hm-cal-wrap.shut { grid-template-columns: 1fr; } .hm-grid > .hm-card[data-span] { grid-column: 1 / -1; } }
-	/* 좁은 달력 카드(1·2칸)는 이번 주 할 일을 달력 아래로 */
-	#hmCalCard[data-span="1"] .hm-cal-wrap, #hmCalCard[data-span="2"] .hm-cal-wrap { grid-template-columns: 1fr; }
-	#hmCalCard[data-span="1"] .hm-cal-wrap.shut #hmWeek > header, #hmCalCard[data-span="2"] .hm-cal-wrap.shut #hmWeek > header { writing-mode: horizontal-tb; }
+	@media (max-width: 991px) { .hm-money { grid-template-columns: 1fr; } }
 </style>
 <link rel="stylesheet" href="/resources/bo/plugins/fullcalendar/main.min.css">
 <link rel="stylesheet" href="/resources/bo/plugins/fullcalendar-daygrid/main.min.css">
@@ -86,15 +87,10 @@
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-body">
 					<div class="hm-hello"><b><c:out value="${loginInfo.loginInfo[0].emplyNm}"/>님, 안녕하세요</b><span class="text-muted" id="hmToday"></span>
-						<span class="ml-auto text-muted">열 때 한 번 불러와요 · <a href="/admin/home.do">새로고침</a></span>
-						<span class="hm-tools" id="hmTools">
-							<button type="button" class="btn btn-sm btn-outline-secondary" data-act="foldAll">▴ 모두 접기</button>
-							<button type="button" class="btn btn-sm btn-outline-secondary" data-act="openAll">▾ 모두 펼치기</button>
-							<button type="button" class="btn btn-sm btn-outline-danger" data-act="reset" title="순서·넓이·접힘을 처음 배치로">↺ 배치 초기화</button>
-						</span></div>
+						<span class="ml-auto text-muted">열 때 한 번 불러와요 · <a href="/admin/home.do">새로고침</a></span></div>
 					<div class="hm-grid" id="hmCards">
-						<div class="hm-card wide" id="hmKpiCard" data-key="KPI"><header>숫자 한눈에 보기</header><div class="hm-body"><div class="hm-kpis" id="hmKpis"></div></div></div>
-						<div class="hm-card wide" id="hmTodoCard" data-key="TODO"><header>확인할 일 <span class="hm-pill" id="hmTodoCnt">…</span></header><div class="hm-body"><ul class="hm-todo" id="hmTodo"></ul></div></div>
+						<div class="hm-card" id="hmKpiCard" data-key="KPI"><header>숫자 한눈에 보기</header><div class="hm-body"><div class="hm-kpis" id="hmKpis"></div></div></div>
+						<div class="hm-card" id="hmTodoCard" data-key="TODO"><header>확인할 일 <span class="hm-pill" id="hmTodoCnt">…</span></header><div class="hm-body"><ul class="hm-todo" id="hmTodo"></ul></div></div>
 					</div>
 				</div>
 			<%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
@@ -136,8 +132,8 @@
 		if (!todos.length && !pending) $u.append('<li class="hm-empty">오늘 확인할 일이 없습니다.</li>');
 		$('#hmTodoCnt').text(pending ? '…' : todos.length).toggleClass('bad', todos.length > 0);
 	}
-	function card(key, title, href, wide) {
-		var $c = $('<div class="hm-card">').attr('data-key', key).toggleClass('wide', !!wide).append($('<header>').append(document.createTextNode(title)).append(href ? link(title + ' 열기 ›', href, '') : ''));
+	function card(key, title, href) {
+		var $c = $('<div class="hm-card">').attr('data-key', key).append($('<header>').append(document.createTextNode(title)).append(href ? link(title + ' 열기 ›', href, '') : ''));
 		var $b = $('<div class="hm-body">').append('<div class="hm-empty">불러오는 중…</div>').appendTo($c);
 		$c.appendTo('#hmCards');
 		return $b;
@@ -339,7 +335,7 @@
 		var from = today.clone().day(0), to = from.clone().add(6, 'days');
 		var list = myOccs(from, to).map(function(o) { return $.extend({ day: moment.max(moment(o.occ), from) }, o); })
 			.sort(function(a, b) { return (ymd(a.day) + (a.t.START_TM || '')).localeCompare(ymd(b.day) + (b.t.START_TM || '')); });
-		$w.find('.cnt').text(list.filter(function(o) { return o.done; }).length + ' / ' + list.length);
+		$('#hmWeekCard .cnt').text(list.filter(function(o) { return o.done; }).length + ' / ' + list.length);
 		var $u = $w.find('ul').empty(), last = null;
 		if (!list.length) $u.append('<li class="hm-empty">이번 주 할 일이 없습니다. 달력 빈 칸을 누르거나 끌어서 등록해요.</li>');
 		list.forEach(function(o) {
@@ -394,19 +390,13 @@
 				.on('click', function() { calOff[k] = !calOff[k]; store('hmCalOff', JSON.stringify(calOff)); calPaint(); }));
 		});
 		var $el = $('<div id="hmCalendar">');
-		var $week = $('<aside id="hmWeek">').append($('<header>').append('이번 주 할 일 ').append('<span class="hm-pill cnt">…</span>').append('<span class="hm-sp" style="flex:1"></span>')
-			.append($('<button type="button" class="hm-ctl" id="hmWeekFold" title="이번 주 할 일 접기·펼치기">▸</button>'))).append('<ul>');
-		var $add = $('<button type="button" class="hm-ctl hm-hdr-r" id="hmTaskAdd">＋ 할 일</button>').on('click', function() { openTask(null, { START_DT: today.format('YYYY-MM-DD'), END_DT: today.format('YYYY-MM-DD') }); });
-		var $c = $('<div class="hm-card wide" id="hmCalCard" data-key="CAL">').append($('<header>').text('📅 일정').append($add))
-			.append($('<div class="hm-body">').append($chips).append($('<div class="hm-cal-wrap">').append($el, $week)));
-		$c.prependTo('#hmCards');
-		// 접으면 세로 띠만(띠를 눌러도 펼침). 상태는 홈 배치와 같이 저장
-		$week.on('click', '#hmWeekFold, header', function(e) {
-			if (!$(e.target).is('#hmWeekFold') && !$('.hm-cal-wrap').hasClass('shut')) return;
-			e.stopPropagation();
-			weekFold(!$('.hm-cal-wrap').hasClass('shut'));
-			layoutSave(layoutNow());
-		});
+		var $add = $('<button type="button" class="btn btn-sm btn-outline-secondary py-0 ml-auto" id="hmTaskAdd">＋ 할 일</button>').on('click', function() { openTask(null, { START_DT: today.format('YYYY-MM-DD'), END_DT: today.format('YYYY-MM-DD') }); });
+		var $c = $('<div class="hm-card" id="hmCalCard" data-key="CAL">').append($('<header>').text('📅 일정').append($add))
+			.append($('<div class="hm-body">').append($chips).append($el));
+		// 이번 주 할 일은 따로 위젯(달력을 작게 해도 안 깨지게)
+		var $week = $('<div class="hm-card" id="hmWeekCard" data-key="WEEK">').append($('<header>').append('이번 주 할 일 ').append('<span class="hm-pill cnt">…</span>'))
+			.append($('<div class="hm-body" id="hmWeek">').append('<ul>'));
+		$('#hmCards').prepend($c, $week);
 		calendar = new FullCalendar.Calendar($el[0], {
 			plugins: ['dayGrid', 'timeGrid', 'interaction'], selectable: true, editable: false,
 			// 빈 칸을 누르거나 끌어 고르면 할 일 등록(여러 날·시간대), 내 할 일만 끌어 옮기고 끝을 늘인다
@@ -456,42 +446,31 @@
 		}
 	}
 
-	// ── 위젯 배치: 순서·넓게/좁게·접힘·이번 주 할 일 접힘을 내 계정에 저장(목록 '보기' 저장 표를 홈 주소로 1건). 초기화는 그 1건을 지운다 ──
-	var LAYOUT_ORDER = ['CAL', 'KPI', 'UPD', 'TODO', 'DEPLOY', 'INTV', 'TRAINEE', 'PAY', 'MEMO'];
+	// ── 위젯 배치(스마트폰 홈처럼): 홈은 가로 8칸 × 세로 칸, 위젯마다 가로×세로 크기·보이기·순서.
+	//    오른쪽 가운데 「위젯」 메뉴에서만 바꾸고 바뀌면 바로 내 계정에 저장(목록 '보기' 저장 표를 홈 주소로 1건). 초기화는 그 1건을 지운다 ──
+	var COLS = 8, ROWS = 8;
+	// 기본 순서·크기[가로, 세로]·최소 크기(이보다 작으면 내용이 깨진다)
+	var WG = {
+		CAL: { nm: '📅 일정', size: [6, 7], min: [4, 5] }, WEEK: { nm: '이번 주 할 일', size: [2, 7], min: [1, 2] },
+		KPI: { nm: '숫자 한눈에 보기', size: [8, 2], min: [1, 2] }, UPD: { nm: '🔔 최근 업데이트', size: [8, 3], min: [2, 2] },
+		TODO: { nm: '확인할 일', size: [4, 3], min: [1, 2] }, DEPLOY: { nm: '철수 임박·대기', size: [4, 4], min: [2, 2] },
+		INTV: { nm: '이번 주 면접', size: [4, 4], min: [2, 2] }, TRAINEE: { nm: '교육생 주차별', size: [4, 3], min: [1, 2] },
+		PAY: { nm: '급여', size: [4, 2], min: [2, 2] }, MEMO: { nm: '최근 메모', size: [8, 4], min: [2, 2] }
+	};
+	var LAYOUT_ORDER = Object.keys(WG);
 	var layoutSq = HOME.layout ? HOME.layout.VW_SQ : null, layoutSaved = {};
 	try { layoutSaved = HOME.layout ? JSON.parse(HOME.layout.CONF) || {} : {}; } catch (e) { layoutSaved = {}; }
 	function cards() { return $('#hmCards').children('.hm-card'); }
-	function widget($c) {
-		var $h = $c.children('header'), $r = $h.children('a, .hm-hdr-r').first();
-		$c.data('span0', $c.hasClass('wide') ? 4 : 2).removeClass('wide'); // 만들 때 넓게였으면 4칸, 아니면 2칸
-		$('<span class="hm-sp">')[$r.length ? 'insertBefore' : 'appendTo']($r.length ? $r : $h);
-		// 버튼에서는 브라우저가 끌기를 시작하지 않아 span(키보드 ↑↓ 용으로 tabindex)
-		$h.prepend($('<span class="hm-grip" tabindex="0" role="button" title="끌어서 옮기기 (↑↓ 키로도)" aria-label="카드 순서 옮기기">⠿⠿</span>'));
-		$h.attr('title', '누르면 접기·펼치기, 끌면 옮기기');
-		var $span = $('<span class="hm-span" role="group" aria-label="카드 넓이(4칸 중)">').append([1, 2, 3, 4].map(function(n) {
-			return $('<button type="button" class="hm-ctl">').attr({ 'data-span': n, title: n + '칸 넓이' }).text(n);
-		}));
-		$h.append($span, $('<button type="button" class="hm-ctl hm-fold">'));
-		spanSet($c, $c.data('span0'));
-		widgetMark($c);
-	}
-	function spanOf($c) { return +$c.attr('data-span') || 2; }
-	function spanSet($c, n) {
-		n = Math.min(4, Math.max(1, +n || 2));
-		$c.attr('data-span', n).find('> header .hm-span button').each(function() { $(this).attr('aria-pressed', +$(this).attr('data-span') === n); });
-	}
-	function widgetMark($c) {
-		var nm = $c.children('header').clone().children().remove().end().text().trim();
-		$c.find('> header .hm-fold').text($c.hasClass('fold') ? '▾' : '▴').attr({ 'aria-expanded': !$c.hasClass('fold'), 'aria-label': nm + ($c.hasClass('fold') ? ' 펼치기' : ' 접기') });
-	}
-	function weekFold(shut) {
-		$('.hm-cal-wrap').toggleClass('shut', !!shut);
-		$('#hmWeekFold').text(shut ? '◂' : '▸').attr('aria-expanded', !shut);
-		if (calendar) calendar.updateSize();
+	function wg(k) { return WG[k] || { nm: k, size: [4, 3], min: [1, 2] }; }
+	function sizeOf($c) { return [+$c.attr('data-w'), +$c.attr('data-h')]; }
+	function sizeSet($c, s) {
+		var m = wg($c.attr('data-key')).min;
+		var w = Math.min(COLS, Math.max(m[0], +s[0] || 4)), h = Math.min(ROWS, Math.max(m[1], +s[1] || 3));
+		$c.attr({ 'data-w': w, 'data-h': h }).css({ '--w': w, '--h': h });
 	}
 	function layoutNow() {
-		var c = { order: [], span: {}, fold: {}, week: $('.hm-cal-wrap').hasClass('shut') };
-		cards().each(function() { var k = $(this).attr('data-key'); c.order.push(k); c.span[k] = spanOf($(this)); c.fold[k] = $(this).hasClass('fold'); });
+		var c = { v: 2, order: [], size: {}, off: {} };
+		cards().each(function() { var k = $(this).attr('data-key'); c.order.push(k); c.size[k] = sizeOf($(this)); if ($(this).hasClass('hm-off')) c.off[k] = true; });
 		return c;
 	}
 	function layoutApply(c) {
@@ -500,13 +479,14 @@
 		cards().each(function() { by[$(this).attr('data-key')] = $(this); });
 		(c.order || []).concat(LAYOUT_ORDER).forEach(function(k) { if (by[k]) { $('#hmCards').append(by[k]); delete by[k]; } });
 		cards().each(function() {
-			var $c = $(this), k = $c.attr('data-key');
-			// 예전 저장(wide: 넓게/좁게)은 4칸/2칸으로 읽는다
-			spanSet($c, c.span && k in c.span ? c.span[k] : c.wide && k in c.wide ? (c.wide[k] ? 4 : 2) : $c.data('span0'));
-			$c.toggleClass('fold', !!(c.fold && c.fold[k]));
-			widgetMark($c);
+			var $c = $(this), k = $c.attr('data-key'), s = c.size && c.size[k];
+			// 예전 저장(4칸 중 span, 넓게/좁게)은 가로 ×2 로 읽고 세로는 기본값
+			if (!s && c.span && k in c.span) s = [c.span[k] * 2, wg(k).size[1]];
+			if (!s && c.wide && k in c.wide) s = [c.wide[k] ? 8 : 4, wg(k).size[1]];
+			sizeSet($c, s || wg(k).size);
+			$c.toggleClass('hm-off', !!(c.off && c.off[k]));
 		});
-		weekFold(c.week);
+		if (calendar) calendar.updateSize();
 	}
 	// 연달아 저장해도 앞 저장이 받은 VW_SQ 로 덮어쓰게 한 줄로 보낸다(처음 두 번이 둘 다 새 건이 되면 같은 이름 오류)
 	var layoutQ = $.Deferred().resolve().promise();
@@ -519,60 +499,93 @@
 		}
 		return layoutQ = layoutQ.then(run, run);
 	}
+	function layoutChanged() { if (calendar) calendar.updateSize(); layoutSave(layoutNow()); }
+
+	// 위젯 메뉴: 한 줄 = ⠿⠿(끌기·↑↓) · 보이기 체크 · 이름 · 크기 칩(누르면 칸 격자를 훑어 고름)
+	function wgMenu() {
+		var $u = $('#hmWg ul').empty();
+		cards().each(function() {
+			var $c = $(this), k = $c.attr('data-key'), s = sizeOf($c), id = 'hmWgOn' + k;
+			$u.append($('<li class="wg" draggable="true">').attr('data-key', k).toggleClass('off', $c.hasClass('hm-off')).append(
+				$('<span class="g" tabindex="0" role="button" title="끌어서 순서 바꾸기 (↑↓ 키로도)">⠿⠿</span>').attr('aria-label', wg(k).nm + ' 순서 옮기기'),
+				$('<input type="checkbox">').attr({ id: id, title: '홈에 보이기' }).prop('checked', !$c.hasClass('hm-off')),
+				$('<label class="nm">').attr('for', id).text(wg(k).nm),
+				$('<button type="button" class="sz" aria-expanded="false">').attr('aria-label', wg(k).nm + ' 크기 ' + s[0] + '×' + s[1] + ' 바꾸기').text(s[0] + '×' + s[1])));
+		});
+	}
+	function wgPicker($li) {
+		var k = $li.attr('data-key'), $c = cards().filter('[data-key="' + k + '"]'), m = wg(k).min, now = sizeOf($c);
+		var $t = $('<b>').text(now[0] + ' × ' + now[1]), $m = $('<div class="m">');
+		function paint(w, h) { $m.children().each(function() { var x = $(this).data('x'), y = $(this).data('y'); $(this).toggleClass('on', x <= w && y <= h).toggleClass('min', x <= m[0] && y <= m[1]); }); $t.text(w + ' × ' + h); }
+		for (var y = 1; y <= ROWS; y++) for (var x = 1; x <= COLS; x++) {
+			$m.append($('<button type="button">').data({ x: x, y: y }).attr('aria-label', x + ' × ' + y));
+		}
+		$m.on('mouseover focusin', 'button', function() { paint(Math.max(m[0], $(this).data('x')), Math.max(m[1], $(this).data('y'))); })
+			.on('mouseleave', function() { var s = sizeOf($c); paint(s[0], s[1]); })
+			.on('click', 'button', function() {
+				sizeSet($c, [$(this).data('x'), $(this).data('y')]);
+				layoutChanged();
+				var s = sizeOf($c);
+				$li.find('.sz').text(s[0] + '×' + s[1]);
+				paint(s[0], s[1]);
+			});
+		paint(now[0], now[1]);
+		return $('<li class="pk">').append($('<div class="hm-pk">').append($('<div class="t">').append('<span>칸을 훑어 크기 고르기 (가로 × 세로)</span>', $t), $m,
+			$('<div class="small text-muted mt-1">').text('가로 1~' + COLS + ' · 세로 1~' + ROWS + ' · 이 위젯 최소 ' + m[0] + '×' + m[1] + ' (연한 칸)')));
+	}
 	function widgetsInit() {
 		if (!$('#hmKpis').children().length) $('#hmKpiCard').remove(); // 숫자 카드 권한이 하나도 없으면
-		cards().each(function() { widget($(this)); });
 		layoutApply(layoutSaved);
-		var $g = $('#hmCards'), drag = null, before = '';
-		function fold($c) {
-			$c.toggleClass('fold');
-			widgetMark($c);
-			if ($c.is('#hmCalCard') && !$c.hasClass('fold')) calendar.updateSize();
-			layoutSave(layoutNow());
+		var $tab = $('<button type="button" id="hmWgTab" aria-controls="hmWg" aria-expanded="false" title="위젯 배치">⚙ 위젯</button>').appendTo('body');
+		var $p = $('<div id="hmWg" role="dialog" aria-label="위젯 배치">').append(
+			$('<header>').append('<span>⚙ 위젯 배치</span>', $('<button type="button" aria-label="닫기">×</button>').on('click', function() { open(false); })),
+			'<ul>',
+			$('<footer>').append($('<button type="button" class="btn btn-sm btn-outline-danger py-0">↺ 초기화</button>').on('click', reset), '<span class="ml-auto">바꾸면 바로 저장돼요</span>')).appendTo('body');
+		function open(on) {
+			if (on) wgMenu();
+			$p.toggleClass('open', on); $tab.attr('aria-expanded', on).toggle(!on);
+			if (on) $p.find('ul .g').first().focus(); else $tab.focus();
 		}
-		// 순서·넓이·접힘은 바뀐 즉시 저장
-		function orderSaved() { if (layoutNow().order.join() !== before) layoutSave(layoutNow()); }
-		function onHeader(e) { return !$(e.target).closest('a, button, input, select, textarea, label').length; }
-		$g.on('click', '.hm-fold', function() { fold($(this).closest('.hm-card')); });
-		$g.on('click', '.hm-card > header', function(e) { if (onHeader(e) && !$(e.target).closest('.hm-grip').length) fold($(this).parent()); });
-		$g.on('click', '.hm-span button', function() {
-			var $c = $(this).closest('.hm-card');
-			if (spanOf($c) === +$(this).attr('data-span')) return;
-			spanSet($c, $(this).attr('data-span'));
-			if (calendar) calendar.updateSize();
-			layoutSave(layoutNow());
+		function reset() {
+			bootbox.confirm('홈 배치를 처음 상태(모두 보이기, 기본 순서·크기)로 되돌릴까요?', function(ok) {
+				if (!ok) return;
+				(layoutSq ? api('/admin/my/deleteViewPresetData.do', { page: '/admin/home.do', vwSq: layoutSq }) : $.Deferred().resolve().promise()).done(function() {
+					layoutSq = null; layoutSaved = {};
+					layoutApply({}); wgMenu();
+				});
+			});
+		}
+		$tab.on('click', function() { open(true); });
+		$(document).on('keydown', function(e) { if (e.key === 'Escape' && $p.hasClass('open') && !$('.modal.show').length) open(false); });
+		$(document).on('mousedown', function(e) { if ($p.hasClass('open') && !$(e.target).closest('#hmWg, #hmWgTab, .modal, .bootbox').length) open(false); });
+		var $u = $p.find('ul'), drag = null;
+		function card(k) { return cards().filter('[data-key="' + k + '"]'); }
+		// 메뉴 순서 = 홈 순서
+		function syncOrder() { $u.children('li.wg').each(function() { $('#hmCards').append(card($(this).attr('data-key'))); }); layoutChanged(); }
+		$u.on('change', 'input[type=checkbox]', function() {
+			var $li = $(this).closest('li');
+			card($li.attr('data-key')).toggleClass('hm-off', !this.checked);
+			$li.toggleClass('off', !this.checked);
+			layoutChanged();
 		});
-		// 끌어 옮기기: 머리 줄을 누른 동안만 카드를 끌 수 있게(달력 안 끌기와 겹치지 않게)
-		$g.on('mousedown', '.hm-card > header', function(e) { if (e.which === 1 && onHeader(e)) $(this).parent().attr('draggable', 'true'); });
-		$(document).on('mouseup', function() { if (!drag) cards().removeAttr('draggable'); });
-		$g.on('dragstart', '.hm-card[draggable]', function(e) { before = layoutNow().order.join(); drag = $(this).addClass('hm-dragging'); e.originalEvent.dataTransfer.effectAllowed = 'move'; e.originalEvent.dataTransfer.setData('text/plain', 'hm-widget'); });
-		$g.on('dragover', '.hm-card', function(e) {
+		$u.on('click', '.sz', function() {
+			var $li = $(this).closest('li'), was = $(this).attr('aria-expanded') === 'true';
+			$u.children('li.pk').remove(); $u.find('.sz').attr('aria-expanded', false);
+			if (!was) { $li.after(wgPicker($li)); $(this).attr('aria-expanded', true); }
+		});
+		$u.on('dragstart', 'li.wg', function(e) { $u.children('li.pk').remove(); $u.find('.sz').attr('aria-expanded', false); drag = $(this).addClass('drag'); e.originalEvent.dataTransfer.effectAllowed = 'move'; e.originalEvent.dataTransfer.setData('text/plain', 'hm-wg'); });
+		$u.on('dragover', 'li.wg', function(e) {
 			if (!drag || drag.is(this)) return;
 			e.preventDefault();
 			if (drag.index() < $(this).index()) $(this).after(drag); else $(this).before(drag);
 		});
-		$g.on('drop', function(e) { if (drag) e.preventDefault(); });
-		$g.on('dragend', '.hm-card', function() { if (drag) drag.removeClass('hm-dragging'); drag = null; cards().removeAttr('draggable'); if (calendar) calendar.updateSize(); orderSaved(); });
-		$g.on('keydown', '.hm-grip', function(e) {
-			var $c = $(this).closest('.hm-card');
-			before = layoutNow().order.join();
-			if (e.key === 'ArrowUp' && $c.prev().length) { $c.prev().before($c); } else if (e.key === 'ArrowDown' && $c.next().length) { $c.next().after($c); } else return;
-			e.preventDefault(); $(this).focus(); orderSaved();
-		});
-		$('#hmTools').on('click', 'button', function() {
-			var act = $(this).data('act');
-			if (act === 'foldAll' || act === 'openAll') {
-				cards().toggleClass('fold', act === 'foldAll').each(function() { widgetMark($(this)); });
-				if (act === 'openAll' && calendar) calendar.updateSize();
-				layoutSave(layoutNow());
-			} else if (act === 'reset') bootbox.confirm('홈 배치를 처음 상태(기본 순서·넓이, 모두 펼침)로 되돌릴까요?', function(ok) {
-				if (!ok) return;
-				(layoutSq ? api('/admin/my/deleteViewPresetData.do', { page: '/admin/home.do', vwSq: layoutSq }) : $.Deferred().resolve().promise()).done(function() {
-					layoutSq = null; layoutSaved = {};
-					layoutApply({});
-					if (calendar) calendar.updateSize();
-				});
-			});
+		$u.on('drop', function(e) { if (drag) e.preventDefault(); });
+		$u.on('dragend', 'li.wg', function() { if (drag) { drag.removeClass('drag'); drag = null; syncOrder(); } });
+		$u.on('keydown', '.g', function(e) {
+			var $li = $(this).closest('li');
+			$u.children('li.pk').remove(); $u.find('.sz').attr('aria-expanded', false);
+			if (e.key === 'ArrowUp' && $li.prev().length) $li.prev().before($li); else if (e.key === 'ArrowDown' && $li.next().length) $li.next().after($li); else return;
+			e.preventDefault(); $(this).focus(); syncOrder();
 		});
 	}
 
@@ -746,7 +759,7 @@
 			var r = res.result, rows = r.rows || [];
 			function sum(k) { return rows.reduce(function(s, x) { return s + Number(x[k] || 0); }, 0); }
 			var flags = rows.filter(function(x) { return x.FLAGS && x.FLAGS.length; }).length;
-			$b.closest('.hm-card').find('header .hm-sp').before(pill(r.closed ? '마감' : '작성중', r.closed ? 'ok' : 'warn'));
+			$b.closest('.hm-card').children('header').children('a').first().before(pill(r.closed ? '마감' : '작성중', r.closed ? 'ok' : 'warn'));
 			$b.empty().addClass('hm-money').append([['지급 합계', 'PAY_TOTAL'], ['실매출', 'REAL_SALE'], ['영업이익', 'PROFIT']].map(function(k) {
 				return $('<a>').attr('href', href).append($('<span>').text(k[0])).append($('<b>').text(dpWonText(sum(k[1]))));
 			}));
