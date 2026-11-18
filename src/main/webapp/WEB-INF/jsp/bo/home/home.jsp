@@ -36,8 +36,6 @@
 	.hm-todo li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed rgba(17,17,17,.12); flex-wrap: wrap; }
 	.hm-todo li:last-child { border-bottom: 0; } .hm-todo li > a.go { margin-left: auto; font-size: 12px; }
 	.hm-link { color: #0b6e8a; font-weight: 700; }
-	.hm-bars a { display: grid; grid-template-columns: 80px 1fr 30px; gap: 8px; align-items: center; font-size: 12.5px; padding: 3px 0; color: #111; }
-	.hm-bars i { display: block; height: 14px; background: #9fd8e8; border-radius: 3px; min-width: 2px; } .hm-bars i.w { background: #f6d27c; }
 	.hm-money { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; } .hm-money a { display: block; background: #fafbfc; border-radius: 8px; padding: 6px 10px; color: #111; }
 	.hm-money span { color: #5f6b75; font-size: 11.5px; } .hm-money b { display: block; font-size: 16px; font-variant-numeric: tabular-nums; }
 	.hm-empty { color: #8a949c; padding: 8px 0; }
@@ -715,14 +713,20 @@
 			(res.list || []).forEach(function(r) { calAdd('EDU', r.EDU_START_DT, r.TRN_NM, URL.trainee, null, tInfo(r), URL.trainee + '?TRN_SQ=' + r.TRN_SQ); });
 			ing.forEach(function(r) { calAdd('AVAIL', r.INTERVIEW_AVAIL, r.TRN_NM, URL.trainee, null, tInfo(r), URL.trainee + '?TRN_SQ=' + r.TRN_SQ); });
 			var weeks = [['1', '1주차'], ['2', '2주차'], ['3', '3주차'], ['OVER', '3주차 초과'], ['NONE', '시작일 없음']];
-			var cnt = {};
-			ing.forEach(function(r) { var w = r.EDU_WEEK || (r.EDU_START_DT ? '1' : 'NONE'); cnt[w] = (cnt[w] || 0) + 1; });
-			var max = Math.max.apply(null, [1].concat(weeks.map(function(w) { return cnt[w[0]] || 0; })));
-			kpi('trainee', '교육 진행', ing.length, '3주차 초과 ' + (cnt.OVER || 0), URL.trainee, cnt.OVER ? 'warn' : '');
-			$b.empty().addClass('hm-bars').append(weeks.filter(function(w) { return w[0] !== 'NONE' || cnt.NONE; }).map(function(w) {
-				var n = cnt[w[0]] || 0;
-				return $('<a>').attr({ href: URL.trainee, 'aria-label': w[1] + ' ' + n + '명' }).append($('<span>').text(w[1])).append($('<i>').toggleClass('w', w[0] === 'OVER').css('width', (n / max * 100) + '%')).append($('<b>').text(n));
-			}));
+			// 주차마다 한 줄: 주차(인원) + 교육생 이름(교육 시작 순). 이름을 누르면 교육생 상세
+			var by = {};
+			ing.slice().sort(function(a, b) { return (a.EDU_START_DT || '9').localeCompare(b.EDU_START_DT || '9'); }).forEach(function(r) {
+				var w = r.EDU_WEEK || (r.EDU_START_DT ? '1' : 'NONE');
+				(by[w] = by[w] || []).push(r);
+			});
+			kpi('trainee', '교육 진행', ing.length, '3주차 초과 ' + (by.OVER || []).length, URL.trainee, by.OVER ? 'warn' : '');
+			var known = weeks.map(function(w) { return w[0]; });
+			var rows = weeks.concat(Object.keys(by).filter(function(k) { return known.indexOf(k) < 0; }).map(function(k) { return [k, k + '주차']; }))
+				.filter(function(w) { return by[w[0]]; });
+			$b.empty().append(rows.length ? $('<ul class="hm-todo">').append(rows.map(function(w) {
+				return $('<li>').append(pill(w[1] + ' ' + by[w[0]].length + '명', w[0] === 'OVER' ? 'warn' : w[0] === 'NONE' ? '' : 'rent'))
+					.append($('<span>').append(by[w[0]].map(function(r, i) { return $('<span>').append(i ? ', ' : '').append(link(r.TRN_NM, URL.trainee + '?TRN_SQ=' + r.TRN_SQ)); })));
+			})) : '<div class="hm-empty">교육 중인 교육생이 없습니다.</div>');
 		});
 	}
 
