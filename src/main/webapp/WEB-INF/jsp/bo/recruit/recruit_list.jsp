@@ -63,6 +63,8 @@
 	.rc-kv { display: grid; grid-template-columns: 110px 1fr; gap: 6px 10px; align-items: center; font-size: 13px; }
 	.rc-kv > label { margin: 0; font-weight: 700; color: #495057; font-size: 12.5px; } .rc-kv > label.q { color: #e67700; }
 	.rc-kv .form-control { height: 30px; font-size: 13px; }
+	.rc-kv > .rc-sec { grid-column: 1 / -1; margin: 8px 0 0; }
+	.rc-kv > .rc-sec:first-child { margin-top: 0; }
 	.rc-raw { font: 12px/1.7 ui-monospace, Consolas, monospace; white-space: pre-wrap; background: #fafbfc; border: 1px solid #e9ecef; border-radius: 8px; padding: 8px 10px; max-height: 240px; overflow: auto; }
 	.rc-sec { border-top: 1px solid #eef1f4; padding-top: 10px; margin-top: 12px; } .rc-sec h4 { font-size: 13px; font-weight: 800; margin-bottom: 8px; display: flex; gap: 6px; align-items: center; }
 	.rc-opt { display: flex; gap: 8px; align-items: center; border: 1px solid #dee2e6; border-radius: 8px; padding: 7px 10px; margin-bottom: 6px; cursor: pointer; font-size: 13px; }
@@ -117,6 +119,8 @@ var WAY = { FACE: '대면', VIDEO: '화상', PHONE: '전화' };
 var MISS = [['CLIENT_NM', '고객사'], ['PRJ_NM', '사업명'], ['GRADE_TXT', '등급·인원'], ['START_DT', '투입 시작'], ['WORK_AREA', '근무지'], ['SALE_PARTNER_SQ', '매출처'], ['PRICE_TXT', '단가']];
 var FIELDS = [['CLIENT_NM', '고객사'], ['PRJ_NM', '사업명'], ['GRADE_TXT', '등급·인원', '예: 중급 2 · 고급 1'], ['HEAD_CNT', '정원(명)', '', 'number'], ['START_DT', '투입 시작', '', 'date'], ['END_DT', '투입 종료', '비우면 미정', 'date'],
 	['PERIOD_TXT', '기간 원문'], ['WORK_AREA', '근무지'], ['PRICE_TXT', '단가 🔒'], ['SKILLS', '요구 기술', '쉼표로'], ['PREFER', '우대'], ['SALE_PARTNER_SQ', '매출처', '', 'partner'], ['MGR_NM', '담당'], ['CLOSE_DT', '지원 마감', '', 'date'], ['MEMO', '메모', '', 'textarea']];
+// 상세 칸 묶음: 이 칸 앞에 섹션 제목을 넣는다
+var SECTION_AT = { CLIENT_NM: '사업 정보', START_DT: '기간·근무지', PRICE_TXT: '조건', SALE_PARTNER_SQ: '거래처·마감' };
 var calMonth = null;
 
 function ls(k, v) { try { if (v === undefined) return localStorage.getItem('flt:' + PATH + ':' + k); localStorage.setItem('flt:' + PATH + ':' + k, v); } catch (e) { return null; } }
@@ -562,6 +566,7 @@ function fieldForm(r, miss) {
 	var missKeys = (miss || []).map(function(m) { return m[0]; }), $k = $('<div class="rc-kv">');
 	FIELDS.forEach(function(f) {
 		var id = 'rf_' + f[0], v = r[f[0]], $c;
+		if (SECTION_AT[f[0]]) $k.append($('<div class="hr-section rc-sec">').text(SECTION_AT[f[0]]));
 		if (f[0] === 'PRICE_TXT' && !D.canPay) { $k.append($('<label>').text('단가')).append($('<span class="text-muted">').text('🔒 급여 권한자만 보고 고쳐요')); return; }
 		if (f[3] === 'partner') {
 			$c = $('<select class="form-control form-control-sm">').append('<option value="">(고르기)</option>');

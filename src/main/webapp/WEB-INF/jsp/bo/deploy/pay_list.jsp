@@ -84,8 +84,6 @@
 	.pl-netbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #111; color: #fff; font-weight: 700; border-radius: 8px; margin-top: 10px; }
 	.pl-netbar b { font-size: 19px; font-variant-numeric: tabular-nums; }
 	.pl-card th { width: 15%; background: #f6f8fa; color: #5f6b75; font-weight: 600; }
-	.pl-feed .it { border: 1px solid rgba(17,17,17,.1); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; white-space: pre-wrap; }
-	.pl-feed .who { font-size: 11.5px; color: #5f6b75; display: flex; gap: 8px; align-items: center; white-space: normal; }
 	@media (max-width: 900px) { .pl-two { grid-template-columns: 1fr; } }
 </style>
 
@@ -609,29 +607,9 @@
 
 	// ── 메모 (쌓기만, 본인 것만 삭제) ──
 
-	function memoView($box, r, done) {
-		hrPost('/admin/pay/memoListData.do', { STAFF_SQ: r.STAFF_SQ, YM: ym }, function(res) {
-			var $f = $('<div class="pl-feed">');
-			res.result.list.forEach(function(m) {
-				var $who = $('<div class="who">').append($('<b>').text(m.EMPLY_NM || m.EMPLY_ID)).append($('<span>').text(m.REG_DT));
-				if (m.EMPLY_ID === res.result.me) $who.append($('<button type="button" class="btn btn-sm btn-link p-0 ml-auto text-danger">삭제</button>').on('click', function() {
-					hrPost('/admin/pay/deleteMemoData.do', { MEMO_SQ: m.MEMO_SQ }, function() { memoView($box, r, done); load(); });
-				}));
-				$f.append($('<div class="it">').append($who).append($('<div>').text(m.CONTENT)));
-			});
-			if (!res.result.list.length) $f.append('<div class="text-muted small mb-2">이 달 메모가 없습니다.</div>');
-			var $ta = $('<textarea class="form-control form-control-sm enter-send" rows="2" maxlength="1000" aria-label="메모 입력" placeholder="메모 입력 · Enter 등록, Shift+Enter 줄바꿈 (작성자·일시는 자동)">');
-			var $add = $('<button type="button" class="btn btn-sm btn-primary mt-1">남기기</button>').on('click', function() {
-				if (!$.trim($ta.val())) { $ta.focus(); return; }
-				$add.prop('disabled', true);
-				hrPost('/admin/pay/saveMemoData.do', { YM: ym, STAFF_SQ: r.STAFF_SQ, CONTENT: $ta.val() }, function() { memoView($box, r, function() { $box.find('textarea').focus(); }); load(); }, function() { $add.prop('disabled', false); });
-			});
-			$ta.on('enter-send', function() { if (!$add.prop('disabled')) $add.click(); });
-			$box.empty().append($f).append($ta).append($('<div class="text-right">').append($add));
-			if (done) done();
-		});
-	}
-	function memoPopup(r) { var $box = $('<div>'); memoView($box, r, function() { dpInfo(r.STAFF_NM + ' · ' + dpYmLabel(ym) + ' 메모', $box); }); }
+	var MEMO_API = { list: '/admin/pay/memoListData.do', save: '/admin/pay/saveMemoData.do', del: '/admin/pay/deleteMemoData.do', max: 1000, empty: '이 달 메모가 없습니다.' };
+	function memoView($box, r) { hrMemoFeed($box, MEMO_API, { STAFF_SQ: r.STAFF_SQ, YM: ym }, load); }
+	function memoPopup(r) { var $box = $('<div>'); dpInfo(r.STAFF_NM + ' · ' + dpYmLabel(ym) + ' 메모', $box); memoView($box, r); }
 
 	// ── 수정이력 (되돌리기는 여기서만) ──
 

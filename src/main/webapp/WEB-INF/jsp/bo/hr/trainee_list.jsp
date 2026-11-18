@@ -100,14 +100,21 @@
 	var STATUS = { ING: '교육진행중', END: '교육종료', DROP: '중도이탈' };
 	var WEEKS = [['1', '1주차'], ['2', '2주차'], ['3', '3주차'], ['OVER', '3주차 초과'], ['NONE', '시작일 없음']];
 	var SKILLS = [['SK_JSP', 'JSP'], ['SK_THYMELEAF', 'Thymeleaf'], ['SK_VUE', 'Vue'], ['SK_REACT', 'React'], ['SK_NODE_FE', 'Node(프론트)'], ['SK_SPRING', 'Spring'], ['SK_JAVA', 'Java'], ['SK_NODE_BE', 'Node(백엔드)'], ['SK_NEXACRO', 'nexacro'], ['SK_WEBSQUARE', 'WebSquare'], ['SK_EXBUILDER', 'exBuilder']];
-	var FIELDS = [
-		['TRN_NM', '이름 *', 3], ['STATUS_CD', '상태', 3, { values: STATUS }], ['LEAVE_NOTE', '퇴사·잠수 표시', 2, { code: 'HR_LEAVE' }], ['GENDER', '성별', 2, { code: 'HR_GENDER' }], ['AGE', '나이', 2],
-		['EDU_START_DT', '교육 시작일', 3, 'date'], ['INTERVIEW_YN', '인터뷰', 3, { code: 'HR_INTERVIEW' }], ['INTERVIEW_AVAIL', '인터뷰 가능일', 3], ['EDU', '최종학력', 3],
-		['ADDR', '주소지', 6], ['STATION', '인근 지하철역', 6],
-		['LANG', '외국어', 12, { multi: 'HR_LANG' }], ['LANG_NOTE', '외국어 수준', 12],
-		['LOCAL_YN', '지방 가능', 4, { code: 'HR_LOCAL' }], ['EARLY_YN', '조기파견', 4, { code: 'HR_OXT' }], ['SPECIAL_YN', '특수계약', 4, { code: 'HR_OXT' }],
-		['CAREER', '이전경력', 12]
+	// 상세 창 칸 묶음: [섹션 제목, 칸들]
+	var SECTIONS = [
+		['교육 상태', [['STATUS_CD', '상태', 4, { values: STATUS }], ['EDU_START_DT', '교육 시작일', 4, 'date'], ['LEAVE_NOTE', '퇴사·잠수 표시', 4, { code: 'HR_LEAVE' }]]],
+		['기본정보', [
+			['TRN_NM', '이름 *', 4], ['GENDER', '성별', 2, { code: 'HR_GENDER' }], ['AGE', '나이', 2], ['EDU', '최종학력', 4],
+			['ADDR', '주소지', 6], ['STATION', '인근 지하철역', 6],
+			['LANG', '외국어', 12, { multi: 'HR_LANG' }], ['LANG_NOTE', '외국어 수준', 12],
+			['CAREER', '이전경력', 12]
+		]],
+		['인터뷰·파견 조건', [
+			['INTERVIEW_YN', '인터뷰', 3, { code: 'HR_INTERVIEW' }], ['INTERVIEW_AVAIL', '인터뷰 가능일', 3],
+			['LOCAL_YN', '지방 가능', 2, { code: 'HR_LOCAL' }], ['EARLY_YN', '조기파견', 2, { code: 'HR_OXT' }], ['SPECIAL_YN', '특수계약', 2, { code: 'HR_OXT' }]
+		]]
 	];
+	var FIELDS = [].concat.apply([], SECTIONS.map(function(s) { return s[1]; }));
 	// 참고사항은 메모로 옮겼다. 카드 💬 버튼과 상세 창 아래 메모 칸에서 쌓는다
 	var MEMO_API = hrMemoApi('/admin/hr/', 'trainee');
 	var FILTERS = [['#fGender', 'GENDER', 'HR_GENDER'], ['#fInterview', 'INTERVIEW_YN', 'HR_INTERVIEW'], ['#fLocal', 'LOCAL_YN', 'HR_LOCAL'], ['#fLeave', 'LEAVE_NOTE', 'HR_LEAVE']];
@@ -147,7 +154,10 @@
 			rows = res.list || [];
 			if (!HR_CODES) {
 				hrSetCodes(res.codes);
-				hrBuildFields('#editFields', FIELDS);
+				SECTIONS.forEach(function(s) {
+					$('<div class="col-12 hr-section">').text(s[0]).appendTo('#editFields');
+					hrBuildFields('#editFields', s[1]);
+				});
 				FILTERS.forEach(function(f) {
 					var $s = $(f[0]).append('<option value="">전체</option>').append($('<option>').val(NONE).text('값 없음'));
 					(HR_CODES[f[2]] || []).forEach(function(c) { $s.append($('<option>').val(c.CD).text(c.NM)); });

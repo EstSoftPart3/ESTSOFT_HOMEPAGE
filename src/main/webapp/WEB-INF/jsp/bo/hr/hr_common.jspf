@@ -71,7 +71,15 @@
 	/* 목록 메모 (hrMemoBtn·hrMemoFeed) */
 	.hr-memo-btn { border: 1px solid #b9dbe6; background: #f3fbfd; color: #0b6e8a; border-radius: 10px; padding: 0 7px; font-size: 11.5px; font-weight: 700; }
 	.hr-memo-btn.zero { opacity: .55; font-weight: 400; }
-	.hr-memo-feed { max-height: 50vh; overflow-y: auto; }
-	.hr-memo-feed .it { border: 1px solid rgba(17,17,17,.1); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; white-space: pre-wrap; }
-	.hr-memo-feed .who { font-size: 11.5px; color: #5f6b75; display: flex; gap: 8px; align-items: center; white-space: normal; }
+	/* 새 메모 입력은 위, 기록은 카드 하나씩(머리줄: 작성자 굵게 · 일시 작게) */
+	.hr-memo-new { display: flex; gap: 6px; align-items: flex-end; margin-bottom: 10px; }
+	.hr-memo-new textarea { flex: 1 1 auto; }
+	.hr-memo-new .btn { flex: 0 0 auto; white-space: nowrap; }
+	.hr-memo-feed { max-height: 50vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+	.hr-memo-feed .it { flex: 0 0 auto; background: #fff; border: 1px solid #dde2e7; border-left: 3px solid #16a0c4; border-radius: 6px; }
+	.hr-memo-feed .it.old { border-left-color: #b4bcc4; }
+	.hr-memo-feed .who { display: flex; gap: 8px; align-items: center; padding: 4px 10px; background: #f3f6f8; border-bottom: 1px solid #e6eaee; border-radius: 0 6px 0 0; font-size: 11.5px; color: #5f6b75; }
+	.hr-memo-feed .who b { font-size: 12.5px; color: #111; }
+	.hr-memo-feed .txt { padding: 7px 10px; white-space: pre-wrap; word-break: break-word; font-size: 13px; color: #222; }
+	.hr-memo-feed .it.old .txt { color: #555; }
 </style>

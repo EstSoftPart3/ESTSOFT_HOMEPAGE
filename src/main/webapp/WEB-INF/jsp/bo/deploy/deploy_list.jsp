@@ -89,8 +89,6 @@
 	.pl-dup-arrow { border: 0; background: none; padding: 0 4px 0 0; color: #b07d00; font-size: 11px; cursor: pointer; }
 	.pl-dup-arrow:focus { outline: 2px solid #16d5ff; border-radius: 3px; }
 	.dp-sub-mark { color: #8a949c; }
-	.pl-feed .it { border: 1px solid rgba(17,17,17,.1); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; white-space: pre-wrap; }
-	.pl-feed .who { font-size: 11.5px; color: #5f6b75; display: flex; gap: 8px; align-items: center; white-space: normal; }
 </style>
 <%@ include file="/WEB-INF/jsp/bo/deploy/deploy_common.jspf"%>
 
@@ -154,6 +152,7 @@
 					<input type="hidden" name="DEPLOY_SQ"><input type="hidden" name="STAFF_SQ">
 					<div class="modal-body">
 						<div class="form-row" id="detailFields"></div>
+						<div class="hr-section">근무 상태</div>
 						<div class="custom-control custom-switch mb-2"><input type="checkbox" class="custom-control-input" id="dOffice"><label class="custom-control-label" for="dOffice">내근직 <span class="small text-muted">· 켜고 저장하면 투입 현황·대기·철수 임박에서 빠지고 내근직 탭에만 보입니다</span></label></div>
 						<div class="custom-control custom-switch mb-1"><input type="checkbox" class="custom-control-input" id="dRest"><label class="custom-control-label" for="dRest">휴직 <span class="small text-muted">· 켜고 기간을 넣어 저장하면 휴직이 끝날 때까지 다른 탭에서 빠지고 휴직 탭에만 보입니다</span></label></div>
 						<div class="d-none align-items-center mb-2 ml-4" style="gap:6px" id="dRestDates">
@@ -644,31 +643,12 @@
 
 	// ── 메모 (쌓기만, 본인 것만 삭제) · 수정이력 (되돌리기는 여기서만) ──
 
+	var MEMO_API = { list: '/admin/deploy/memoListData.do', save: '/admin/deploy/saveMemoData.do', del: '/admin/deploy/deleteMemoData.do', max: 1000 };
 	function memoPopup(r) {
 		var $box = $('<div>');
-		function draw(first) {
-			hrPost('/admin/deploy/memoListData.do', { STAFF_SQ: r.STAFF_SQ }, function(res) {
-				var $f = $('<div class="pl-feed">');
-				res.result.list.forEach(function(m) {
-					var $who = $('<div class="who">').append($('<b>').text(m.EMPLY_NM || m.EMPLY_ID)).append($('<span>').text(m.REG_DT));
-					if (m.EMPLY_ID === res.result.me) $who.append($('<button type="button" class="btn btn-sm btn-link p-0 ml-auto text-danger">삭제</button>').on('click', function() {
-						hrPost('/admin/deploy/deleteMemoData.do', { MEMO_SQ: m.MEMO_SQ }, function() { draw(); load(); });
-					}));
-					$f.append($('<div class="it">').append($who).append($('<div>').text(m.CONTENT)));
-				});
-				if (!res.result.list.length) $f.append('<div class="text-muted small mb-2">메모가 없습니다.</div>');
-				var $ta = $('<textarea class="form-control form-control-sm enter-send" rows="2" maxlength="1000" aria-label="메모 입력" placeholder="메모 입력 · Enter 등록, Shift+Enter 줄바꿈 (작성자·일시는 자동)">');
-				var $add = $('<button type="button" class="btn btn-sm btn-primary mt-1">남기기</button>').on('click', function() {
-					if (!$.trim($ta.val())) { $ta.focus(); return; }
-					$add.prop('disabled', true);
-					hrPost('/admin/deploy/saveMemoData.do', { STAFF_SQ: r.STAFF_SQ, CONTENT: $ta.val() }, function() { draw(); load(); }, function() { $add.prop('disabled', false); });
-				});
-				$ta.on('enter-send', function() { if (!$add.prop('disabled')) $add.click(); });
-				$box.empty().append($f).append($ta).append($('<div class="text-right">').append($add));
-				if (first) { $('#dpInfo').one('shown.bs.modal', function() { $ta.focus(); }); dpInfo(r.STAFF_NM + ' 투입 메모', $box); } else $ta.focus();
-			});
-		}
-		draw(true);
+		$('#dpInfo').one('shown.bs.modal', function() { $box.find('textarea').focus(); });
+		dpInfo(r.STAFF_NM + ' 투입 메모', $box);
+		hrMemoFeed($box, MEMO_API, { STAFF_SQ: r.STAFF_SQ }, load);
 	}
 
 	function histVal(field, v) {
@@ -800,17 +780,24 @@
 	// ── 상세 팝업 ──
 
 	function detailFields() {
-		var f = [['STAFF_NM', '성명', 3], ['EMP_TYPE_CD', '고용형태', 3, { code: 'HR_EMP_TYPE' }], ['GRADE_CD', '투입등급', 3, { code: 'HR_DEPLOY_GRADE' }], ['WORK_AREA', '근무지역', 3],
-			['CLIENT_NM', '고객사', 3], ['PRJ_NM', '프로젝트', 3], ['SALE_PARTNER_SQ', '매출처', 3, { values: {} }], ['BUY_PARTNER_SQ', '매입처', 3, { values: {} }],
-			['START_DT', '투입일', 3, 'date'], ['END_DT', '철수일', 3, 'date'], ['PROB_END_DT', '수습해제일', 3, 'date']];
-		if (data.canPay) f.push(['SALE_PRICE', '월 매출단가 🔒', 3], ['COST_PRICE', '월 계약단가 🔒', 3]);
-		f.push(['MEMO', '메모', 12]);
-		return f;
+		return [].concat.apply([], detailSections().map(function(s) { return s[1]; }));
+	}
+	// 상세 팝업 칸 묶음: [섹션 제목, 칸들]
+	function detailSections() {
+		var s = [['인원·계약', [['STAFF_NM', '성명', 3], ['EMP_TYPE_CD', '고용형태', 3, { code: 'HR_EMP_TYPE' }], ['GRADE_CD', '투입등급', 3, { code: 'HR_DEPLOY_GRADE' }], ['WORK_AREA', '근무지역', 3]]],
+			['투입처', [['CLIENT_NM', '고객사', 3], ['PRJ_NM', '프로젝트', 3], ['SALE_PARTNER_SQ', '매출처', 3, { values: {} }], ['BUY_PARTNER_SQ', '매입처', 3, { values: {} }]]],
+			['기간', [['START_DT', '투입일', 3, 'date'], ['END_DT', '철수일', 3, 'date'], ['PROB_END_DT', '수습해제일', 3, 'date']]]];
+		if (data.canPay) s.push(['단가 🔒', [['SALE_PRICE', '월 매출단가', 3], ['COST_PRICE', '월 계약단가', 3]]]);
+		s.push(['메모', [['MEMO', '메모', 12, null, true]]]);
+		return s;
 	}
 
 	function openDetail(r) {
 		$('#detailFields').empty();
-		hrBuildFields('#detailFields', detailFields());
+		detailSections().forEach(function(s) {
+			$('<div class="col-12 hr-section">').text(s[0]).appendTo('#detailFields');
+			hrBuildFields('#detailFields', s[1]);
+		});
 		[['SALE_PARTNER_SQ', 'SALE_YN'], ['BUY_PARTNER_SQ', 'BUY_YN']].forEach(function(x) {
 			var $s = $('#detailForm [name=' + x[0] + ']').empty();
 			partnerOptions(x[1], r[x[0]]).list.forEach(function(o) { $s.append($('<option>').val(o[0]).text(o[1])); });
