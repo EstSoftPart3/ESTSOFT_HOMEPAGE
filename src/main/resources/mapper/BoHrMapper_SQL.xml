@@ -22,6 +22,7 @@
 			  I.INTV_SQ, I.SEQ_NO, I.APLY_NM, I.HIRE_CD, I.GENDER
 			<!-- 이력서 보기 버튼: 캘린더로 올린 파일이 있거나 배치로 들어온 면접(드라이브 날짜·이름 폴더에 이력서가 있음) -->
 			, IF(I.RESUME_FILE_ID IS NOT NULL OR I.GCAL_EVT_ID IS NOT NULL, 'Y', 'N') AS RESUME_YN
+			, IF(I.PORTFOLIO_FILE_ID IS NOT NULL, 'Y', 'N') AS PORTFOLIO_YN
 			, DATE_FORMAT(I.INTV_DT, '%Y-%m-%d') AS INTV_DT
 			, I.INTV_TM, I.APLY_TARGET, I.APLY_ROUTE, I.REFERRER, I.LANG_NOTE, I.PHONE, I.ATTEND_ST, I.EDU, I.AGE, I.ADDR, I.STATION
 			, I.CAREER, I.LANG, I.LOCAL_YN, I.HOBBY, I.SPECIALTY, I.SALARY
@@ -65,11 +66,15 @@
 	</update>
 
 	<select id="selectIntvResume" parameterType="hashMap" resultType="hashMap">
-		SELECT DATE_FORMAT(INTV_DT, '%Y-%m-%d') AS INTV_DT, APLY_NM, RESUME_FILE_ID FROM TB_EEP_HR_INTV_M WHERE INTV_SQ = #{INTV_SQ}
+		SELECT DATE_FORMAT(INTV_DT, '%Y-%m-%d') AS INTV_DT, APLY_NM, RESUME_FILE_ID, PORTFOLIO_FILE_ID FROM TB_EEP_HR_INTV_M WHERE INTV_SQ = #{INTV_SQ}
 	</select>
 
 	<update id="updateIntvResume" parameterType="hashMap">
 		UPDATE TB_EEP_HR_INTV_M SET RESUME_FILE_ID = #{RESUME_FILE_ID} WHERE INTV_SQ = #{INTV_SQ}
+	</update>
+
+	<update id="updateIntvPortfolio" parameterType="hashMap">
+		UPDATE TB_EEP_HR_INTV_M SET PORTFOLIO_FILE_ID = #{PORTFOLIO_FILE_ID} WHERE INTV_SQ = #{INTV_SQ}
 	</update>
 
 	<select id="countIntvSameDay" parameterType="hashMap" resultType="int">

@@ -19,6 +19,7 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import com.eep.bo.batch.service.GoogleDriveApi;
 import com.eep.bo.batch.service.ResumeParser;
 import com.eep.bo.hr.dao.BoHrDao;
 import com.eep.bo.staff.service.BoStaffService;
@@ -109,19 +110,30 @@ public class BoHrServiceImpl implements BoHrService {
 	}
 
 	@Override
-	public void IntvResumeSave(Object intvSq, String fileName, byte[] pdf) {
+	public void IntvResumeSave(Object intvSq, boolean portfolio, String fileName, byte[] pdf) {
 		Map<String, Object> row = intvResume(intvSq);
 		if (!hasText(row.get("INTV_DT"))) {
-			throw new IllegalArgumentException("면접일자가 없어 이력서를 올릴 폴더를 정할 수 없습니다.");
+			throw new IllegalArgumentException("면접일자가 없어 파일을 올릴 폴더를 정할 수 없습니다.");
 		}
 		row.put("INTV_SQ", intvSq);
+		if (portfolio) {
+			// 같은 이름 폴더에 두므로 이력서 찾기(GoogleDriveApi.resumePdf)가 건너뛰게 이름 앞에 표시한다
+			String name = fileName.startsWith(GoogleDriveApi.PORTFOLIO_PREFIX) ? fileName : GoogleDriveApi.PORTFOLIO_PREFIX + "_" + fileName;
+			row.put("PORTFOLIO_FILE_ID", batchService.saveResume((String) row.get("INTV_DT"), (String) row.get("APLY_NM"), name, pdf));
+			hrMapper.updateIntvPortfolio(row);
+			return;
+		}
 		row.put("RESUME_FILE_ID", batchService.saveResume((String) row.get("INTV_DT"), (String) row.get("APLY_NM"), fileName, pdf));
 		hrMapper.updateIntvResume(row);
 	}
 
 	@Override
-	public byte[] IntvResumeFile(Object intvSq) {
+	public byte[] IntvResumeFile(Object intvSq, boolean portfolio) {
 		Map<String, Object> row = intvResume(intvSq);
+		if (portfolio) {
+			// 포트폴리오는 올린 파일만 본다(폴더에서 찾지 않는다)
+			return hasText(row.get("PORTFOLIO_FILE_ID")) ? batchService.resumeFile((String) row.get("PORTFOLIO_FILE_ID"), null, null) : null;
+		}
 		return batchService.resumeFile((String) row.get("RESUME_FILE_ID"), (String) row.get("INTV_DT"), (String) row.get("APLY_NM"));
 	}
 

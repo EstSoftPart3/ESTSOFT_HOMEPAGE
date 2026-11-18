@@ -75,10 +75,10 @@ public class BoHrController {
 
 	// 캘린더에 끌어 놓은 이력서를 저장한 면접자의 드라이브 날짜·이름 폴더에 올린다
 	@RequestMapping(value = "/admin/hr/uploadInterviewResumeData.do", method = RequestMethod.POST)
-	public ModelAndView uploadInterviewResumeData(@RequestParam("INTV_SQ") int intvSq, @RequestParam("file") MultipartFile file) {
+	public ModelAndView uploadInterviewResumeData(@RequestParam("INTV_SQ") int intvSq, @RequestParam(value = "KIND", required = false) String kind, @RequestParam("file") MultipartFile file) {
 		try {
 			Upload u = Upload.of(file, "pdf");
-			BoHrService.IntvResumeSave(intvSq, u.name, u.data);
+			BoHrService.IntvResumeSave(intvSq, "PORTFOLIO".equals(kind), u.name, u.data);
 			return Upload.noted(json("result", "OK"), u);
 		} catch (IllegalArgumentException e) {
 			return json("error", e.getMessage());
@@ -89,18 +89,19 @@ public class BoHrController {
 
 	// 상세 창 「이력서 보기」: 회사 드라이브에서 받아 새 탭에 PDF 로 보여 준다(드라이브 권한이 없는 관리자도 볼 수 있게)
 	@RequestMapping(value = "/admin/hr/interviewResumeFile.do", method = RequestMethod.GET)
-	public void interviewResumeFile(@RequestParam("INTV_SQ") int intvSq, javax.servlet.http.HttpServletResponse response) throws java.io.IOException {
+	public void interviewResumeFile(@RequestParam("INTV_SQ") int intvSq, @RequestParam(value = "KIND", required = false) String kind, javax.servlet.http.HttpServletResponse response) throws java.io.IOException {
 		byte[] pdf;
 		String fail = null;
+		boolean portfolio = "PORTFOLIO".equals(kind);
 		try {
-			pdf = BoHrService.IntvResumeFile(intvSq);
-			if (pdf == null) fail = "이력서를 찾지 못했습니다. 드라이브의 면접일자·이름 폴더에 PDF 가 있는지 확인해 주세요.";
+			pdf = BoHrService.IntvResumeFile(intvSq, portfolio);
+			if (pdf == null) fail = portfolio ? "포트폴리오를 찾지 못했습니다. 상세 창에서 다시 등록해 주세요." : "이력서를 찾지 못했습니다. 드라이브의 면접일자·이름 폴더에 PDF 가 있는지 확인해 주세요.";
 		} catch (IllegalArgumentException e) {
 			pdf = null;
 			fail = e.getMessage();
 		} catch (Exception e) {
 			pdf = null;
-			fail = "드라이브에서 이력서를 받지 못했습니다. 잠시 뒤 다시 시도해 주세요.";
+			fail = "드라이브에서 파일을 받지 못했습니다. 잠시 뒤 다시 시도해 주세요.";
 		}
 		response.setHeader("X-Content-Type-Options", "nosniff");
 		if (pdf == null) {
@@ -110,7 +111,7 @@ public class BoHrController {
 			return;
 		}
 		response.setContentType("application/pdf");
-		response.setHeader("Content-Disposition", "inline; filename=\"resume.pdf\"");
+		response.setHeader("Content-Disposition", "inline; filename=\"" + (portfolio ? "portfolio" : "resume") + ".pdf\"");
 		response.setContentLength(pdf.length);
 		response.getOutputStream().write(pdf);
 	}

@@ -105,8 +105,13 @@
 			<div class="modal-content">
 				<div class="modal-header">
 					<h5 class="modal-title" id="editTitle">면접자</h5>
-					<a id="btnResume" class="btn btn-sm btn-outline-primary ml-auto align-self-center" target="_blank" rel="noopener" style="display:none;"><i class="far fa-file-pdf"></i> 이력서 보기</a>
-					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
+					<%-- 파일이 있으면 보기(채운 버튼), 없으면 등록(테두리 버튼). 닫기 바로 왼쪽에 붙인다 --%>
+					<div class="ml-auto d-flex align-items-center" style="gap:6px;">
+						<button type="button" class="btn btn-sm ic-doc" id="btnDocRESUME" data-kind="RESUME"></button>
+						<button type="button" class="btn btn-sm ic-doc" id="btnDocPORTFOLIO" data-kind="PORTFOLIO"></button>
+						<input type="file" id="docFile" class="d-none" accept="application/pdf,.pdf" aria-label="PDF 파일 선택">
+					</div>
+					<button type="button" class="close" style="margin-left:.5rem;" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
 				</div>
 				<form id="editForm" onsubmit="saveEdit(); return false;">
 					<div class="modal-body"><div class="form-row" id="editFields"></div></div>
@@ -508,9 +513,9 @@
 
 	function openEdit(row) {
 		editing = row;
-		pendingFile = null;
+		pending = {};
 		hrFillForm('#editForm', FIELDS, row);
-		$('#btnResume').toggle(row.RESUME_YN === 'Y').attr('href', '/admin/hr/interviewResumeFile.do?INTV_SQ=' + row.INTV_SQ);
+		paintDocs();
 		$('#editForm .ic-auto').removeClass('ic-auto');
 		toggleReferrer();
 		$('#editTitle').text('면접자 상세 · 순번 ' + (row.SEQ_NO || '-'));
@@ -526,13 +531,41 @@
 	}
 
 	// 캘린더에서 새 면접자: 누른(놓은) 날짜·시간과 이력서에서 읽은 값을 채운 상세 창. 저장을 눌러야 등록된다
-	var pendingFile = null;
-	// file: 끌어 놓은 이력서. 저장에 성공하면 그 면접자의 드라이브 폴더에 올린다
+	// 새 면접자 창에서 고른 파일 { RESUME, PORTFOLIO }. 저장에 성공하면 그 면접자의 드라이브 폴더에 올린다
+	var pending = {};
+	var DOCS = { RESUME: ['이력서', 'RESUME_YN'], PORTFOLIO: ['포트폴리오', 'PORTFOLIO_YN'] };
+
+	function paintDocs() {
+		$.each(DOCS, function(kind, d) {
+			var has = editing[d[1]] === 'Y', picked = pending[kind];
+			$('#btnDoc' + kind).toggleClass('btn-primary', has).toggleClass('btn-outline-primary bg-white', !has).attr('title', picked ? picked.name : '')
+				.html(has ? '<i class="far fa-file-pdf"></i> ' + d[0] + ' 보기' : '<i class="fas fa-upload"></i> ' + d[0] + (picked ? ' 선택됨' : ' 등록'));
+		});
+	}
+
+	$(document).on('click', '.ic-doc', function() {
+		var kind = $(this).data('kind');
+		if (editing[DOCS[kind][1]] === 'Y') {
+			window.open('/admin/hr/interviewResumeFile.do?INTV_SQ=' + editing.INTV_SQ + (kind === 'PORTFOLIO' ? '&KIND=PORTFOLIO' : ''), '_blank', 'noopener');
+			return;
+		}
+		$('#docFile').data('kind', kind).val('').click();
+	});
+	$(document).on('change', '#docFile', function() {
+		var file = this.files[0], kind = $(this).data('kind');
+		if (!file) return;
+		if (!/\.pdf$/i.test(file.name)) { bootbox.alert('<b>PDF만 올릴 수 있습니다</b>'); return; }
+		// 이미 저장된 면접자는 바로 올리고, 새 면접자는 저장할 때 올린다
+		if (editing.INTV_SQ) uploadDocs(editing.INTV_SQ, [[kind, file]], editing);
+		else { pending[kind] = file; paintDocs(); }
+	});
+
+	// file: 끌어 놓은 이력서
 	function openNew(dt, tm, fields, file) {
 		fields = fields || {};
 		editing = {};
-		pendingFile = file || null;
-		$('#btnResume').hide();
+		pending = file ? { RESUME: file } : {};
+		paintDocs();
 		hrFillForm('#editForm', FIELDS, $.extend({ APLY_TARGET: '이에스티', HIRE_CD: 'NEW', APLY_ROUTE: fields.APLY_ROUTE || (fields.APLY_NM ? '' : firstRoute()) }, fields, { INTV_DT: dt, INTV_TM: tm }));
 		$('#editForm .ic-auto').removeClass('ic-auto');
 		var auto = Object.keys(fields);
@@ -707,23 +740,29 @@
 	function saveEdit() {
 		var data = hrFormData('#editForm');
 		if (editing.INTV_SQ) data.push({ name: 'INTV_SQ', value: editing.INTV_SQ });
-		var file = pendingFile;
+		var files = $.map(pending, function(f, kind) { return [[kind, f]]; });
 		hrPost('/admin/hr/saveInterviewData.do', data, function(res) {
 			$('#editModal').modal('hide');
-			if (file && res.INTV_SQ) uploadResume(res.INTV_SQ, file);
+			if (files.length && res.INTV_SQ) uploadDocs(res.INTV_SQ, files);
 			load();
 		});
 	}
 
-	// 면접자는 이미 저장됐으므로 이력서 올리기가 실패해도 안내만 한다
-	function uploadResume(intvSq, file) {
-		var fd = new FormData();
-		fd.append('INTV_SQ', intvSq);
-		fd.append('file', file);
-		$.ajax({ url: '/admin/hr/uploadInterviewResumeData.do', type: 'POST', data: fd, processData: false, contentType: false }).done(function(res) {
-			bootbox.alert(res.error ? '면접자는 저장했습니다. 이력서는 드라이브에 올리지 못했습니다.<br>' + $('<div>').text(res.error).html() : '저장했습니다. 이력서를 드라이브에 올렸습니다.');
-			if (!res.error) load();
-		}).fail(function() { bootbox.alert('면접자는 저장했습니다. 이력서는 드라이브에 올리지 못했습니다.'); });
+	// 면접자는 이미 저장됐으므로 파일 올리기가 실패해도 안내만 한다. 같은 이름 폴더를 두 번 만들지 않게 하나씩 차례로 올린다.
+	// row: 열려 있는 상세 창의 면접자(올린 뒤 버튼을 '보기'로 바꾼다)
+	function uploadDocs(intvSq, files, row) {
+		var msgs = [];
+		(function next(i) {
+			if (i >= files.length) { bootbox.alert(msgs.join('<br>')); load(); return; }
+			var kind = files[i][0], label = DOCS[kind][0], fd = new FormData();
+			fd.append('INTV_SQ', intvSq);
+			fd.append('KIND', kind);
+			fd.append('file', files[i][1]);
+			$.ajax({ url: '/admin/hr/uploadInterviewResumeData.do', type: 'POST', data: fd, processData: false, contentType: false }).done(function(res) {
+				msgs.push(res.error ? label + '를 드라이브에 올리지 못했습니다. ' + $('<div>').text(res.error).html() : label + '를 드라이브에 올렸습니다.');
+				if (!res.error && row) { row[DOCS[kind][1]] = 'Y'; if (editing === row) paintDocs(); }
+			}).fail(function() { msgs.push(label + '를 드라이브에 올리지 못했습니다.'); }).always(function() { next(i + 1); });
+		})(0);
 	}
 
 	function deleteEdit() {
