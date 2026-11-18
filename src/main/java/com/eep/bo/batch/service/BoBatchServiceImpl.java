@@ -197,6 +197,7 @@ public class BoBatchServiceImpl implements BoBatchService {
 			detail.put("INTV_DT", date);
 			detail.put("INTV_TM", event.get("TIME"));
 			detail.put("EVT_TITLE", cut(InterviewCalendarParser.maskPhone(title), 500));
+			detail.put("ATTACH_FILE_ID", event.get("ATTACH"));
 			details.add(detail);
 
 			String excluded = InterviewCalendarParser.excludeReason(event);
@@ -255,6 +256,7 @@ public class BoBatchServiceImpl implements BoBatchService {
 			e.put("ALL_DAY", (String) r.get("ALL_DAY_YN"));
 			e.put("DATE", start.substring(0, 10));
 			if (!"Y".equals(r.get("ALL_DAY_YN"))) e.put("TIME", start.substring(11, 16));
+			e.put("ATTACH", (String) r.get("ATTACH_FILE_ID")); // 일정에 붙은 이력서. iCal 주소로 읽을 때는 없다
 			events.add(e);
 		}
 		return events;
@@ -300,10 +302,28 @@ public class BoBatchServiceImpl implements BoBatchService {
 		}
 	}
 
+	/**
+	 * 이력서 파일을 찾아 면접 행에 기록하고(「이력서 보기」가 그 파일을 연다) 빈 칸을 채운다.
+	 * 찾는 순서: 이미 기록된 파일 → 드라이브 날짜/이름 폴더 → 날짜 폴더의 이름_….pdf → 일정 첨부(드라이브 날짜/이름 폴더에 복사)
+	 */
 	private String fillResume(Map<String, Object> d, String root, String token, Map<String, String> dayFolders) throws IOException {
 		Map<String, Object> current = BoBatchDao.IntvResumeCheck(d);
 		if (current == null) {
 			return "면접 행 없음";
+		}
+		String linked = null;
+		Map<String, Object> file = null;
+		if (hasText(current.get("RESUME_FILE_ID"))) {
+			file = new HashMap<>();
+			file.put("id", current.get("RESUME_FILE_ID"));
+		} else {
+			String[] how = new String[1];
+			file = findResume(d, root, token, dayFolders, how);
+			if (file == null) {
+				return how[0];
+			}
+			BoBatchDao.IntvResumeLink(d.get("INTV_SQ"), (String) file.get("id"));
+			linked = how[0];
 		}
 		List<String> blanks = new ArrayList<>();
 		for (String[] field : RESUME_FIELDS) {
@@ -312,21 +332,52 @@ public class BoBatchServiceImpl implements BoBatchService {
 				blanks.add(field[0]);
 			}
 		}
-		if (blanks.isEmpty()) {
-			return "이미 입력됨";
-		}
+		String note = fillFromResume(d, file, token, blanks);
+		return linked == null ? note : linked + " · " + note;
+	}
+
+	/** @param how [0] 에 찾은 경로(성공) 또는 못 찾은 사유(null 반환)를 넣는다 */
+	private Map<String, Object> findResume(Map<String, Object> d, String root, String token, Map<String, String> dayFolders, String[] how) {
 		LocalDate date = LocalDate.parse((String) d.get("INTV_DT"));
+		String name = (String) d.get("APLY_NM");
 		String day = dayFolders.containsKey(date.toString()) ? dayFolders.get(date.toString()) : dayFolder(root, date, token);
 		dayFolders.put(date.toString(), day);
-		if (day == null) {
-			return "날짜 폴더 없음";
+		if (day != null) {
+			String person = GoogleDriveApi.childFolderId(day, name, token);
+			// 이름 폴더를 만든 날과 날짜 폴더에 PDF 를 바로 둔 날이 섞여 있다
+			Map<String, Object> file = person != null ? GoogleDriveApi.resumePdf(person, null, token) : GoogleDriveApi.resumePdf(day, name, token);
+			if (file != null) {
+				how[0] = "드라이브 이력서 연결";
+				return file;
+			}
 		}
-		String name = (String) d.get("APLY_NM");
-		String person = GoogleDriveApi.childFolderId(day, name, token);
-		// 이름 폴더를 만든 날과 날짜 폴더에 PDF 를 바로 둔 날이 섞여 있다
-		Map<String, Object> file = person != null ? GoogleDriveApi.resumePdf(person, null, token) : GoogleDriveApi.resumePdf(day, name, token);
-		if (file == null) {
-			return person != null ? "PDF 없음" : "이력서 없음(이름 폴더·이름으로 시작하는 PDF 둘 다 없음)";
+		String attach = (String) d.get("ATTACH_FILE_ID");
+		if (!hasText(attach)) {
+			how[0] = "이력서 없음(드라이브 날짜·이름 폴더와 일정 첨부 모두 없음)";
+			return null;
+		}
+		// 일정 첨부는 올린 사람이 지우거나 공유를 끊으면 사라지므로 회사 이력서 폴더로 복사해 둔다
+		byte[] pdf;
+		String fileName;
+		try {
+			Map<String, Object> meta = new HashMap<>();
+			meta.put("id", attach);
+			pdf = GoogleDriveApi.download(meta, token);
+			fileName = (String) GoogleDriveApi.file(attach, token).get("name");
+		} catch (Exception e) {
+			log.warn("일정 첨부 이력서를 받지 못함: {}", e.getClass().getSimpleName());
+			how[0] = "일정 첨부 이력서를 열 수 없음(회사 공용 계정에 공유됐는지 확인)";
+			return null;
+		}
+		String folder = folders(new String[] { root, token }, date.getYear() + "년도", date.getMonthValue() + "월", date.getDayOfMonth() + "일", name);
+		Map<String, Object> saved = GoogleDriveApi.upload(hasText(fileName) ? fileName : name + "_이력서.pdf", "application/pdf", pdf, folder, token);
+		how[0] = "일정 첨부 이력서 저장";
+		return saved;
+	}
+
+	private String fillFromResume(Map<String, Object> d, Map<String, Object> file, String token, List<String> blanks) throws IOException {
+		if (blanks.isEmpty()) {
+			return "이미 입력됨";
 		}
 		Map<String, Object> found;
 		try (PDDocument pdf = PDDocument.load(GoogleDriveApi.download(file, token))) {

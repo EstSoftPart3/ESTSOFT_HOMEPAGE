@@ -61,8 +61,12 @@
 	</update>
 
 	<select id="selectIntvResumeCheck" parameterType="hashMap" resultType="hashMap">
-		SELECT ADDR, EDU, AGE, GENDER, CAREER, LANG FROM TB_EEP_HR_INTV_M WHERE INTV_SQ = #{INTV_SQ}
+		SELECT ADDR, EDU, AGE, GENDER, CAREER, LANG, RESUME_FILE_ID FROM TB_EEP_HR_INTV_M WHERE INTV_SQ = #{INTV_SQ}
 	</select>
+
+	<update id="updateIntvResumeLink" parameterType="hashMap">
+		UPDATE TB_EEP_HR_INTV_M SET RESUME_FILE_ID = COALESCE(RESUME_FILE_ID, #{RESUME_FILE_ID}) WHERE INTV_SQ = #{INTV_SQ}
+	</update>
 
 	<!-- 사람이 입력한 값은 지키고 빈 칸만 채운다. 일정 제목에서 넣은 신입·경력 표시는 이력서 요약으로 바꾼다(서비스의 TITLE_CAREER 와 같은 조건) -->
 	<update id="updateIntvFromResume" parameterType="hashMap">

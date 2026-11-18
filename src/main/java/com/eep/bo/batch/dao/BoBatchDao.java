@@ -66,6 +66,13 @@ public class BoBatchDao {
 		return BoBatchMapper.selectIntvResumeCheck(param);
 	}
 
+	public int IntvResumeLink(Object intvSq, String fileId) {
+		Map<String, Object> param = new HashMap<>();
+		param.put("INTV_SQ", intvSq);
+		param.put("RESUME_FILE_ID", fileId);
+		return BoBatchMapper.updateIntvResumeLink(param);
+	}
+
 	public int IntvFromResume(Map<String, Object> param) {
 		return BoBatchMapper.updateIntvFromResume(param);
 	}

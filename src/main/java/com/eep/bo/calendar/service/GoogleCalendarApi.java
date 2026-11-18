@@ -8,6 +8,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -118,7 +119,19 @@ public class GoogleCalendarApi {
 		row.put("ALL_DAY_YN", allDay ? "Y" : "N");
 		row.put("START_DT", toDbDt(start, false));
 		row.put("END_DT", end == null ? null : toDbDt(end, true));
+		row.put("ATTACH_FILE_ID", resumeAttachment((List<Map<String, Object>>) item.get("attachments")));
 		return row;
+	}
+
+	/** 일정에 붙은 PDF 중 이름에 '이력서' 가 든 것을 우선해 드라이브 파일 ID 하나. 없으면 null */
+	public static String resumeAttachment(List<Map<String, Object>> attachments) {
+		String first = null;
+		for (Map<String, Object> a : attachments == null ? Collections.<Map<String, Object>> emptyList() : attachments) {
+			if (a.get("fileId") == null || !"application/pdf".equals(a.get("mimeType"))) continue;
+			if (String.valueOf(a.get("title")).contains("이력서")) return (String) a.get("fileId");
+			if (first == null) first = (String) a.get("fileId");
+		}
+		return first;
 	}
 
 	/** 종일 일정의 구글 종료일은 다음날(미포함)이라 하루 빼서 그날 23:59:59 로 둔다 */

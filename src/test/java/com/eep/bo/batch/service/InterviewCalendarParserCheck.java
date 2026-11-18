@@ -109,6 +109,16 @@ public class InterviewCalendarParserCheck {
 		check(InterviewCalendarParser.parseTitle("방문 - 한강희(재계약서)") == null, "방문 일정");
 		check(InterviewCalendarParser.parseTitle("홍길동(재계약서)") == null, "표시 없는 이름(괄호)");
 
+		// 일정 첨부: PDF 중 이름에 이력서가 든 것을 우선한다
+		List<Map<String, Object>> attach = new java.util.ArrayList<>();
+		attach.add(attachment("a1", "홍길동_포트폴리오.pdf", "application/pdf"));
+		attach.add(attachment("a2", "경영지원관리", "application/vnd.google-apps.document"));
+		attach.add(attachment("a3", "홍길동_이력서_경력.pdf", "application/pdf"));
+		same(com.eep.bo.calendar.service.GoogleCalendarApi.resumeAttachment(attach), "a3", "이력서 PDF 우선");
+		same(com.eep.bo.calendar.service.GoogleCalendarApi.resumeAttachment(attach.subList(0, 2)), "a1", "이력서가 없으면 첫 PDF");
+		same(com.eep.bo.calendar.service.GoogleCalendarApi.resumeAttachment(attach.subList(1, 2)), null, "PDF 가 없으면 없음");
+		same(com.eep.bo.calendar.service.GoogleCalendarApi.resumeAttachment(null), null, "첨부 없음");
+
 		check(GoogleDriveApi.namedFor("홍길동_이력서_신입.pdf", "홍길동"), "이름으로 시작하는 이력서");
 		check(GoogleDriveApi.namedFor("홍길동 이력서.pdf", "홍길동"), "이름 뒤 공백");
 		check(!GoogleDriveApi.namedFor("홍길동_이력서.pdf", "홍길"), "다른 사람 이름의 앞부분이면 아님");
@@ -173,6 +183,14 @@ public class InterviewCalendarParserCheck {
 		e.put("TITLE", title);
 		e.put("ALL_DAY", "N");
 		return InterviewCalendarParser.excludeReason(e);
+	}
+
+	private static Map<String, Object> attachment(String fileId, String title, String mimeType) {
+		Map<String, Object> a = new java.util.HashMap<>();
+		a.put("fileId", fileId);
+		a.put("title", title);
+		a.put("mimeType", mimeType);
+		return a;
 	}
 
 	private static Map<String, Object> title(String title) {
