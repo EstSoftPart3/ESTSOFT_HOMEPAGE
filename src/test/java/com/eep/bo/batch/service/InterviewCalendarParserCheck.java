@@ -53,7 +53,7 @@ public class InterviewCalendarParserCheck {
 		eq(r, "PHONE", "010-1111-2222");
 		eq(r, "APLY_ROUTE", "SARAMIN");
 		eq(r, "CAREER", "신입");
-		check(InterviewCalendarParser.parseTitle("[신입]홍길동/사람인_공고") == null, "'/' 형식도 전화번호가 없으면 실패");
+		eq(title("[신입]홍길동/사람인_공고"), "PHONE", null); // 전화번호가 없어도 태그가 있으면 넣는다
 
 		// 실제로 들어온 짝 없는 닫는 괄호, 여는 괄호만 있는 경우
 		r = title("[신입]홍길동/사람인_공고/010-1111-2222)");
@@ -81,10 +81,33 @@ public class InterviewCalendarParserCheck {
 		}
 		r = title("[신입,취소]홍길동(사람인_공고/010-1111-2222)");
 		eq(r, "ATTEND_ST", "CANCEL");
-		Map<String, String> careerTypo = new java.util.HashMap<>();
-		careerTypo.put("TITLE", "[경력-홍길동(잡코리아_클라우드인프라/010-1111-2222)");
-		same(InterviewCalendarParser.excludeReason(careerTypo), "경력 면접", "닫는 대괄호 빠진 경력 면접도 제외");
-		check(InterviewCalendarParser.parseTitle("[경력-홍길동(잡코리아_클라우드인프라/)") == null, "전화번호 없으면 실패");
+		// 경력 면접도 가져온다. 실제 사례처럼 전화번호가 없어도 태그·경로가 있으면 넣는다
+		r = title("[경력-홍길동(잡코리아_클라우드인프라/)");
+		eq(r, "APLY_NM", "홍길동");
+		eq(r, "PHONE", null);
+		eq(r, "HIRE_CD", "EXP");
+		eq(r, "CAREER", "경력");
+		eq(r, "APLY_ROUTE", "JOBKOREA");
+		eq(r, "APLY_TARGET", "클라우드인프라");
+		r = title("[경력 7년]홍길동(잡코리아_DBA/010-1111-2222)");
+		eq(r, "CAREER", "경력 7년");
+		eq(r, "HIRE_CD", "EXP");
+		r = title("[경력] 면접 홍길동님(사람인_공고/010-1111-2222)");
+		eq(r, "APLY_NM", "홍길동");
+		eq(r, "HIRE_CD", "EXP");
+		r = title("[경력재지원]:홍길동(6년4개월/잡코리아_농협은행)");
+		eq(r, "APLY_NM", "홍길동");
+		eq(r, "CAREER", "경력 6년4개월");
+		r = title("홍길동(잡코리아_DBA)");
+		eq(r, "HIRE_CD", "NEW");
+		eq(r, "CAREER", null);
+		eq(r, "APLY_ROUTE", "JOBKOREA");
+		eq(title("[신입]홍길동(사람인_공고/010-1111-2222)"), "HIRE_CD", "NEW");
+		// 면접 표시가 하나도 없는 일반 일정은 넣지 않는다
+		check(InterviewCalendarParser.parseTitle("모집(중급1,고급 2) - LG화학") == null, "모집 일정");
+		check(InterviewCalendarParser.parseTitle("인터뷰 - 곽진아(kt gis)") == null, "다른 인터뷰 일정");
+		check(InterviewCalendarParser.parseTitle("방문 - 한강희(재계약서)") == null, "방문 일정");
+		check(InterviewCalendarParser.parseTitle("홍길동(재계약서)") == null, "표시 없는 이름(괄호)");
 
 		check(GoogleDriveApi.namedFor("홍길동_이력서_신입.pdf", "홍길동"), "이름으로 시작하는 이력서");
 		check(GoogleDriveApi.namedFor("홍길동 이력서.pdf", "홍길동"), "이름 뒤 공백");
@@ -96,7 +119,7 @@ public class InterviewCalendarParserCheck {
 		eq(r, "APLY_TARGET", "이에스티");
 
 		check(InterviewCalendarParser.parseTitle("월례회의 - 전원참석") == null, "면접 형식이 아닌 제목");
-		check(InterviewCalendarParser.parseTitle("[신입]홍길동(사람인_공고)") == null, "전화번호 없는 제목");
+		eq(title("[신입]홍길동(사람인_공고)"), "PHONE", null); // 전화번호가 없어도 신입 태그가 있으면 넣는다
 		check(InterviewCalendarParser.parseTitle(null) == null, "제목 없음");
 
 		String ics = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nDTSTART:20261103T050000Z\r\nUID:aaa@google.com\r\n"
@@ -112,12 +135,11 @@ public class InterviewCalendarParserCheck {
 		same(InterviewCalendarParser.excludeReason(events.get(1)), "출근 일정", "출근 제외");
 		same(InterviewCalendarParser.excludeReason(events.get(2)), "종일 일정", "종일 제외");
 		same(InterviewCalendarParser.excludeReason(events.get(0)), null, "면접은 포함");
-		same(exclude("[경력]면접-홍길동(새마을은행계정계/010-1111-2222)"), "경력 면접", "[경력] 제외");
-		same(exclude("[취소][경력]홍길동(사람인_공고/010-1111-2222)"), "경력 면접", "뒤쪽 태그의 경력도 제외");
-		same(exclude("[경력재지원]-홍길동(6년4개월/잡코리아_농협은행/010-1111-2222)"), "경력 면접", "[경력재지원] 제외");
-		same(exclude("[합격/경력]홍길동(010-1111-2222)"), "경력 면접", "슬래시로 묶인 경력 제외");
+		same(exclude("[경력]면접-홍길동(새마을은행계정계/010-1111-2222)"), null, "경력 면접도 포함");
+		same(exclude("[합격/경력]홍길동(010-1111-2222)"), null, "슬래시로 묶인 경력도 포함");
+		eq(title("[합격/경력]홍길동(010-1111-2222)"), "HIRE_CD", "EXP");
+		eq(title("[취소][경력]홍길동(사람인_공고/010-1111-2222)"), "HIRE_CD", "EXP");
 		same(exclude("[신입]홍길동(사람인_공고/010-1111-2222)"), null, "신입은 포함");
-		same(exclude("[신입]경력자홍길동(010-1111-2222)"), null, "태그 밖의 경력 글자는 상관없음");
 
 		// 2026-11-02 는 월요일
 		same(InterviewCalendarParser.weekOf(LocalDate.of(2026, 11, 2))[0].toString(), "2026-11-02", "월요일");

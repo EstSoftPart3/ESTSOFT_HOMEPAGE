@@ -26,7 +26,7 @@ public class BoBatchController {
 	private GoogleLinkService link;
 
 	/**
-	 * 배치 - 신입면접 Controller
+	 * 배치 - 면접(신입·경력) Controller
 	 *
 	 * **/
 

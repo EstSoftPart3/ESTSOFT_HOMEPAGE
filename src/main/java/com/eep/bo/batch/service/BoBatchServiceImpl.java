@@ -468,7 +468,7 @@ public class BoBatchServiceImpl implements BoBatchService {
 				return "SAME";
 			}
 			// 이미 연결된 행은 일정과 상태만 반영한다. 사람이 지운 연락처 등을 다시 채우지 않는다
-			for (String key : new String[] { "APLY_TARGET", "APLY_ROUTE", "PHONE", "CAREER" }) {
+			for (String key : new String[] { "APLY_TARGET", "APLY_ROUTE", "PHONE", "CAREER", "HIRE_CD" }) {
 				row.put(key, null);
 			}
 			BoBatchDao.IntvUpdate(row);

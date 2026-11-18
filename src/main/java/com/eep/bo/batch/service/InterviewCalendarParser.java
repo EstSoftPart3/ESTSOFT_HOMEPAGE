@@ -24,9 +24,8 @@ public final class InterviewCalendarParser {
 	private static final DateTimeFormatter ICS_D = DateTimeFormatter.ofPattern("yyyyMMdd");
 	// 예: [취소][신입]이름(사람인_공고/010-0000-0000), [신입]이름/사람인_공고/010-0000-0000, [경력]면접-이름(...), [경력재지원]-이름(...)
 	// 사람이 손으로 쓰는 제목이라 괄호 짝이 안 맞기도 해서, 이름 뒤는 괄호를 떼고 '/' 로만 나눈다
-	private static final Pattern TITLE = Pattern.compile("^((?:\\[[^\\]]*\\]\\s*)*)-?\\s*(?:면접\\s*-\\s*)?([^\\s\\[\\]()/]+)\\s*[(/](.*)$");
+	private static final Pattern TITLE = Pattern.compile("^((?:\\[[^\\]]*\\]\\s*)*)[-:]?\\s*(?:면접\\s*[-:]?\\s*)?([^\\s\\[\\]()/:]+?)(?:님)?\\s*[(/](.*)$");
 	private static final Pattern TAG = Pattern.compile("\\[([^\\]]*)\\]");
-	private static final Pattern LEAD_TAGS = Pattern.compile("^((?:\\[[^\\]]*\\]\\s*)*)");
 	private static final Pattern PHONE = Pattern.compile("01\\d[-. ]?\\d{3,4}[-. ]?\\d{4}");
 	private static final String TAG_WORDS = "신입|경력[^)\\]]*|취소|불참|합격|불합격";
 	private static final Pattern ICAL_URL = Pattern.compile("/ical/([^/]+)/private-([^/]+)/");
@@ -120,23 +119,7 @@ public final class InterviewCalendarParser {
 		if ("CANCELLED".equals(event.get("STATUS"))) return "캘린더에서 삭제된 일정";
 		if ("Y".equals(event.get("ALL_DAY"))) return "종일 일정";
 		if (title != null && title.trim().startsWith("출근")) return "출근 일정";
-		if (hasCareerTag(title)) return "경력 면접";
 		return null;
-	}
-
-	/** 신입면접 배치라서 앞쪽 대괄호 태그에 경력…([경력], [경력재지원] 등)이 있으면 가져오지 않는다 */
-	private static boolean hasCareerTag(String title) {
-		Matcher m = title == null ? null : LEAD_TAGS.matcher(fixTypos(title));
-		if (m == null || !m.find()) {
-			return false;
-		}
-		Matcher tags = TAG.matcher(m.group(1));
-		while (tags.find()) {
-			for (String raw : tags.group(1).split("[/,]")) {
-				if (raw.trim().startsWith("경력")) return true;
-			}
-		}
-		return false;
 	}
 
 	/**
@@ -178,7 +161,12 @@ public final class InterviewCalendarParser {
 			for (String raw : tags.group(1).split("[/,]")) {
 				String tag = raw.trim();
 				if (tag.equals("신입")) career = "신입";
-				else if (tag.startsWith("경력")) career = "경력";
+				else if (tag.startsWith("경력")) {
+					career = "경력";
+					// [경력 7년], [경력7년3개월] 처럼 태그에 연차를 같이 쓴 경우
+					String inTag = tag.substring(2).trim();
+					if (!inTag.isEmpty() && YEARS.matcher(inTag).matches()) years = inTag;
+				}
 				else if (tag.equals("취소")) row.put("ATTEND_ST", "CANCEL");
 				else if (tag.equals("불참")) row.put("ATTEND_ST", "ABSENT");
 				else if (tag.equals("합격")) row.put("RESULT_ST", "PASS");
@@ -196,16 +184,20 @@ public final class InterviewCalendarParser {
 			else if (YEARS.matcher(part).matches()) years = part;
 			else putRouteAndTarget(row, part);
 		}
-		if (row.get("PHONE") == null) {
+		if (career == null && years != null) {
+			career = "경력";
+		}
+		// 전화번호가 없어도 면접 일정이라는 표시(신입·경력 태그, 지원 경로, 참석·결과 태그)가 있으면 넣는다. 아무 표시도 없으면 일반 일정으로 본다
+		boolean looksLikeInterview = row.get("PHONE") != null || career != null || row.get("APLY_ROUTE") != null
+				|| row.get("ATTEND_ST") != null || row.get("RESULT_ST") != null;
+		if (!looksLikeInterview) {
 			return null;
 		}
 		if (row.get("APLY_TARGET") == null) {
 			row.put("APLY_TARGET", "이에스티"); // 면접관리 새 행의 기본값과 같다
 		}
-		if (career == null && years != null) {
-			career = "경력";
-		}
 		row.put("CAREER", career == null ? null : years == null ? career : career + " " + years);
+		row.put("HIRE_CD", "경력".equals(career) ? "EXP" : "NEW");
 		return row;
 	}
 

@@ -87,7 +87,7 @@
 					</c:if>
 					<div id="glCards" class="gl-cards"></div>
 					<c:if test="${superUser}">
-							<div class="small text-muted mt-1">이 연결을 쓰는 곳: <a href="/admin/batch/openInterviewBatch.do">신입면접 배치</a>(면접 캘린더·이력서 폴더는 그 화면에서 고름) · 직원 서류 · 장비 · 거래처 · 연구일지. 폴더·파일 이름 규칙은 각 화면의 ⚙ 드라이브 설정에서 정합니다.</div>
+							<div class="small text-muted mt-1">이 연결을 쓰는 곳: <a href="/admin/batch/openInterviewBatch.do">면접 배치</a>(면접 캘린더·이력서 폴더는 그 화면에서 고름) · 직원 서류 · 장비 · 거래처 · 연구일지. 폴더·파일 이름 규칙은 각 화면의 ⚙ 드라이브 설정에서 정합니다.</div>
 						</div>
 					</div>
 					</c:if>

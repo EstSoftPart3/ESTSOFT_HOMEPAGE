@@ -27,7 +27,7 @@
 		<div class="content-wrapper">
 			<section class="content cal-page">
 				<div class="card-header">
-					<h3 class="card-title bTitle"><b>신입면접 배치</b></h3>
+					<h3 class="card-title bTitle"><b>면접 배치</b></h3>
 				</div>
 
 				<div class="card-body">
