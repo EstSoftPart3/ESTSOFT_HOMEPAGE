@@ -241,12 +241,15 @@
 			var $t = $('<tbody>');
 			if (!project.journals.length) boEmpty($t, '일지가 없습니다.');
 			project.journals.forEach(function(j) {
-				var pdf = j.PDF_LINK ? $('<a target="_blank" rel="noopener">열기</a>').attr('href', j.PDF_LINK) : j.UPLOAD_ERR ? $('<span class="text-danger">업로드 실패</span>') : '';
-				var origin = fileLink(j.ATTACH_NM, j.ORIGIN_LINK);
+				// 첨부파일 한 칸: 마감 PDF 를 먼저, 따로 붙인 파일이 있으면(PDF 와 다른 것만) 그 뒤에
+				var samePdf = j.ORIGIN_LINK && j.ORIGIN_LINK === j.PDF_LINK, $files = $('<td>');
+				if (j.PDF_LINK) $files.append(fileLink(samePdf && j.ATTACH_NM ? j.ATTACH_NM : j.YM + ' 연구일지.pdf', j.PDF_LINK));
+				else if (j.UPLOAD_ERR) $files.append('<span class="text-danger">PDF 업로드 실패</span>');
+				if (j.ORIGIN_LINK && !samePdf) $files.append($files.children().length ? '<br>' : '', fileLink(j.ATTACH_NM, j.ORIGIN_LINK));
 				$('<tr>').append($('<td>').append($('<a class="lab-open">').attr('href', '#j=' + j.JRN_SQ).text(j.YM)), $('<td>').text(j.WRITER_NM || ''), $('<td>').text(j.WRITE_DT || ''),
-					$('<td>').append(pill(j.STATUS_CD)), $('<td>').append(pdf), $('<td>').append(origin)).appendTo($t);
+					$('<td>').append(pill(j.STATUS_CD)), $files).appendTo($t);
 			});
-			$b.append($('<div class="table-responsive">').append($('<table class="table table-sm table-hover cal-table mb-0"><thead><tr><th>대상 월</th><th>작성자</th><th>작성일</th><th>결재 상태</th><th>PDF</th><th>첨부파일</th></tr></thead></table>').append($t)));
+			$b.append($('<div class="table-responsive">').append($('<table class="table table-sm table-hover cal-table mb-0"><thead><tr><th>대상 월</th><th>작성자</th><th>작성일</th><th>결재 상태</th><th>첨부파일</th></tr></thead></table>').append($t)));
 		} else if (!work || String(work.PRJ_SQ) !== String(p.PRJ_SQ)) {
 			$b.append('<p class="text-muted mb-0">불러오는 중…</p>');
 			hrPost('/admin/lab/projectWorkData.do', { PRJ_SQ: p.PRJ_SQ }, function(res) { work = res.result; work.PRJ_SQ = p.PRJ_SQ; drawProject(); });
@@ -384,7 +387,8 @@
 		var $panel = $('<div class="cal-panel"><div class="cal-panel-body"></div></div>').appendTo($v), $b = $panel.find('.cal-panel-body');
 		if (jrnTab === 0) {
 			var rows = [['작성자', j.WRITER_NM], ['연구장소', j.PLACE], ['연구기간', j.PERIOD], ['연구인원', r.members || '그 달에 소속된 연구원이 없습니다']];
-			if (j.ORIGIN_LINK) rows.push(['첨부파일', fileLink(j.ATTACH_NM, j.ORIGIN_LINK)]);
+			// 마감 PDF 와 같은 파일이면 위쪽 '드라이브에서 PDF 열기' 로 충분하다
+		if (j.ORIGIN_LINK && j.ORIGIN_LINK !== j.PDF_LINK) rows.push(['첨부파일', fileLink(j.ATTACH_NM, j.ORIGIN_LINK)]);
 			if (j.MAIL_DT) rows.push(['메일 발송', j.MAIL_DT]);
 			$b.append($('<div class="mb-2">').append(info(rows)));
 			$b.append(richFrame(j.CONTENT));
