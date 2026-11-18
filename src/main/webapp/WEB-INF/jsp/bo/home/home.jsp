@@ -18,8 +18,11 @@
 	.hm-card header .hm-sp { flex: 1; }
 	.hm-ctl { border: 1px solid rgba(17,17,17,.15); background: #fff; border-radius: 4px; font-size: 11px; line-height: 18px; padding: 0 6px; color: #5f6b75; font-weight: 400; }
 	.hm-ctl:hover { border-color: #0b6e8a; color: #0b6e8a; }
-	.hm-grip { cursor: grab; letter-spacing: -2px; display: none; } .hm-wide { display: none; }
-	#hmCards.editing .hm-grip, #hmCards.editing .hm-wide { display: inline-block; }
+	/* 머리 줄: 누르면 접기·펼치기, 끌면 순서 옮기기 */
+	#hmCards > .hm-card > header { cursor: pointer; user-select: none; }
+	#hmCards > .hm-card > header:hover { background: #f7fafb; }
+	.hm-grip { cursor: grab; letter-spacing: -2px; color: #9aa4ac; font-weight: 400; } .hm-wide { display: none; }
+	#hmCards.editing .hm-wide { display: inline-block; }
 	#hmCards.editing .hm-card { outline: 2px dashed #9cc9d6; outline-offset: -2px; }
 	.hm-card.hm-dragging { opacity: .4; }
 	.hm-card.fold .hm-body { display: none; } .hm-card.fold header { border-bottom: 0; }
@@ -462,7 +465,9 @@
 		var $h = $c.children('header'), $r = $h.children('a, .hm-hdr-r').first();
 		$c.data('wide0', $c.hasClass('wide'));
 		$('<span class="hm-sp">')[$r.length ? 'insertBefore' : 'appendTo']($r.length ? $r : $h);
-		$h.prepend($('<button type="button" class="hm-ctl hm-grip" title="끌어서 옮기기 (↑↓ 키로도)">⠿⠿</button>'));
+		// 버튼에서는 브라우저가 끌기를 시작하지 않아 span(키보드 ↑↓ 용으로 tabindex)
+		$h.prepend($('<span class="hm-grip" tabindex="0" role="button" title="끌어서 옮기기 (↑↓ 키로도)" aria-label="카드 순서 옮기기">⠿⠿</span>'));
+		$h.attr('title', '누르면 접기·펼치기, 끌면 옮기기');
 		$h.append($('<button type="button" class="hm-ctl hm-wide">'), $('<button type="button" class="hm-ctl hm-fold">'));
 		widgetMark($c);
 	}
@@ -493,11 +498,16 @@
 		});
 		weekFold(c.week);
 	}
+	// 연달아 저장해도 앞 저장이 받은 VW_SQ 로 덮어쓰게 한 줄로 보낸다(처음 두 번이 둘 다 새 건이 되면 같은 이름 오류)
+	var layoutQ = $.Deferred().resolve().promise();
 	function layoutSave(c) {
-		return api('/admin/my/saveViewPresetData.do', { page: '/admin/home.do', vwSq: layoutSq || '', nm: '홈 배치', conf: JSON.stringify(c) }).done(function(sq) {
-			if (sq && typeof sq !== 'object') layoutSq = sq;
-			layoutSaved = c;
-		});
+		function run() {
+			return api('/admin/my/saveViewPresetData.do', { page: '/admin/home.do', vwSq: layoutSq || '', nm: '홈 배치', conf: JSON.stringify(c) }).done(function(sq) {
+				if (sq && typeof sq !== 'object') layoutSq = sq;
+				layoutSaved = c;
+			});
+		}
+		return layoutQ = layoutQ.then(run, run);
 	}
 	function layoutEdit(on) {
 		$('#hmCards, #hmTools').toggleClass('editing', on);
@@ -506,29 +516,35 @@
 		if (!$('#hmKpis').children().length) $('#hmKpiCard').remove(); // 숫자 카드 권한이 하나도 없으면
 		cards().each(function() { widget($(this)); });
 		layoutApply(layoutSaved);
-		var $g = $('#hmCards'), drag = null;
-		$g.on('click', '.hm-fold', function() {
-			var $c = $(this).closest('.hm-card').toggleClass('fold');
+		var $g = $('#hmCards'), drag = null, before = '';
+		function fold($c) {
+			$c.toggleClass('fold');
 			widgetMark($c);
 			if ($c.is('#hmCalCard') && !$c.hasClass('fold')) calendar.updateSize();
 			if (!$g.hasClass('editing')) layoutSave(layoutNow());
-		});
+		}
+		// 배치 바꾸기 중이 아니면 순서가 바뀐 즉시 저장
+		function orderSaved() { if (!$g.hasClass('editing') && layoutNow().order.join() !== before) layoutSave(layoutNow()); }
+		function onHeader(e) { return !$(e.target).closest('a, button, input, select, textarea, label').length; }
+		$g.on('click', '.hm-fold', function() { fold($(this).closest('.hm-card')); });
+		$g.on('click', '.hm-card > header', function(e) { if (onHeader(e) && !$(e.target).closest('.hm-grip').length) fold($(this).parent()); });
 		$g.on('click', '.hm-wide', function() { var $c = $(this).closest('.hm-card').toggleClass('wide'); widgetMark($c); if (calendar) calendar.updateSize(); });
-		// 끌어 옮기기: ⠿ 를 누른 동안만 카드를 끌 수 있게(달력 안 끌기와 겹치지 않게)
-		$g.on('mousedown', '.hm-grip', function() { if ($g.hasClass('editing')) $(this).closest('.hm-card').attr('draggable', 'true'); });
+		// 끌어 옮기기: 머리 줄을 누른 동안만 카드를 끌 수 있게(달력 안 끌기와 겹치지 않게)
+		$g.on('mousedown', '.hm-card > header', function(e) { if (e.which === 1 && onHeader(e)) $(this).parent().attr('draggable', 'true'); });
 		$(document).on('mouseup', function() { if (!drag) cards().removeAttr('draggable'); });
-		$g.on('dragstart', '.hm-card[draggable]', function(e) { drag = $(this).addClass('hm-dragging'); e.originalEvent.dataTransfer.effectAllowed = 'move'; e.originalEvent.dataTransfer.setData('text/plain', 'hm-widget'); });
+		$g.on('dragstart', '.hm-card[draggable]', function(e) { before = layoutNow().order.join(); drag = $(this).addClass('hm-dragging'); e.originalEvent.dataTransfer.effectAllowed = 'move'; e.originalEvent.dataTransfer.setData('text/plain', 'hm-widget'); });
 		$g.on('dragover', '.hm-card', function(e) {
 			if (!drag || drag.is(this)) return;
 			e.preventDefault();
 			if (drag.index() < $(this).index()) $(this).after(drag); else $(this).before(drag);
 		});
 		$g.on('drop', function(e) { if (drag) e.preventDefault(); });
-		$g.on('dragend', '.hm-card', function() { if (drag) drag.removeClass('hm-dragging'); drag = null; cards().removeAttr('draggable'); if (calendar) calendar.updateSize(); });
+		$g.on('dragend', '.hm-card', function() { if (drag) drag.removeClass('hm-dragging'); drag = null; cards().removeAttr('draggable'); if (calendar) calendar.updateSize(); orderSaved(); });
 		$g.on('keydown', '.hm-grip', function(e) {
 			var $c = $(this).closest('.hm-card');
+			before = layoutNow().order.join();
 			if (e.key === 'ArrowUp' && $c.prev().length) { $c.prev().before($c); } else if (e.key === 'ArrowDown' && $c.next().length) { $c.next().after($c); } else return;
-			e.preventDefault(); $(this).focus();
+			e.preventDefault(); $(this).focus(); orderSaved();
 		});
 		$('#hmTools').on('click', 'button', function() {
 			var act = $(this).data('act');
