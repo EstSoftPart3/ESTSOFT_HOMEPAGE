@@ -8,7 +8,8 @@
 	var bar = document.getElementById('boTabs');
 	if (!bar || window.top !== window.self) return;
 	window.BO_TABS = true;
-	var MAX = 10, KEY = 'boTabs';
+	var MAX = 10, KEY = 'boTabs', HOME = '/admin/home.do';
+	function isHome(t) { return keyOf(t.url) === HOME; } // 홈 탭은 맨 앞 고정, 닫지 않는다
 	// trail: 본 탭 순서(뒤로 = 직전 탭). 탭마다 stack: 그 탭 안에서 지나온 주소(뒤로 = 탭 안 이전 화면).
 	// history.back() 은 iframe 들이 기록을 함께 써서 다른 탭이 뒤로 갈 수 있어 직접 기록한다
 	var tabs = [], active = null, selfTab = null, trail = [], backBtn = document.getElementById('boBack');
@@ -64,7 +65,7 @@
 			b.textContent = t.title;
 			b.onclick = function () { activate(t); };
 			wrap.appendChild(b);
-			if (tabs.length > 1) {
+			if (tabs.length > 1 && !isHome(t)) {
 				x.type = 'button';
 				x.className = 'x';
 				x.setAttribute('aria-label', t.title + ' 닫기');
@@ -86,7 +87,20 @@
 		paintBack();
 	}
 
+	// 화면 안 '목록' 버튼(상세 → 목록). 뒤로가기는 주소 기록보다 이 화면 단계를 먼저 따른다
+	function listBtn(t) {
+		try {
+			var d = t.self ? document : t.frame && t.frame.contentDocument;
+			if (!d) return null;
+			return [].filter.call(d.querySelectorAll('.content-wrapper a, .content-wrapper button'), function (x) {
+				return x.textContent.trim() === '목록' && !x.hasAttribute('data-view') && !x.closest('.modal') && x.offsetParent !== null;
+			})[0] || null;
+		} catch (e) { return null; }
+	}
+
 	function backTarget() {
+		var lb = active && listBtn(active);
+		if (lb) return { list: lb, inTab: true, title: '목록' };
 		if (active && active.stack && active.stack.length > 1) return { inTab: true, title: menuName(active.stack[active.stack.length - 2]) || '이전 화면' };
 		var prev = trail.slice(0, -1).reverse().filter(function (x) { return tabs.indexOf(x) >= 0; })[0];
 		return prev ? { tab: prev, title: prev.title } : null;
@@ -103,6 +117,7 @@
 	function back() {
 		var b = backTarget();
 		if (!b) return;
+		if (b.list) { b.list.click(); setTimeout(paintBack, 400); return; }
 		if (b.inTab) {
 			active.stack.pop();
 			active.backing = true;
@@ -133,6 +148,14 @@
 		});
 	}
 
+	// 탭 안 이동 기록. 뒤로(backing)는 기록하지 않고, '목록'으로 간 것(listing)은 상세 자리를 목록으로 바꾼다(다시 뒤로가 상세로 가지 않게)
+	function step(t) {
+		if (t.backing) { t.backing = false; return; }
+		if (!t.stack) { t.stack = [t.url]; return; }
+		if (t.listing) { t.listing = false; t.stack.pop(); }
+		if (t.stack[t.stack.length - 1] !== t.url) t.stack.push(t.url);
+	}
+
 	function frameOf(t) {
 		if (t.frame) return t.frame;
 		var f = document.createElement('iframe');
@@ -145,14 +168,16 @@
 				// 로그인이 끊겼거나 관리자 화면이 아니면 탭 하나가 아니라 전체를 그 화면으로
 				if (p.indexOf('/admin/') !== 0 || !w.document.querySelector('.content-wrapper')) { location.href = w.location.href; return; }
 				// #뒤(고른 연구팀 #t=1 처럼 화면 안에서 고른 것)까지 기억해야 뒤로 갔을 때 다시 고르지 않는다
-				t.url = p + w.location.search + w.location.hash;
-				if (t.backing) t.backing = false;
-				else if (!t.stack) t.stack = [t.url];
-				else if (t.stack[t.stack.length - 1] !== t.url) t.stack.push(t.url);
+				t.url = (p + w.location.search + w.location.hash).replace(/#$/, '');
+				step(t);
+				// 화면 안 '목록'을 누른 것도(뒤로가기·직접) 목록으로 돌아간 것으로 친다
+				w.document.addEventListener('click', function (e) {
+					var x = e.target.closest && e.target.closest('a, button');
+					if (x && x.textContent.trim() === '목록' && !x.hasAttribute('data-view')) { t.listing = true; setTimeout(function () { t.listing = false; }, 3000); }
+				}, true);
 				w.addEventListener('hashchange', function () {
-					t.url = w.location.pathname + w.location.search + w.location.hash;
-					if (t.backing) t.backing = false;
-					else if (t.stack && t.stack[t.stack.length - 1] !== t.url) t.stack.push(t.url);
+					t.url = (w.location.pathname + w.location.search + w.location.hash).replace(/#$/, '');
+					step(t);
 					if (t === active) history.replaceState(null, '', t.url);
 					render();
 					save();
@@ -200,7 +225,7 @@
 	}
 
 	function close(t) {
-		if (tabs.length < 2) return;
+		if (tabs.length < 2 || isHome(t)) return;
 		if (!dirty(t)) return remove(t);
 		var msg = t.title + ' 화면을 닫을까요? 저장하지 않은 입력이 있습니다. 닫으면 사라집니다.';
 		if (window.bootbox) bootbox.confirm({ message: msg, locale: 'ko', callback: function (ok) { if (ok) remove(t); } });
@@ -216,7 +241,7 @@
 			// 많으면 가장 오래 안 본 탭부터 닫는다(쓰던 입력이 있는 탭은 건너뜀)
 			var extra = tabs.length - MAX, closed = [];
 			tabs.slice().sort(function (a, b) { return (a.seen || 0) - (b.seen || 0); }).forEach(function (x) {
-				if (extra > 0 && x !== t && x !== active && !dirty(x)) { closed.push(x.title); remove(x); extra--; }
+				if (extra > 0 && x !== t && x !== active && !isHome(x) && !dirty(x)) { closed.push(x.title); remove(x); extra--; }
 			});
 			if (closed.length) toast('탭은 ' + MAX + '개까지라 오래 안 본 ' + closed.join(', ') + ' 탭을 닫았습니다.');
 		}
@@ -236,7 +261,10 @@
 		if (!find(s.url)) tabs.push({ url: s.url, title: menuName(s.url) || s.title || '화면' });
 	});
 	if (tabs.indexOf(selfTab) < 0) tabs.push(selfTab);
-	while (tabs.length > MAX) tabs.splice(tabs[0] === selfTab ? 1 : 0, 1);
+	var home = find(HOME);
+	if (home) tabs.splice(tabs.indexOf(home), 1); else home = { url: HOME, title: menuName(HOME) || '홈' };
+	tabs.unshift(home);
+	while (tabs.length > MAX) tabs.splice(tabs[1] === selfTab ? 2 : 1, 1);
 	try { JSON.parse(sessionStorage.getItem('boTrail') || '[]').forEach(function (k) { var t = find(k); if (t && t !== selfTab && trail.indexOf(t) < 0) trail.push(t); }); } catch (e) {}
 	activate(selfTab);
 
@@ -284,9 +312,10 @@
 		[['↻ 새로고침', function () { if (t.self) location.reload(); else { activate(t); frameOf(t).contentWindow.location.reload(); } }],
 			['⧉ 새 창으로 열기', function () { window.open(t.url, '_blank', 'noopener'); }],
 			null,
-			['✕ 닫기', function () { close(t); }, tabs.length < 2],
+			['✕ 닫기', function () { close(t); }, tabs.length < 2 || isHome(t)],
 			['다른 탭 모두 닫기', function () { tabs.slice().forEach(function (x) { if (x !== t) close(x); }); }, tabs.length < 2],
-			['오른쪽 탭 모두 닫기', function () { tabs.slice(tabs.indexOf(t) + 1).forEach(close); }, tabs.indexOf(t) === tabs.length - 1]
+			['오른쪽 탭 모두 닫기', function () { tabs.slice(tabs.indexOf(t) + 1).forEach(close); }, tabs.indexOf(t) === tabs.length - 1],
+			['모든 탭 닫기(홈으로)', function () { tabs.slice().forEach(close); activate(home); }, tabs.length < 2]
 		].forEach(function (m) {
 			if (!m) { menu.appendChild(document.createElement('hr')); return; }
 			var b = document.createElement('button');
@@ -308,5 +337,6 @@
 	// 쓰던 입력 표시(노란 점)
 	setInterval(function () {
 		[].forEach.call(bar.querySelectorAll('.bo-tab'), function (w) { w.classList.toggle('dot', dirty(w.tab)); });
+		paintBack(); // 상세는 데이터를 받은 뒤 그려져 '목록' 버튼이 늦게 생긴다
 	}, 1500);
 })();
