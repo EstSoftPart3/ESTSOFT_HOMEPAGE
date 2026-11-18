@@ -21,7 +21,8 @@
 								<input type="hidden" name="MENU_CODE" id="fCode">
 								<div class="form-row">
 									<div class="col-md-8 mb-2"><label for="fName">이름 *</label><input id="fName" name="MENU_NM" class="form-control form-control-sm" maxlength="50" required></div>
-									<div class="col-md-4 mb-2"><label for="fParent">상위 메뉴</label><select id="fParent" name="REL_CODE" class="form-control form-control-sm"></select></div>
+									<div class="col-md-4 mb-2"><label for="fParent">상위 메뉴</label><select id="fParent" name="REL_CODE" class="form-control form-control-sm" aria-describedby="parentHelp"></select></div>
+									<div class="col-12 mb-2"><small id="parentHelp" class="form-text text-muted mt-0" role="status"></small></div>
 									<div class="col-12 mb-2 only-item"><label for="fUrl">화면 주소 <small>(2단계에서 비워 두면 하위 메뉴를 담는 묶음)</small></label><input id="fUrl" name="MENU_URL" class="form-control form-control-sm sys-mono" maxlength="200" placeholder="/admin/업무/openList.do"></div>
 									<div class="col-12 mb-2 only-item"><label for="fPattern">접근 경로 (쉼표로 구분, 데이터 요청 주소까지 포함)</label><textarea id="fPattern" name="AUTH_PATTERN" rows="3" class="form-control form-control-sm sys-mono" maxlength="1000" placeholder="/admin/업무/**"></textarea></div>
 									<div class="col-12 mb-2 only-icon"><label id="iconLabel">아이콘</label><input type="hidden" id="fIcon" name="ICON_NM"><input type="search" id="iconSearch" class="form-control form-control-sm mb-2" placeholder="분류 또는 영문 이름으로 검색 (예: 장비, user)" aria-label="아이콘 검색" maxlength="30" autocomplete="off"><div id="iconGrid" class="sys-icons" role="radiogroup" aria-labelledby="iconLabel"></div></div>
@@ -42,7 +43,7 @@
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
 	<script src="/resources/bo/plugins/jquery-ui/jquery-ui.min.js"></script>
 	<script>
-	var menus = [], selected = null, savedOrder = '', draggedAt = 0, sortMsgTimer;
+	var menus = [], selected = null, savedOrder = '', draggedAt = 0, sortMsgTimer, clean = '';
 	var ICON_GROUPS = [
 		['사람·조직', 'user-shield users user-tie id-card sitemap building user user-check user-cog user-graduate user-plus users-cog address-book address-card handshake'],
 		['업무·문서', 'briefcase tasks clipboard-list file file-alt folder table edit book book-open archive inbox clipboard clipboard-check file-contract file-signature file-pdf file-excel folder-open pen paperclip stamp print'],
@@ -60,7 +61,7 @@
 			menus = res.result;
 			renderTree();
 			renderParents();
-			if (keep) select(menus.filter(function(m) { return m.MENU_CODE === keep; })[0]);
+			if (keep) select(menus.filter(function(m) { return m.MENU_CODE === keep; })[0], true);
 		});
 	}
 
@@ -105,7 +106,7 @@
 
 	// 수정 중인 폼 내용은 두고 드래그로 바뀐 순서와 소속만 맞춘다
 	function refreshTree(msg) {
-		var parent = $('#fParent').val();
+		var parent = $('#fParent').val(), wasClean = $('#menuForm').serialize() === clean;
 		hrPost('/admin/system/menu/menuListData.do', {}, function(res) {
 			menus = res.result;
 			if (selected) selected = menus.filter(function(m) { return m.MENU_CODE === selected.MENU_CODE; })[0] || null;
@@ -114,6 +115,7 @@
 			$('#fParent').val(selected ? selected.REL_CODE || '' : parent);
 			if (selected) $('#fSort').val(selected.SORT_NO);
 			applyKind();
+			if (wasClean) clean = $('#menuForm').serialize(); // 드래그로 바뀐 위치·순서는 이미 저장된 값이다
 			$('#sortMsg').text(msg);
 			clearTimeout(sortMsgTimer);
 			sortMsgTimer = setTimeout(function() { $('#sortMsg').empty(); }, 2500);
@@ -154,15 +156,42 @@
 		else if (cls === 'sys-node-folder') $b.append('<i class="far fa-folder-open" aria-hidden="true"></i>');
 		$b.append($('<span>').text(m.MENU_NM));
 		if (m.USE_YN === 'N') $b.append('<span class="sys-pill">숨김</span>');
+		// 화면이 하나도 없는 그룹·묶음은 왼쪽 메뉴에 나오지 않는다
+		else if (!m.MENU_URL && !hasScreen(m.MENU_CODE)) $b.append('<span class="sys-pill" title="아래에 화면 메뉴가 없어 왼쪽 메뉴에 보이지 않습니다">비어 있음</span>');
+		else if (hiddenAbove(m)) $b.append('<span class="sys-pill" title="상위 메뉴가 숨김이라 왼쪽 메뉴에 보이지 않습니다">상위 숨김</span>');
 		return $b;
 	}
 
+	function byCode(code) { return menus.filter(function(m) { return m.MENU_CODE === code; })[0]; }
+	function hasScreen(code) { return childrenOf(code).some(function(c) { return c.USE_YN !== 'N' && (c.MENU_URL || hasScreen(c.MENU_CODE)); }); }
+	function hiddenAbove(m) { for (var p = byCode(m.REL_CODE); p; p = byCode(p.REL_CODE)) if (p.USE_YN === 'N') return true; return false; }
+	function nameOf(code) { var m = byCode(code); return m ? m.MENU_NM : '없음 (그룹)'; }
+
 	function renderParents() {
 		var $p = $('#fParent').empty().append('<option value="">없음 (그룹)</option>');
+		// 이름이 같은 숨김 메뉴(옛 '연구소' 등)와 헷갈리지 않게 표시한다
+		function label(m) { return m.MENU_NM + (m.USE_YN === 'N' ? ' (숨김)' : ''); }
 		groups().forEach(function(g) {
-			$p.append($('<option>').val(g.MENU_CODE).text(g.MENU_NM));
-			childrenOf(g.MENU_CODE).filter(isFolder).forEach(function(f) { $p.append($('<option>').val(f.MENU_CODE).text('└ ' + f.MENU_NM)); });
+			$p.append($('<option>').val(g.MENU_CODE).text(label(g)));
+			childrenOf(g.MENU_CODE).filter(isFolder).forEach(function(f) { $p.append($('<option>').val(f.MENU_CODE).text('└ ' + label(f))); });
 		});
+	}
+
+	/** 고를 수 없는 상위 메뉴는 목록에서 비활성으로 두고 이유를 아래에 적는다 */
+	function limitParents() {
+		var code = $('#fCode').val(), screen = !!$.trim($('#fUrl').val()), kids = code ? childrenOf(code) : [];
+		var deep = kids.some(function(k) { return childrenOf(k.MENU_CODE).length; }), why = [];
+		$('#fParent option').each(function() {
+			var v = this.value, sub = !!(byCode(v) || {}).REL_CODE, off = false;
+			if (!v) off = screen;                                  // 화면 메뉴는 그룹이 될 수 없다
+			else if (v === code || (byCode(v) || {}).REL_CODE === code) off = true; // 자기 자신·자기 아래
+			else if (sub) off = kids.length > 0;                   // 묶음 아래에는 화면 메뉴만(4단계 방지)
+			else off = deep;                                       // 하위에 묶음이 있으면 그룹으로만 남는다
+			this.disabled = off && this.value !== ($('#fParent').val() || '');
+		});
+		if (screen) why.push('화면 주소가 있는 메뉴라 상위 메뉴 없이(그룹으로) 둘 수 없습니다.');
+		if (kids.length) why.push('하위 메뉴 ' + kids.length + '개가 함께 옮겨집니다' + (deep ? '. 하위에 묶음이 있어 다른 메뉴 아래로는 옮길 수 없습니다.' : ', 묶음(└) 아래로는 옮길 수 없습니다.'));
+		$('#parentHelp').text(why.join(' '));
 	}
 
 	function applyKind() {
@@ -172,9 +201,11 @@
 		$('.only-icon').prop('hidden', depth3);
 		$('#fUrl').prop('required', depth3);
 		if (group && !$('#fIcon').val()) $('#fIcon').val('fa-folder');
+		limitParents();
 		renderIcons();
 	}
 	$('#fParent').on('change', applyKind);
+	$('#fUrl').on('input', limitParents);
 
 	function fill(m, title) {
 		$('#menuForm').prop('hidden', false);
@@ -191,17 +222,29 @@
 		$('#fNew').val(m.NEW_WIN_YN || 'N');
 		$('#delBtn').prop('hidden', !m.MENU_CODE);
 		applyKind();
+		clean = $('#menuForm').serialize();
 		$('#fName').focus();
 	}
 
-	function select(m) {
-		if (!m) return;
-		selected = m;
-		renderTree();
-		fill(m, m.REL_CODE ? '메뉴 수정' : '그룹 수정');
+	/** 고치던 내용이 있으면 버리기 전에 묻는다 */
+	function leave(then) {
+		if ($('#menuForm').prop('hidden') || $('#menuForm').serialize() === clean) { then(); return; }
+		bootbox.confirm('저장하지 않은 수정 내용이 있습니다. 버리고 넘어갈까요?', function(ok) { if (ok) then(); });
 	}
 
-	function newMenu(group) {
+	function select(m, force) {
+		if (!m) return;
+		if (!force && selected && selected.MENU_CODE === m.MENU_CODE) return;
+		(force ? function(f) { f(); } : leave)(function() {
+			selected = m;
+			renderTree();
+			fill(m, m.REL_CODE ? '메뉴 수정' : '그룹 수정');
+		});
+	}
+
+	function newMenu(group) { leave(function() { startNew(group); }); }
+
+	function startNew(group) {
 		selected = null;
 		renderTree();
 		var parent = group ? '' : (groups()[0] || {}).MENU_CODE;
@@ -211,8 +254,20 @@
 	}
 
 	function saveMenu() {
+		var old = byCode($('#fCode').val()), parent = $('#fParent').val() || '', ask = [];
+		// 위치가 바뀌거나 화면 주소가 지워지는 저장은 한 번 확인한다(잘못 바꾸면 왼쪽 메뉴에서 사라진다)
+		if (old && (old.REL_CODE || '') !== parent) ask.push('위치를 "' + nameOf(old.REL_CODE) + '" → "' + nameOf(parent) + '" 로 옮깁니다' + (childrenOf(old.MENU_CODE).length ? ' (하위 메뉴 ' + childrenOf(old.MENU_CODE).length + '개 포함).' : '.'));
+		if (old && old.MENU_URL && !$.trim($('#fUrl').val())) ask.push('화면 주소를 비우면 하위 메뉴를 담는 묶음이 되고, 접근 경로도 지워집니다.');
+		if (old && old.USE_YN !== 'N' && $('#fUse').val() === 'N' && childrenOf(old.MENU_CODE).length) ask.push('숨기면 하위 메뉴 ' + childrenOf(old.MENU_CODE).length + '개도 왼쪽 메뉴에서 사라집니다.');
+		if (!ask.length) { doSave(); return; }
+		bootbox.confirm($('<div>').text(ask.join(' ') + ' 저장할까요?').html(), function(ok) { if (ok) doSave(); });
+	}
+
+	function doSave() {
 		hrPost('/admin/system/menu/saveMenuData.do', $('#menuForm').serialize(), function() {
 			var code = $('#fCode').val();
+			clean = $('#menuForm').serialize();
+			if (code) selected = null; // load 가 같은 메뉴를 다시 채우게
 			load(code);
 			if (!code) { selected = null; $('#menuForm').prop('hidden', true); $('#formTitle').text('저장했습니다'); }
 		});

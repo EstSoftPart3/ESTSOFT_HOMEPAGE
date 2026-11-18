@@ -160,8 +160,9 @@ public class BoSystemService {
 		require(name != null && name.length() <= 50, "메뉴명을 50자 이내로 입력해 주세요.");
 		require(icon == null || ICON.matcher(icon).matches(), "아이콘은 fa-로 시작하는 이름으로 입력해 주세요.");
 		boolean group = parent == null;
+		List<Map<String, Object>> after = new ArrayList<>(mapper.selectAllMenus());
+		checkMenuChange(code, parent, url, after);
 		if (group) {
-			url = null;
 			patterns = null;
 		} else {
 			require(url == null || (url.length() <= 200 && URL.matcher(url).matches() && !url.startsWith("//")), "화면 주소는 /로 시작하는 내부 주소로 입력해 주세요.");
@@ -179,11 +180,27 @@ public class BoSystemService {
 		p.put("USE_YN", "N".equals(p.get("USE_YN")) ? "N" : "Y");
 		p.put("NEW_WIN_YN", "Y".equals(p.get("NEW_WIN_YN")) ? "Y" : "N");
 		p.put("SORT_NO", number(p.get("SORT_NO"), "순서"));
-		List<Map<String, Object>> after = new ArrayList<>(mapper.selectAllMenus());
 		after.removeIf(m -> p.get("MENU_CODE").equals(m.get("MENU_CODE")));
 		after.add(p);
 		setDepth(p, validateMenuTree(after));
 		mapper.upsertMenu(p);
+	}
+
+	/**
+	 * 저장으로 메뉴가 사라지는 실수를 막는다. 예전에는 화면 메뉴의 상위를 '없음'으로 바꾸면 화면 주소·접근 경로를 말없이 지워
+	 * 빈 그룹이 되면서 왼쪽 메뉴에서 없어졌다(2026-11-18 연구소 관리).
+	 */
+	static void checkMenuChange(String code, String parent, String url, List<Map<String, Object>> menus) {
+		Map<String, Object> old = null;
+		for (Map<String, Object> m : menus) {
+			if (m.get("MENU_CODE").equals(code)) old = m;
+			else require(url == null || !url.equals(m.get("MENU_URL")), "같은 화면 주소를 쓰는 메뉴가 이미 있습니다: " + m.get("MENU_NM"));
+		}
+		require(code == null || old != null, "메뉴가 변경되었습니다. 새로고침 후 다시 시도해 주세요.");
+		require(code == null || !code.equals(parent), "자기 자신을 상위 메뉴로 고를 수 없습니다.");
+		if (parent == null) {
+			require(url == null && (old == null || old.get("MENU_URL") == null), "화면 주소가 있는 메뉴는 그룹(상위 없음)이 될 수 없습니다. 상위 메뉴를 골라 주세요.");
+		}
 	}
 
 	/** 아이콘은 2단계까지만 쓰고 3단계는 동그라미로 표시한다 */

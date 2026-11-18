@@ -79,7 +79,27 @@ public class BoSystemServiceCheck {
 		Map<String, Object> emptyOldGroup = menu("M001", null, null, null);
 		emptyOldGroup.put("USE_YN", "N");
 		BoSystemService.validateMenuTree(Arrays.asList(emptyOldGroup)); // 비어 있는 옛 그룹은 숨길 수 있다
+
+		// 저장으로 메뉴가 사라지는 실수 막기
+		List<Map<String, Object>> saved = Arrays.asList(menu("G", null, null, null), menu("S", "G", "/admin/lab/open.do", "/admin/lab/*"));
+		BoSystemService.checkMenuChange("S", "G", "/admin/lab/open.do", saved);
+		BoSystemService.checkMenuChange("G", null, null, saved);
+		BoSystemService.checkMenuChange(null, "G", "/admin/new/open.do", saved);
+		rejectsChange("S", null, "/admin/lab/open.do", saved); // 화면 메뉴 → 그룹(주소를 같이 보냄)
+		rejectsChange("S", null, null, saved);                 // 화면 메뉴 → 그룹(주소 없이 보내도 기존 주소가 있으면)
+		rejectsChange(null, "G", "/admin/lab/open.do", saved); // 같은 화면 주소
+		rejectsChange("G", "G", null, saved);                  // 자기 자신이 상위
+		rejectsChange("X", "G", null, saved);                  // 그사이 지워진 메뉴
 		System.out.println("BoSystemServiceCheck OK");
+	}
+
+	private static void rejectsChange(String code, String parent, String url, List<Map<String, Object>> menus) {
+		try {
+			BoSystemService.checkMenuChange(code, parent, url, menus);
+		} catch (IllegalArgumentException e) {
+			return;
+		}
+		throw new AssertionError("거부해야 함: " + code + " → " + parent + " " + url);
 	}
 
 	private static Map<String, Object> role(int sq, String code) {
