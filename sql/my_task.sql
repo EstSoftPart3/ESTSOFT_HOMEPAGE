@@ -1,0 +1,20 @@
+-- 관리자 홈 개인 할 일(본인만). 앱 기동 때 MyTaskService.ensureSchema 가 같은 문장으로 만든다
+CREATE TABLE IF NOT EXISTS TB_EEP_MY_TASK_R (
+	  TASK_SQ    INT          NOT NULL AUTO_INCREMENT PRIMARY KEY
+	, EMPLY_ID   VARCHAR(50)  NOT NULL
+	, TITLE      VARCHAR(100) NOT NULL
+	, START_DT   DATE         NOT NULL
+	, END_DT     DATE         NOT NULL COMMENT '기간 할 일의 끝날(하루짜리는 START_DT 와 같음)'
+	, ALL_DAY    CHAR(1)      NOT NULL DEFAULT 'Y'
+	, START_TM   VARCHAR(5)   NULL
+	, END_TM     VARCHAR(5)   NULL
+	, MEMO       VARCHAR(2000) NULL
+	, RPT_CD     VARCHAR(10)  NOT NULL DEFAULT 'NONE' COMMENT 'NONE·DAY·WEEK·MONTH'
+	, RPT_DOW    VARCHAR(7)   NULL COMMENT 'WEEK 요일 0=일~6=토'
+	, RPT_UNTIL  DATE         NULL
+	, DONE_DTS   TEXT         NULL COMMENT '완료한 회차 시작일(쉼표)'
+	, SKIP_DTS   TEXT         NULL COMMENT '반복에서 뺀 회차 시작일(쉼표)'
+	, REG_DT     DATETIME     NOT NULL
+	, UPDT_DT    DATETIME     NULL
+	, KEY IX_MY_TASK (EMPLY_ID)
+) DEFAULT CHARSET=utf8mb4 COMMENT='관리자 홈 개인 할 일';

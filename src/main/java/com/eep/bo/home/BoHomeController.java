@@ -67,6 +67,12 @@ public class BoHomeController {
 	@Autowired
 	private SecretFilter secret;
 
+	@Autowired
+	private com.eep.bo.my.ViewPresetService views;
+
+	@Autowired
+	private com.eep.bo.my.MyTaskService tasks;
+
 	@RequestMapping(BoSystemService.HOME)
 	public ModelAndView home(HttpSession session) throws Exception {
 		String id = loginId(session);
@@ -101,6 +107,10 @@ public class BoHomeController {
 		}
 		data.put("memos", memos);
 		data.put("updates", updates);
+		// 홈 위젯 배치(관리자별, 목록 '보기' 저장 표를 홈 주소로 1건)와 개인 할 일
+		List<?> layout = (List<?>) views.list(id, BoSystemService.HOME).get("list");
+		data.put("layout", layout.isEmpty() ? null : layout.get(0));
+		data.put("tasks", tasks.list(id));
 		ModelAndView mv = new ModelAndView("bo/home/home");
 		// <script> 안에 넣으므로 </ 를 끊는다
 		mv.addObject("homeJson", new ObjectMapper().writeValueAsString(data).replace("</", "<\\/"));

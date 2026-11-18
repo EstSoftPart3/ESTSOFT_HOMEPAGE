@@ -43,6 +43,8 @@ public class BoMyController {
 	private com.eep.bo.batch.service.GoogleDriveApi drive;
 	@Autowired
 	private ViewPresetService views;
+	@Autowired
+	private MyTaskService tasks;
 
 	@RequestMapping("/admin/my/openGoogleLink.do")
 	public ModelAndView openGoogleLink() {
@@ -293,6 +295,29 @@ public class BoMyController {
 	@RequestMapping(value = "/admin/my/deleteViewPresetData.do", method = RequestMethod.POST)
 	public ModelAndView deleteViewPresetData(@RequestParam("page") String page, @RequestParam("vwSq") String vwSq) {
 		return viewDo(() -> { views.delete(me(), page, vwSq); return "OK"; });
+	}
+
+	// ── 관리자 홈 개인 할 일(MyTaskService). 자기 계정 것만 ──
+
+	@RequestMapping(value = "/admin/my/taskListData.do", method = RequestMethod.POST)
+	public ModelAndView taskListData() {
+		return viewDo(() -> tasks.list(me()));
+	}
+
+	@RequestMapping(value = "/admin/my/saveTaskData.do", method = RequestMethod.POST)
+	public ModelAndView saveTaskData(@RequestParam Map<String, Object> param) {
+		return viewDo(() -> tasks.save(me(), param));
+	}
+
+	@RequestMapping(value = "/admin/my/deleteTaskData.do", method = RequestMethod.POST)
+	public ModelAndView deleteTaskData(@RequestParam("TASK_SQ") String sq) {
+		return viewDo(() -> { tasks.delete(me(), sq); return "OK"; });
+	}
+
+	/** act: DONE·UNDONE(회차 완료 체크), SKIP(반복에서 그 회차 빼기) */
+	@RequestMapping(value = "/admin/my/markTaskData.do", method = RequestMethod.POST)
+	public ModelAndView markTaskData(@RequestParam("TASK_SQ") String sq, @RequestParam("OCC") String occ, @RequestParam("act") String act) {
+		return viewDo(() -> "SKIP".equals(act) ? tasks.skip(me(), sq, occ) : tasks.done(me(), sq, occ, "DONE".equals(act)));
 	}
 
 	private static String me() {

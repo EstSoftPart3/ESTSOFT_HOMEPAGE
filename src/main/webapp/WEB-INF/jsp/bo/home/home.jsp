@@ -13,7 +13,18 @@
 	.hm-card { background: #fff; border: 1px solid rgba(17,17,17,.1); border-radius: 10px; overflow: hidden; min-width: 0; }
 	.hm-card.wide { grid-column: 1 / -1; }
 	.hm-card header { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid rgba(17,17,17,.08); font-weight: 700; }
-	.hm-card header a { margin-left: auto; font-weight: 400; font-size: 12px; }
+	.hm-card header a { font-weight: 400; font-size: 12px; }
+	/* 위젯: 접기·펼치기, 배치 바꾸기(⠿ 끌기 또는 ⠿ 에서 ↑↓), 넓게·좁게. 배치는 내 계정에 저장 */
+	.hm-card header .hm-sp { flex: 1; }
+	.hm-ctl { border: 1px solid rgba(17,17,17,.15); background: #fff; border-radius: 4px; font-size: 11px; line-height: 18px; padding: 0 6px; color: #5f6b75; font-weight: 400; }
+	.hm-ctl:hover { border-color: #0b6e8a; color: #0b6e8a; }
+	.hm-grip { cursor: grab; letter-spacing: -2px; display: none; } .hm-wide { display: none; }
+	#hmCards.editing .hm-grip, #hmCards.editing .hm-wide { display: inline-block; }
+	#hmCards.editing .hm-card { outline: 2px dashed #9cc9d6; outline-offset: -2px; }
+	.hm-card.hm-dragging { opacity: .4; }
+	.hm-card.fold .hm-body { display: none; } .hm-card.fold header { border-bottom: 0; }
+	.hm-tools { display: flex; gap: 6px; flex-wrap: wrap; }
+	.hm-tools .edit-only { display: none; } .hm-tools.editing .edit-only { display: inline-block; } .hm-tools.editing .view-only { display: none; }
 	.hm-card .hm-body { padding: 6px 12px 10px; }
 	.hm-card .table { margin: 0; font-size: 12.5px; }
 	.hm-todo { list-style: none; margin: 0; padding: 0; }
@@ -31,8 +42,26 @@
 	.hm-cal-chip i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 	.hm-cal-chip[aria-pressed=false] { opacity: .45; text-decoration: line-through; }
 	.hm-cal-chip .cnt { font-weight: 400; color: #5f6b75; }
-	#hmCalCard { margin-bottom: 12px; }
-	#hmCalendar { font-size: 12px; }
+	#hmKpiCard .hm-kpis { margin: 4px 0 0; }
+	#hmCalendar { font-size: 12px; min-width: 0; }
+	/* 개인 할 일: 흰 바탕 보라 테두리(업무 일정과 구분), 완료는 회색 취소선 */
+	#hmCalendar .fc-event.hm-my { font-weight: 700; }
+	#hmCalendar .fc-event.hm-my.done { color: #9aa4ac !important; border-color: #cfd5da !important; text-decoration: line-through; }
+	.hm-cal-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 10px; align-items: start; }
+	.hm-cal-wrap.shut { grid-template-columns: minmax(0, 1fr) 34px; }
+	#hmWeek { border: 1px solid rgba(17,17,17,.12); border-radius: 8px; background: #fff; }
+	#hmWeek > header { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid rgba(17,17,17,.08); font-weight: 700; font-size: 12.5px; }
+	#hmWeek ul { list-style: none; margin: 0; padding: 2px 8px 6px; max-height: 70vh; overflow-y: auto; }
+	#hmWeek li { display: flex; gap: 6px; align-items: flex-start; padding: 4px 0; border-bottom: 1px dashed rgba(17,17,17,.1); font-size: 12px; }
+	#hmWeek li.day { color: #0b6e8a; font-weight: 700; font-size: 11.5px; border: 0; padding: 6px 0 0; }
+	#hmWeek li.day.today::after { content: ' 오늘'; color: #b8860b; }
+	#hmWeek li a { color: #111; } #hmWeek li.done a { color: #9aa4ac; text-decoration: line-through; }
+	#hmWeek li small { display: block; color: #5f6b75; }
+	#hmWeek .hm-empty { padding: 8px 0; }
+	.hm-cal-wrap.shut #hmWeek ul { display: none; }
+	.hm-cal-wrap.shut #hmWeek > header { writing-mode: vertical-rl; border: 0; padding: 8px 6px; cursor: pointer; }
+	.hm-tk .form-row-x { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+	.hm-tk label.hm-dow { font-weight: 400; margin: 0 4px 0 0; }
 	#hmCalendar .fc-toolbar { margin-bottom: 6px; } #hmCalendar .fc-toolbar h2 { font-size: 16px; }
 	#hmCalendar .fc-event { cursor: pointer; font-size: 11px; line-height: 1.3; padding: 0 2px; }
 	#hmCalendar .fc-day-grid .fc-row { min-height: 0 !important; }
@@ -41,7 +70,7 @@
 	/* 업무 화면 상세 팝업을 홈 위에 그대로 띄우는 투명 틀(include_top 의 ?popup=1) */
 	.hm-pop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; border: 0; z-index: 1060; background: transparent; }
 	.hm-pop-wait { position: fixed; inset: 0; z-index: 1059; background: rgba(0,0,0,.25); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; }
-	@media (max-width: 991px) { .hm-grid, .hm-money { grid-template-columns: 1fr; } }
+	@media (max-width: 991px) { .hm-grid, .hm-money, .hm-cal-wrap, .hm-cal-wrap.shut { grid-template-columns: 1fr; } }
 </style>
 <link rel="stylesheet" href="/resources/bo/plugins/fullcalendar/main.min.css">
 <link rel="stylesheet" href="/resources/bo/plugins/fullcalendar-daygrid/main.min.css">
@@ -50,10 +79,18 @@
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-body">
 					<div class="hm-hello"><b><c:out value="${loginInfo.loginInfo[0].emplyNm}"/>님, 안녕하세요</b><span class="text-muted" id="hmToday"></span>
-						<span class="ml-auto text-muted">열 때 한 번 불러와요 · <a href="/admin/home.do">새로고침</a></span></div>
-					<div class="hm-kpis" id="hmKpis"></div>
+						<span class="ml-auto text-muted">열 때 한 번 불러와요 · <a href="/admin/home.do">새로고침</a></span>
+						<span class="hm-tools" id="hmTools">
+							<button type="button" class="btn btn-sm btn-outline-secondary view-only" data-act="foldAll">▴ 모두 접기</button>
+							<button type="button" class="btn btn-sm btn-outline-secondary view-only" data-act="openAll">▾ 모두 펼치기</button>
+							<button type="button" class="btn btn-sm btn-outline-secondary view-only" data-act="edit">⠿ 배치 바꾸기</button>
+							<button type="button" class="btn btn-sm btn-outline-danger edit-only" data-act="reset">↺ 초기화</button>
+							<button type="button" class="btn btn-sm btn-outline-secondary edit-only" data-act="cancel">취소</button>
+							<button type="button" class="btn btn-sm btn-primary edit-only" data-act="save">저장</button>
+						</span></div>
 					<div class="hm-grid" id="hmCards">
-						<div class="hm-card wide" id="hmTodoCard"><header>확인할 일 <span class="hm-pill" id="hmTodoCnt">…</span></header><div class="hm-body"><ul class="hm-todo" id="hmTodo"></ul></div></div>
+						<div class="hm-card wide" id="hmKpiCard" data-key="KPI"><header>숫자 한눈에 보기</header><div class="hm-body"><div class="hm-kpis" id="hmKpis"></div></div></div>
+						<div class="hm-card wide" id="hmTodoCard" data-key="TODO"><header>확인할 일 <span class="hm-pill" id="hmTodoCnt">…</span></header><div class="hm-body"><ul class="hm-todo" id="hmTodo"></ul></div></div>
 					</div>
 				</div>
 			<%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
@@ -62,6 +99,7 @@
 	<script src="/resources/bo/plugins/fullcalendar/main.min.js"></script>
 	<script src="/resources/bo/plugins/fullcalendar-daygrid/main.min.js"></script>
 	<script src="/resources/bo/plugins/fullcalendar-timegrid/main.min.js"></script>
+	<script src="/resources/bo/plugins/fullcalendar-interaction/main.min.js"></script>
 	<script src="/resources/bo/plugins/fullcalendar/locales/ko.js" charset="utf-8"></script>
 	<script>
 	// 서버가 넣은 것: cards(열 수 있는 카드), journals(내 결재 차례), memos(최근 메모)
@@ -94,8 +132,8 @@
 		if (!todos.length && !pending) $u.append('<li class="hm-empty">오늘 확인할 일이 없습니다.</li>');
 		$('#hmTodoCnt').text(pending ? '…' : todos.length).toggleClass('bad', todos.length > 0);
 	}
-	function card(title, href, wide) {
-		var $c = $('<div class="hm-card">').toggleClass('wide', !!wide).append($('<header>').append(document.createTextNode(title)).append(href ? link(title + ' 열기 ›', href, '') : ''));
+	function card(key, title, href, wide) {
+		var $c = $('<div class="hm-card">').attr('data-key', key).toggleClass('wide', !!wide).append($('<header>').append(document.createTextNode(title)).append(href ? link(title + ' 열기 ›', href, '') : ''));
 		var $b = $('<div class="hm-body">').append('<div class="hm-empty">불러오는 중…</div>').appendTo($c);
 		$c.appendTo('#hmCards');
 		return $b;
@@ -126,7 +164,7 @@
 	var CAL_KIND = {
 		INTV_NEW: ['신입면접', '#0b6e8a'], INTV_EXP: ['경력면접', '#d6336c'], DEPLOY_IN: ['투입', '#2f7d32'], DEPLOY_OUT: ['철수', '#c62828'], PROB: ['수습 해제', '#b8860b'],
 		EDU: ['교육 시작', '#6b3fa0'], AVAIL: ['인터뷰', '#9c6ad6'], JOIN: ['입사', '#1565c0'], LEAVE: ['퇴사', '#78858f'],
-		PAY: ['급여 지급', '#d35400'], RC_INTV: ['모집 인터뷰', '#e8590c'], RC_CLOSE: ['모집 마감', '#795548']
+		PAY: ['급여 지급', '#d35400'], RC_INTV: ['모집 인터뷰', '#e8590c'], RC_CLOSE: ['모집 마감', '#795548'], MY: ['내 할 일', '#8e6fd8']
 	};
 	// 카드(권한) → 그 카드가 넣는 일정 종류. 모두 우리 시스템에 등록된 정보(구글 캘린더 일정은 넣지 않는다)
 	var CAL_SRC = { STAFF: ['JOIN', 'LEAVE'], DEPLOY: ['DEPLOY_IN', 'DEPLOY_OUT', 'PROB'], INTV: ['INTV_NEW', 'INTV_EXP'], TRAINEE: ['EDU', 'AVAIL'], PAY: ['PAY'], RECRUIT: ['RC_INTV', 'RC_CLOSE'] };
@@ -146,13 +184,176 @@
 	function calPaint() {
 		$('#hmCalChips .hm-cal-chip').each(function() {
 			var k = $(this).data('k');
-			$(this).attr('aria-pressed', !calOff[k]).find('.cnt').text(calEvents.filter(function(e) { return e.kind === k; }).length);
+			$(this).attr('aria-pressed', !calOff[k]).find('.cnt').text(k === 'MY' ? tasks.length : calEvents.filter(function(e) { return e.kind === k; }).length);
 		});
 		if (!calendar) return;
 		calendar.removeAllEvents();
-		calendar.addEventSource(calShown().map(function(e) {
-			return { title: e.title, start: e.start, allDay: e.allDay, backgroundColor: CAL_KIND[e.kind][1], borderColor: CAL_KIND[e.kind][1], textColor: '#fff', extendedProps: { ev: e } };
+		var evs = calShown().map(function(e) {
+			return { title: e.title, start: e.start, allDay: e.allDay, editable: false, backgroundColor: CAL_KIND[e.kind][1], borderColor: CAL_KIND[e.kind][1], textColor: '#fff', extendedProps: { ev: e } };
+		});
+		if (!calOff.MY) {
+			var v = calendar.view;
+			myOccs(moment(v.activeStart), moment(v.activeEnd).subtract(1, 'days')).forEach(function(o) {
+				var t = o.t, timed = t.ALL_DAY === 'N';
+				evs.push({ title: (t.RPT_CD !== 'NONE' ? '↻ ' : '') + t.TITLE, allDay: !timed, editable: true,
+					start: o.occ + (timed ? 'T' + t.START_TM : ''), end: timed ? o.end + 'T' + t.END_TM : moment(o.end).add(1, 'days').format('YYYY-MM-DD'),
+					backgroundColor: '#fff', borderColor: CAL_KIND.MY[1], textColor: '#5b3fa8', classNames: o.done ? ['hm-my', 'done'] : ['hm-my'], extendedProps: { task: o } });
+			});
+		}
+		calendar.addEventSource(evs);
+	}
+
+	// ── 개인 할 일(나만 보임). 반복 회차는 여기서 펼친다: 서버에는 규칙·회차별 완료(DONE_DTS)·빠진 날(SKIP_DTS)만 ──
+	var tasks = HOME.tasks || [];
+	function ymd(m) { return moment(m).format('YYYY-MM-DD'); }
+	function csv(s) { return s ? String(s).split(',') : []; }
+	// [from, to](날짜, 끝 포함)에 걸치는 회차들: { t, occ: 회차 시작일, end: 회차 끝날, len: 기간 일수-1, done }
+	function myOccs(from, to) {
+		var out = [];
+		tasks.forEach(function(t) {
+			var S = moment(t.START_DT), len = moment(t.END_DT).diff(S, 'days'), skip = csv(t.SKIP_DTS), until = t.RPT_UNTIL ? moment(t.RPT_UNTIL) : null, days = [];
+			if (t.RPT_CD === 'NONE') { if (!S.isAfter(to) && !S.clone().add(len, 'days').isBefore(from)) days.push(S); }
+			else for (var d = moment.max(S, from.clone().subtract(len, 'days')); !d.isAfter(to) && !(until && d.isAfter(until)); d.add(1, 'days')) {
+				var hit = t.RPT_CD === 'DAY' || (t.RPT_CD === 'WEEK' && (t.RPT_DOW || '').indexOf(String(d.day())) >= 0) || (t.RPT_CD === 'MONTH' && d.date() === S.date());
+				if (hit && skip.indexOf(ymd(d)) < 0) days.push(d.clone());
+			}
+			days.forEach(function(d) { out.push({ t: t, occ: ymd(d), end: ymd(d.clone().add(len, 'days')), len: len, done: csv(t.DONE_DTS).indexOf(ymd(d)) >= 0 }); });
+		});
+		return out;
+	}
+	// 서버 응답 {result}|{error}. 실패하면 알리고 reject
+	function api(url, data) {
+		var dfd = $.Deferred();
+		$.post(url, data).done(function(r) { if (r && r.error) { bootbox.alert(r.error); dfd.reject(); } else dfd.resolve(r ? r.result : null); })
+			.fail(function() { bootbox.alert('저장하지 못했습니다. 잠시 뒤 다시 시도해 주세요.'); dfd.reject(); });
+		return dfd.promise();
+	}
+	function taskReload() { return api('/admin/my/taskListData.do').done(function(list) { tasks = list || []; calPaint(); weekList(); }); }
+	function taskParams(t) {
+		var p = {};
+		['TASK_SQ', 'TITLE', 'START_DT', 'END_DT', 'ALL_DAY', 'START_TM', 'END_TM', 'MEMO', 'RPT_CD', 'RPT_DOW', 'RPT_UNTIL'].forEach(function(k) { p[k] = t[k] == null ? '' : t[k]; });
+		return p;
+	}
+	// 반복 할 일을 고치거나 옮기거나 지울 때 범위(구글 캘린더와 같음)
+	function askScope(title, done, cancel) {
+		var $m = $('<div>').append([['ONE', '이 날만'], ['AFTER', '이 날부터 이후 모두'], ['ALL', '반복 전체']].map(function(s, i) {
+			return $('<div class="form-check">').append($('<label class="form-check-label">').append($('<input type="radio" name="hmScope" class="form-check-input">').val(s[0]).prop('checked', !i)).append(' ' + s[1]));
 		}));
+		bootbox.dialog({ title: title, message: $m, size: 'small', onEscape: function() { if (cancel) cancel(); }, buttons: {
+			cancel: { label: '취소', className: 'btn-sm btn-secondary', callback: function() { if (cancel) cancel(); } },
+			ok: { label: '확인', className: 'btn-sm btn-primary', callback: function() { done($m.find('input:checked').val()); } } } });
+	}
+	// 회차 o 에 p(새 값)를 범위대로 저장. ONE: 그 회차를 빼고 따로 1건, AFTER: 원래 반복을 전날에 끝내고 새 반복, ALL: 원래 것을 같은 만큼 옮겨 고침
+	function saveScope(o, p, scope) {
+		var t = o.t;
+		if (scope === 'AFTER' && o.occ === t.START_DT) scope = 'ALL';
+		if (scope === 'ONE') {
+			p.TASK_SQ = ''; p.RPT_CD = 'NONE';
+			return api('/admin/my/markTaskData.do', { TASK_SQ: t.TASK_SQ, OCC: o.occ, act: 'SKIP' }).then(function() { return api('/admin/my/saveTaskData.do', p); });
+		}
+		if (scope === 'AFTER') {
+			var old = taskParams(t);
+			old.RPT_UNTIL = moment(o.occ).subtract(1, 'days').format('YYYY-MM-DD');
+			p.TASK_SQ = '';
+			return api('/admin/my/saveTaskData.do', old).then(function() { return api('/admin/my/saveTaskData.do', p); });
+		}
+		var shift = moment(p.START_DT).diff(moment(o.occ), 'days'), span = moment(p.END_DT).diff(moment(p.START_DT), 'days');
+		p.TASK_SQ = t.TASK_SQ;
+		p.START_DT = moment(t.START_DT).add(shift, 'days').format('YYYY-MM-DD');
+		p.END_DT = moment(p.START_DT).add(span, 'days').format('YYYY-MM-DD');
+		return api('/admin/my/saveTaskData.do', p);
+	}
+	function deleteScope(o, scope) {
+		var t = o.t;
+		if (scope === 'AFTER' && o.occ === t.START_DT) scope = 'ALL';
+		if (scope === 'ONE') return api('/admin/my/markTaskData.do', { TASK_SQ: t.TASK_SQ, OCC: o.occ, act: 'SKIP' });
+		if (scope === 'AFTER') { var old = taskParams(t); old.RPT_UNTIL = moment(o.occ).subtract(1, 'days').format('YYYY-MM-DD'); return api('/admin/my/saveTaskData.do', old); }
+		return api('/admin/my/deleteTaskData.do', { TASK_SQ: t.TASK_SQ });
+	}
+	// 등록·수정 창. o: 고칠 회차(없으면 새로), sel: 새로 만들 때 끌어 고른 { START_DT, END_DT, ALL_DAY, START_TM, END_TM }
+	function openTask(o, sel) {
+		var t = o ? $.extend({}, o.t, { START_DT: o.occ, END_DT: o.end }) : $.extend({ RPT_CD: 'NONE', ALL_DAY: 'Y' }, sel);
+		function inp(type, k) { return $('<input class="form-control form-control-sm">').attr({ type: type, name: k }).val(t[k] || ''); }
+		function row(label, $c) { return $('<div class="form-group row mb-2">').append($('<label class="col-3 col-form-label col-form-label-sm">').text(label)).append($('<div class="col-9 form-row-x">').append($c)); }
+		var $all = $('<label class="mb-0"><input type="checkbox" name="ALL_DAY"> 종일</label>');
+		$all.find('input').prop('checked', t.ALL_DAY !== 'N');
+		var $rpt = $('<select class="form-control form-control-sm" name="RPT_CD" style="width:auto">').append([['NONE', '반복 없음'], ['DAY', '매일'], ['WEEK', '매주'], ['MONTH', '매월 (같은 날)']].map(function(r) { return $('<option>').val(r[0]).text(r[1]); })).val(t.RPT_CD || 'NONE');
+		var dow0 = t.RPT_DOW || String(moment(t.START_DT).day());
+		var $dow = $('<span class="hm-dows">').append('일월화수목금토'.split('').map(function(c, i) {
+			return $('<label class="hm-dow">').append($('<input type="checkbox">').val(i).prop('checked', dow0.indexOf(String(i)) >= 0)).append(' ' + c);
+		}));
+		var $f = $('<form class="hm-tk" autocomplete="off">').append(
+			row('제목', inp('text', 'TITLE').attr({ maxlength: 100, required: true })),
+			row('기간', [inp('date', 'START_DT').css('width', 'auto'), '~', inp('date', 'END_DT').css('width', 'auto'), $all]),
+			row('시간', [inp('time', 'START_TM').css('width', 'auto'), '~', inp('time', 'END_TM').css('width', 'auto')]).addClass('hm-tm'),
+			row('반복', [$rpt, $dow]),
+			row('반복 끝', [inp('date', 'RPT_UNTIL').css('width', 'auto'), $('<small class="text-muted">').text('비우면 계속')]).addClass('hm-until'),
+			row('메모', $('<textarea class="form-control form-control-sm" name="MEMO" rows="3" maxlength="2000">').val(t.MEMO || '')));
+		function sync() {
+			var allDay = $all.find('input').prop('checked'), r = $rpt.val();
+			$f.find('.hm-tm').toggle(!allDay);
+			$dow.toggle(r === 'WEEK');
+			$f.find('.hm-until').toggle(r !== 'NONE');
+		}
+		$f.on('change', sync); sync();
+		var rpt = o && o.t.RPT_CD !== 'NONE';
+		var buttons = {};
+		if (o) buttons.del = { label: '삭제', className: 'btn-sm btn-outline-danger mr-auto', callback: function() {
+			if (rpt) askScope('반복 할 일 삭제', function(s) { deleteScope(o, s).always(taskReload); });
+			else bootbox.confirm('이 할 일을 지울까요?', function(ok) { if (ok) deleteScope(o, 'ALL').always(taskReload); });
+		} };
+		buttons.close = { label: '닫기', className: 'btn-sm btn-secondary' };
+		buttons.save = { label: '저장', className: 'btn-sm btn-primary', callback: function() {
+			var p = {};
+			$f.serializeArray().forEach(function(x) { p[x.name] = x.value; });
+			p.ALL_DAY = $all.find('input').prop('checked') ? 'Y' : 'N';
+			p.RPT_DOW = $dow.find('input:checked').map(function() { return this.value; }).get().join('');
+			if (!$.trim(p.TITLE)) { bootbox.alert('제목을 입력해 주세요.'); return false; }
+			if (!p.END_DT) p.END_DT = p.START_DT;
+			if (p.ALL_DAY === 'N' && (!p.START_TM || !p.END_TM)) { bootbox.alert('시작·끝 시간을 넣거나 종일을 켜 주세요.'); return false; }
+			if (!o) api('/admin/my/saveTaskData.do', p).always(taskReload);
+			else if (rpt) askScope('반복 할 일 수정', function(s) { saveScope(o, p, s).always(taskReload); });
+			else { p.TASK_SQ = o.t.TASK_SQ; api('/admin/my/saveTaskData.do', p).always(taskReload); }
+		} };
+		bootbox.dialog({ title: o ? '할 일 수정' : '할 일 등록', message: $f, onEscape: true, buttons: buttons });
+		setTimeout(function() { $f.find('[name=TITLE]').focus(); }, 300);
+	}
+	// 달력에서 끌어 옮기거나 끝을 늘였을 때
+	function taskMoved(info) {
+		var o = info.event.extendedProps.task, ev = info.event, s = moment(ev.start), e = ev.end ? moment(ev.end) : null, p = taskParams(o.t);
+		p.ALL_DAY = ev.allDay ? 'Y' : 'N';
+		p.START_DT = s.format('YYYY-MM-DD');
+		if (ev.allDay) { p.END_DT = e ? e.clone().subtract(1, 'days').format('YYYY-MM-DD') : p.START_DT; p.START_TM = p.END_TM = ''; }
+		else { e = e || s.clone().add(1, 'hours'); p.START_TM = s.format('HH:mm'); p.END_DT = e.format('YYYY-MM-DD'); p.END_TM = e.format('HH:mm'); }
+		if (o.t.RPT_CD === 'NONE') { api('/admin/my/saveTaskData.do', p).fail(info.revert).done(taskReload); return; }
+		askScope('반복 할 일 옮기기', function(sc) { saveScope(o, p, sc).fail(info.revert).always(taskReload); }, info.revert);
+	}
+	// 오른쪽 「이번 주 할 일」(달력이 보이는 주와 상관없이 이번 주 일~토). 기간 할 일은 이번 주에 걸친 첫날 아래 한 번
+	function weekList() {
+		var $w = $('#hmWeek');
+		if (!$w.length) return;
+		var from = today.clone().day(0), to = from.clone().add(6, 'days');
+		var list = myOccs(from, to).map(function(o) { return $.extend({ day: moment.max(moment(o.occ), from) }, o); })
+			.sort(function(a, b) { return (ymd(a.day) + (a.t.START_TM || '')).localeCompare(ymd(b.day) + (b.t.START_TM || '')); });
+		$w.find('.cnt').text(list.filter(function(o) { return o.done; }).length + ' / ' + list.length);
+		var $u = $w.find('ul').empty(), last = null;
+		if (!list.length) $u.append('<li class="hm-empty">이번 주 할 일이 없습니다. 달력 빈 칸을 누르거나 끌어서 등록해요.</li>');
+		list.forEach(function(o) {
+			if (ymd(o.day) !== last) { last = ymd(o.day); $u.append($('<li class="day">').toggleClass('today', o.day.isSame(today, 'day')).text(o.day.format('D') + ' (' + '일월화수목금토'.charAt(o.day.day()) + ')')); }
+			var t = o.t, sub = [];
+			if (t.ALL_DAY === 'N') sub.push(t.START_TM + '~' + t.END_TM);
+			if (o.len) {
+				var n = o.len + 1, m = today.diff(moment(o.occ), 'days') + 1;
+				sub.push(moment(o.occ).format('M/D') + ' ~ ' + moment(o.end).format('M/D') + ' · ' + (m >= 1 && m <= n ? n + '일 중 ' + m + '일째' : n + '일'));
+			}
+			if (t.RPT_CD !== 'NONE') sub.push('반복');
+			if (t.MEMO) sub.push('메모 있음');
+			$u.append($('<li>').toggleClass('done', o.done).append(
+				$('<input type="checkbox" class="mt-1">').attr('aria-label', t.TITLE + ' 완료').prop('checked', o.done).on('change', function() {
+					api('/admin/my/markTaskData.do', { TASK_SQ: t.TASK_SQ, OCC: o.occ, act: this.checked ? 'DONE' : 'UNDONE' }).always(taskReload);
+				}),
+				$('<span>').append($('<a href="#">').text(t.TITLE).on('click', function(e) { e.preventDefault(); openTask(o); })).append(sub.length ? $('<small>').text(sub.join(' · ')) : '')));
+		});
 	}
 	function dayText(d) { return moment(d).format('M월 D일') + ' (' + '일월화수목금토'.charAt(moment(d).day()) + ')'; }
 	// 일정 팝업: 업무 화면의 상세 팝업을 홈 위에 그대로 띄운다(그 화면을 ?embed=1&popup=1 로 투명하게 열어 팝업만 보이게).
@@ -180,9 +381,8 @@
 			close: { label: '닫기', className: 'btn-sm btn-secondary' } } });
 	}
 	function calCard() {
-		var kinds = [];
+		var kinds = ['MY']; // 내 할 일은 누구나
 		Object.keys(CAL_SRC).forEach(function(k) { if (can(k)) kinds = kinds.concat(CAL_SRC[k]); });
-		if (!kinds.length) return;
 		var $chips = $('<div class="hm-cal-chips" id="hmCalChips">');
 		kinds.forEach(function(k) {
 			$chips.append($('<button type="button" class="hm-cal-chip">').data('k', k).attr('title', '눌러서 ' + CAL_KIND[k][0] + ' 일정 끄기·켜기')
@@ -190,21 +390,45 @@
 				.on('click', function() { calOff[k] = !calOff[k]; store('hmCalOff', JSON.stringify(calOff)); calPaint(); }));
 		});
 		var $el = $('<div id="hmCalendar">');
-		var $c = $('<div class="hm-card wide" id="hmCalCard">').append($('<header>').text('📅 일정')).append($('<div class="hm-body">').append($chips).append($el));
-		$c.insertBefore('#hmKpis'); // 홈 맨 위
+		var $week = $('<aside id="hmWeek">').append($('<header>').append('이번 주 할 일 ').append('<span class="hm-pill cnt">…</span>').append('<span class="hm-sp" style="flex:1"></span>')
+			.append($('<button type="button" class="hm-ctl" id="hmWeekFold" title="이번 주 할 일 접기·펼치기">▸</button>'))).append('<ul>');
+		var $add = $('<button type="button" class="hm-ctl hm-hdr-r" id="hmTaskAdd">＋ 할 일</button>').on('click', function() { openTask(null, { START_DT: today.format('YYYY-MM-DD'), END_DT: today.format('YYYY-MM-DD') }); });
+		var $c = $('<div class="hm-card wide" id="hmCalCard" data-key="CAL">').append($('<header>').text('📅 일정').append($add))
+			.append($('<div class="hm-body">').append($chips).append($('<div class="hm-cal-wrap">').append($el, $week)));
+		$c.prependTo('#hmCards');
+		// 접으면 세로 띠만(띠를 눌러도 펼침). 상태는 홈 배치와 같이 저장
+		$week.on('click', '#hmWeekFold, header', function(e) {
+			if (!$(e.target).is('#hmWeekFold') && !$('.hm-cal-wrap').hasClass('shut')) return;
+			e.stopPropagation();
+			weekFold(!$('.hm-cal-wrap').hasClass('shut'));
+			layoutSave(layoutNow());
+		});
 		calendar = new FullCalendar.Calendar($el[0], {
-			plugins: ['dayGrid', 'timeGrid'], locales: window.FullCalendarLocales ? [FullCalendarLocales.ko] : [], locale: 'ko',
+			plugins: ['dayGrid', 'timeGrid', 'interaction'], selectable: true, editable: false,
+			// 빈 칸을 누르거나 끌어 고르면 할 일 등록(여러 날·시간대), 내 할 일만 끌어 옮기고 끝을 늘인다
+			select: function(i) {
+				var s = moment(i.start), e = moment(i.end);
+				calendar.unselect();
+				if (i.allDay) openTask(null, { START_DT: s.format('YYYY-MM-DD'), END_DT: e.subtract(1, 'days').format('YYYY-MM-DD'), ALL_DAY: 'Y' });
+				else openTask(null, { START_DT: s.format('YYYY-MM-DD'), END_DT: e.format('YYYY-MM-DD'), ALL_DAY: 'N', START_TM: s.format('HH:mm'), END_TM: e.format('HH:mm') });
+			},
+			eventDrop: taskMoved, eventResize: taskMoved,
+			locales: window.FullCalendarLocales ? [FullCalendarLocales.ko] : [], locale: 'ko',
 			defaultView: ['dayGridMonth', 'timeGridWeek', 'timeGridDay'].indexOf(store('hmCalView')) >= 0 ? store('hmCalView') : 'dayGridMonth',
 			header: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
 			buttonText: { today: '오늘', month: '월', week: '주', day: '일' },
 			height: 'auto', nowIndicator: true, minTime: '08:00:00', maxTime: '20:00:00', slotDuration: '01:00:00',
 			// 월 보기 행 높이를 폭에 비례해 강제하지 않게(일정 수만큼만, 빈 주는 날짜 숫자 줄만): monthMode 는 auto 여도 폭÷aspectRatio 를 6주로 나눠 넣는다
 			aspectRatio: 50,
-			datesRender: function(info) { store('hmCalView', info.view.type); },
-			eventClick: function(info) { info.jsEvent.preventDefault(); calPop(info.event.extendedProps.ev); }
+			datesRender: function(info) { store('hmCalView', info.view.type); clearTimeout(calTimer); calTimer = setTimeout(calPaint, 0); },
+			eventClick: function(info) {
+				info.jsEvent.preventDefault();
+				if (info.event.extendedProps.task) openTask(info.event.extendedProps.task); else calPop(info.event.extendedProps.ev);
+			}
 		});
 		calendar.render();
 		calPaint();
+		weekList();
 		if (can('RECRUIT')) {
 			fetch('/admin/recruit/listData.do', function(res) {
 				var d = res.result || {}, rc = {};
@@ -220,6 +444,103 @@
 		}
 	}
 
+	// ── 위젯 배치: 순서·넓게/좁게·접힘·이번 주 할 일 접힘을 내 계정에 저장(목록 '보기' 저장 표를 홈 주소로 1건). 초기화는 그 1건을 지운다 ──
+	var LAYOUT_ORDER = ['CAL', 'KPI', 'UPD', 'TODO', 'DEPLOY', 'INTV', 'TRAINEE', 'PAY', 'MEMO'];
+	var layoutSq = HOME.layout ? HOME.layout.VW_SQ : null, layoutSaved = {};
+	try { layoutSaved = HOME.layout ? JSON.parse(HOME.layout.CONF) || {} : {}; } catch (e) { layoutSaved = {}; }
+	function cards() { return $('#hmCards').children('.hm-card'); }
+	function widget($c) {
+		var $h = $c.children('header'), $r = $h.children('a, .hm-hdr-r').first();
+		$c.data('wide0', $c.hasClass('wide'));
+		$('<span class="hm-sp">')[$r.length ? 'insertBefore' : 'appendTo']($r.length ? $r : $h);
+		$h.prepend($('<button type="button" class="hm-ctl hm-grip" title="끌어서 옮기기 (↑↓ 키로도)">⠿⠿</button>'));
+		$h.append($('<button type="button" class="hm-ctl hm-wide">'), $('<button type="button" class="hm-ctl hm-fold">'));
+		widgetMark($c);
+	}
+	function widgetMark($c) {
+		var nm = $c.children('header').clone().children().remove().end().text().trim();
+		$c.find('> header .hm-wide').text($c.hasClass('wide') ? '넓게 ▣' : '좁게 ◧').attr('title', '눌러서 ' + ($c.hasClass('wide') ? '좁게(반 줄)' : '넓게(한 줄)'));
+		$c.find('> header .hm-fold').text($c.hasClass('fold') ? '▾' : '▴').attr({ 'aria-expanded': !$c.hasClass('fold'), 'aria-label': nm + ($c.hasClass('fold') ? ' 펼치기' : ' 접기') });
+	}
+	function weekFold(shut) {
+		$('.hm-cal-wrap').toggleClass('shut', !!shut);
+		$('#hmWeekFold').text(shut ? '◂' : '▸').attr('aria-expanded', !shut);
+		if (calendar) calendar.updateSize();
+	}
+	function layoutNow() {
+		var c = { order: [], wide: {}, fold: {}, week: $('.hm-cal-wrap').hasClass('shut') };
+		cards().each(function() { var k = $(this).attr('data-key'); c.order.push(k); c.wide[k] = $(this).hasClass('wide'); c.fold[k] = $(this).hasClass('fold'); });
+		return c;
+	}
+	function layoutApply(c) {
+		c = c || {};
+		var by = {};
+		cards().each(function() { by[$(this).attr('data-key')] = $(this); });
+		(c.order || []).concat(LAYOUT_ORDER).forEach(function(k) { if (by[k]) { $('#hmCards').append(by[k]); delete by[k]; } });
+		cards().each(function() {
+			var $c = $(this), k = $c.attr('data-key');
+			$c.toggleClass('wide', c.wide && k in c.wide ? !!c.wide[k] : !!$c.data('wide0')).toggleClass('fold', !!(c.fold && c.fold[k]));
+			widgetMark($c);
+		});
+		weekFold(c.week);
+	}
+	function layoutSave(c) {
+		return api('/admin/my/saveViewPresetData.do', { page: '/admin/home.do', vwSq: layoutSq || '', nm: '홈 배치', conf: JSON.stringify(c) }).done(function(sq) {
+			if (sq && typeof sq !== 'object') layoutSq = sq;
+			layoutSaved = c;
+		});
+	}
+	function layoutEdit(on) {
+		$('#hmCards, #hmTools').toggleClass('editing', on);
+	}
+	function widgetsInit() {
+		if (!$('#hmKpis').children().length) $('#hmKpiCard').remove(); // 숫자 카드 권한이 하나도 없으면
+		cards().each(function() { widget($(this)); });
+		layoutApply(layoutSaved);
+		var $g = $('#hmCards'), drag = null;
+		$g.on('click', '.hm-fold', function() {
+			var $c = $(this).closest('.hm-card').toggleClass('fold');
+			widgetMark($c);
+			if ($c.is('#hmCalCard') && !$c.hasClass('fold')) calendar.updateSize();
+			if (!$g.hasClass('editing')) layoutSave(layoutNow());
+		});
+		$g.on('click', '.hm-wide', function() { var $c = $(this).closest('.hm-card').toggleClass('wide'); widgetMark($c); if (calendar) calendar.updateSize(); });
+		// 끌어 옮기기: ⠿ 를 누른 동안만 카드를 끌 수 있게(달력 안 끌기와 겹치지 않게)
+		$g.on('mousedown', '.hm-grip', function() { if ($g.hasClass('editing')) $(this).closest('.hm-card').attr('draggable', 'true'); });
+		$(document).on('mouseup', function() { if (!drag) cards().removeAttr('draggable'); });
+		$g.on('dragstart', '.hm-card[draggable]', function(e) { drag = $(this).addClass('hm-dragging'); e.originalEvent.dataTransfer.effectAllowed = 'move'; e.originalEvent.dataTransfer.setData('text/plain', 'hm-widget'); });
+		$g.on('dragover', '.hm-card', function(e) {
+			if (!drag || drag.is(this)) return;
+			e.preventDefault();
+			if (drag.index() < $(this).index()) $(this).after(drag); else $(this).before(drag);
+		});
+		$g.on('drop', function(e) { if (drag) e.preventDefault(); });
+		$g.on('dragend', '.hm-card', function() { if (drag) drag.removeClass('hm-dragging'); drag = null; cards().removeAttr('draggable'); if (calendar) calendar.updateSize(); });
+		$g.on('keydown', '.hm-grip', function(e) {
+			var $c = $(this).closest('.hm-card');
+			if (e.key === 'ArrowUp' && $c.prev().length) { $c.prev().before($c); } else if (e.key === 'ArrowDown' && $c.next().length) { $c.next().after($c); } else return;
+			e.preventDefault(); $(this).focus();
+		});
+		$('#hmTools').on('click', 'button', function() {
+			var act = $(this).data('act');
+			if (act === 'foldAll' || act === 'openAll') {
+				cards().toggleClass('fold', act === 'foldAll').each(function() { widgetMark($(this)); });
+				if (act === 'openAll' && calendar) calendar.updateSize();
+				layoutSave(layoutNow());
+			} else if (act === 'edit') layoutEdit(true);
+			else if (act === 'save') layoutSave(layoutNow()).done(function() { layoutEdit(false); });
+			else if (act === 'cancel') { layoutApply(layoutSaved); layoutEdit(false); if (calendar) calendar.updateSize(); }
+			else if (act === 'reset') bootbox.confirm('홈 배치를 처음 상태(기본 순서·넓이, 모두 펼침)로 되돌릴까요?', function(ok) {
+				if (!ok) return;
+				(layoutSq ? api('/admin/my/deleteViewPresetData.do', { page: '/admin/home.do', vwSq: layoutSq }) : $.Deferred().resolve().promise()).done(function() {
+					layoutSq = null; layoutSaved = {};
+					layoutApply({}); layoutEdit(false);
+					if (calendar) calendar.updateSize();
+				});
+			});
+		});
+	}
+
 	$(function() {
 		$('#hmToday').text(today.format('YYYY년 M월 D일') + ' (' + '일월화수목금토'.charAt(today.day()) + ')');
 		if (can('STAFF')) staffCard();
@@ -233,12 +554,13 @@
 		if (HOME.memos.length) memoCard();
 		updateCard();
 		calCard();
+		widgetsInit();
 		paintTodo();
 	});
 
 	// 최근 업데이트 5건(모든 관리자). 줄을 누르면 상세 팝업, 피드백 반영이면 요청자 표시
 	function updateCard() {
-		var $c = $('<div class="hm-card wide" id="hmUpdCard">').append($('<header>').text('🔔 최근 업데이트').append(link('전체 보기 ›', '/admin/update/openUpdateList.do', '')));
+		var $c = $('<div class="hm-card wide" id="hmUpdCard" data-key="UPD">').append($('<header>').text('🔔 최근 업데이트').append(link('전체 보기 ›', '/admin/update/openUpdateList.do', '')));
 		var $b = $('<div class="hm-body">').appendTo($c);
 		$c.prependTo('#hmCards');
 		if (!HOME.updates.length) { $b.append('<div class="hm-empty">아직 업데이트 내역이 없습니다. 다음 배포부터 쌓입니다.</div>'); return; }
@@ -266,7 +588,7 @@
 	// 투입현황 화면(deploy_list.jsp)의 투입·대기·철수 임박 기준과 같다
 	function deployCard() {
 		kpiSlot('active'); kpiSlot('idle');
-		var $b = card('철수 임박·대기', URL.deploy);
+		var $b = card('DEPLOY', '철수 임박·대기', URL.deploy);
 		fetch('/admin/deploy/deployListData.do', function(res) {
 			var d = res.data;
 			var empType = hrCodeMap('HR_EMP_TYPE');
@@ -321,7 +643,7 @@
 
 	function interviewCard() {
 		kpiSlot('intv');
-		var $b = card('이번 주 면접', URL.intv);
+		var $b = card('INTV', '이번 주 면접', URL.intv);
 		fetch('/admin/hr/interviewListData.do', function(res) {
 			var hire = hrCodeMap('HR_HIRE'), rt = hrCodeMap('HR_ROUTE'), at = hrCodeMap('HR_ATTEND'), rs = hrCodeMap('HR_RESULT'), nt = hrCodeMap('HR_NOTICE'), jn = hrCodeMap('HR_JOIN');
 			(res.list || []).forEach(function(r) {
@@ -348,7 +670,7 @@
 	// 교육생관리 화면의 주차 기준: 옮긴 주차, 없으면 시작일이 있으면 1주차
 	function traineeCard() {
 		kpiSlot('trainee');
-		var $b = card('교육생 주차별', URL.trainee);
+		var $b = card('TRAINEE', '교육생 주차별', URL.trainee);
 		fetch('/admin/hr/traineeListData.do', function(res) {
 			var ing = (res.list || []).filter(function(r) { return r.STATUS_CD === 'ING'; });
 			var stNm = { ING: '교육진행중', END: '교육종료', DROP: '중도이탈' }, iv = hrCodeMap('HR_INTERVIEW');
@@ -370,7 +692,7 @@
 	// 급여관리를 여는 것과 같다(작성중인 달은 열 때 투입 기준으로 다시 계산된다)
 	function payCard() {
 		var ym = moment().format('YYYY-MM'), label = moment().format('M월'), href = URL.pay + '?ym=' + ym;
-		var $b = card(label + ' 급여', URL.pay);
+		var $b = card('PAY', label + ' 급여', URL.pay);
 		// 달력: 지난 3달~이번 달 급여의 지급일(이번 달 급여는 보통 다음 달에 지급). 지급일은 급여관리에서 정하고, 없으면 익월 15일
 		fetch('/admin/pay/payDatesData.do?FROM=' + moment().subtract(3, 'months').format('YYYY-MM') + '&TO=' + ym, function(res) {
 			(res.result || []).forEach(function(p) {
@@ -383,7 +705,7 @@
 			var r = res.result, rows = r.rows || [];
 			function sum(k) { return rows.reduce(function(s, x) { return s + Number(x[k] || 0); }, 0); }
 			var flags = rows.filter(function(x) { return x.FLAGS && x.FLAGS.length; }).length;
-			$b.closest('.hm-card').find('header').append(pill(r.closed ? '마감' : '작성중', r.closed ? 'ok' : 'warn'));
+			$b.closest('.hm-card').find('header .hm-sp').before(pill(r.closed ? '마감' : '작성중', r.closed ? 'ok' : 'warn'));
 			$b.empty().addClass('hm-money').append([['지급 합계', 'PAY_TOTAL'], ['실매출', 'REAL_SALE'], ['영업이익', 'PROFIT']].map(function(k) {
 				return $('<a>').attr('href', href).append($('<span>').text(k[0])).append($('<b>').text(dpWonText(sum(k[1]))));
 			}));
@@ -444,7 +766,7 @@
 	}
 	function memoCard() {
 		var NM = { STAFF: '직원', DEPLOY: '투입', INTV: '면접', TRAINEE: '교육생', EQP: '장비', LAB_TEAM: '연구팀' };
-		var $b = card('최근 메모', null, true);
+		var $b = card('MEMO', '최근 메모', null, true);
 		$b.empty().append(table(['화면', '대상', '내용', '작성자', '일시'], HOME.memos.map(function(m) {
 			return [NM[m.TARGET_CD] || m.TARGET_CD, link(m.TARGET_NM || '#' + m.TARGET_SQ, memoHref(m)), $('<span class="td-cut">').text(m.CONTENT.replace(/\s+/g, ' ')), m.EMPLY_NM || '', m.REG_DT];
 		})));
