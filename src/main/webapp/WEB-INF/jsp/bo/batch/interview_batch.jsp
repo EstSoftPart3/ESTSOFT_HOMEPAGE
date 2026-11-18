@@ -98,10 +98,10 @@
 		<div class="modal fade" id="calPick" tabindex="-1" role="dialog" aria-labelledby="calPickTitle" aria-hidden="true">
 			<div class="modal-dialog" role="document">
 				<div class="modal-content">
-					<div class="modal-header"><h5 class="modal-title" id="calPickTitle">면접 캘린더 고르기</h5><button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button></div>
+					<div class="modal-header"><h5 class="modal-title" id="calPickTitle">면접 캘린더 고르기 (여러 개 가능)</h5><button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button></div>
 					<div class="modal-body">
 						<input type="search" id="calFind" class="form-control form-control-sm mb-2" placeholder="캘린더 이름 찾기" aria-label="캘린더 이름 찾기">
-						<div class="pk-list" id="calList" role="radiogroup" aria-label="캘린더"></div>
+						<div class="pk-list" id="calList" role="group" aria-label="캘린더"></div>
 						<div class="small text-muted mt-2" id="calHint"></div>
 					</div>
 					<div class="modal-footer"><button type="button" class="btn btn-sm btn-outline-secondary" data-dismiss="modal">취소</button><button type="button" class="btn btn-sm btn-primary" id="calPickOk" disabled>이 캘린더로</button></div>
@@ -189,36 +189,47 @@
 		if (/#holiday|#contacts|#weeknum/.test(c.id)) return 3;
 		return c.role === 'reader' ? 2 : 1;
 	}
-	var calPicked = null;
+	// 면접 캘린더는 여러 개 고를 수 있다(ID 를 쉼표로 이어 저장). calPicked: 고른 캘린더 ID -> true
+	var calPicked = {};
+	function savedCalIds() { return src && src.result && src.result.CAL_ID ? String(src.result.CAL_ID).split(',') : []; }
 	function openCalPick() {
-		calPicked = null;
+		calPicked = {};
 		$('#calFind').val('');
 		$('#calPickOk').prop('disabled', true);
 		$('#calPick').modal('show');
 		$('#calList').html('<div class="pk-empty">불러오는 중입니다.</div>');
 		loadSource(function() {
 			if (src.calendarError) { $('#calList').empty().append(boGoogleErr($('<div class="ib-alert m-0">'), src.calendarError, openCalPick)); return; }
+			// 목록에 없는(공유가 끊긴) 캘린더는 고른 것으로 치지 않아, 저장하면 빠진다
+			var saved = savedCalIds();
+			(src.calendars || []).forEach(function(c) { if (saved.indexOf(c.id) >= 0) calPicked[c.id] = true; });
 			drawCals();
 		});
 	}
 	function drawCals() {
-		var kw = $.trim($('#calFind').val()).toLowerCase(), cur = src.result && src.result.CAL_ID;
+		var kw = $.trim($('#calFind').val()).toLowerCase();
 		var cals = (src.calendars || []).filter(function(c) { return !kw || String(c.summary).toLowerCase().indexOf(kw) >= 0; })
 			.sort(function(a, b) { return calRank(a) - calRank(b) || String(a.summary).localeCompare(String(b.summary), 'ko'); });
 		var $l = $('#calList').empty();
 		if (!cals.length) $l.append($('<div class="pk-empty">').text(kw ? '찾는 캘린더가 없습니다.' : '연결 계정이 볼 수 있는 캘린더가 없습니다.'));
 		cals.forEach(function(c) {
-			var on = calPicked ? calPicked.id === c.id : c.id === cur;
+			var on = !!calPicked[c.id];
 			var kind = c.primary ? '기본' : /#holiday|#contacts|#weeknum/.test(c.id) ? '구글 기본·구독' : c.role === 'owner' ? '내 캘린더' : '공유받음';
-			$l.append($('<button type="button" class="pk-it" role="radio">').toggleClass('on', on).attr('aria-checked', on)
+			$l.append($('<button type="button" class="pk-it" role="checkbox">').toggleClass('on', on).attr('aria-checked', on)
+				.append($('<i aria-hidden="true">').addClass(on ? 'fas fa-check-square' : 'far fa-square'))
 				.append($('<span class="pk-sw">').css('background', c.color || '')).append($('<span>').text(c.summary)).append($('<span class="pk-meta">').text(kind))
-				.on('click', function() { calPicked = c; $('#calPickOk').prop('disabled', c.id === cur); drawCals(); }));
+				.on('click', function() { if (calPicked[c.id]) delete calPicked[c.id]; else calPicked[c.id] = true; drawCals(); }));
 		});
+		var ids = Object.keys(calPicked).sort();
+		$('#calPickOk').prop('disabled', !ids.length || ids.join(',') === savedCalIds().sort().join(',')).text(ids.length > 1 ? '캘린더 ' + ids.length + '개로' : '이 캘린더로');
 		$('#calHint').text('안 보이나요? 그 캘린더 주인이 구글 캘린더 → 캘린더 설정 → 「특정 사용자와 공유」에 '
 			+ ($('#srcDrive').text().replace('● ', '') || '연결 계정 메일') + ' 을 넣으면 여기에 나옵니다.');
 	}
 	$(document).on('input', '#calFind', function() { if (src) drawCals(); });
-	$(document).on('click', '#calPickOk', function() { if (calPicked) saveSource({ calId: calPicked.id, calName: calPicked.summary }, '#calSaved'); });
+	$(document).on('click', '#calPickOk', function() {
+		var picked = (src.calendars || []).filter(function(c) { return calPicked[c.id]; });
+		if (picked.length) saveSource({ calId: picked.map(function(c) { return c.id; }).join(','), calName: picked.map(function(c) { return c.summary; }).join(', ') }, '#calSaved');
+	});
 
 	// 이력서 폴더: 공통 폴더 고르기 창(folder_pick.jspf). 지금 폴더 위치에서 연다
 	function openFolderPick() {

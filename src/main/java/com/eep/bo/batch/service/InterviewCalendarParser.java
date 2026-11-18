@@ -30,6 +30,7 @@ public final class InterviewCalendarParser {
 	private static final String TAG_WORDS = "신입|경력[^)\\]]*|취소|불참|합격|불합격";
 	private static final Pattern ICAL_URL = Pattern.compile("/ical/([^/]+)/private-([^/]+)/");
 	private static final Pattern YEARS =Pattern.compile("^(\\d+년\\s*)?(\\d+개월)?$");
+	private static final Pattern REFERRAL = Pattern.compile("^(.*?)[_\\s]*(?:추천|소개)$");
 
 	private InterviewCalendarParser() {
 	}
@@ -123,6 +124,18 @@ public final class InterviewCalendarParser {
 	}
 
 	/**
+	 * 면접 일정처럼 보이는지: 읽을 수 있거나, 전화번호·[신입]/[경력] 태그·'면접' 글자가 있다.
+	 * 개인 캘린더도 읽으므로, 아니면 면접과 무관한 일정으로 보고 실행 상세에 제목을 남기지 않는다
+	 */
+	public static boolean looksLikeInterview(String title) {
+		if (title == null) {
+			return false;
+		}
+		String s = fixTypos(title);
+		return parseTitle(title) != null || PHONE.matcher(s).find() || s.contains("면접") || s.matches("^(\\[[^\\]]*\\]\\s*)*\\[[^\\]]*(신입|경력).*");
+	}
+
+	/**
 	 * 손으로 쓰는 제목의 흔한 오타를 표준 형식([태그]이름(…))으로 고친다.
 	 * 전각 기호, 대괄호 대신 괄호 [신입]→(신입), 여는 대괄호 빠짐 신입], 닫는 대괄호 빠짐 [신입-이름 · [신입 이름
 	 */
@@ -203,6 +216,13 @@ public final class InterviewCalendarParser {
 
 	/** 사람인_공고 -> 경로 + 이에스티, 사람인_농협은행 -> 경로 + 농협은행, 새마을은행 -> 대상만 */
 	private static void putRouteAndTarget(Map<String, Object> row, String part) {
+		// 윤혜연 추천, 홍길동_추천, 김철수 소개 -> 지원방법 추천·소개 + 추천자명
+		Matcher referral = REFERRAL.matcher(part);
+		if (referral.matches()) {
+			row.put("APLY_ROUTE", "REFERRAL");
+			if (!referral.group(1).trim().isEmpty()) row.put("REFERRER", referral.group(1).trim());
+			return;
+		}
 		int bar = part.indexOf('_');
 		String head = bar < 0 ? part : part.substring(0, bar), rest = bar < 0 ? "" : part.substring(bar + 1).trim();
 		String route = head.equals("사람인") ? ("챗봇".equals(rest) ? "SARAMIN_BOT" : "SARAMIN") : head.equals("잡코리아") || head.equals("잡코") ? "JOBKOREA" : null;

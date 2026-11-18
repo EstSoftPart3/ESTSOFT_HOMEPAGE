@@ -186,13 +186,29 @@ public class BoBatchServiceImpl implements BoBatchService {
 			throw new IllegalStateException("자동 실행으로 지정한 세트가 없습니다.");
 		}
 		String from = week[0].toString(), to = week[1].toString();
-		for (Map<String, String> event : readEvents(url, week)) {
+		List<String> unread = new ArrayList<>();
+		List<Map<String, String>> events = readEvents(url, week, unread);
+		for (String calId : unread) {
+			// 캘린더 하나를 못 읽어도 나머지는 가져오고, 실행 상세에 실패로 남긴다
+			add(run, "SKIP_CNT");
+			Map<String, Object> detail = new HashMap<>();
+			detail.put("RESULT_CD", "SKIP");
+			detail.put("EVT_TITLE", cut("캘린더 " + calId, 500));
+			detail.put("REASON", "캘린더를 읽지 못함(연결 계정에 공유됐는지 확인)");
+			details.add(detail);
+		}
+		for (Map<String, String> event : events) {
 			String date = event.get("DATE");
 			if (date == null || date.compareTo(from) < 0 || date.compareTo(to) > 0) {
 				continue;
 			}
 			add(run, "READ_CNT");
 			String title = event.get("TITLE");
+			// 개인 캘린더도 읽으므로 면접과 무관한 일정은 제목을 남기지 않고 제외 건수만 센다
+			if (!InterviewCalendarParser.looksLikeInterview(title)) {
+				add(run, "EXCL_CNT");
+				continue;
+			}
 			Map<String, Object> detail = new HashMap<>();
 			detail.put("INTV_DT", date);
 			detail.put("INTV_TM", event.get("TIME"));
@@ -237,7 +253,7 @@ public class BoBatchServiceImpl implements BoBatchService {
 	 * 면접 일정. ICAL_URL 칸에 예전 iCal 비공개 주소가 있으면 그것을, 아니면 그 칸의 구글 캘린더 ID 를 회사 공용 캘린더 연결로 읽는다.
 	 * 둘 다 parseIcs 와 같은 {UID, TITLE, STATUS, ALL_DAY, DATE, TIME} 로 맞춘다(UID 는 iCalUID 라 예전에 넣은 면접과 이어진다)
 	 */
-	private List<Map<String, String>> readEvents(String source, LocalDate[] week) {
+	private List<Map<String, String>> readEvents(String source, LocalDate[] week, List<String> unread) {
 		if (source.startsWith(ICAL_PREFIX)) {
 			String ics = new String(rest.getForObject(URI.create(source), byte[].class), StandardCharsets.UTF_8);
 			// 주소가 잘못돼 다른 페이지가 오면 '일정 0건 성공'으로 보이지 않게 한다
@@ -248,7 +264,25 @@ public class BoBatchServiceImpl implements BoBatchService {
 		}
 		String token = googleLink.accessToken(GoogleLinkService.COMPANY, GoogleLinkService.CALENDAR);
 		List<Map<String, String>> events = new ArrayList<>();
-		for (Map<String, Object> r : calendarApi.events(token, source, week[0], week[1])) {
+		// 캘린더 여러 개는 쉼표로 이어 저장돼 있다. 초대로 여러 캘린더에 같이 올라온 일정은 한 번만 넣는다
+		String[] calIds = source.split(",");
+		java.util.Set<String> seen = new java.util.HashSet<>();
+		List<Map<String, Object>> rows = new ArrayList<>();
+		RuntimeException last = null;
+		for (String calId : calIds) {
+			try {
+				rows.addAll(calendarApi.events(token, calId.trim(), week[0], week[1]));
+			} catch (RuntimeException e) {
+				log.error("면접 캘린더를 읽지 못함: {}", InterviewCalendarParser.cleanError(e));
+				unread.add(calId.trim());
+				last = e;
+			}
+		}
+		if (last != null && unread.size() == calIds.length) {
+			throw last; // 하나도 못 읽었으면 실행 자체를 실패로 남긴다
+		}
+		for (Map<String, Object> r : rows) {
+			if (r.get("ICAL_UID") != null && !seen.add((String) r.get("ICAL_UID"))) continue;
 			Map<String, String> e = new HashMap<>();
 			String start = (String) r.get("START_DT"); // yyyy-MM-dd HH:mm:ss (서울)
 			e.put("UID", (String) r.get("ICAL_UID"));
@@ -519,7 +553,7 @@ public class BoBatchServiceImpl implements BoBatchService {
 				return "SAME";
 			}
 			// 이미 연결된 행은 일정과 상태만 반영한다. 사람이 지운 연락처 등을 다시 채우지 않는다
-			for (String key : new String[] { "APLY_TARGET", "APLY_ROUTE", "PHONE", "CAREER", "HIRE_CD" }) {
+			for (String key : new String[] { "APLY_TARGET", "APLY_ROUTE", "REFERRER", "PHONE", "CAREER", "HIRE_CD" }) {
 				row.put(key, null);
 			}
 			BoBatchDao.IntvUpdate(row);
@@ -670,8 +704,15 @@ public class BoBatchServiceImpl implements BoBatchService {
 			if (current.isEmpty()) throw new IllegalArgumentException("면접 캘린더를 먼저 골라 주세요.");
 			Object old = current.get(0).get("ICAL_NM");
 			nm = old == null ? nm : String.valueOf(old);
-		} else if (id.length() > 500 || id.startsWith("http")) {
-			throw new IllegalArgumentException("면접 캘린더를 목록에서 골라 주세요.");
+		} else {
+			// 캘린더 여러 개는 쉼표로 이어 저장한다(구글 캘린더 ID 에는 쉼표가 없다)
+			java.util.Set<String> ids = new java.util.LinkedHashSet<>();
+			for (String part : id.split(",")) {
+				if (part.trim().startsWith("http")) throw new IllegalArgumentException("면접 캘린더를 목록에서 골라 주세요.");
+				if (!part.trim().isEmpty()) ids.add(part.trim());
+			}
+			id = String.join(",", ids);
+			if (id.isEmpty() || id.length() > 500) throw new IllegalArgumentException("면접 캘린더를 목록에서 골라 주세요. 너무 많이 고르면 저장할 수 없습니다.");
 		}
 		String folderText = folder == null ? "" : folder.trim(), folderId = null;
 		if (!folderText.isEmpty()) {

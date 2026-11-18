@@ -109,6 +109,26 @@ public class InterviewCalendarParserCheck {
 		check(InterviewCalendarParser.parseTitle("방문 - 한강희(재계약서)") == null, "방문 일정");
 		check(InterviewCalendarParser.parseTitle("홍길동(재계약서)") == null, "표시 없는 이름(괄호)");
 
+		// 추천인 표기(실제 사례: [경력]이름(누구 추천/번호))
+		r = title("[경력]홍길동(김철수 추천/010-1111-2222)");
+		eq(r, "APLY_ROUTE", "REFERRAL");
+		eq(r, "REFERRER", "김철수");
+		eq(r, "APLY_TARGET", "이에스티");
+		eq(r, "HIRE_CD", "EXP");
+		eq(title("[신입]홍길동(김철수_추천)"), "REFERRER", "김철수");
+		eq(title("[신입]홍길동(추천/010-1111-2222)"), "REFERRER", null);
+
+		// 개인 캘린더도 읽으므로 면접처럼 보이는 일정만 실행 상세에 남긴다
+		check(InterviewCalendarParser.looksLikeInterview("[경력]홍길동(김철수 추천/010-1111-2222)"), "읽히는 면접");
+		check(InterviewCalendarParser.looksLikeInterview("[신입 홍길동"), "태그는 있는데 못 읽는 제목은 실패로 보여야 한다");
+		check(InterviewCalendarParser.looksLikeInterview("[취소][경력] 홍길동"), "뒤쪽 태그");
+		check(InterviewCalendarParser.looksLikeInterview("홍길동 면접"), "면접 글자");
+		check(InterviewCalendarParser.looksLikeInterview("출근 - [신입]홍길동(010-1111-2222)"), "전화번호");
+		check(!InterviewCalendarParser.looksLikeInterview("방문 - 한강희(재계약서)"), "방문 일정");
+		check(!InterviewCalendarParser.looksLikeInterview("급여명세서 발송"), "개인 업무");
+		check(!InterviewCalendarParser.looksLikeInterview("인터뷰 - 곽진아(kt gis)"), "고객사 인터뷰");
+		check(!InterviewCalendarParser.looksLikeInterview(null), "제목 없음");
+
 		// 일정 첨부: PDF 중 이름에 이력서가 든 것을 우선한다
 		List<Map<String, Object>> attach = new java.util.ArrayList<>();
 		attach.add(attachment("a1", "홍길동_포트폴리오.pdf", "application/pdf"));
