@@ -20,8 +20,8 @@
 	<select id="selectIntvList" resultType="hashMap">
 		SELECT
 			  I.INTV_SQ, I.SEQ_NO, I.APLY_NM, I.HIRE_CD, I.GENDER
-			<!-- 이력서 보기 버튼: 캘린더로 올린 파일이 있거나 배치로 들어온 면접(드라이브 날짜·이름 폴더에 이력서가 있음) -->
-			, IF(I.RESUME_FILE_ID IS NOT NULL OR I.GCAL_EVT_ID IS NOT NULL, 'Y', 'N') AS RESUME_YN
+			<!-- 이력서 보기 버튼: 올렸거나 배치가 드라이브에서 찾아 기록한 파일이 있을 때만. 없으면 화면이 등록 버튼을 보인다 -->
+			, IF(I.RESUME_FILE_ID IS NOT NULL, 'Y', 'N') AS RESUME_YN
 			, IF(I.PORTFOLIO_FILE_ID IS NOT NULL, 'Y', 'N') AS PORTFOLIO_YN
 			, DATE_FORMAT(I.INTV_DT, '%Y-%m-%d') AS INTV_DT
 			, I.INTV_TM, I.APLY_TARGET, I.APLY_ROUTE, I.REFERRER, I.LANG_NOTE, I.PHONE, I.ATTEND_ST, I.EDU, I.AGE, I.ADDR, I.STATION
