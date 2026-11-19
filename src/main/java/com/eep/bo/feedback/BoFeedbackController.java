@@ -213,6 +213,47 @@ public class BoFeedbackController {
 		return run(() -> mapper.updateSeen(one("EMPLY_ID", loginId(session))));
 	}
 
+	// ── 지금 접속 중(상단 바 칩) ──
+
+	private static final long PRESENCE_TTL = 90 * 1000L;
+	// shortcut: 서버 메모리에만 둔다(운영 Tomcat 한 대), 재시작하면 비고 서버를 여러 대로 늘리면 공유 저장소로 옮긴다
+	private static final Map<String, Map<String, Object>> PRESENCE = new java.util.concurrent.ConcurrentHashMap<>();
+
+	/**
+	 * 바깥 창(bo-feedback.js)이 30초마다·팝업을 열고 닫을 때 보낸다. 누구인지는 세션에서 꺼낸다.
+	 * 돌려주는 목록은 나를 뺀 다른 관리자. 보는 사람에게 권한 없는 화면은 이름을 가린다.
+	 */
+	@RequestMapping(value = "/admin/feedback/presenceData.do", method = RequestMethod.POST)
+	public ModelAndView presenceData(@RequestParam Map<String, Object> p, HttpSession session) {
+		return run(() -> {
+			String id = loginId(session);
+			long now = System.currentTimeMillis();
+			Map<String, Object> me = new HashMap<>();
+			me.put("name", loginName(session));
+			me.put("screen", cut(str(p, "SCREEN_NM"), 100));
+			me.put("url", cut(str(p, "SCREEN_URL"), 300));
+			me.put("busy", "Y".equals(str(p, "BUSY")));
+			me.put("at", now);
+			PRESENCE.put(id, me);
+			PRESENCE.values().removeIf(m -> now - (Long) m.get("at") > PRESENCE_TTL);
+			BoSystemService.Access access = systemService.access(id);
+			List<Map<String, Object>> out = new java.util.ArrayList<>();
+			PRESENCE.forEach((who, m) -> {
+				if (who.equals(id)) {
+					return;
+				}
+				String url = (String) m.get("url");
+				Map<String, Object> o = new HashMap<>();
+				o.put("name", m.get("name"));
+				o.put("busy", m.get("busy"));
+				o.put("screen", url.startsWith("/admin/") && access.allows(url) ? m.get("screen") : "다른 화면");
+				out.add(o);
+			});
+			out.sort((a, b) -> String.valueOf(a.get("name")).compareTo(String.valueOf(b.get("name"))));
+			return out;
+		});
+	}
+
 	// ── 업데이트 내역 ──
 
 	@RequestMapping("/admin/update/openUpdateList.do")
@@ -278,6 +319,13 @@ public class BoFeedbackController {
 		Map<String, Object> info = (Map<String, Object>) session.getAttribute("loginInfo");
 		List<Map<String, Object>> list = (List<Map<String, Object>>) info.get("loginInfo");
 		return (String) list.get(0).get("emplyId");
+	}
+
+	@SuppressWarnings("unchecked")
+	private static String loginName(HttpSession session) {
+		Map<String, Object> info = (Map<String, Object>) session.getAttribute("loginInfo");
+		Object nm = ((List<Map<String, Object>>) info.get("loginInfo")).get(0).get("emplyNm");
+		return nm == null || String.valueOf(nm).trim().isEmpty() ? loginId(session) : String.valueOf(nm).trim();
 	}
 
 	private static ModelAndView json(String key, Object value) {

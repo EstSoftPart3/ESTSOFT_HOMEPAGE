@@ -161,10 +161,43 @@
 	}
 	window.BO_UPDATE_SEEN = function (latest) { try { localStorage.setItem(SEEN_KEY, latest || 0); } catch (e) {} };
 
+	// ── 지금 접속 중(상단 바 #boWho). 맨 위 창만 보낸다: 화면명은 지금 탭, 작업 중은 bo-tabs.js 가 매기는 노란 점(열린 팝업·고치는 칸) ──
+	function presenceState() {
+		var dot = document.querySelector('#boTabs .bo-tab.on.dot') || document.querySelector('#boTabs .bo-tab.dot');
+		var tab = dot || document.querySelector('#boTabs .bo-tab.on');
+		var url = tab && tab.tab ? tab.tab.url : location.pathname, a = document.createElement('a');
+		a.href = url;
+		var busy = tab ? !!dot : !!document.querySelector('.modal.show');
+		return { SCREEN_NM: tab ? tab.textContent.replace(/[×✕]/g, '').trim() : activeScreen(), SCREEN_URL: a.pathname, BUSY: busy ? 'Y' : 'N' };
+	}
+	function paintWho(list) {
+		var $w = $('#boWho').empty().append('<i class="fas fa-user-friends" aria-hidden="true"></i>');
+		$w.attr('title', list.length ? '' : '지금 접속한 다른 관리자가 없습니다');
+		list.slice(0, 8).forEach(function (u) {
+			var tip = u.name + ' · ' + (u.busy ? '작업 중: ' : '') + u.screen;
+			$w.append($('<span class="bo-who-chip" tabindex="0" role="img">').toggleClass('busy', !!u.busy).text(String(u.name).charAt(0)).attr({ title: tip, 'aria-label': tip }));
+		});
+		if (list.length > 8) $w.append($('<span class="bo-who-chip more" tabindex="0" role="img">').text('+' + (list.length - 8)).attr('title', list.slice(8).map(function (u) { return u.name; }).join(', ')));
+	}
+	function startPresence() {
+		var last = '', sentAt = 0;
+		function send(st) {
+			last = JSON.stringify(st); sentAt = Date.now();
+			$.post('/admin/feedback/presenceData.do', st).done(function (res) { if (res && res.result) paintWho(res.result); });
+		}
+		// 2초마다 살펴 팝업을 열고 닫거나 탭을 바꾸면 바로, 아니면 30초마다 보낸다
+		setInterval(function () {
+			var st = presenceState();
+			if (JSON.stringify(st) !== last || Date.now() - sentAt >= 30000) send(st);
+		}, 2000);
+		send(presenceState());
+	}
+
 	$(function () {
 		$(document).on('click', '#fbBtn', openFeedback);
 		// 탭 안 화면(iframe)은 상단 메뉴가 없어 맨 위 창만 숫자를 읽는다
 		if (window.top !== window || !document.getElementById('fbBtn')) return;
+		if (document.getElementById('boWho')) startPresence();
 		$.post('/admin/feedback/badgeData.do').done(function (res) {
 			if (!res.result) return;
 			paintBadge(res.result.unseen);

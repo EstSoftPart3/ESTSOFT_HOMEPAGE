@@ -116,6 +116,11 @@
   	.fb-three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 12.5px; }
   	.fb-three > div { border: 1px solid rgba(17,17,17,.12); border-radius: 8px; padding: 8px 10px; } .fb-three b { display: block; margin-bottom: 4px; } .fb-three ul { margin: 0; padding-left: 18px; }
   	.fb-new { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 999px; background: #e0a800; color: #111; font-size: 10px; font-weight: 700; line-height: 15px; }
+  	/* 지금 접속 중(상단 바, bo-feedback.js): 이름 첫 글자 칩, 빨강 = 팝업·입력 작업 중 */
+  	.bo-who { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; color: #8a949c; font-size: 13px; white-space: nowrap; }
+  	.bo-who-chip { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: #eef9fc; border: 1.5px solid #0b6e8a; color: #0b6e8a; font-size: 12px; font-weight: 700; cursor: default; }
+  	.bo-who-chip.busy { background: #fdeaea; border-color: #c82333; color: #a32020; }
+  	.bo-who-chip.more { width: auto; padding: 0 7px; border-radius: 999px; background: #f1f3f5; border-color: #ced4da; color: #4a545c; }
   	@media (max-width: 767px) { .fb-three { grid-template-columns: 1fr; } .main-header .bo-fb { padding: 6px 9px; } }
 
   	/* ── 전체 모양 다듬기(2026-11-13): 글꼴·주요 색(청록 #0b6e8a) 한 벌, 화면 제목, 표, 입력칸, 팝업, 바닥글 ── */
