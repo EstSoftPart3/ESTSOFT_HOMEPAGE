@@ -23,15 +23,33 @@
 	.st-chip { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 10px; background: #eef1f4; color: #444; margin: 0 4px 4px 0; }
 	.st-chip b { color: #111; }
 	[data-copy]:focus { outline: 2px solid #16d5ff; outline-offset: -2px; }
-	.st-doc-row { display: grid; grid-template-columns: 120px 76px 1fr auto; gap: 8px; align-items: start; padding: 4px 6px; border-radius: 6px; }
-	.st-doc-row + .st-doc-row { border-top: 1px dashed rgba(17,17,17,.08); }
+	/* 서류 탭: 요약 숫자 → 종류별 묶음 → 서류 한 장씩 타일. 상태색: 파일(초록)·파일 없음(주황)·미제출(빨강)·해당없음(회색) */
+	.st-dsum { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+	.st-dsum div { border-radius: 10px; padding: 8px 12px; background: #f4f6f9; border-left: 4px solid var(--st-c); }
+	.st-dsum small { display: block; font-size: 11.5px; color: #6b7785; } .st-dsum b { font-size: 18px; color: var(--st-c); }
+	.st-dbar { display: flex; height: 6px; border-radius: 3px; background: #e8edf2; overflow: hidden; margin-bottom: 14px; } .st-dbar i { background: var(--st-c); }
+	[data-s=file] { --st-c: #1d7a4a; --st-bg: #e7f5ec; } [data-s=nofile] { --st-c: #b7791f; --st-bg: #fdf3e1; }
+	[data-s=miss] { --st-c: #c0392b; --st-bg: #fdecea; } [data-s=na] { --st-c: #8a96a3; --st-bg: #f1f3f5; }
+	.st-dgroup { margin-bottom: 14px; }
+	.st-dgroup h6 { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: #3a4654; margin: 0 0 8px; }
+	.st-dgroup h6 i { color: #0b6e8a; width: 14px; text-align: center; } .st-dgroup h6 span { font-weight: 400; color: #8a96a3; font-size: 11.5px; }
+	.st-dtiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
+	.st-doc-row { display: flex; flex-direction: column; gap: 6px; border: 1px solid #e3e8ee; border-left: 4px solid var(--st-c); border-radius: 8px; padding: 9px 10px; background: #fff; min-width: 0; }
+	.st-doc-row[data-s=na] { background: #fafbfc; } .st-doc-row[data-s=na] .st-dname { color: #8a96a3; }
 	.st-doc-row.is-over { outline: 2px dashed #16a0c4; background: #e3f6fb; }
-	.st-doc-row .hr-card-label { line-height: 22px; }
-	.st-files a { display: inline-block; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; font-size: 12px; }
-	.st-file { display: inline-flex; align-items: center; gap: 2px; background: #f3f6f8; border-radius: 10px; padding: 0 4px 0 8px; margin: 0 4px 4px 0; }
-	.st-file button { background: none; border: 0; padding: 0 3px; color: #888; font-size: 11px; }
-	.st-file button:hover, .st-file button:focus { color: #0b6e8a; }
-	.st-attach { font-size: 11px; padding: 1px 8px; margin: 0; cursor: pointer; }
+	.st-dtop { display: flex; align-items: center; gap: 8px; } .st-dname { font-size: 13px; font-weight: 600; color: #222; flex: 1 1 auto; min-width: 0; }
+	.st-dstat { cursor: pointer; } .st-dstat select { height: 24px; font-size: 12px; padding: 0 4px; }
+	.st-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 2px 9px; color: var(--st-c); background: var(--st-bg); white-space: nowrap; }
+	.st-files { display: flex; flex-direction: column; gap: 4px; } .st-files:empty { display: none; }
+	.st-file { display: flex; align-items: center; gap: 2px; background: #f3f6f8; border-radius: 6px; padding: 3px 4px 3px 8px; min-width: 0; }
+	.st-file > i { color: #6b7785; font-size: 12px; margin-right: 4px; }
+	.st-file a { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: #222; }
+	.st-file button { background: none; border: 0; padding: 2px 5px; color: #888; font-size: 11.5px; border-radius: 4px; white-space: nowrap; flex: none; }
+	.st-file button:hover, .st-file button:focus { color: #0b6e8a; background: #e3edf3; }
+	.st-file .st-dl { color: #0b6e8a; font-weight: 600; }
+	.st-dfoot { display: flex; align-items: center; gap: 6px; }
+	.st-dhint { font-size: 11.5px; color: #8a96a3; } .st-dhint.warn { color: #b7791f; }
+	.st-attach { font-size: 11px; padding: 1px 8px; margin: 0 0 0 auto; cursor: pointer; }
 	.st-busy { opacity: .5; pointer-events: none; }
 	#driveStatus { font-size: 12px; }
 	.st-grid .hr-cell, .st-skill .hr-cell { overflow-wrap: anywhere; }
@@ -66,12 +84,12 @@
 	.st-pick .k { color: #6b7785; padding-top: 5px; }
 	.st-pick .sc-chip { padding: 3px 11px; font-size: 12.5px; }
 	.st-pick input.st-add { display: inline-block; width: 110px; height: 26px; font-size: 12px; padding: 0 8px; vertical-align: middle; border-radius: 999px; }
-	.st-docbar { height: 6px; border-radius: 3px; background: #e8edf2; overflow: hidden; margin-bottom: 10px; } .st-docbar i { display: block; height: 100%; background: #1d7a4a; }
 	#copyToast { position: fixed; right: 18px; bottom: 18px; z-index: 2000; background: #222; color: #fff; font-size: 12px; padding: 6px 12px; border-radius: 6px; display: none; }
 	/* 폰: 카드 1열, 서류 줄은 2칸×2줄, 고르기 칸은 이름 위·값 아래, select 는 손가락 크기 */
 	@media (max-width: 767px) {
 		.st-cards { grid-template-columns: minmax(0, 1fr); }
-		.st-doc-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+		.st-dsum { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+		.st-dtiles { grid-template-columns: minmax(0, 1fr); }
 		.st-pick { grid-template-columns: minmax(0, 1fr); }
 		.st-pick .k { padding-top: 0; }
 		.st-bn select { height: 36px; font-size: 13px; }
@@ -343,6 +361,13 @@
 	var DOCS = [['DOC_REG', '주민등본'], ['DOC_ID', '신분증'], ['DOC_GRAD', '졸업증명'], ['DOC_BANK', '통장사본'], ['DOC_PHOTO', '증명사진'],
 		['DOC_HI', '건보득실확인서'], ['DOC_CONTRACT', '근로계약'], ['DOC_BIZ', '사업자사실증명'], ['DOC_EI', '고용보험자격이력'], ['DOC_SEC', '보안서약서'],
 		['DOC_EDU', '직무교육동의서'], ['DOC_NEP', '국민취업제도참여'], ['DOC_PRIV', '이력비공개'], ['DOC_CRIME', '범죄기록회보'], ['DOC_MIL', '병적증명서']];
+	// 서류 탭 묶음: [제목, 아이콘, 설명, 서류코드들]. 여기 없는 코드는 '기타' 로 간다
+	var DOC_GROUPS = [
+		['신원·급여', 'fa-id-card', '본인 확인과 급여 지급', ['DOC_REG', 'DOC_ID', 'DOC_PHOTO', 'DOC_BANK']],
+		['학력·경력', 'fa-graduation-cap', '학력과 경력·보험 이력', ['DOC_GRAD', 'DOC_MIL', 'DOC_HI', 'DOC_EI']],
+		['계약·서약', 'fa-file-signature', '입사 때 받는 동의·서약', ['DOC_CONTRACT', 'DOC_SEC', 'DOC_EDU', 'DOC_PRIV']],
+		['해당자만', 'fa-user-check', '프리·제도 참여자 등 해당될 때', ['DOC_BIZ', 'DOC_NEP', 'DOC_CRIME']]];
+	var DOC_STATES = [['file', '파일 있음', 'fa-check-circle'], ['nofile', '파일 없음', 'fa-exclamation-circle'], ['miss', '미제출', 'fa-times-circle'], ['na', '해당없음', 'fa-minus-circle']];
 	// 인사카드 칸: [필드, 라벨, 종류]. 종류 'secret' 은 가린 값 + 원문 보기
 	var SECTIONS = [
 		['기초정보', [['STAFF_NM', '성명'], ['ORG_NM', '소속'], ['DEPT_NM', '부서'], ['POSITION_NM', '직급'], ['SEQ_NO', 'NO'],
@@ -651,13 +676,26 @@
 		if (cardTab === TAB.SALES) salesTab(card, r);
 		if (cardTab === TAB.CAREER) careerTab(card(true), r);
 		if (cardTab === TAB.DOCS) {
-			var $dc = card(true), miss = missingDocs(r).length;
+			var $dc = card(true), cnt = { file: 0, nofile: 0, miss: 0, na: 0 };
+			DOCS.forEach(function(d) { cnt[docState(r, d)]++; });
 			$dc.append($('<div class="hr-section d-flex align-items-center">').append('서류&nbsp;')
-				.append($('<span class="small text-muted font-weight-normal">').text((DOCS.length - miss) + ' / ' + DOCS.length + ' 제출 · 파일은 구글 드라이브'))
+				.append($('<span class="small text-muted font-weight-normal">').text('파일은 구글 드라이브 · 줄에 파일을 끌어다 놓아도 첨부'))
 				.append($('<button type="button" class="btn btn-sm btn-outline-primary ml-auto">').html('<i class="fab fa-google-drive"></i> 드라이브에서 찾기').on('click', openScan)));
-			$dc.append($('<div class="st-docbar">').append($('<i>').css('width', Math.round((DOCS.length - miss) / DOCS.length * 100) + '%')));
-			var $d = $('<div>').appendTo($dc);
-			DOCS.forEach(function(d) { $d.append(docRow(r, d)); });
+			var $sum = $('<div class="st-dsum">').appendTo($dc), $bar = $('<div class="st-dbar">').appendTo($dc), need = DOCS.length - cnt.na;
+			DOC_STATES.forEach(function(s) {
+				$sum.append($('<div>').attr('data-s', s[0]).append($('<small>').text(s[1])).append($('<b>').text(cnt[s[0]])));
+				if (s[0] !== 'na' && need) $bar.append($('<i>').attr({ 'data-s': s[0], title: s[1] + ' ' + cnt[s[0]] }).css('width', (cnt[s[0]] / need * 100) + '%'));
+			});
+			var used = {};
+			DOC_GROUPS.concat([['기타', 'fa-folder', '', DOCS.map(function(d) { return d[0]; })]]).forEach(function(g) {
+				var list = DOCS.filter(function(d) { return g[3].indexOf(d[0]) >= 0 && !used[d[0]]; });
+				if (!list.length) return;
+				var ok = list.filter(function(d) { used[d[0]] = 1; return docState(r, d) === 'file'; }).length;
+				var $g = $('<div class="st-dgroup">').appendTo($dc).append($('<h6>').append($('<i class="fas">').addClass(g[1])).append(document.createTextNode(g[0]))
+					.append($('<span>').text(ok + '/' + list.length + ' 파일' + (g[2] ? ' · ' + g[2] : ''))));
+				var $t = $('<div class="st-dtiles">').appendTo($g);
+				list.forEach(function(d) { $t.append(docRow(r, d)); });
+			});
 		}
 		if (!docs || docs.sq !== r.STAFF_SQ) loadDocs(r.STAFF_SQ);
 		if (cardTab === TAB.MEMO) {
@@ -1140,6 +1178,8 @@
 	function downloadDoc(r, f) {
 		toast(f.FILE_NM + ' 받는 중…');
 		fetch('/admin/staff/downloadStaffDoc.do?STAFF_SQ=' + r.STAFF_SQ + '&DOC_SQ=' + f.DOC_SQ, { credentials: 'same-origin' }).then(function(res) {
+			// 드라이브 연동이 끊겼으면 서버가 연동 화면으로 돌려보낸다
+			if (res.redirected && res.url.indexOf('openGoogleLink') >= 0) { bootbox.alert('구글 드라이브 연동이 필요합니다. 연동 화면으로 이동합니다.', function() { location.href = res.url; }); return; }
 			if (res.redirected) { bootbox.alert('로그인이 끊겼습니다. 다시 로그인해 주세요.'); return; }
 			if (!res.ok) return res.text().then(function(t) { bootbox.alert(t || '파일을 받지 못했습니다.'); });
 			return res.blob().then(function(b) {
@@ -1152,18 +1192,36 @@
 	}
 	var PARSEABLE = ['DOC_BANK', 'DOC_ID', 'DOC_REG', 'DOC_GRAD', 'DOC_MIL'];
 
+	function docFiles(r, code) {
+		return ((docs && docs.sq === r.STAFF_SQ ? docs.list : []) || []).filter(function(f) { return f.DOC_CD === code; });
+	}
+	// 파일이 연결돼 있으면 'file', 아니면 손으로 고른 값으로: O → 'nofile', - → 'na', 빈칸·X → 'miss'. 파일 목록을 읽기 전에는 O 를 'file' 로 본다
+	function docState(r, d) {
+		var v = r[d[0]];
+		if (docFiles(r, d[0]).length) return 'file';
+		if (v === '-') return 'na';
+		if (v === 'O') return docs && docs.sq === r.STAFF_SQ ? 'nofile' : 'file';
+		return 'miss';
+	}
+	function fileIcon(name) {
+		var ext = String(name || '').split('.').pop().toLowerCase();
+		return /^(jpe?g|png|gif|webp|heic|bmp)$/.test(ext) ? 'fa-file-image' : ext === 'pdf' ? 'fa-file-pdf' : /^docx?$/.test(ext) ? 'fa-file-word' : ext === 'zip' ? 'fa-file-archive' : 'fa-file-alt';
+	}
+
 	function docRow(r, d) {
-		var $cell = $('<div>');
+		var state = docState(r, d), files = docFiles(r, d[0]), st = DOC_STATES.filter(function(s) { return s[0] === state; })[0];
+		var $cell = $('<div class="st-dstat" title="눌러서 제출 상태 바꾸기">');
 		hrEditable($cell, {
 			url: '/admin/staff/saveStaffFieldData.do', key: { STAFF_SQ: r.STAFF_SQ }, field: d[0], type: DOC_VALUES, label: r.STAFF_NM + ' ' + d[1],
-			show: function() { return r[d[0]] || '미제출'; }, value: function() { return r[d[0]]; },
+			show: function() { return st[1]; }, value: function() { return r[d[0]]; },
+			paint: function($c, text) { $c.append($('<span class="st-badge">').append($('<i class="fas">').addClass(st[2])).append(document.createTextNode(text))); },
 			saved: function(v) { r[d[0]] = v; paintCard(); }
 		});
-		$cell.attr('data-tone', !r[d[0]] || r[d[0]] === 'X' ? 'warn' : 'good').css({ 'border-radius': '4px', padding: '0 6px', 'line-height': '22px' });
 		var $files = $('<div class="st-files">');
-		((docs && docs.sq === r.STAFF_SQ ? docs.list : []) || []).filter(function(f) { return f.DOC_CD === d[0]; }).forEach(function(f) {
-			var $f = $('<span class="st-file">').append($('<a target="_blank" rel="noopener">').attr('href', f.WEB_LINK || ('https://drive.google.com/file/d/' + f.FILE_ID + '/view')).attr('title', f.FILE_NM).text(f.FILE_NM))
-				.append($('<button type="button" class="st-dl">').attr({ 'aria-label': f.FILE_NM + ' 다운로드', title: '다운로드' }).html('<i class="fas fa-download"></i>').on('click', function() { downloadDoc(r, f); }));
+		files.forEach(function(f) {
+			var $f = $('<span class="st-file">').append($('<i class="fas">').addClass(fileIcon(f.FILE_NM)))
+				.append($('<a target="_blank" rel="noopener">').attr('href', f.WEB_LINK || ('https://drive.google.com/file/d/' + f.FILE_ID + '/view')).attr('title', f.FILE_NM + ' (드라이브에서 열기)').text(f.FILE_NM))
+				.append($('<button type="button" class="st-dl">').attr({ 'aria-label': f.FILE_NM + ' 다운로드', title: '내 PC 로 받기' }).html('<i class="fas fa-download"></i> 받기').on('click', function() { downloadDoc(r, f); }));
 			if (PARSEABLE.indexOf(d[0]) >= 0) $f.append($('<button type="button">').attr('aria-label', f.FILE_NM + ' 글자 다시 읽기').attr('title', '글자 다시 읽어 칸 채우기').html('<i class="fas fa-redo"></i>')
 				.on('click', function() { docAction('/admin/staff/readStaffDocData.do', { STAFF_SQ: r.STAFF_SQ, DOC_CD: d[0], FILE_ID: f.FILE_ID }, d[1] + ' 다시 읽기'); }));
 			$f.append($('<button type="button">').attr('aria-label', f.FILE_NM + ' 연결 끊기').attr('title', '연결 끊기 (드라이브 파일은 남는다)').html('&times;')
@@ -1177,8 +1235,12 @@
 		var inputId = 'up_' + d[0];
 		var $input = $('<input type="file" class="d-none" accept="image/*,application/pdf,.hwp,.doc,.docx,.zip">').attr('id', inputId)
 			.on('change', function() { if (this.files[0]) upload(r, d, this.files[0]); this.value = ''; });
-		var $attach = $('<label class="btn btn-sm btn-outline-secondary st-attach">').attr('for', inputId).html('<i class="fas fa-paperclip"></i> 첨부');
-		var $row = $('<div class="st-doc-row">').append($('<div class="hr-card-label">').text(d[1])).append(copyable($cell, r, d[0])).append($files).append($('<div>').append($input).append($attach));
+		var $attach = $('<label class="btn btn-sm btn-outline-secondary st-attach">').attr('for', inputId).html('<i class="fas fa-paperclip"></i> ' + (files.length ? '추가' : '첨부'));
+		var hint = { nofile: ['warn', '제출 표시만 있고 파일이 없어요'], miss: ['', '파일을 끌어다 놓거나 첨부'], na: ['', ''], file: ['', ''] }[state];
+		var $row = $('<div class="st-doc-row">').attr('data-s', state)
+			.append($('<div class="st-dtop">').append($('<div class="st-dname">').text(d[1])).append(copyable($cell, r, d[0])))
+			.append($files)
+			.append($('<div class="st-dfoot">').append($('<span class="st-dhint">').toggleClass('warn', hint[0] === 'warn').text(hint[1])).append($input).append($attach));
 		// 파일을 이 줄에 끌어다 놓아도 첨부한다
 		$row.on('dragover', function(e) { e.preventDefault(); $row.addClass('is-over'); })
 			.on('dragleave drop', function() { $row.removeClass('is-over'); })
@@ -1194,7 +1256,7 @@
 	}
 
 	function upload(r, d, file) {
-		if (file.size > 50 * 1024 * 1024) { bootbox.alert('50MB 이하 파일만 올릴 수 있습니다.'); return; }
+		if (file.size > 20 * 1024 * 1024) { bootbox.alert('20MB 이하 파일만 올릴 수 있습니다.'); return; }
 		var fd = new FormData();
 		fd.append('STAFF_SQ', r.STAFF_SQ);
 		fd.append('DOC_CD', d[0]);
