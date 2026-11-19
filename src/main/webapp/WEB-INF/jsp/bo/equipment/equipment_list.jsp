@@ -50,6 +50,7 @@
 									<button type="button" class="btn btn-sm btn-outline-secondary" onclick="openSeal();"><i class="fas fa-stamp"></i> 직인 <span id="sealState"></span></button>
 									<button type="button" class="btn btn-sm btn-outline-primary" onclick="openNew();"><i class="fas fa-plus"></i> 장비 등록</button>
 									<button type="button" class="btn btn-sm btn-primary" onclick="openRent();"><i class="fas fa-hand-holding"></i> 대여 등록</button>
+									<button type="button" class="btn btn-sm btn-outline-primary" id="returnChecked" onclick="openReturnChecked();"><i class="fas fa-undo-alt"></i> 선택 반납</button>
 								</div>
 							</div>
 						</div>
@@ -496,15 +497,27 @@
 	// ── 반납 ──
 	function openReturn(r) {
 		var same = rows.filter(function(x) { return x.STATUS_CD === 'RENT' && (r.STAFF_SQ ? x.STAFF_SQ === r.STAFF_SQ : x.HOLDER_NM === r.HOLDER_NM); });
+		showReturn(same, r.HOLDER_NM, function(x) { return x.EQP_SQ === r.EQP_SQ; });
+	}
+
+	// 목록에서 체크한 대여중 장비를 사람과 상관없이 한 번에 반납
+	function openReturnChecked() {
+		var list = selected().filter(function(x) { return x.STATUS_CD === 'RENT'; });
+		if (!list.length) { bootbox.alert('목록에서 대여중인 장비를 체크해 주세요.'); return; }
+		showReturn(list, '선택 ' + list.length + '대', function() { return true; });
+	}
+
+	function showReturn(list, title, pre) {
+		var many = list.some(function(x) { return x.HOLDER_NM !== list[0].HOLDER_NM; });
 		$('#returnForm')[0].reset();
 		$('#tEnd').val(today());
-		$('#returnTitle').text('반납 처리 · ' + r.HOLDER_NM);
+		$('#returnTitle').text('반납 처리 · ' + title);
 		var $l = $('#returnList').empty(), computer = false;
-		same.forEach(function(x) {
+		list.forEach(function(x) {
 			var id = 'ret' + x.RENT_SQ;
 			computer = computer || x.TYPE_CD === 'NB' || x.TYPE_CD === 'DT';
-			$l.append($('<div class="form-check">').append($('<input type="checkbox" class="form-check-input">').attr('id', id).val(x.RENT_SQ).prop('checked', x.EQP_SQ === r.EQP_SQ))
-				.append($('<label class="form-check-label">').attr('for', id).text(stockLabel(x))));
+			$l.append($('<div class="form-check">').append($('<input type="checkbox" class="form-check-input">').attr('id', id).val(x.RENT_SQ).prop('checked', pre(x)))
+				.append($('<label class="form-check-label">').attr('for', id).text((many ? x.HOLDER_NM + ' · ' : '') + stockLabel(x))));
 		});
 		$('#formatBox').prop('hidden', !computer);
 		$('#cardModal').modal('hide');
