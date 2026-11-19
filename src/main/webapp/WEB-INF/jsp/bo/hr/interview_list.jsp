@@ -11,9 +11,22 @@
 	#calView .fc-event .fc-time { color: #495057; font-weight: 600; font-size: 12px; }
 	#calView .fc-event .ic-name { font-weight: 700; }
 	#calView .fc-day-grid-event .fc-content { white-space: normal; }
+	/* 이름 아래 작은 줄: 지원대상·지원방법·추천자.
+	   주별은 일정 높이가 정해져 있어(면접은 늘 1시간 = 30분 칸 2개) 시간 1줄 + 이름 최대 2줄 + 작은 줄 3개(각 1줄 말줄임)가 늘 들어가게 칸을 키운다.
+	   같은 시간에 여러 명이라 좁아져 줄어든 일정은 마우스를 올리면 그 일정만 넓고 길게 펼쳐 다 보인다 */
+	#calView .ic-line, #calView .ic-sub { display: block; }
+	#calView .ic-name { word-break: keep-all; }
+	#calView .ic-sub { font-size: 11px; line-height: 15px; font-weight: 400; color: #495057; }
+	#calView .fc-time-grid .fc-slats td { height: 52px; }
+	#calView .fc-time-grid-event .ic-line { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+	#calView .fc-time-grid-event .ic-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	#calView .fc-time-grid-event:hover { z-index: 10 !important; bottom: auto !important; min-height: 104px; min-width: 170px; box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+	#calView .fc-time-grid-event:hover .fc-content { max-height: none; }
+	#calView .fc-time-grid-event:hover .ic-line { display: block; }
+	#calView .fc-time-grid-event:hover .ic-sub { white-space: normal; }
 	#calView .fc-event.ic-cancel { background: #f8f9fa !important; border: 1px dashed #adb5bd !important; border-left-width: 4px !important; }
 	#calView .fc-event.ic-cancel .ic-name { text-decoration: line-through; color: #6c757d; }
-	.ic-badge, .ic-chip { display: inline-block; font-size: 11px; font-weight: 700; line-height: 16px; padding: 0 5px; margin-right: 3px; border-radius: 3px; color: #fff; vertical-align: 1px; }
+	.ic-badge, .ic-chip { display: inline-block; font-size: 11px; font-weight: 700; line-height: 16px; padding: 0 5px; margin-right: 3px; border-radius: 3px; color: #fff; vertical-align: 1px; white-space: nowrap; }
 	.ic-chip { border-radius: 8px; margin: 0 0 0 3px; }
 	.ic-NEW { background: #0d6efd; } .ic-EXP { background: #6f42c1; }
 	.ic-ATTEND { background: #198754; } .ic-CANCEL, .ic-ABSENT { background: #6c757d; } .ic-CHANGE { background: #0dcaf0; color: #212529; }
@@ -597,10 +610,15 @@
 		return { PASS: ['#e8f5ec', '#198754'], FAIL: ['#fbe9eb', '#dc3545'], HOLD: ['#fff3e6', '#fd7e14'] }[r.RESULT_ST] || ['#e7f1ff', '#0d6efd'];
 	}
 	function esc(s) { return $('<div>').text(s || '').html(); }
-	// 일정 안: [신입/경력 배지] 이름 (참석)(결과) — 코드마다 색이 다르다
+	// 이름 아래 줄: 지원대상, 지원방법, 추천자(있을 때만). 빈 값은 줄을 만들지 않는다
+	function eventSubs(r) {
+		return [r.APLY_TARGET, hrCodeName('HR_ROUTE', r.APLY_ROUTE), r.REFERRER ? '추천 ' + r.REFERRER : ''].map(function(s) { return $.trim(s || ''); }).filter(Boolean);
+	}
+	// 일정 안: [신입/경력 배지] 이름 (참석)(결과) — 코드마다 색이 다르다. 그 아래 작은 줄들
 	function eventHtml(r) {
 		function chip(cls, grp, cd) { return cd ? '<span class="' + cls + ' ic-' + esc(cd) + '">' + esc(hrCodeName(grp, cd)) + '</span>' : ''; }
-		return chip('ic-badge', 'HR_HIRE', r.HIRE_CD) + '<span class="ic-name">' + esc(r.APLY_NM) + '</span>' + chip('ic-chip', 'HR_ATTEND', r.ATTEND_ST) + chip('ic-chip', 'HR_RESULT', r.RESULT_ST);
+		return '<span class="ic-line">' + chip('ic-badge', 'HR_HIRE', r.HIRE_CD) + '<span class="ic-name">' + esc(r.APLY_NM) + '</span>' + chip('ic-chip', 'HR_ATTEND', r.ATTEND_ST) + chip('ic-chip', 'HR_RESULT', r.RESULT_ST) + '</span>'
+			+ eventSubs(r).map(function(s) { return '<span class="ic-sub">' + esc(s) + '</span>'; }).join('');
 	}
 
 	// 연도·월·주차를 바꾸면 캘린더가 그 주(주별)나 그 달(월별)로 간다. 값이 그대로면 사용자가 넘긴 화면을 둔다
@@ -670,11 +688,13 @@
 			minTime: '09:00:00', maxTime: '19:00:00', slotDuration: '00:30:00',
 			defaultTimedEventDuration: '01:00',
 			height: 'auto', nowIndicator: true,
+			slotEventOverlap: false, // 같은 시간 일정은 겹치지 않고 나란히 — 작은 줄이 가려지지 않게
 			editable: true, eventDurationEditable: false,
 			datesRender: function(info) { calSync(info.view); },
 			dateClick: function(info) { openNew(moment(info.date).format('YYYY-MM-DD'), info.allDay ? '' : moment(info.date).format('HH:mm')); },
 			eventRender: function(info) {
-				$(info.el).attr('title', info.event.title).find('.fc-title').html(eventHtml(info.event.extendedProps.row));
+				var r = info.event.extendedProps.row; // 말줄임으로 잘린 글은 마우스를 올리면 다 보인다
+				$(info.el).attr('title', [info.event.title].concat(eventSubs(r)).join('\n')).find('.fc-title').html(eventHtml(r));
 			},
 			eventClick: function(info) { openEdit(info.event.extendedProps.row); },
 			eventDrop: function(info) { moveEvent(info); }
