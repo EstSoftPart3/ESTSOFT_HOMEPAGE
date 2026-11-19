@@ -296,20 +296,22 @@ public class StaffCareerService {
 
 	/**
 	 * 최신 순정 버전(없으면 지금 내용)에서 실제 있는 프로젝트만 골라 순서·기술 표시만 바꾼다. 없는 프로젝트·기간은 만들지 않는다.
-	 * conf: skills[] 필수 기술, years(0 전체) 최근 N년 안에 끝났거나 진행중, max(0 전체), sort match|recent, deploy·ext 포함 범위, show front|only
+	 * conf: skills[] 필수 기술, months(0 전체) 최근 N개월 안에 끝났거나 진행중(옛 설정 years 도 읽음), max(0 전체), sort match|recent,
+	 * inds[]·roles[] 산업·역할 중 하나라도 맞는 것만(비면 전체), photo 워드에 증명사진. 옛 설정의 deploy·ext 포함 범위, show front|only 도 그대로 읽는다
 	 */
 	public List<Map<String, Object>> generate(Object staffSq, Map<String, Object> conf) {
-		List<String> skills = new ArrayList<>();
-		if (conf.get("skills") instanceof List) for (Object o : (List<?>) conf.get("skills")) if (!s(o).trim().isEmpty()) skills.add(s(o).trim());
-		int years = num(conf.get("years")), max = num(conf.get("max"));
+		List<String> skills = strs(conf.get("skills")), inds = strs(conf.get("inds")), roles = strs(conf.get("roles"));
+		int months = conf.containsKey("months") ? num(conf.get("months")) : num(conf.get("years")) * 12, max = num(conf.get("max"));
 		boolean deploy = !Boolean.FALSE.equals(conf.get("deploy")), ext = !Boolean.FALSE.equals(conf.get("ext")), only = "only".equals(conf.get("show"));
-		String cutYm = years > 0 ? LocalDate.now().minusYears(years).toString().substring(0, 7) : "";
+		String cutYm = months > 0 ? LocalDate.now().minusMonths(months).toString().substring(0, 7) : "";
 		List<Map<String, Object>> out = new ArrayList<>();
 		for (Map<String, Object> it : versionItems(staffSq, "")) {
 			boolean isDeploy = "DEPLOY".equals(it.get("SRC"));
 			if (isDeploy ? !deploy : !ext) continue;
 			String end = s(it.get("END_YM"));
 			if (!cutYm.isEmpty() && !end.isEmpty() && end.compareTo(cutYm) < 0) continue;
+			if (!inds.isEmpty() && Collections.disjoint(inds, tokens(s(it.get("IND_NM"))))) continue;
+			if (!roles.isEmpty() && Collections.disjoint(roles, tokens(s(it.get("ROLE_NM"))))) continue;
 			Map<String, Object> m = new LinkedHashMap<>(it);
 			int hit = 0;
 			for (String c : TECH) {
@@ -334,7 +336,7 @@ public class StaffCareerService {
 		Map<String, Object> conf = parseMap(confJson);
 		return tx.execute(st -> {
 			List<Map<String, Object>> items = generate(staffSq, conf);
-			if (items.isEmpty()) throw new IllegalArgumentException("조건에 맞는 프로젝트가 없습니다. 연차·포함 범위를 넓혀 주세요.");
+			if (items.isEmpty()) throw new IllegalArgumentException("조건에 맞는 프로젝트가 없습니다. 기간을 늘리거나 산업·역할 선택을 줄여 주세요.");
 			Map<String, Object> base = latest(staffSq);
 			Object baseNo = base == null ? null : base.get("VER_NO");
 			String d = diff(base == null ? items(staffSq) : parse((String) base.get("SNAPSHOT")), items);
@@ -348,10 +350,22 @@ public class StaffCareerService {
 	}
 
 	/** 자동생성 결과로 바로 워드 */
-	public byte[] generatedWord(Object staffSq, String confJson) {
+	public byte[] generatedWord(Object staffSq, String confJson, Object[] photo) {
 		List<Map<String, Object>> items = generate(staffSq, parseMap(confJson));
 		if (items.isEmpty()) throw new IllegalArgumentException("조건에 맞는 프로젝트가 없습니다.");
-		return word(staffSq, items);
+		return word(staffSq, items, photo);
+	}
+
+	/** 워드에 증명사진을 넣는지: 자동생성 설정(gen) 또는 그 가필 버전을 만들 때 고른 설정의 photo */
+	public boolean wantsPhoto(Object staffSq, String verNo, String gen) {
+		if (gen != null && !gen.isEmpty()) return Boolean.TRUE.equals(parseMap(gen).get("photo"));
+		Map<String, Object> v = null;
+		if ("EDIT".equals(verNo)) v = latest(staffSq, "EDIT");
+		else if (verNo != null && !verNo.isEmpty()) {
+			List<Map<String, Object>> l = jdbc.queryForList("SELECT GEN_CONF FROM TB_EEP_HR_STAFF_PRJ_VER_H WHERE STAFF_SQ = ? AND VER_NO = ? AND VER_KIND = 'EDIT'", staffSq, verNo);
+			v = l.isEmpty() ? null : l.get(0);
+		}
+		return v != null && v.get("GEN_CONF") != null && Boolean.TRUE.equals(parseMap((String) v.get("GEN_CONF")).get("photo"));
 	}
 
 	/** 작업 중 내용을 그 순정 버전으로 바꾼다. 사내 투입에서 온 줄의 이름·기간은 투입현황을 따르므로 직접 입력한 줄과 보탠 개발환경만 되돌린다 */
@@ -424,10 +438,15 @@ public class StaffCareerService {
 
 	/** 회사 양식 워드. verNo 가 비면 최신 버전(버전이 없으면 지금 내용). 주민번호는 가리고 전화·메일은 원본 양식처럼 넣지 않는다 */
 	public byte[] word(Object staffSq, String verNo) {
-		return word(staffSq, versionItems(staffSq, verNo));
+		return word(staffSq, verNo, null);
 	}
 
-	private byte[] word(Object staffSq, List<Map<String, Object>> items) {
+	public byte[] word(Object staffSq, String verNo, Object[] photo) {
+		return word(staffSq, versionItems(staffSq, verNo), photo);
+	}
+
+	/** @param photo {확장자 jpeg|png, 바이트} 또는 null */
+	private byte[] word(Object staffSq, List<Map<String, Object>> items, Object[] photo) {
 		Map<String, Object> q = new HashMap<>();
 		q.put("STAFF_SQ", staffSq);
 		Map<String, Object> st = staffMapper.selectStaffOne(q);
@@ -454,7 +473,7 @@ public class StaffCareerService {
 			if ("TRAIN".equals(e.get("ITEM_CD"))) trainings.add(new String[] { s(e.get("C1")), s(e.get("C3")), s(e.get("C4")), s(e.get("C2")) });
 		}
 		if (!s(st.get("PREV_CAREER")).isEmpty()) careers.add(new String[] { s(st.get("PREV_CAREER")), "", "", "" });
-		return StaffCareerWord.build(info, schools, careers, trainings, items);
+		return StaffCareerWord.build(info, schools, careers, trainings, items, photo);
 	}
 
 	/** 내려받을 파일 이름: 성명_등급.docx */
@@ -512,6 +531,13 @@ public class StaffCareerService {
 
 	/** 자동생성에서 고르는 기술 칸(개발환경) */
 	static final String[] TECH = { "LANG_NM", "FRAMEWORK_NM", "DBMS_NM", "TOOL_NM", "OS_NM", "MACHINE_NM", "ETC_NM" };
+
+	/** 설정 JSON 의 글자 목록(빈 값은 뺀다) */
+	private static List<String> strs(Object o) {
+		List<String> out = new ArrayList<>();
+		if (o instanceof List) for (Object v : (List<?>) o) if (!s(v).trim().isEmpty()) out.add(s(v).trim());
+		return out;
+	}
 
 	private static int num(Object o) {
 		try {

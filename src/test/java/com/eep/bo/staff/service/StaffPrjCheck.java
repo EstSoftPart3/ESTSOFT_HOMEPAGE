@@ -70,6 +70,15 @@ public class StaffPrjCheck {
 		Map<String, Object> first = read.get(0); // 워드는 오래된 것부터
 		check("보험 고도화".equals(first.get("PRJ_NM")) && "2017-11".equals(first.get("START_YM")) && "2018-04".equals(first.get("END_YM")) && "Java, Oracle".equals(first.get("LANG_NM")), "워드 왕복 값: " + first);
 		check("".equals(read.get(read.size() - 1).get("END_YM")), "워드의 '현재'는 진행중");
+		// 증명사진: 첫 표 5번째 칸에 그림 1개, 프로젝트 줄은 그대로
+		java.io.ByteArrayOutputStream png = new java.io.ByteArrayOutputStream();
+		javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(30, 40, java.awt.image.BufferedImage.TYPE_INT_RGB), "png", png);
+		byte[] withPhoto = StaffCareerWord.build(info, Collections.<String[]> emptyList(), Collections.<String[]> emptyList(), Collections.<String[]> emptyList(), items, new Object[] { "png", png.toByteArray() });
+		try (org.apache.poi.xwpf.usermodel.XWPFDocument d = new org.apache.poi.xwpf.usermodel.XWPFDocument(new ByteArrayInputStream(withPhoto))) {
+			check(d.getAllPictures().size() == 1 && d.getTables().get(0).getRow(0).getTableCells().size() == 5, "워드 증명사진 칸");
+			check(!d.getTables().get(0).getRow(0).getCell(4).getText().contains("PHOTO"), "사진 표시 글자가 남지 않음");
+		}
+		check(StaffCareerWord.parse(new ByteArrayInputStream(withPhoto)).size() == items.size(), "사진 넣어도 프로젝트 줄 수 같음");
 
 		Map<String, Object> edu = item("EDU", "대학교(4년제)", " 가나대 ");
 		edu.put("C5", "졸업");

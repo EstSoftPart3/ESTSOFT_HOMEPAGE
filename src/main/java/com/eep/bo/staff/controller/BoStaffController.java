@@ -311,7 +311,8 @@ public class BoStaffController {
 			HttpServletResponse response, HttpSession session) throws IOException {
 		byte[] data;
 		try {
-			data = gen != null && !gen.isEmpty() ? career.generatedWord(staffSq, gen) : career.word(staffSq, verNo);
+			Object[] photo = photoFor(staffSq, verNo, gen);
+			data = gen != null && !gen.isEmpty() ? career.generatedWord(staffSq, gen, photo) : career.word(staffSq, verNo, photo);
 		} catch (IllegalArgumentException e) {
 			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
 			response.setContentType("text/plain; charset=UTF-8");
@@ -327,7 +328,19 @@ public class BoStaffController {
 
 	@RequestMapping(value = "/admin/staff/careerWordDriveData.do", method = RequestMethod.POST)
 	public ModelAndView careerWordDriveData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam(value = "VER_NO", required = false) String verNo) {
-		return drive(() -> StaffDriveService.uploadCareerWord(staffSq, career.word(staffSq, verNo)));
+		return drive(() -> StaffDriveService.uploadCareerWord(staffSq, career.word(staffSq, verNo, photoFor(staffSq, verNo, null))));
+	}
+
+	/** 자동생성에서 「증명사진 넣기」를 골랐으면 서류 탭 증명사진을 드라이브에서 받는다. 드라이브 오류는 알림 글로 바꾼다 */
+	private Object[] photoFor(int staffSq, String verNo, String gen) {
+		if (!career.wantsPhoto(staffSq, verNo, gen)) return null;
+		try {
+			return StaffDriveService.photo(staffSq);
+		} catch (IllegalArgumentException e) {
+			throw e;
+		} catch (RuntimeException e) {
+			throw new IllegalArgumentException("증명사진을 드라이브에서 받지 못했습니다: " + e.getMessage());
+		}
 	}
 
 	// ── 학력·교육·비상연락 추가 건 ──

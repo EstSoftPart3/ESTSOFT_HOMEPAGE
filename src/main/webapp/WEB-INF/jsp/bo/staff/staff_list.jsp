@@ -24,17 +24,20 @@
 	.st-chip b { color: #111; }
 	[data-copy]:focus { outline: 2px solid #16d5ff; outline-offset: -2px; }
 	/* 서류 탭: 요약 숫자 → 종류별 묶음 → 서류 한 장씩 타일. 상태색: 파일(초록)·파일 없음(주황)·미제출(빨강)·해당없음(회색) */
-	.st-dsum { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
-	.st-dsum div { border-radius: 10px; padding: 8px 12px; background: #f4f6f9; border-left: 4px solid var(--st-c); }
-	.st-dsum small { display: block; font-size: 11.5px; color: #6b7785; } .st-dsum b { font-size: 18px; color: var(--st-c); }
-	.st-dbar { display: flex; height: 6px; border-radius: 3px; background: #e8edf2; overflow: hidden; margin-bottom: 14px; } .st-dbar i { background: var(--st-c); }
+	.st-dsum { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; font-weight: 400; color: #6b7785; }
+	.st-dsum span { display: inline-flex; align-items: center; gap: 4px; } .st-dsum i { width: 8px; height: 8px; border-radius: 50%; background: var(--st-c); } .st-dsum b { color: var(--st-c); font-size: 13px; }
+	.st-dbar { display: flex; height: 4px; border-radius: 2px; background: #e8edf2; overflow: hidden; margin-bottom: 12px; } .st-dbar i { background: var(--st-c); }
+	.st-drop { display: flex; align-items: center; gap: 14px; border: 2px dashed #b9c6d3; border-radius: 10px; background: #f7f9fb; padding: 14px 18px; margin: 0 0 16px; cursor: pointer; color: #3a4654; transition: background .15s, border-color .15s; }
+	.st-drop > i { font-size: 26px; color: #8a9bab; } .st-drop b { display: block; font-size: 13px; } .st-drop small { color: #8a96a3; font-size: 11.5px; }
+	.st-drop:hover { border-color: #16a0c4; }
+	.st-drop.is-over { border-color: #16a0c4; border-style: solid; background: #e3f6fb; } .st-drop.is-over > i { color: #16a0c4; }
 	[data-s=file] { --st-c: #1d7a4a; --st-bg: #e7f5ec; } [data-s=nofile] { --st-c: #b7791f; --st-bg: #fdf3e1; }
 	[data-s=miss] { --st-c: #c0392b; --st-bg: #fdecea; } [data-s=na] { --st-c: #8a96a3; --st-bg: #f1f3f5; }
 	.st-dgroup { margin-bottom: 14px; }
 	.st-dgroup h6 { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: #3a4654; margin: 0 0 8px; }
 	.st-dgroup h6 i { color: #0b6e8a; width: 14px; text-align: center; } .st-dgroup h6 span { font-weight: 400; color: #8a96a3; font-size: 11.5px; }
-	.st-dtiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
-	.st-doc-row { display: flex; flex-direction: column; gap: 6px; border: 1px solid #e3e8ee; border-left: 4px solid var(--st-c); border-radius: 8px; padding: 9px 10px; background: #fff; min-width: 0; }
+	.st-dtiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; align-items: start; }
+	.st-doc-row { display: flex; flex-direction: column; gap: 6px; border: 1px solid #e3e8ee; border-left: 3px solid var(--st-c); border-radius: 8px; padding: 7px 8px 7px 10px; background: #fff; min-width: 0; }
 	.st-doc-row[data-s=na] { background: #fafbfc; } .st-doc-row[data-s=na] .st-dname { color: #8a96a3; }
 	.st-doc-row.is-over { outline: 2px dashed #16a0c4; background: #e3f6fb; }
 	.st-dtop { display: flex; align-items: center; gap: 8px; } .st-dname { font-size: 13px; font-weight: 600; color: #222; flex: 1 1 auto; min-width: 0; }
@@ -47,10 +50,18 @@
 	.st-file button { background: none; border: 0; padding: 2px 5px; color: #888; font-size: 11.5px; border-radius: 4px; white-space: nowrap; flex: none; }
 	.st-file button:hover, .st-file button:focus { color: #0b6e8a; background: #e3edf3; }
 	.st-file .st-dl { color: #0b6e8a; font-weight: 600; }
-	.st-dfoot { display: flex; align-items: center; gap: 6px; }
-	.st-dhint { font-size: 11.5px; color: #8a96a3; } .st-dhint.warn { color: #b7791f; }
-	.st-attach { font-size: 11px; padding: 1px 8px; margin: 0 0 0 auto; cursor: pointer; }
+	.st-attach { flex: none; width: 24px; height: 24px; margin: 0; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; color: #8a96a3; font-size: 11px; cursor: pointer; }
+	.st-attach:hover, .st-attach:focus-within { background: #e3edf3; color: #0b6e8a; }
 	.st-busy { opacity: .5; pointer-events: none; }
+	/* 자동생성 기간·최대 프로젝트: 볼륨 스위치 모양 슬라이더(--p 만큼 채움) */
+	.sc-vol { display: flex; align-items: center; gap: 12px; max-width: 520px; }
+	.sc-vol input[type=range] { -webkit-appearance: none; appearance: none; flex: 1 1 auto; height: 8px; border-radius: 4px; cursor: pointer;
+		background: linear-gradient(90deg, #0b6e8a 0, #16a0c4 var(--p, 100%), #e3e8ee var(--p, 100%)); }
+	.sc-vol input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 3px solid #0b6e8a; box-shadow: 0 1px 4px rgba(0,0,0,.25); }
+	.sc-vol input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 3px solid #0b6e8a; }
+	.sc-vol input[type=range]:focus { outline: none; } .sc-vol input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(22,160,196,.3); }
+	.sc-vol output { min-width: 120px; white-space: nowrap; text-align: center; font-weight: 700; font-size: 13px; color: #0b6e8a; background: #e8f6fa; border-radius: 999px; padding: 2px 10px; }
+	.sc-gen .sc-chip:disabled { opacity: .45; cursor: not-allowed; }
 	#driveStatus { font-size: 12px; }
 	.st-grid .hr-cell, .st-skill .hr-cell { overflow-wrap: anywhere; }
 	.st-skill { padding: 3px 0; border-bottom: 1px solid rgba(17,17,17,.06); }
@@ -88,7 +99,6 @@
 	/* 폰: 카드 1열, 서류 줄은 2칸×2줄, 고르기 칸은 이름 위·값 아래, select 는 손가락 크기 */
 	@media (max-width: 767px) {
 		.st-cards { grid-template-columns: minmax(0, 1fr); }
-		.st-dsum { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 		.st-dtiles { grid-template-columns: minmax(0, 1fr); }
 		.st-pick { grid-template-columns: minmax(0, 1fr); }
 		.st-pick .k { padding-top: 0; }
@@ -272,14 +282,15 @@
 					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
 				</div>
 				<div class="modal-body">
-					<p class="small text-muted mb-2">최신 <b>순정</b> 버전에 있는 프로젝트만 골라 순서·기술 표시를 바꿉니다. 없는 프로젝트·기간은 만들지 않고, 순정 버전은 그대로 둡니다.</p>
+					<p class="small text-muted mb-2">최신 <b>순정</b> 버전에 있는 프로젝트만 골라 순서를 바꿉니다. 없는 프로젝트·기간은 만들지 않고, 순정 버전은 그대로 둡니다.</p>
 					<div class="sc-sk sc-gen">
 						<span class="k">필수 기술</span><div id="scGenSkills"></div>
-						<span class="k">연차</span><div id="scGenYears" data-one></div>
-						<span class="k">최대 프로젝트</span><div id="scGenMax" data-one></div>
+						<span class="k"><label for="scGenMonths" class="mb-0">기간</label></span><div id="scGenYears" class="sc-vol"><input type="range" id="scGenMonths" min="1" step="1"><output for="scGenMonths"></output></div>
+						<span class="k"><label for="scGenMaxR" class="mb-0">최대 개수</label></span><div id="scGenMax" class="sc-vol"><input type="range" id="scGenMaxR" min="1" step="1"><output for="scGenMaxR"></output></div>
 						<span class="k">정렬</span><div id="scGenSort" data-one></div>
-						<span class="k">포함 범위</span><div id="scGenScope"></div>
-						<span class="k">기술 표시</span><div id="scGenShow" data-one></div>
+						<span class="k">산업</span><div id="scGenInd"></div>
+						<span class="k">역할</span><div id="scGenRole"></div>
+						<span class="k">증명사진</span><div id="scGenPhoto" data-one></div>
 					</div>
 					<div class="hr-section mt-3" id="scGenSum">미리보기</div>
 					<div id="scGenView"></div>
@@ -678,14 +689,24 @@
 		if (cardTab === TAB.DOCS) {
 			var $dc = card(true), cnt = { file: 0, nofile: 0, miss: 0, na: 0 };
 			DOCS.forEach(function(d) { cnt[docState(r, d)]++; });
-			$dc.append($('<div class="hr-section d-flex align-items-center">').append('서류&nbsp;')
-				.append($('<span class="small text-muted font-weight-normal">').text('파일은 구글 드라이브 · 줄에 파일을 끌어다 놓아도 첨부'))
-				.append($('<button type="button" class="btn btn-sm btn-outline-primary ml-auto">').html('<i class="fab fa-google-drive"></i> 드라이브에서 찾기').on('click', openScan)));
-			var $sum = $('<div class="st-dsum">').appendTo($dc), $bar = $('<div class="st-dbar">').appendTo($dc), need = DOCS.length - cnt.na;
+			var $sum = $('<div class="st-dsum">'), $bar = $('<div class="st-dbar">'), need = DOCS.length - cnt.na;
 			DOC_STATES.forEach(function(s) {
-				$sum.append($('<div>').attr('data-s', s[0]).append($('<small>').text(s[1])).append($('<b>').text(cnt[s[0]])));
+				$sum.append($('<span>').attr('data-s', s[0]).append($('<i>')).append(document.createTextNode(s[1] + ' ')).append($('<b>').text(cnt[s[0]])));
 				if (s[0] !== 'na' && need) $bar.append($('<i>').attr({ 'data-s': s[0], title: s[1] + ' ' + cnt[s[0]] }).css('width', (cnt[s[0]] / need * 100) + '%'));
 			});
+			$dc.append($('<div class="hr-section d-flex align-items-center flex-wrap" style="gap:10px">').append('서류').append($sum)
+				.append($('<button type="button" class="btn btn-sm btn-outline-primary ml-auto">').html('<i class="fab fa-google-drive"></i> 드라이브에서 찾기').on('click', openScan)));
+			$dc.append($bar);
+			// 여러 파일을 한 번에 놓는 곳. 끌고 들어오면 파랗게 바뀐다
+			var $many = $('<input type="file" class="d-none" id="stDropInput" multiple accept="image/*,application/pdf,.hwp,.doc,.docx,.zip">')
+				.on('change', function() { dropMany(r, $.makeArray(this.files)); this.value = ''; });
+			var $drop = $('<label class="st-drop" for="stDropInput">').append($many)
+				.append('<i class="fas fa-cloud-upload-alt"></i>')
+				.append($('<div>').append('<b>서류 파일을 여기에 한 번에 끌어다 놓으세요</b>').append($('<small>').text('여러 개 가능 · 파일 이름으로 종류를 맞추고, 못 맞추면 골라요 · 누르면 파일 고르기 · 20MB 까지')))
+			// 타일 밖 어디에 놓아도 이 영역으로 받는다(타일은 자기 서류로 받고 전파를 멈춘다)
+			$dc.append($drop).on('dragover', function(e) { e.preventDefault(); $dc.find('.st-doc-row').removeClass('is-over'); $drop.addClass('is-over'); })
+				.on('dragleave', function(e) { if (!$.contains(this, e.relatedTarget)) $drop.removeClass('is-over'); })
+				.on('drop', function(e) { e.preventDefault(); $drop.removeClass('is-over'); dropMany(r, $.makeArray(e.originalEvent.dataTransfer.files)); });
 			var used = {};
 			DOC_GROUPS.concat([['기타', 'fa-folder', '', DOCS.map(function(d) { return d[0]; })]]).forEach(function(g) {
 				var list = DOCS.filter(function(d) { return g[3].indexOf(d[0]) >= 0 && !used[d[0]]; });
@@ -1080,9 +1101,17 @@
 	var scGen = null;
 	function genConf() {
 		function one(id) { return $('#' + id + ' .sc-chip.on').attr('data-v'); }
-		return { skills: $('#scGenSkills .sc-chip.on').map(function() { return $(this).attr('data-v'); }).get(), years: +one('scGenYears') || 0, max: +one('scGenMax') || 0, sort: one('scGenSort'),
-			deploy: $('#scGenScope [data-v=deploy]').hasClass('on'), ext: $('#scGenScope [data-v=ext]').hasClass('on'), show: one('scGenShow') };
+		function many(id) { return $('#' + id + ' .sc-chip.on').map(function() { return $(this).attr('data-v'); }).get(); }
+		return { skills: many('scGenSkills'), months: volVal('scGenMonths'), max: volVal('scGenMaxR'), sort: one('scGenSort'), inds: many('scGenInd'), roles: many('scGenRole'), photo: one('scGenPhoto') === 'Y' };
 	}
+	// 볼륨 스위치처럼 끌어 정하는 칸. 끝까지 올리면 0(전체)
+	function volVal(id) { var $r = $('#' + id); return +$r.val() >= +$r.attr('max') ? 0 : +$r.val(); }
+	function volPaint(id, fmt) {
+		var $r = $('#' + id), v = +$r.val(), max = +$r.attr('max'), min = +$r.attr('min');
+		$r.css('--p', ((v - min) / Math.max(1, max - min) * 100) + '%').next('output').text(v >= max ? '전체' : fmt(v));
+	}
+	function ymText(m) { return (m >= 12 ? Math.floor(m / 12) + '년' : '') + (m % 12 ? (m >= 12 ? ' ' : '') + (m % 12) + '개월' : '') + ' 안'; }
+	function prjText(n) { return '프로젝트 ' + n + '개'; }
 	function genChips(id, list, on) {
 		$('#' + id).empty().append(list.map(function(x) { var v = String(x[0]); return $('<button type="button" class="sc-chip gray">').attr('data-v', v).toggleClass('on', on.indexOf(v) >= 0).attr('aria-pressed', on.indexOf(v) >= 0).text(x[1]); }));
 	}
@@ -1093,11 +1122,20 @@
 		scEnv.slice(0, 4).forEach(function(e) { (d.chips[e[0]] || []).slice(0, 12).forEach(function(v) { if (!seen[v]) { seen[v] = 1; list.push([v, v]); } }); });
 		scGen = { sq: sq };
 		genChips('scGenSkills', list, []);
-		genChips('scGenYears', [[1, '1년'], [3, '3년'], [5, '5년'], [7, '7년'], [10, '10년'], [0, '전체']], ['0']);
-		genChips('scGenMax', [[5, '5개'], [10, '10개'], [15, '15개'], [0, '전체']], ['0']);
+		// 기간 끝은 가장 오래된 프로젝트 시작월부터 지금까지(1년 단위로 올림), 최대 프로젝트 끝은 프로젝트 수. 처음엔 둘 다 끝(전체)
+		var now = new Date(), oldest = d.items.map(function(it) { return String(it.START_YM || ''); }).filter(function(v) { return /^\d{4}-\d{2}/.test(v); }).sort()[0];
+		var span = oldest ? (now.getFullYear() - +oldest.slice(0, 4)) * 12 + now.getMonth() + 1 - +oldest.slice(5, 7) + 1 : 120;
+		$('#scGenMonths').attr('max', Math.max(12, Math.ceil(span / 12) * 12)).val(Math.max(12, Math.ceil(span / 12) * 12));
+		$('#scGenMaxR').attr('max', Math.max(2, d.items.length)).val(Math.max(2, d.items.length));
+		volPaint('scGenMonths', ymText); volPaint('scGenMaxR', prjText);
 		genChips('scGenSort', [['match', '기술 일치순'], ['recent', '최신순']], ['match']);
-		genChips('scGenScope', [['deploy', '사내 투입'], ['ext', '외부 이력']], ['deploy', 'ext']);
-		genChips('scGenShow', [['front', '고른 기술을 앞으로'], ['only', '고른 기술만']], ['front']);
+		genChips('scGenInd', scCount(d.items, 'IND_NM').map(function(t) { return [t[0], t[0] + ' ' + t[1]]; }), []);
+		genChips('scGenRole', scCount(d.items, 'ROLE_NM').map(function(t) { return [t[0], t[0] + ' ' + t[1]]; }), []);
+		if (!$('#scGenInd').children().length) $('#scGenInd').html('<span class="small text-muted">수행이력에 산업이 없습니다</span>');
+		if (!$('#scGenRole').children().length) $('#scGenRole').html('<span class="small text-muted">수행이력에 역할이 없습니다</span>');
+		var photo = docFiles(find(sq) || {}, 'DOC_PHOTO').length > 0;
+		genChips('scGenPhoto', [['', '넣지 않음'], ['Y', '워드에 넣기']], ['']);
+		$('#scGenPhoto [data-v=Y]').prop('disabled', !photo).attr('title', photo ? '서류 탭 증명사진을 워드 첫 장에 넣어요' : '서류 탭에 증명사진 파일이 없어요');
 		$('#scGenModal').modal('show');
 		genPreview();
 	}
@@ -1106,7 +1144,7 @@
 		hrPost('/admin/staff/careerGenData.do', { STAFF_SQ: scGen.sq, GEN: JSON.stringify(conf) }, function(res) {
 			var items = res.result || [], hit = items.filter(function(it) { return it.MATCH > 0; }).length;
 			$('#scGenSum').text('미리보기 · ' + items.length + '건' + (conf.skills.length ? ' · 고른 기술이 들어간 프로젝트 ' + hit + '건' : ''));
-			scTable($('#scGenView').empty(), items, { pick: conf.skills, empty: '조건에 맞는 프로젝트가 없습니다. 연차·포함 범위를 넓혀 보세요.' });
+			scTable($('#scGenView').empty(), items, { pick: conf.skills, empty: '조건에 맞는 프로젝트가 없습니다. 기간을 늘리거나 산업·역할 선택을 줄여 보세요.' });
 			$('#scGenSave, #scGenWord').prop('disabled', !items.length);
 		});
 	}
@@ -1115,8 +1153,12 @@
 			var $c = $(this), $box = $c.parent(), one = $box.is('[data-one]');
 			if (one) $box.children().removeClass('on').attr('aria-pressed', false);
 			$c.toggleClass('on', one || !$c.hasClass('on')).attr('aria-pressed', $c.hasClass('on'));
+			if ($box.is('#scGenPhoto')) return; // 사진은 워드에만 쓰여 미리보기 표와 상관없다
 			genPreview();
 		});
+		// 끄는 동안은 숫자만 바꾸고, 놓으면 미리보기
+		$('#scGenMonths').on('input', function() { volPaint('scGenMonths', ymText); }).on('change', genPreview);
+		$('#scGenMaxR').on('input', function() { volPaint('scGenMaxR', prjText); }).on('change', genPreview);
 		$('#scGenSave').on('click', function() {
 			hrPost('/admin/staff/saveCareerGenData.do', { STAFF_SQ: scGen.sq, GEN: JSON.stringify(genConf()) }, function(res) { $('#scGenModal').modal('hide'); toast('가필 v' + res.result + ' 로 저장했습니다 (순정은 그대로)'); loadCareer(scGen.sq); });
 		});
@@ -1233,19 +1275,45 @@
 			$files.append($f);
 		});
 		var inputId = 'up_' + d[0];
-		var $input = $('<input type="file" class="d-none" accept="image/*,application/pdf,.hwp,.doc,.docx,.zip">').attr('id', inputId)
-			.on('change', function() { if (this.files[0]) upload(r, d, this.files[0]); this.value = ''; });
-		var $attach = $('<label class="btn btn-sm btn-outline-secondary st-attach">').attr('for', inputId).html('<i class="fas fa-paperclip"></i> ' + (files.length ? '추가' : '첨부'));
-		var hint = { nofile: ['warn', '제출 표시만 있고 파일이 없어요'], miss: ['', '파일을 끌어다 놓거나 첨부'], na: ['', ''], file: ['', ''] }[state];
+		var $input = $('<input type="file" class="d-none" multiple accept="image/*,application/pdf,.hwp,.doc,.docx,.zip">').attr('id', inputId)
+			.on('change', function() { uploadMany(r, $.map(this.files, function(f) { return [[d, f]]; })); this.value = ''; });
+		var $attach = $('<label class="st-attach">').attr({ for: inputId, title: d[1] + ' 파일 첨부 (여러 개 가능)' }).html('<i class="fas fa-plus"></i>');
 		var $row = $('<div class="st-doc-row">').attr('data-s', state)
-			.append($('<div class="st-dtop">').append($('<div class="st-dname">').text(d[1])).append(copyable($cell, r, d[0])))
-			.append($files)
-			.append($('<div class="st-dfoot">').append($('<span class="st-dhint">').toggleClass('warn', hint[0] === 'warn').text(hint[1])).append($input).append($attach));
-		// 파일을 이 줄에 끌어다 놓아도 첨부한다
-		$row.on('dragover', function(e) { e.preventDefault(); $row.addClass('is-over'); })
+			.append($('<div class="st-dtop">').append($('<div class="st-dname">').text(d[1])).append(copyable($cell, r, d[0])).append($input).append($attach))
+			.append($files);
+		// 타일에 놓은 파일은 몇 개든 이 서류로 첨부한다
+		$row.on('dragover', function(e) { e.preventDefault(); e.stopPropagation(); $('.st-drop').removeClass('is-over'); $('.st-doc-row').not($row).removeClass('is-over'); $row.addClass('is-over'); })
 			.on('dragleave drop', function() { $row.removeClass('is-over'); })
-			.on('drop', function(e) { e.preventDefault(); var f = e.originalEvent.dataTransfer.files[0]; if (f) upload(r, d, f); });
+			.on('drop', function(e) { e.preventDefault(); e.stopPropagation(); uploadMany(r, $.map(e.originalEvent.dataTransfer.files, function(f) { return [[d, f]]; })); });
 		return $row;
+	}
+
+	// 파일 이름으로 서류 종류 맞추기. 서버 StaffDocParser.NAME_RULES 와 같은 규칙(앞에 있는 것부터)
+	var DOC_NAME_RULES = [[/주민등록등본|등본/, 'DOC_REG'], [/신분증|주민등록증|운전면허/, 'DOC_ID'], [/졸업증명|졸업장/, 'DOC_GRAD'], [/통장|계좌/, 'DOC_BANK'], [/증명사진|사진/, 'DOC_PHOTO'],
+		[/건강보험|득실/, 'DOC_HI'], [/근로계약/, 'DOC_CONTRACT'], [/사업자/, 'DOC_BIZ'], [/고용보험/, 'DOC_EI'], [/보안서약/, 'DOC_SEC'], [/직무교육/, 'DOC_EDU'],
+		[/국민취업/, 'DOC_NEP'], [/이력비공개|비공개/, 'DOC_PRIV'], [/범죄/, 'DOC_CRIME'], [/병적|병역/, 'DOC_MIL']];
+	function guessDoc(name) {
+		var hit = DOC_NAME_RULES.filter(function(x) { return x[0].test(name || ''); })[0];
+		return hit ? DOCS.filter(function(d) { return d[0] === hit[1]; })[0] : null;
+	}
+	// 서류 탭 위 큰 영역에 놓은 여러 파일: 이름으로 맞춘 건 바로, 못 맞춘 건 종류를 골라서 올린다
+	function dropMany(r, list) {
+		var pairs = [], unknown = [];
+		$.each(list, function(i, f) { var d = guessDoc(f.name); if (d) pairs.push([d, f]); else unknown.push(f); });
+		if (!unknown.length) { uploadMany(r, pairs); return; }
+		var opts = '<option value="">올리지 않음</option>' + DOCS.map(function(d) { return '<option value="' + d[0] + '">' + d[1] + '</option>'; }).join('');
+		var $m = $('<div>').append($('<p class="small mb-2">').text('파일 이름으로 종류를 못 맞춘 파일입니다. 서류 종류를 골라 주세요.' + (pairs.length ? ' (맞춘 ' + pairs.length + '개는 같이 올립니다)' : '')));
+		unknown.forEach(function(f, i) {
+			$m.append($('<div class="d-flex align-items-center mb-1" style="gap:8px">').append($('<span class="small text-truncate" style="flex:1;min-width:0">').attr('title', f.name).text(f.name))
+				.append($('<select class="form-control form-control-sm" style="width:150px">').attr({ 'data-i': i, 'aria-label': f.name + ' 서류 종류' }).html(opts)));
+		});
+		bootbox.dialog({ title: '서류 종류 고르기', message: $m, buttons: {
+			cancel: { label: '취소', className: 'btn-outline-secondary btn-sm' },
+			ok: { label: '올리기', className: 'btn-primary btn-sm', callback: function() {
+				$m.find('select').each(function() { var d = DOCS.filter(function(x) { return x[0] === this.value; }, this)[0]; if (d) pairs.push([d, unknown[$(this).attr('data-i')]]); });
+				uploadMany(r, pairs);
+			} }
+		} });
 	}
 
 	function loadDocs(sq) {
@@ -1255,16 +1323,38 @@
 		});
 	}
 
-	function upload(r, d, file) {
-		if (file.size > 20 * 1024 * 1024) { bootbox.alert('20MB 이하 파일만 올릴 수 있습니다.'); return; }
-		var fd = new FormData();
-		fd.append('STAFF_SQ', r.STAFF_SQ);
-		fd.append('DOC_CD', d[0]);
-		fd.append('file', file);
-		busy(true, d[1] + ' 올리는 중… 글자를 읽으면 10초쯤 걸립니다');
-		$.ajax({ url: '/admin/staff/uploadStaffDocData.do', type: 'POST', data: fd, processData: false, contentType: false })
-			.done(function(res) { afterDoc(res, d[1] + ' 첨부'); })
-			.fail(function() { busy(false); });
+	// pairs: [[서류, 파일], ...]. 한 개씩 차례로 올리고(서버가 글자를 읽어 칸을 채우므로 동시에 올리지 않는다) 끝나면 결과를 모아 한 번에 알린다
+	function uploadMany(r, pairs) {
+		var big = pairs.filter(function(p) { return p[1].size > 20 * 1024 * 1024; });
+		pairs = pairs.filter(function(p) { return p[1].size <= 20 * 1024 * 1024; });
+		if (big.length) bootbox.alert('20MB 가 넘어 빼고 올립니다: ' + big.map(function(p) { return p[1].name; }).join(', '));
+		if (!pairs.length) return;
+		var merged = { filled: {}, conflicts: [] }, errors = [], ok = 0, i = 0;
+		function next() {
+			if (i >= pairs.length) {
+				var res = { result: merged };
+				if (errors.length) bootbox.alert('못 올린 파일<br>' + errors.map(function(e) { return $('<div>').text(e).html(); }).join('<br>'));
+				if (ok) afterDoc(res, ok + '개 첨부'); else busy(false);
+				return;
+			}
+			var d = pairs[i][0], file = pairs[i][1], fd = new FormData();
+			busy(true, (pairs.length > 1 ? (i + 1) + '/' + pairs.length + ' ' : '') + d[1] + ' 올리는 중… ' + file.name);
+			fd.append('STAFF_SQ', r.STAFF_SQ);
+			fd.append('DOC_CD', d[0]);
+			fd.append('file', file);
+			$.ajax({ url: '/admin/staff/uploadStaffDocData.do', type: 'POST', data: fd, processData: false, contentType: false })
+				.done(function(res) {
+					if (res.error) { errors.push(file.name + ' : ' + res.error); return; }
+					ok++;
+					var out = res.result || {};
+					$.extend(merged.filled, out.filled || {});
+					merged.conflicts = merged.conflicts.concat(out.conflicts || []);
+					if (out.ocrError) merged.ocrError = out.ocrError;
+				})
+				.fail(function() { errors.push(file.name + ' : 전송 실패'); })
+				.always(function() { i++; next(); });
+		}
+		next();
 	}
 
 	function docAction(url, data, label) {

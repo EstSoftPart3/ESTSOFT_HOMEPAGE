@@ -384,6 +384,19 @@ public class StaffDriveService {
 		throw new IllegalArgumentException("연결된 서류를 찾지 못했습니다.");
 	}
 
+	/** 이력카드 워드에 넣을 증명사진: 서류 탭 증명사진 중 가장 최근에 연결한 jpg·png. {ext, data} */
+	public Object[] photo(Object staffSq) {
+		Map<String, Object> last = null;
+		for (Map<String, Object> d : docs(staffSq)) if ("DOC_PHOTO".equals(d.get("DOC_CD"))) last = d; // 목록은 연결 순서
+		if (last == null) throw new IllegalArgumentException("서류 탭에 증명사진 파일이 없습니다. 사진을 먼저 첨부해 주세요.");
+		String token = token();
+		Map<String, Object> file = drive.file(str(last.get("FILE_ID")), token);
+		String mime = str(file.get("mimeType"));
+		String ext = mime.equals("image/png") ? "png" : mime.equals("image/jpeg") ? "jpeg" : null;
+		if (ext == null) throw new IllegalArgumentException("증명사진이 jpg·png 가 아니라 워드에 넣을 수 없습니다(" + str(file.get("name")) + ").");
+		return new Object[] { ext, drive.download(file, token) };
+	}
+
 	/** 시스템이 만든 이력카드 워드를 사람 폴더에 올린다. 같은 이름의 이전 파일만 지워 최신 한 개를 둔다. 사람이 올린 원본 워드는 건드리지 않는다 */
 	public Map<String, Object> uploadCareerWord(Object staffSq, byte[] data) {
 		Map<String, Object> staff = staff(staffSq);

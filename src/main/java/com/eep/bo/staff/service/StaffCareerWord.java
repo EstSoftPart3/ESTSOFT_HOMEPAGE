@@ -96,12 +96,23 @@ public final class StaffCareerWord {
 	 * @param schools {학교, 학과, 졸업년월}, careers {회사, 기간, 직위, 담당업무}, trainings {교육명, 시작, 종료, 기관}
 	 */
 	public static byte[] build(Map<String, String> info, List<String[]> schools, List<String[]> careers, List<String[]> trainings, List<Map<String, Object>> items) {
+		return build(info, schools, careers, trainings, items, null);
+	}
+
+	/** @param photo {확장자 jpeg|png, 바이트} 이면 첫 표 오른쪽에 증명사진 칸(4줄 합침)을 둔다 */
+	public static byte[] build(Map<String, String> info, List<String[]> schools, List<String[]> careers, List<String[]> trainings, List<Map<String, Object>> items, Object[] photo) {
 		StringBuilder b = new StringBuilder();
-		b.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>");
+		b.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\""
+				+ " xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\"><w:body>");
 		b.append(title("개 인 이 력 카 드"));
-		int[] w4 = { 1400, 3400, 1400, 3400 };
-		b.append(table(w4, row(h("성 명"), c(info.get("성명")), h("주민번호"), c(info.get("주민번호"))), row(h("소속회사"), c(info.get("소속회사")), h("직 위"), c(info.get("직위"))),
-				row(h("부 서"), c(info.get("부서")), h("기술등급"), c(info.get("기술등급"))), row(h("병 역"), c(info.get("병역")), h("주 소"), c(info.get("주소")))));
+		String[][] top = { { h("성 명"), c(info.get("성명")), h("주민번호"), c(info.get("주민번호")) }, { h("소속회사"), c(info.get("소속회사")), h("직 위"), c(info.get("직위")) },
+				{ h("부 서"), c(info.get("부서")), h("기술등급"), c(info.get("기술등급")) }, { h("병 역"), c(info.get("병역")), h("주 소"), c(info.get("주소")) } };
+		if (photo == null) b.append(table(new int[] { 1400, 3400, 1400, 3400 }, row(top[0]), row(top[1]), row(top[2]), row(top[3])));
+		else {
+			String[] rs4 = new String[4];
+			for (int i = 0; i < 4; i++) rs4[i] = row(top[i]) + "\u0002" + cell(false, 1, i == 0 ? 'R' : 'C', i == 0 ? PHOTO : "");
+			b.append(table(new int[] { 1300, 2900, 1300, 2600, 1500 }, rs4));
+		}
 		b.append(gap());
 		b.append(table(new int[] { 3400, 3000, 1600, 1600 }, rows(row(h("최 종 학 력"), h("학 과 명"), h("졸업년월"), h("소재지")), schools, 4, 2)));
 		b.append(gap());
@@ -127,7 +138,30 @@ public final class StaffCareerWord {
 		b.append(table(ws, rs.toArray(new String[0])));
 		b.append("<w:sectPr><w:pgSz w:w=\"16838\" w:h=\"11906\" w:orient=\"landscape\"/><w:pgMar w:top=\"1134\" w:right=\"850\" w:bottom=\"1134\" w:left=\"850\" w:header=\"720\" w:footer=\"720\" w:gutter=\"0\"/></w:sectPr>");
 		b.append("</w:body></w:document>");
-		return zip(b.toString());
+		String xml = b.toString();
+		if (photo != null) xml = xml.replace(PHOTO_P, drawing((byte[]) photo[1]));
+		return zip(xml, photo);
+	}
+
+	/** 사진 칸 표시. table() 이 글 대신 이 문단을 그대로 두면 build() 끝에서 그림으로 바꾼다 */
+	private static final String PHOTO = "PHOTO"; // 사용자 글에 나올 수 없는 사설 영역 글자로 표시(esc 가 제어문자는 버린다)
+	private static final String PHOTO_P = "<w:t xml:space=\"preserve\">" + PHOTO + "</w:t>";
+
+	/** 너비 2.5cm, 높이는 사진 비율대로(못 읽으면 3:4) */
+	private static String drawing(byte[] data) {
+		long cx = 900000, cy = 1200000;
+		try {
+			java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(data));
+			if (img != null && img.getWidth() > 0) cy = cx * img.getHeight() / img.getWidth();
+		} catch (IOException e) {
+			// 비율만 못 구한 것이라 기본 3:4 로 둔다
+		}
+		String ext = "<wp:extent cx=\"" + cx + "\" cy=\"" + cy + "\"/>";
+		return "</w:r><w:r><w:drawing><wp:inline distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\">" + ext + "<wp:docPr id=\"1\" name=\"증명사진\"/>"
+				+ "<a:graphic xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/picture\">"
+				+ "<pic:pic xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:nvPicPr><pic:cNvPr id=\"1\" name=\"photo\"/><pic:cNvPicPr/></pic:nvPicPr>"
+				+ "<pic:blipFill><a:blip r:embed=\"rIdPhoto\"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"" + cx + "\" cy=\"" + cy + "\"/></a:xfrm>"
+				+ "<a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>";
 	}
 
 	private static String[] rows(String head, List<String[]> data, int cols, int min) {
@@ -226,14 +260,23 @@ public final class StaffCareerWord {
 		return b.toString();
 	}
 
-	private static byte[] zip(String documentXml) {
+	private static byte[] zip(String documentXml, Object[] photo) {
 		try (ByteArrayOutputStream out = new ByteArrayOutputStream(); ZipOutputStream z = new ZipOutputStream(out)) {
+			String ext = photo == null ? null : (String) photo[0];
 			put(z, "[Content_Types].xml", "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">"
 					+ "<Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/>"
+					+ (ext == null ? "" : "<Default Extension=\"" + ext + "\" ContentType=\"image/" + ext + "\"/>")
 					+ "<Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/></Types>");
 			put(z, "_rels/.rels", "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">"
 					+ "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/></Relationships>");
 			put(z, "word/document.xml", documentXml);
+			if (ext != null) {
+				put(z, "word/_rels/document.xml.rels", "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">"
+						+ "<Relationship Id=\"rIdPhoto\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/photo." + ext + "\"/></Relationships>");
+				z.putNextEntry(new ZipEntry("word/media/photo." + ext));
+				z.write((byte[]) photo[1]);
+				z.closeEntry();
+			}
 			z.finish();
 			return out.toByteArray();
 		} catch (IOException e) {
