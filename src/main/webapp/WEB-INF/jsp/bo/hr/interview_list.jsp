@@ -663,9 +663,9 @@
 		return { PASS: ['#e8f5ec', '#198754'], FAIL: ['#fbe9eb', '#dc3545'], HOLD: ['#fff3e6', '#fd7e14'] }[r.RESULT_ST] || ['#e7f1ff', '#0d6efd'];
 	}
 	function esc(s) { return $('<div>').text(s || '').html(); }
-	// 이름 아래 줄: 지원대상, 지원방법, 추천자(있을 때만). 빈 값은 줄을 만들지 않는다
+	// 이름 아래 줄: 지원대상, 지원방법, 추천자명(있을 때만, 지원방법이 이미 '추천·소개'라 앞말 없이). 빈 값은 빼다
 	function eventSubs(r) {
-		return [r.APLY_TARGET, hrCodeName('HR_ROUTE', r.APLY_ROUTE), r.REFERRER ? '추천 ' + r.REFERRER : ''].map(function(s) { return $.trim(s || ''); }).filter(Boolean);
+		return [r.APLY_TARGET, hrCodeName('HR_ROUTE', r.APLY_ROUTE), r.REFERRER].map(function(s) { return $.trim(s || ''); }).filter(Boolean);
 	}
 	// 일정 안: [신입/경력 배지] 이름 (참석)(결과) — 코드마다 색이 다르다. 그 아래 작은 한 줄
 	function eventHtml(r) {
