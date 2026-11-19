@@ -1338,7 +1338,7 @@
 				return;
 			}
 			var d = pairs[i][0], file = pairs[i][1], fd = new FormData();
-			busy(true, (pairs.length > 1 ? (i + 1) + '/' + pairs.length + ' ' : '') + d[1] + ' 올리는 중… ' + file.name);
+			busy(true, (pairs.length > 1 ? (i + 1) + '/' + pairs.length + ' · ' : '') + d[1] + ' 올리는 중…\n' + file.name);
 			fd.append('STAFF_SQ', r.STAFF_SQ);
 			fd.append('DOC_CD', d[0]);
 			fd.append('file', file);
@@ -1389,9 +1389,11 @@
 		} });
 	}
 
+	// 진행 안내는 공통 로딩 카드에 띄운다(오른쪽 아래 알림은 로딩 화면에 가려진다). 로딩 카드가 없는 화면을 위해 알림도 같이 둔다
 	function busy(on, msg) {
 		$('#cardBody').toggleClass('st-busy', on);
-		if (on) { clearTimeout(toastTimer); $('#copyToast').text(msg).show(); } else { $('#copyToast').fadeOut(200); }
+		if (window.boLoadText) window.boLoadText(on ? msg : '');
+		if (on && !window.boLoadText) { clearTimeout(toastTimer); $('#copyToast').text(msg).show(); } else if (!on) { $('#copyToast').fadeOut(200); }
 	}
 
 	var scanned = [];

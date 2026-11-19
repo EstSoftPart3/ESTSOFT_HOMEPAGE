@@ -99,9 +99,15 @@
 			document.body.appendChild(loadEl);
 			loadEl.offsetWidth; // 처음 띄울 때도 서서히 나타나게
 		}
-		if (on) loadEl.querySelector('.bo-load-txt').textContent = netOn ? '처리 중…' : '불러오는 중…';
+		if (on) loadEl.querySelector('.bo-load-txt').textContent = loadMsg || (netOn ? '처리 중…' : '불러오는 중…');
 		loadEl.classList.toggle('on', on);
 	}
+	// 화면이 진행 안내(예: 2/5 올리는 중)를 로딩 카드에 대신 보이게 한다. 빈 값이면 기본 글로 돌아간다
+	var loadMsg = '';
+	window.boLoadText = function (t) {
+		loadMsg = t || '';
+		if (loadEl && loadEl.classList.contains('on')) loadEl.querySelector('.bo-load-txt').textContent = loadMsg || '처리 중…';
+	};
 
 	// ── 서버 호출 중 로딩 (BO·FO) ──
 	// 저장·조회·업로드가 0.3초 넘게 걸리면 화면을 잠그고, 진행 중인 호출이 모두 끝나면 푼다. 바로 끝나는 호출에는 띄우지 않는다.
@@ -777,6 +783,7 @@
 		+ '.bo-load{position:fixed;top:0;right:0;bottom:0;left:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.32);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);opacity:0;pointer-events:none;transition:opacity .15s}'
 		+ '.bo-load.on{opacity:1;pointer-events:auto;cursor:progress}'
 		+ '.bo-load-card{display:flex;flex-direction:column;align-items:center;gap:12px;padding:22px 32px 20px;border-radius:16px;background:#fff;box-shadow:0 12px 40px rgba(15,23,42,.25);font-weight:700;font-size:13px;color:#33505c}'
+		+ '.bo-load-txt{max-width:320px;text-align:center;white-space:pre-line;overflow-wrap:anywhere}'
 		+ '.bo-load-ring{width:46px;height:46px;border-radius:50%;background:conic-gradient(#16d5ff,#0b6e8a,#6b3fa0,#16d5ff);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 6px),#000 calc(100% - 5px));mask:radial-gradient(farthest-side,transparent calc(100% - 6px),#000 calc(100% - 5px));animation:bo-spin .8s linear infinite}'
 		+ '.bo-load-bar{width:150px;height:4px;border-radius:4px;background:#e6eef2;overflow:hidden}'
 		+ '.bo-load-bar::after{content:"";display:block;width:40%;height:100%;border-radius:4px;background:linear-gradient(90deg,#16d5ff,#6b3fa0);animation:bo-slide .9s ease-in-out infinite}'
