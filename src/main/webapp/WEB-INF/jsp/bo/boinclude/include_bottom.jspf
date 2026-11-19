@@ -122,6 +122,12 @@ $(document).on('keydown', 'textarea.enter-send, textarea.bootbox-input-textarea'
 	// bootbox prompt 입력칸만 확인 버튼을 누른다. 메모 창(bootbox.dialog)의 메모 칸은 자기 '남기기'로
 	if ($(this).is('.bootbox-input-textarea')) $(this).closest('.bootbox').find('.bootbox-accept').click(); else $(this).trigger('enter-send');
 });
+// 폰에서는 위처럼 Enter 가 줄바꿈이라, 안내문의 'Enter 보내기/남기기…' 를 버튼 안내로 바꾼다(피드백·기획서 의견 등)
+$(document).on('focusin', 'textarea.enter-send', function() {
+	if (!window.matchMedia('(max-width: 767px), (pointer: coarse)').matches) return;
+	var p = this.getAttribute('placeholder') || '';
+	if (/Enter/.test(p)) this.setAttribute('placeholder', p.replace(/\s*·\s*Enter.*$/, '') + ' · 작성 후 버튼으로 보내기');
+});
 // 업로드 공통(com.common.upload.Upload): 서버가 용량을 줄였으면 응답의 uploaded 를 잠깐 띄운다
 $(document).ajaxSuccess(function(e, xhr) {
 	var r = xhr.responseJSON, msg = r && r.uploaded;

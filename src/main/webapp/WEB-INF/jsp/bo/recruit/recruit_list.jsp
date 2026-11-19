@@ -346,7 +346,7 @@ function viewCards($m, list) {
 	if (!list.length) $m.append('<div class="text-muted p-3">고른 조건에 맞는 모집이 없습니다.</div>');
 }
 function viewTable($m, list) {
-	var $t = $('<table class="table table-sm table-hover" id="rcTable">').append('<thead><tr><th scope="col">상태</th><th scope="col">확인</th><th scope="col">고객사</th><th scope="col">사업명</th><th scope="col">등급·인원</th><th scope="col">투입</th><th scope="col">근무지</th><th scope="col">단가</th><th scope="col">기술</th><th scope="col">매출처</th><th scope="col">지원/충원</th><th scope="col">진행</th><th scope="col">마감</th><th scope="col">등록일</th></tr></thead>');
+	var $t = $('<table class="table table-sm table-hover" id="rcTable" data-no-card>').append('<thead><tr><th scope="col">상태</th><th scope="col">확인</th><th scope="col">고객사</th><th scope="col">사업명</th><th scope="col">등급·인원</th><th scope="col">투입</th><th scope="col">근무지</th><th scope="col">단가</th><th scope="col">기술</th><th scope="col">매출처</th><th scope="col">지원/충원</th><th scope="col">진행</th><th scope="col">마감</th><th scope="col">등록일</th></tr></thead>');
 	var $b = $('<tbody>').appendTo($t);
 	list.forEach(function(r) {
 		var miss = missing(r), left = closeLeft(r), apps = appsOf(r.RECRUIT_SQ).filter(function(a) { return a.STEP_CD !== 'DROP'; });
@@ -686,7 +686,7 @@ function pickApplicant(recruitSq) {
 			$list.append($('<button type="button" class="rc-pick">').prop('disabled', !has).append($('<b>').text((has ? '' : '🚫 ') + s.STAFF_NM))
 				.append($('<span class="rc-pill">').addClass(st.k === 'SOON' ? 'warn' : st.k === 'FUTURE' ? 'FILLED' : '').text(st.label))
 				.append($('<span class="rc-note">').text(has ? [s.POSITION_NM, s.DEPT_NM].filter(Boolean).join(' · ') : '프로필 없음'))
-				.on('click', function() { dlg.modal('hide'); applyDialog(recruitSq, s.STAFF_SQ); }));
+				.on('click', function() { /* 앞 창이 다 닫힌 뒤 열어야 body.modal-open 이 안 지워져 스크롤된다 */ dlg.one('hidden.bs.modal', function() { applyDialog(recruitSq, s.STAFF_SQ); }).modal('hide'); }));
 		});
 		if (!rows.length) $list.append('<div class="text-muted p-2">고를 사람이 없습니다.</div>');
 	}

@@ -72,7 +72,7 @@
 
 						<div id="paneList">
 							<div class="table-responsive">
-								<table class="table table-sm table-hover cal-table tr-table mb-0">
+								<table data-no-card class="table table-sm table-hover cal-table tr-table mb-0">
 									<thead><tr><th>구분</th><th>거래처</th><th>품목</th><th>기간</th><th class="dp-num">공급가액</th><th class="dp-num">세액</th><th class="dp-num">합계금액</th><th class="only-sale">세금계산서</th><th>메모</th><th><span class="sr-only">작업</span></th></tr></thead>
 									<tbody id="listBody"></tbody>
 									<tfoot id="listFoot"></tfoot>

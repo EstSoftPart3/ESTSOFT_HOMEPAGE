@@ -426,7 +426,7 @@
 			height: 'auto', nowIndicator: true, minTime: '08:00:00', maxTime: '20:00:00', slotDuration: '01:00:00', snapDuration: '00:30:00',
 			// 월 보기 행 높이를 폭에 비례해 강제하지 않게(일정 수만큼만, 빈 주는 날짜 숫자 줄만): monthMode 는 auto 여도 폭÷aspectRatio 를 6주로 나눠 넣는다
 			aspectRatio: 50,
-			datesRender: function(info) { store('hmCalView', info.view.type); clearTimeout(calTimer); calTimer = setTimeout(calPaint, 0); },
+			datesRender: function(info) { if (!PHONE) store('hmCalView', info.view.type); /* 폰은 월 고정이라 PC 에서 고른 보기를 덮지 않는다 */ clearTimeout(calTimer); calTimer = setTimeout(calPaint, 0); },
 			eventClick: function(info) {
 				info.jsEvent.preventDefault();
 				if (info.event.extendedProps.task) openTask(info.event.extendedProps.task); else calPop(info.event.extendedProps.ev);

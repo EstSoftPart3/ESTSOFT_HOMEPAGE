@@ -681,7 +681,12 @@
 		var y = $('#yearSel').val(), mon = $('#monthSel').val(), week = $('#weekSel').val(), key = [y, mon, week].join('|');
 		if (key === calKey) return;
 		calKey = key;
-		if (week) { calendar.changeView(phone ? 'timeGridDay' : 'timeGridWeek', week.split('|')[0]); return; }
+		if (week) {
+			// 폰 일별: 고른 주에 오늘이 있으면 오늘부터(주 첫날 월요일이 아니라)
+			var w = week.split('|'), today = moment().format('YYYY-MM-DD');
+			calendar.changeView(phone ? 'timeGridDay' : 'timeGridWeek', phone && today >= w[0] && today <= (w[1] || w[0]) ? today : w[0]);
+			return;
+		}
 		if (y && mon) calendar.changeView('dayGridMonth', y + '-' + mon + '-01');
 		else if (y) calendar.changeView('dayGridMonth', y + '-' + (y === moment().format('YYYY') ? moment().format('MM') : '01') + '-01');
 	}
@@ -690,8 +695,8 @@
 	function calSync(v) {
 		if (calKey === null) return; // 처음 그릴 때는 위 필터가 캘린더를 정한다
 		var y, mon, week = '';
-		if (v.type === 'timeGridWeek') {
-			var thu = moment(v.currentStart).add(3, 'days').isoWeekday(4); // 주차는 목요일이 든 달
+		if (v.type === 'timeGridWeek' || v.type === 'timeGridDay') { // 폰 일별도 그 날이 든 주차로(아니면 주차가 풀려 월별로 튐)
+			var thu = v.type === 'timeGridDay' ? moment(v.currentStart).isoWeekday(4) : moment(v.currentStart).add(3, 'days').isoWeekday(4); // 주차는 목요일이 든 달
 			y = thu.format('YYYY'); mon = thu.format('MM');
 			week = thu.clone().subtract(3, 'days').format('YYYY-MM-DD') + '|' + thu.clone().add(3, 'days').format('YYYY-MM-DD');
 		} else {
@@ -736,7 +741,7 @@
 		var c = new FullCalendar.Calendar(document.getElementById('calendar'), {
 			plugins: ['dayGrid', 'timeGrid', 'interaction'],
 			locale: 'ko',
-			header: phone ? { left: 'prev,next', center: 'title', right: 'timeGridDay,dayGridMonth' } : { left: 'prev,next today', center: 'title', right: 'timeGridWeek,dayGridMonth' },
+			header: phone ? { left: 'prev,next today', center: 'title', right: 'timeGridDay,dayGridMonth' } : { left: 'prev,next today', center: 'title', right: 'timeGridWeek,dayGridMonth' },
 			buttonText: { week: '주별', month: '월별', day: '일별' },
 			defaultView: phone ? 'timeGridDay' : 'timeGridWeek',
 			hiddenDays: [0, 6],
