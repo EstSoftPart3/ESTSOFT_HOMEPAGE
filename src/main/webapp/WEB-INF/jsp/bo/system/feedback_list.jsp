@@ -3,8 +3,9 @@
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_head.jspf"%>
 <style>
 	.fl-chks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 14px; }
-	/* 목록 폭은 손잡이(#flHandle)로 바꾸고 이 브라우저에 저장. 처음엔 '종류' 칸까지 보이는 340px */
-	.fl-split { display: grid; grid-template-columns: var(--fl-left, 340px) 8px minmax(0, 1fr); border-top: 1px solid rgba(17,17,17,.08); }
+	/* 목록 폭은 손잡이(#flHandle)로 바꾸고 이 브라우저에 저장. 처음엔 화면의 45%(최소 420px) */
+	/* 건수가 적어도 화면 아래까지 채운다(높이 기준이 없으면 한 줄 높이로 쪼그라든다) */
+	.fl-split { display: grid; grid-template-columns: var(--fl-left, 420px) 8px minmax(0, 1fr); border-top: 1px solid rgba(17,17,17,.08); min-height: calc(100vh - 250px); }
 	.fl-split > div:first-child { min-width: 0; }
 	.fl-split > .fl-handle { border: 0; background: #f1f3f5; cursor: col-resize; display: grid; place-items: center; touch-action: none; }
 	.fl-handle::before { content: ''; width: 3px; height: 34px; border-radius: 2px; background: #b9c3ca; }
@@ -64,13 +65,13 @@
 	});
 
 	// 목록·상세 폭 손잡이: 끌기(마우스·터치), ←→ 20px, 더블클릭은 처음 폭. 놓을 때 이 브라우저에 저장
-	// 목록 260px 이상, 상세 40% 이상으로 막는다
+	// 목록 420px 이상, 상세 40% 이상으로 막는다
 	function splitter() {
-		var KEY = 'boFeedbackSplit', DEF = 340, box = document.querySelector('.fl-split'), h = document.getElementById('flHandle');
+		var KEY = 'boFeedbackSplit', box = document.querySelector('.fl-split'), DEF = Math.round((box.clientWidth || 0) * 0.45) || 420, h = document.getElementById('flHandle');
 		function left() { return box.firstElementChild.getBoundingClientRect().width; }
 		function set(px, save) {
 			// 숨은 탭으로 열리면 폭이 0 이라 윗한도는 보일 때만 건다
-			px = Math.round(Math.max(260, box.clientWidth ? Math.min(px, box.clientWidth * 0.6) : px));
+			px = Math.round(Math.max(420, box.clientWidth ? Math.min(px, box.clientWidth * 0.6) : px));
 			box.style.setProperty('--fl-left', px + 'px');
 			h.setAttribute('aria-valuenow', px);
 			if (save) try { localStorage.setItem(KEY, px); } catch (e) {}
