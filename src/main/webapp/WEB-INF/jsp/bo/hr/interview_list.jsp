@@ -11,19 +11,15 @@
 	#calView .fc-event .fc-time { color: #495057; font-weight: 600; font-size: 12px; }
 	#calView .fc-event .ic-name { font-weight: 700; }
 	#calView .fc-day-grid-event .fc-content { white-space: normal; }
-	/* 이름 아래 작은 줄: 지원대상·지원방법·추천자.
-	   주별은 일정 높이가 정해져 있어(면접은 늘 1시간 = 30분 칸 2개) 시간 1줄 + 이름 최대 2줄 + 작은 줄 3개(각 1줄 말줄임)가 늘 들어가게 칸을 키운다.
-	   같은 시간에 여러 명이라 좁아져 줄어든 일정은 마우스를 올리면 그 일정만 넓고 길게 펼쳐 다 보인다 */
-	#calView .ic-line, #calView .ic-sub { display: block; }
+	/* 이름 아래 작은 한 줄: 지원대상 · 지원방법 · 추천자. 칸 높이는 그대로 두고,
+	   주별은 시간을 왼쪽 시간축이 보여 주므로 일정 안 시간은 빼고(툴팁에는 있음) 이름 1줄 + 작은 줄 1줄(넘치면 말줄임)이 1시간 일정에 들어가게 한다.
+	   좁아져 줄어든 일정은 마우스를 올리면 그 일정만 넓게 펼쳐 다 보인다 */
+	#calView .ic-sub { display: block; font-size: 11px; line-height: 15px; font-weight: 400; color: #495057; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 	#calView .ic-name { word-break: keep-all; }
-	#calView .ic-sub { font-size: 11px; line-height: 15px; font-weight: 400; color: #495057; }
-	#calView .fc-time-grid .fc-slats td { height: 52px; }
-	#calView .fc-time-grid-event .ic-line { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-	#calView .fc-time-grid-event .ic-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-	#calView .fc-time-grid-event:hover { z-index: 10 !important; bottom: auto !important; min-height: 104px; min-width: 170px; box-shadow: 0 4px 12px rgba(0,0,0,.3); }
-	#calView .fc-time-grid-event:hover .fc-content { max-height: none; }
-	#calView .fc-time-grid-event:hover .ic-line { display: block; }
-	#calView .fc-time-grid-event:hover .ic-sub { white-space: normal; }
+	#calView .fc-time-grid-event .fc-content { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	#calView .fc-time-grid-event .fc-time { display: none; }
+	#calView .fc-time-grid-event:hover { z-index: 10 !important; bottom: auto !important; min-height: 44px; min-width: 170px; box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+	#calView .fc-time-grid-event:hover .fc-content, #calView .fc-time-grid-event:hover .ic-sub { white-space: normal; max-height: none; }
 	#calView .fc-event.ic-cancel { background: #f8f9fa !important; border: 1px dashed #adb5bd !important; border-left-width: 4px !important; }
 	#calView .fc-event.ic-cancel .ic-name { text-decoration: line-through; color: #6c757d; }
 	.ic-badge, .ic-chip { display: inline-block; font-size: 11px; font-weight: 700; line-height: 16px; padding: 0 5px; margin-right: 3px; border-radius: 3px; color: #fff; vertical-align: 1px; white-space: nowrap; }
@@ -35,6 +31,19 @@
 	#calView.is-file-over { outline: 2px dashed #28a745; outline-offset: -4px; }
 	.ic-drop { position: absolute; z-index: 5; pointer-events: none; border: 2px dashed #28a745; background: rgba(40,167,69,.12); border-radius: 4px; color: #1e7e34; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 	#editForm .ic-auto { background: #e8f5e9; }
+	/* 대시보드: 전체 칸(기존) 아래에 신입·경력 단계 막대와 지원방법별 표 */
+	.dash-sec { font-size: 12px; font-weight: 700; color: #333; margin: 12px 0 6px; padding-top: 10px; border-top: 1px solid #eef2f5; }
+	.dash-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+	.dash-card { border: 1px solid #e3edf2; border-radius: 8px; padding: 10px 12px; }
+	.dash-card-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+	.dash-card-head b { font-size: 18px; }
+	.dash-card-head .small { color: #666; }
+	.dash-step { display: grid; grid-template-columns: 56px 1fr 92px; align-items: center; gap: 6px; font-size: 12px; margin: 4px 0; }
+	.dash-bar { height: 10px; background: #eef3f6; border-radius: 5px; overflow: hidden; }
+	.dash-bar > i { display: block; height: 100%; border-radius: 5px; }
+	.dash-step .v { text-align: right; white-space: nowrap; } .dash-step .v small { color: #777; }
+	.dash-route th, .dash-route td { font-size: 12px; text-align: right; white-space: nowrap; } .dash-route th:first-child, .dash-route td:first-child { text-align: left; }
+	.dash-route tr.dash-total td { font-weight: 700; border-top: 2px solid #dee2e6; }
 </style>
 
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
@@ -77,9 +86,12 @@
 					<div class="cal-panel">
 						<div class="d-flex justify-content-between align-items-center flex-wrap pr-3">
 							<div class="cate-tabs" id="tabs" role="tablist" aria-label="면접 결과"></div>
-							<div class="btn-group btn-group-sm" id="viewSwitch" role="group" aria-label="보기 전환">
-								<button type="button" class="btn btn-outline-secondary" data-view="list"><i class="fas fa-list"></i> 목록</button>
-								<button type="button" class="btn btn-outline-secondary" data-view="cal"><i class="far fa-calendar-alt"></i> 캘린더</button>
+							<div class="d-flex align-items-center" style="gap:6px;">
+								<button type="button" class="btn btn-sm btn-outline-primary" id="btnDash"><i class="fas fa-chart-bar" aria-hidden="true"></i> 대시보드</button>
+								<div class="btn-group btn-group-sm" id="viewSwitch" role="group" aria-label="보기 전환">
+									<button type="button" class="btn btn-outline-secondary" data-view="list"><i class="fas fa-list"></i> 목록</button>
+									<button type="button" class="btn btn-outline-secondary" data-view="cal"><i class="far fa-calendar-alt"></i> 캘린더</button>
+								</div>
 							</div>
 						</div>
 						<div id="calView" style="display:none;">
@@ -93,14 +105,15 @@
 							</table>
 						</div>
 					</div>
-					<%-- 대시보드는 아래 버튼 → 팝업. 내용은 숨긴 자리에서 계속 그려 두고 팝업에 옮겨 보인다 --%>
-					<div class="text-right" data-bottom>
-						<button type="button" class="btn btn-sm btn-outline-primary" id="btnDash"><i class="fas fa-chart-bar" aria-hidden="true"></i> 대시보드 (검색 기준)</button>
-					</div>
+					<%-- 대시보드는 위 버튼 → 팝업. 내용은 숨긴 자리에서 계속 그려 두고 팝업에 옮겨 보인다 --%>
 					<div id="dashBox" hidden>
 						<div class="hr-dash-title" id="dashTitle"></div>
 						<div class="hr-dash-cond" id="dashCond"></div>
 						<div class="hr-dash" id="dashStats"></div>
+						<div class="dash-sec">신입 · 경력</div>
+						<div class="dash-split" id="dashSplit"></div>
+						<div class="dash-sec">지원방법별</div>
+						<div class="table-responsive"><table class="table table-sm dash-route mb-2"><thead><tr><th>지원방법</th><th>신입</th><th>경력</th><th>예정</th><th>참석</th><th>합격</th><th>출근확정</th><th>합격률</th></tr></thead><tbody id="dashRoute"></tbody></table></div>
 						<div class="text-right">
 							<button type="button" class="btn btn-sm btn-outline-primary" id="btnCopyDash" onclick="copyDash();"><i class="far fa-copy"></i> <span>보고 내용 복사</span></button>
 						</div>
@@ -332,14 +345,44 @@
 		return [t.title].concat(t.conds ? ['(' + t.conds + ')'] : [], ['예정 : ' + s.total, '참석 : ' + withDetail(s.attend, s.attendDetail), '합격 : ' + withDetail(s.pass, s.detail), '보류 : ' + s.hold]).join('\n') + '\n\n' + (s.roster ? '출근확정 :\n' + s.roster : '출근확정 : 0');
 	}
 
+	function pct(n, of) { return of ? Math.round(n * 100 / of) + '%' : '-'; }
+	function withRate(rate, detail) { return [rate, detail].filter(Boolean).join(' · '); }
+
+	// 예정 → 참석 → 합격 → 출근확정 막대. 비율은 바로 앞 단계 대비(참석률·합격률·확정률)
+	function dashCard(name, list) {
+		var s = dashCounts(list), $c = $('<div class="dash-card">');
+		$('<div class="dash-card-head">').append($('<span>').text(name), $('<b>').text(s.total + '명'),
+			$('<span class="small">').text('보류 ' + s.hold + (s.total ? ' · 최종 확정률 ' + pct(s.join, s.total) : ''))).appendTo($c);
+		[['예정', s.total, '', '#6c8ebf'], ['참석', s.attend, pct(s.attend, s.total), '#0d6efd'], ['합격', s.pass, pct(s.pass, s.attend), '#198754'], ['출근확정', s.join, pct(s.join, s.pass), '#6f42c1']].forEach(function(st) {
+			$('<div class="dash-step">').append($('<span>').text(st[0]),
+				$('<div class="dash-bar">').append($('<i>').css({ width: (s.total ? st[1] * 100 / s.total : 0) + '%', background: st[3] })),
+				$('<span class="v">').text(st[1] + ' ').append($('<small>').text(st[2]))).appendTo($c);
+		});
+		return $c;
+	}
+
 	function renderDash() {
 		var s = dashCounts(shown), t = dashTitle(), $box = $('#dashStats').empty();
 		$('#dashTitle').text(t.title);
 		$('#dashCond').text(t.conds);
-		[['예정', s.total], ['참석', s.attend, s.attendDetail], ['합격', s.pass, s.detail], ['보류', s.hold], ['출근확정', s.join, s.joinNames]].forEach(function(t) {
+		[['예정', s.total], ['참석', s.attend, withRate(s.total && '참석률 ' + pct(s.attend, s.total), s.attendDetail)], ['합격', s.pass, withRate(s.attend && '합격률 ' + pct(s.pass, s.attend), s.detail)],
+			['보류', s.hold], ['출근확정', s.join, withRate(s.pass && '확정률 ' + pct(s.join, s.pass), s.joinNames)]].forEach(function(t) {
 			$('<div class="hr-dash-item">').append($('<div class="hr-dash-label">').text(t[0])).append($('<div class="hr-dash-num">').text(t[1]))
 				.append($('<div class="hr-dash-sub">').text(t[2] || '')).appendTo($box);
 		});
+		// 신입·경력 나눠 보기. 구분이 비어 있는 면접자가 있으면 '구분 없음' 칸을 더한다
+		var $split = $('#dashSplit').empty();
+		(HR_CODES.HR_HIRE || []).forEach(function(o) { $split.append(dashCard(o.NM, shown.filter(function(r) { return r.HIRE_CD === o.CD; }))); });
+		var noHire = shown.filter(function(r) { return !(HR_CODES.HR_HIRE || []).some(function(o) { return o.CD === r.HIRE_CD; }); });
+		if (noHire.length) $split.append(dashCard('구분 없음', noHire));
+		// 지원방법별: 인원이 있는 경로만, 맨 아래 합계
+		var $route = $('#dashRoute').empty(), groups = (HR_CODES.HR_ROUTE || []).map(function(o) { return [o.NM, shown.filter(function(r) { return r.APLY_ROUTE === o.CD; })]; });
+		groups.push(['미입력', shown.filter(function(r) { return !(HR_CODES.HR_ROUTE || []).some(function(o) { return o.CD === r.APLY_ROUTE; }); })]);
+		groups.filter(function(g) { return g[1].length; }).concat(shown.length ? [['합계', shown, true]] : []).forEach(function(g) {
+			var c = dashCounts(g[1]), hire = function(cd) { return g[1].filter(function(r) { return r.HIRE_CD === cd; }).length; };
+			$('<tr>').toggleClass('dash-total', !!g[2]).append([g[0], hire('NEW'), hire('EXP'), c.total, c.attend, c.pass, c.join, pct(c.pass, c.attend)].map(function(v) { return $('<td>').text(v); })).appendTo($route);
+		});
+		if (!shown.length) $route.append('<tr><td colspan="8" class="text-center text-muted">검색 조건에 맞는 면접자가 없습니다</td></tr>');
 	}
 
 	$('#btnDash').on('click', function() {
@@ -614,11 +657,12 @@
 	function eventSubs(r) {
 		return [r.APLY_TARGET, hrCodeName('HR_ROUTE', r.APLY_ROUTE), r.REFERRER ? '추천 ' + r.REFERRER : ''].map(function(s) { return $.trim(s || ''); }).filter(Boolean);
 	}
-	// 일정 안: [신입/경력 배지] 이름 (참석)(결과) — 코드마다 색이 다르다. 그 아래 작은 줄들
+	// 일정 안: [신입/경력 배지] 이름 (참석)(결과) — 코드마다 색이 다르다. 그 아래 작은 한 줄
 	function eventHtml(r) {
 		function chip(cls, grp, cd) { return cd ? '<span class="' + cls + ' ic-' + esc(cd) + '">' + esc(hrCodeName(grp, cd)) + '</span>' : ''; }
-		return '<span class="ic-line">' + chip('ic-badge', 'HR_HIRE', r.HIRE_CD) + '<span class="ic-name">' + esc(r.APLY_NM) + '</span>' + chip('ic-chip', 'HR_ATTEND', r.ATTEND_ST) + chip('ic-chip', 'HR_RESULT', r.RESULT_ST) + '</span>'
-			+ eventSubs(r).map(function(s) { return '<span class="ic-sub">' + esc(s) + '</span>'; }).join('');
+		var subs = eventSubs(r);
+		return chip('ic-badge', 'HR_HIRE', r.HIRE_CD) + '<span class="ic-name">' + esc(r.APLY_NM) + '</span>' + chip('ic-chip', 'HR_ATTEND', r.ATTEND_ST) + chip('ic-chip', 'HR_RESULT', r.RESULT_ST)
+			+ (subs.length ? '<span class="ic-sub">' + esc(subs.join(' · ')) + '</span>' : '');
 	}
 
 	// 연도·월·주차를 바꾸면 캘린더가 그 주(주별)나 그 달(월별)로 간다. 값이 그대로면 사용자가 넘긴 화면을 둔다
@@ -694,7 +738,7 @@
 			dateClick: function(info) { openNew(moment(info.date).format('YYYY-MM-DD'), info.allDay ? '' : moment(info.date).format('HH:mm')); },
 			eventRender: function(info) {
 				var r = info.event.extendedProps.row; // 말줄임으로 잘린 글은 마우스를 올리면 다 보인다
-				$(info.el).attr('title', [info.event.title].concat(eventSubs(r)).join('\n')).find('.fc-title').html(eventHtml(r));
+				$(info.el).attr('title', [(r.INTV_TM ? r.INTV_TM + ' ' : '') + info.event.title].concat(eventSubs(r)).join('\n')).find('.fc-title').html(eventHtml(r));
 			},
 			eventClick: function(info) { openEdit(info.event.extendedProps.row); },
 			eventDrop: function(info) { moveEvent(info); }
