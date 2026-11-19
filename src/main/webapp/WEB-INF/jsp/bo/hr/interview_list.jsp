@@ -345,6 +345,16 @@
 		return [t.title].concat(t.conds ? ['(' + t.conds + ')'] : [], ['예정 : ' + s.total, '참석 : ' + withDetail(s.attend, s.attendDetail), '합격 : ' + withDetail(s.pass, s.detail), '보류 : ' + s.hold]).join('\n') + '\n\n' + (s.roster ? '출근확정 :\n' + s.roster : '출근확정 : 0');
 	}
 
+	// 보고 복사: 구분을 골랐으면 그 구분 하나, 아니면 신입·경력(구분 없는 사람이 있으면 '구분 없음'도) 블록을 차례로 — 블록마다 기존 문구 그대로, 제목만 「… 신입 채용현황」
+	function dashReport(list, t) {
+		if ($('#fHire').val()) return dashText(dashCounts(list), t);
+		var codes = HR_CODES.HR_HIRE || [];
+		var groups = codes.map(function(o) { return [o.NM, list.filter(function(r) { return r.HIRE_CD === o.CD; })]; });
+		var noHire = list.filter(function(r) { return !codes.some(function(o) { return o.CD === r.HIRE_CD; }); });
+		if (noHire.length) groups.push(['구분 없음', noHire]);
+		return groups.map(function(g) { return dashText(dashCounts(g[1]), { title: t.title.replace('채용현황', g[0] + ' 채용현황'), conds: t.conds }); }).join('\n\n\n');
+	}
+
 	function pct(n, of) { return of ? Math.round(n * 100 / of) + '%' : '-'; }
 	function withRate(rate, detail) { return [rate, detail].filter(Boolean).join(' · '); }
 
@@ -393,7 +403,7 @@
 
 	// http 로 접속해도 되도록 clipboard API 대신 execCommand 를 쓴다
 	function copyDash() {
-		var $btn = $('#btnCopyDash'), $t = $('<textarea aria-hidden="true" style="position:fixed;top:0;left:-9999px;">').val(dashText(dashCounts(shown), dashTitle())).appendTo($btn.closest('.modal-body')[0] || 'body'); // 팝업 안에서는 팝업이 초점을 붙잡아 body 칸은 고를 수 없다
+		var $btn = $('#btnCopyDash'), $t = $('<textarea aria-hidden="true" style="position:fixed;top:0;left:-9999px;">').val(dashReport(shown, dashTitle())).appendTo($btn.closest('.modal-body')[0] || 'body'); // 팝업 안에서는 팝업이 초점을 붙잡아 body 칸은 고를 수 없다
 		$t[0].select();
 		var ok = false;
 		try { ok = document.execCommand('copy'); } catch (e) {}
