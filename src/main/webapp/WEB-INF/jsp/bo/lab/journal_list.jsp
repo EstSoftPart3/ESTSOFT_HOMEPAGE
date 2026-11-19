@@ -70,8 +70,8 @@
 					<div class="form-group"><label for="TEAM_NM_VIEW">연구팀</label><input id="TEAM_NM_VIEW" class="form-control form-control-sm" readonly></div>
 					<div class="form-group"><label for="PRJ_NM">과제명</label><input id="PRJ_NM" class="form-control form-control-sm" maxlength="200" required></div>
 					<div class="form-row">
-						<div class="form-group col-6"><label for="START_DT">연구 시작일</label><input type="date" id="START_DT" class="form-control form-control-sm" required></div>
-						<div class="form-group col-6"><label for="END_DT">연구 종료일</label><input type="date" id="END_DT" class="form-control form-control-sm" required></div>
+						<div class="form-group col-12 col-md-6"><label for="START_DT">연구 시작일</label><input type="date" id="START_DT" class="form-control form-control-sm" required></div>
+						<div class="form-group col-12 col-md-6"><label for="END_DT">연구 종료일</label><input type="date" id="END_DT" class="form-control form-control-sm" required></div>
 					</div>
 					<div class="form-group"><label for="PLACE">연구장소</label><input id="PLACE" class="form-control form-control-sm" maxlength="200" required></div>
 					<div class="form-group">

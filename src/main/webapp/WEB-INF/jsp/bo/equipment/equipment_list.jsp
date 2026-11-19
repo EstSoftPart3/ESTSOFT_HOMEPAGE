@@ -62,7 +62,7 @@
 								<thead><tr><th>장비번호</th><th>구분</th><th>모델</th><th>상태</th><th>사용자·위치</th><th id="focusLabel"></th><th><span class="sr-only">수정</span></th></tr></thead>
 								<tbody id="focusBody"></tbody>
 							</table>
-							<table class="table table-sm table-hover cal-table mb-0" id="mainTable">
+							<table data-no-card class="table table-sm table-hover cal-table mb-0" id="mainTable">
 								<thead><tr><th><input type="checkbox" id="checkAll" aria-label="이 목록 모두 선택"></th><th>장비번호</th><th>구분</th><th>브랜드</th><th>모델</th><th>시리얼</th><th>상태</th><th>사용자·위치</th><th>대여일</th><th>용도</th><th>최근 점검</th><th>메모</th></tr></thead>
 								<tbody id="listBody"></tbody>
 							</table>

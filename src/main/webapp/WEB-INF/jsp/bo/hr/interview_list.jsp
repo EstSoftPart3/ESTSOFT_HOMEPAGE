@@ -99,7 +99,7 @@
 							<div id="calendar"></div>
 						</div>
 						<div class="table-responsive" id="listView">
-							<table class="table table-sm table-hover cal-table mb-0">
+							<table data-no-card class="table table-sm table-hover cal-table mb-0">
 								<thead id="listHead"></thead>
 								<tbody id="listBody"></tbody>
 							</table>
@@ -676,12 +676,12 @@
 	}
 
 	// 연도·월·주차를 바꾸면 캘린더가 그 주(주별)나 그 달(월별)로 간다. 값이 그대로면 사용자가 넘긴 화면을 둔다
-	var calKey = null;
+	var calKey = null, phone = window.matchMedia && matchMedia('(max-width: 767px)').matches;
 	function calGoto() {
 		var y = $('#yearSel').val(), mon = $('#monthSel').val(), week = $('#weekSel').val(), key = [y, mon, week].join('|');
 		if (key === calKey) return;
 		calKey = key;
-		if (week) { calendar.changeView('timeGridWeek', week.split('|')[0]); return; }
+		if (week) { calendar.changeView(phone ? 'timeGridDay' : 'timeGridWeek', week.split('|')[0]); return; }
 		if (y && mon) calendar.changeView('dayGridMonth', y + '-' + mon + '-01');
 		else if (y) calendar.changeView('dayGridMonth', y + '-' + (y === moment().format('YYYY') ? moment().format('MM') : '01') + '-01');
 	}
@@ -732,12 +732,13 @@
 	}
 
 	function makeCalendar() {
+		// 폰: list 플러그인이 없어 하루 시간표로 시작(주별 5열은 375px 에서 안 읽힘), 툴바 짧게
 		var c = new FullCalendar.Calendar(document.getElementById('calendar'), {
 			plugins: ['dayGrid', 'timeGrid', 'interaction'],
 			locale: 'ko',
-			header: { left: 'prev,next today', center: 'title', right: 'timeGridWeek,dayGridMonth' },
-			buttonText: { week: '주별', month: '월별' },
-			defaultView: 'timeGridWeek',
+			header: phone ? { left: 'prev,next', center: 'title', right: 'timeGridDay,dayGridMonth' } : { left: 'prev,next today', center: 'title', right: 'timeGridWeek,dayGridMonth' },
+			buttonText: { week: '주별', month: '월별', day: '일별' },
+			defaultView: phone ? 'timeGridDay' : 'timeGridWeek',
 			hiddenDays: [0, 6],
 			minTime: '09:00:00', maxTime: '19:00:00', slotDuration: '00:30:00',
 			defaultTimedEventDuration: '01:00',

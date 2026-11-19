@@ -26,6 +26,11 @@
 	.ac-result:hover, .ac-result.active { background: #dff3f9; }
 	.ac-result[aria-disabled=true] { color: #999; cursor: not-allowed; background: none; }
 	.ac-result-head { font-weight: 600; color: #666; cursor: default; background: #fafbfc !important; }
+	/* 폰: 직원 검색 결과는 이름·회사 메일·상태만 */
+	@media (max-width: 767px) {
+		.ac-result { grid-template-columns: 72px minmax(0, 1fr) auto; }
+		.ac-result > span:nth-child(2), .ac-result > span:nth-child(4), .ac-result > span:nth-child(5) { display: none; }
+	}
 	.ac-section { font-size: 13px; font-weight: 700; color: #111; margin: 12px 0 8px; padding-top: 10px; border-top: 1px solid rgba(17,17,17,.1); }
 </style>
 

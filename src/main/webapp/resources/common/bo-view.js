@@ -144,6 +144,16 @@
 				toast('지웠습니다');
 			});
 		});
+		$menu.on('click', '.vw-col button', function (e) {
+			// 메뉴를 다시 그리면 누른 버튼이 문서에서 빠져 '바깥 클릭' 으로 닫히므로 위로 올리지 않는다
+			e.stopPropagation();
+			var ci = +$(this).closest('.vw-col').attr('data-ci'), d = +$(this).attr('data-d'), t = colTable();
+			if (!t) return;
+			window.boCols.move(t, ci, d);
+			paintMenu();
+			paint();
+			$menu.find('.vw-col[data-ci="' + ci + '"] button[data-d="' + d + '"]').trigger('focus');
+		});
 		$pop.on('change', 'input[name=vwHow]', function () { $pop.find('.vw-pop-in').prop('disabled', this.value !== 'new').trigger(this.value === 'new' ? 'focus' : 'blur'); });
 		$pop.on('click', '.vw-cancel', function () { openPop(false); });
 		$pop.on('click', '.vw-ok', function () { doSave(false); });
@@ -190,7 +200,19 @@
 				.append($('<span>').text(v.NM)).append($('<button type="button" class="vw-del" aria-label="이 보기 지우기">✕</button>')));
 		});
 		$menu.append('<div class="vw-note">표를 바꾼 뒤 💾 저장 · 화면마다 5개까지</div>');
+		// 칸 순서 ▲▼ (머리글 끌기를 못 하는 폰용, 폰 카드에는 앞 4칸이 보인다). 저장은 ui-table.js 의 칸 순서 저장값 그대로
+		var t = colTable(), cols = t && window.boCols && window.boCols.list(t);
+		if (!cols || cols.length < 2) return;
+		var $c = $('<div class="vw-cols">').append('<div class="vw-cols-h">칸 순서 <small>폰 카드에는 앞 4칸</small></div>');
+		cols.forEach(function (c, i) {
+			$c.append($('<div class="vw-col">').attr('data-ci', c.ci).toggleClass('vw-col-top', i < 4)
+				.append($('<span>').text(c.name || '(이름 없는 칸)'))
+				.append($('<button type="button" data-d="-1" aria-label="앞으로">▲</button>').prop('disabled', !i))
+				.append($('<button type="button" data-d="1" aria-label="뒤로">▼</button>').prop('disabled', i === cols.length - 1)));
+		});
+		$menu.append('<hr>').append($c);
 	}
+	function colTable() { return $bar && $bar.parent('.frz-bar').prop('_t'); }
 	function paint() {
 		if (!$bar) return;
 		var dirty = ready && base && !same(snap(), base), t = '보기: ' + (cur ? cur.NM : '순정') + (dirty ? ' ● 바뀜' : '') + ' ▾';
@@ -220,7 +242,12 @@
 		+ '.vw-menu small{color:#8a949c;margin-left:auto}.vw-menu hr{margin:4px 0;border-top:1px solid #eef0f2}.vw-item span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
 		+ '.vw-del{border:0;background:none;color:#9aa4ac;font-size:11px;padding:0 4px}.vw-del:hover{color:#c0392b}.vw-note{font-size:11px;color:#8a949c;padding:4px 8px 2px}'
 		+ '.vw-pop{padding:10px 12px;min-width:280px;font-size:12.5px}.vw-pop label{display:block;margin:0 0 6px;font-weight:400}.vw-pop-in{margin:0 0 8px}.vw-pop-act{text-align:right}'
-		+ '.vw-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:3100;background:#1f2d33;color:#fff;border-radius:8px;padding:8px 16px;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.2)}.vw-toast.err{background:#b23b2f}';
+		+ '.vw-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:3100;background:#1f2d33;color:#fff;border-radius:8px;padding:8px 16px;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.2)}.vw-toast.err{background:#b23b2f}'
+		+ '.vw-cols{max-height:50vh;overflow:auto;padding:0 4px 2px}.vw-cols-h{font-size:12px;font-weight:700;color:#5f6b75;padding:2px 4px 4px}.vw-cols-h small{font-weight:400;color:#8a949c;margin-left:4px}'
+		+ '.vw-col{display:flex;align-items:center;gap:2px;padding:1px 4px;border-radius:6px;font-size:12.5px}.vw-col span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vw-col-top span{font-weight:700}'
+		+ '.vw-col button{border:1px solid #ccd3d9;background:#fff;border-radius:4px;font-size:10px;line-height:18px;width:24px;padding:0;color:#5f6b75}.vw-col button:disabled{color:#d0d5da}'
+		// 폰: 누르는 것 36px 이상, 메뉴는 화면 폭 안에
+		+ '@media (max-width:767px){.vw-btn,.vw-save{min-height:36px;padding:0 12px}.vw-menu,.vw-pop{top:40px;max-width:calc(100vw - 32px)}.vw-menu>button,.vw-item{min-height:36px}.vw-del{min-width:36px;min-height:36px}.vw-col button{width:36px;height:36px}}';
 	document.head.appendChild(css);
 
 	// ── 시작 ──

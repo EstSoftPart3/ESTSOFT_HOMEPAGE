@@ -211,7 +211,7 @@
 	var popTimer = null;
 	$('#boardBody').on('mouseenter focus', '.brd-link', function() {
 		var a = this, r = find($(a).attr('data-sq'));
-		if (!r) return;
+		if (!r || matchMedia('(hover: none)').matches) return; // 터치는 미리보기 없이 바로 링크
 		clearTimeout(popTimer);
 		popTimer = setTimeout(function() {
 			var text = $.trim((r._text || '').replace(/ /g, ' ').replace(/\n{3,}/g, '\n\n'));

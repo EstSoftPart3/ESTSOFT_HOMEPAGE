@@ -55,4 +55,10 @@
 	.sys-matrix tr.group td { background: #fafbfc; font-weight: 600; }
 	.sys-yes { color: #0b6e8a; }
 	.sys-no { color: #c4cad0; }
+	.m-back { display: none; } @media (max-width: 767px) { .m-back { display: inline-block; } }
 </style>
+<script>
+// 폰(1열): 목록에서 고르면 상세로 내려가고, 상세 머리 「← 목록」으로 돌아온다
+function sysToDetail() { if (matchMedia('(max-width: 767px)').matches) document.querySelector('.sys-split > .cal-panel + .cal-panel').scrollIntoView({ behavior: 'smooth' }); }
+function sysToList() { document.querySelector('.sys-split > .cal-panel').scrollIntoView({ behavior: 'smooth' }); }
+</script>

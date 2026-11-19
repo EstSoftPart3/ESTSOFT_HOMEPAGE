@@ -99,14 +99,14 @@
 					<input type="hidden" id="CARD_SQ">
 					<div class="form-group"><label for="CARD_NM">카드명</label><input id="CARD_NM" class="form-control form-control-sm" maxlength="50" required placeholder="경영지원 공용"></div>
 					<div class="form-row">
-						<div class="form-group col-6"><label for="CARD_CO">카드사</label><input id="CARD_CO" class="form-control form-control-sm" maxlength="30" placeholder="롯데카드"></div>
-						<div class="form-group col-6"><label for="LAST4">카드번호 끝 4자리</label><input id="LAST4" class="form-control form-control-sm" inputmode="numeric" pattern="\d{4}" maxlength="4" required></div>
+						<div class="form-group col-12 col-md-6"><label for="CARD_CO">카드사</label><input id="CARD_CO" class="form-control form-control-sm" maxlength="30" placeholder="롯데카드"></div>
+						<div class="form-group col-12 col-md-6"><label for="LAST4">카드번호 끝 4자리</label><input id="LAST4" class="form-control form-control-sm" inputmode="numeric" pattern="\d{4}" maxlength="4" required></div>
 					</div>
 					<div class="form-row">
-						<div class="form-group col-6"><label for="staffQ">사용자 (직원)</label>
+						<div class="form-group col-12 col-md-6"><label for="staffQ">사용자 (직원)</label>
 							<input type="search" id="staffQ" class="form-control form-control-sm mb-1" placeholder="이름·부서 검색" autocomplete="off" aria-controls="STAFF_SQ">
 							<select id="STAFF_SQ" class="form-control form-control-sm" required aria-label="사용자 직원 선택" aria-describedby="staffHint"></select></div>
-						<div class="form-group col-6"><label for="USE_YN">사용 여부</label><select id="USE_YN" class="form-control form-control-sm"><option value="Y">사용</option><option value="N">미사용</option></select></div>
+						<div class="form-group col-12 col-md-6"><label for="USE_YN">사용 여부</label><select id="USE_YN" class="form-control form-control-sm"><option value="Y">사용</option><option value="N">미사용</option></select></div>
 					</div>
 					<small class="text-muted d-block" id="staffHint">사용자는 직원관리 명단에서 고르며, 그 직원은 로그인하면 본인 카드만 봅니다. 카드번호는 끝 4자리만 저장합니다.</small>
 				</div>
@@ -129,8 +129,8 @@
 					<input type="hidden" id="USE_SQ">
 					<div class="alert alert-secondary py-2" id="useClosed" style="display:none;">마감된 건이라 고칠 수 없습니다.</div>
 					<div class="form-row">
-						<div class="form-group col-6"><label for="AMT">금액 (원, 취소는 음수)</label><input id="AMT" class="form-control form-control-sm" inputmode="numeric" required></div>
-						<div class="form-group col-6"><label for="USE_DT">사용일</label><input type="date" id="USE_DT" class="form-control form-control-sm" required></div>
+						<div class="form-group col-12 col-md-6"><label for="AMT">금액 (원, 취소는 음수)</label><input id="AMT" class="form-control form-control-sm" inputmode="numeric" required></div>
+						<div class="form-group col-12 col-md-6"><label for="USE_DT">사용일</label><input type="date" id="USE_DT" class="form-control form-control-sm" required></div>
 					</div>
 					<fieldset class="form-group">
 						<legend class="col-form-label pt-0" style="font-size:inherit;font-weight:700;">사용처 코드</legend>

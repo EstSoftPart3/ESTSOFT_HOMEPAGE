@@ -376,7 +376,7 @@
 		if (opts.indexOf(val) < 0) opts.push(val);
 		opts.forEach(function(o) { $s.append($('<option>').val(o).text(o)); });
 		$s.val(val).data({ row: r, col: col });
-		return $('<div class="col-md-2 col-4 mb-2">').append($('<label>').attr('for', id).text(label)).append($s);
+		return $('<div class="col-md-2 col-6 mb-2">').append($('<label>').attr('for', id).text(label)).append($s);
 	}
 
 	$(document).on('change', '.hr-skill-input', function() {

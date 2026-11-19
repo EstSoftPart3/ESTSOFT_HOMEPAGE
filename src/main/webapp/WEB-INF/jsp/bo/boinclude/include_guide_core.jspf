@@ -16,6 +16,11 @@
 	.eg-top.show { opacity: 1; visibility: visible; transform: none; }
 	.eg-top:hover, .eg-top:focus-visible { background: rgba(17, 24, 39, .9); outline: none; }
 	body.bo-in-frame .eg-top { display: none; }
+	/* 휴대폰: ? 는 작고 반투명, ↑ 는 그 바로 위 */
+	@media (max-width: 767px) {
+		.eg-fab { width: 36px; height: 36px; font-size: 16px; opacity: .8; }
+		.eg-top { right: 22px; bottom: 68px; width: 36px; height: 36px; font-size: 16px; }
+	}
 	.eg-tour { position: fixed; inset: 0; z-index: 1080; }
 	.eg-tour[hidden] { display: none; }
 	.eg-hole { position: fixed; border-radius: 10px; box-shadow: 0 0 0 9999px rgba(15, 23, 42, .62); transition: all .45s cubic-bezier(.65, 0, .35, 1); pointer-events: none; }

@@ -27,6 +27,7 @@
 	.ps-att { display: inline-flex; gap: 6px; align-items: center; border: 1px solid rgba(17,17,17,.12); border-radius: 6px; padding: 4px 10px; background: #fafbfc; font-size: 12px; margin: 8px 12px 12px; }
 	#sendList td { white-space: nowrap; }
 	@media (max-width: 992px) { .ps-two { grid-template-columns: 1fr; } .ps-form { grid-template-columns: 1fr; } }
+	@media (max-width: 767px) { .ps-form[style] { grid-template-columns: 1fr !important; } } /* 62·147행 인라인 2열을 폰에서만 1열로 */
 </style>
 
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>

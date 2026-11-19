@@ -4,6 +4,44 @@
  * - 탭 목록·순서는 localStorage 에 남겨 새로고침 때 되살린다(내용은 새로 불러온다)
  * - 탭 안 화면은 include_top 이 html.in-tab 을 붙여 상단·왼쪽 메뉴를 숨긴다
  */
+// 아래에서 올라오는 목록(휴대폰용 공통). items: HTML 문자열 또는 노드 배열. 바깥·✕·Esc 로 닫고, 돌려준 요소의 .close() 로도 닫는다. 모양은 include_left.jspf 의 .bo-sheet*
+window.boSheet = function (title, items) {
+	var old = document.querySelector('.bo-sheet-bg');
+	if (old && old.close) old.close();
+	var bg = document.createElement('div'), sh = document.createElement('div'), head = document.createElement('div'), x = document.createElement('button'), body = document.createElement('div');
+	var back = document.activeElement;
+	bg.className = 'bo-sheet-bg';
+	sh.className = 'bo-sheet';
+	sh.setAttribute('role', 'dialog');
+	sh.setAttribute('aria-modal', 'true');
+	sh.setAttribute('aria-label', title);
+	head.className = 'bo-sheet-h';
+	head.textContent = title;
+	x.type = 'button';
+	x.className = 'bo-sheet-x';
+	x.setAttribute('aria-label', '닫기');
+	x.textContent = '✕';
+	head.appendChild(x);
+	if (typeof items === 'string') body.innerHTML = items;
+	else [].forEach.call(items || [], function (n) { body.appendChild(n); });
+	sh.appendChild(head);
+	sh.appendChild(body);
+	bg.appendChild(sh);
+	function esc(e) { if (e.key === 'Escape') bg.close(); }
+	bg.close = function () {
+		if (!bg.parentNode) return;
+		bg.remove();
+		document.removeEventListener('keydown', esc);
+		if (back && back.isConnected && back.focus) back.focus();
+	};
+	bg.addEventListener('click', function (e) { if (e.target === bg) bg.close(); });
+	x.onclick = bg.close;
+	document.addEventListener('keydown', esc);
+	document.body.appendChild(bg);
+	(body.querySelector('button, a') || x).focus();
+	return bg;
+};
+
 (function () {
 	var bar = document.getElementById('boTabs');
 	if (!bar || window.top !== window.self) return;
@@ -50,10 +88,15 @@
 
 	function render() {
 		bar.innerHTML = '';
-		var sel = document.createElement('select');
-		sel.className = 'form-control form-control-sm bo-tab-select';
-		sel.setAttribute('aria-label', '열린 화면 ' + tabs.length + '개');
-		tabs.forEach(function (t, i) {
+		// 휴대폰(767px 이하)에서만 보이는 「화면이름 ▾」. 누르면 열린 화면 목록(줄마다 ✕). 데스크톱은 CSS 로 숨김
+		var pick = document.createElement('button');
+		pick.type = 'button';
+		pick.className = 'bo-tab-select bo-tab-pick';
+		pick.setAttribute('aria-haspopup', 'dialog');
+		pick.setAttribute('aria-label', '열린 화면 ' + tabs.length + '개' + (active ? ', 지금 ' + active.title : ''));
+		pick.textContent = (active ? active.title : '화면') + ' ▾';
+		pick.onclick = openPicker;
+		tabs.forEach(function (t) {
 			var wrap = document.createElement('span'), b = document.createElement('button'), x = document.createElement('button');
 			wrap.className = 'bo-tab' + (t === active ? ' on' : '') + (dirty(t) ? ' dot' : '');
 			wrap.tab = t;
@@ -74,17 +117,36 @@
 				wrap.appendChild(x);
 			}
 			bar.appendChild(wrap);
-			var o = document.createElement('option');
-			o.value = i;
-			o.textContent = t.title;
-			o.selected = t === active;
-			sel.appendChild(o);
 		});
-		sel.onchange = function () { activate(tabs[this.value]); };
-		bar.appendChild(sel);
+		bar.appendChild(pick);
 		var on = bar.querySelector('.bo-tab.on');
 		if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 		paintBack();
+	}
+
+	// 휴대폰: 열린 화면 목록. 줄을 누르면 그 화면, ✕ 는 탭 닫기(close 그대로: 홈·마지막 탭 제외, 쓰던 입력은 확인)
+	function openPicker() {
+		var sheet, rows = tabs.map(function (t) {
+			var r = document.createElement('div'), b = document.createElement('button');
+			r.className = 'bo-sheet-row' + (t === active ? ' on' : '');
+			b.type = 'button';
+			b.className = 't';
+			b.textContent = t.title + (dirty(t) ? ' ●' : '');
+			if (t === active) b.setAttribute('aria-current', 'page');
+			b.onclick = function () { sheet.close(); activate(t); };
+			r.appendChild(b);
+			if (tabs.length > 1 && !isHome(t)) {
+				var x = document.createElement('button');
+				x.type = 'button';
+				x.className = 'x';
+				x.setAttribute('aria-label', t.title + ' 닫기');
+				x.textContent = '✕';
+				x.onclick = function () { sheet.close(); close(t); if (tabs.indexOf(t) < 0) openPicker(); };
+				r.appendChild(x);
+			}
+			return r;
+		});
+		sheet = window.boSheet('열린 화면 ' + tabs.length + '개', rows);
 	}
 
 	// 화면 안 '목록' 버튼(상세 → 목록). 뒤로가기는 주소 기록보다 이 화면 단계를 먼저 따른다

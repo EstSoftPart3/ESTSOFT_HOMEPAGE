@@ -85,6 +85,11 @@
 	.pl-netbar b { font-size: 19px; font-variant-numeric: tabular-nums; }
 	.pl-card th { width: 15%; background: #f6f8fa; color: #5f6b75; font-weight: 600; }
 	@media (max-width: 900px) { .pl-two { grid-template-columns: 1fr; } }
+	@media (hover: none) { #lBody td.hr-cell::before { content: '✎ '; color: #0b6e8a; font-size: 10px; } }
+	@media (max-width: 767px) {
+		.pl-calc-btn { padding: 7px 8px; font-size: 13px; }
+		.pl-sort, .pl-dup-arrow, .pl-x { min-width: 32px; min-height: 32px; font-size: 13px; padding: 0 6px; }
+	}
 </style>
 
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
@@ -115,7 +120,7 @@
 							</div>
 						</div>
 							<div class="pl-scroll" id="mainScroll">
-							<table class="table table-sm cal-table mb-0">
+							<table data-no-card class="table table-sm cal-table mb-0">
 								<thead id="lHead"></thead>
 								<tbody id="lBody"></tbody>
 							</table>

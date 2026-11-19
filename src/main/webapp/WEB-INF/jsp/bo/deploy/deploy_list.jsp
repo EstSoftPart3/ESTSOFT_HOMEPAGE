@@ -57,6 +57,7 @@
 	.prj-head .when span { color: #8a949c; font-weight: 400; margin-left: 4px; }
 	.prj-src { font-size: 10.5px; border: 1px solid #d5dbe0; color: #5f6b75; border-radius: 8px; padding: 0 6px; }
 	.prj-meta { display: grid; grid-template-columns: 90px 1fr 90px 1fr; font-size: 12.5px; }
+	@media (max-width: 767px) { .prj-meta { grid-template-columns: 90px 1fr; } }
 	.prj-meta div { padding: 5px 12px; border-bottom: 1px solid rgba(17,17,17,.08); }
 	.prj-meta .k { background: #f6f8fa; color: #5f6b75; font-weight: 700; font-size: 11.5px; }
 	.prj-env { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
@@ -89,11 +90,17 @@
 	.pl-dup-arrow { border: 0; background: none; padding: 0 4px 0 0; color: #b07d00; font-size: 11px; cursor: pointer; }
 	.pl-dup-arrow:focus { outline: 2px solid #16d5ff; border-radius: 3px; }
 	.dp-sub-mark { color: #8a949c; }
+	@media (max-width: 767px) {
+		.dp-headbar, #ymBox { flex-wrap: wrap; row-gap: 6px; }
+		.dp-gantt::before { content: '← 가로로 넘겨 보세요 →'; display: inline-block; position: sticky; left: 8px; font-size: 11px; color: #868e96; margin: 4px 0; }
+		.dp-pay-tog, .dp-pay-band, .pl-btn, .dp-prj { padding: 6px 10px; font-size: 12.5px; }
+		.dp-pay-x, .pl-sort, .pl-dup-arrow { min-width: 32px; min-height: 32px; font-size: 13px; padding: 0 6px; }
+	}
 </style>
 <%@ include file="/WEB-INF/jsp/bo/deploy/deploy_common.jspf"%>
 
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
-				<div class="card-header d-flex align-items-center">
+				<div class="card-header d-flex align-items-center dp-headbar">
 					<h3 class="card-title bTitle"><b>투입현황</b></h3>
 					<div class="ml-auto d-flex align-items-center" style="gap:6px" id="ymBox">
 						<label class="mb-0 small text-muted" for="ym">기준월</label>
@@ -125,7 +132,7 @@
 						</div>
 						<div id="tableView">
 								<div class="pl-scroll" id="mainScroll">
-								<table class="table table-sm cal-table mb-0">
+								<table data-no-card class="table table-sm cal-table mb-0">
 									<thead id="dpHead"></thead>
 									<tbody id="dpBody"></tbody>
 								</table>

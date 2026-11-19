@@ -178,6 +178,29 @@
 			$w.append($('<span class="bo-who-chip" tabindex="0" role="img">').toggleClass('busy', !!u.busy).text(String(u.name).charAt(0)).attr({ title: tip, 'aria-label': tip }));
 		});
 		if (list.length > 8) $w.append($('<span class="bo-who-chip more" tabindex="0" role="img">').text('+' + (list.length - 8)).attr('title', list.slice(8).map(function (u) { return u.name; }).join(', ')));
+		// 휴대폰(767px 이하)에서만 보이는 숫자 칩 하나. 칩·툴팁 대신 누르면 목록(데스크톱은 CSS 로 숨김)
+		whoList = list;
+		$w.append($('<button type="button" class="bo-who-n" aria-haspopup="dialog">').toggleClass('busy', list.some(function (u) { return u.busy; }))
+			.text('👥 ' + list.length).attr('aria-label', '지금 접속 중 ' + list.length + '명'));
+	}
+	var whoList = [];
+	function openWho() {
+		var rows = whoList.map(function (u) {
+			return $('<div class="bo-sheet-row">').append($('<span class="t">').append($('<b>').text(u.name), document.createTextNode(' · '),
+				u.busy ? $('<span class="busy">').text('작업 중: ' + u.screen) : document.createTextNode(u.screen)))[0];
+		});
+		if (!rows.length) rows = [$('<div class="bo-sheet-row">').append($('<span class="t">').text('지금 접속한 다른 관리자가 없습니다'))[0]];
+		window.boSheet('지금 접속 중 ' + whoList.length + '명', rows);
+	}
+	// 휴대폰 ⋯ 메뉴: 상단 바에서 숨긴 피드백·홈페이지/관리자 전환
+	function openMore() {
+		var sheet, n = $('#fbBtn .fb-dot:not([hidden])').text();
+		var fb = $('<button type="button" class="t">').text('💬 피드백' + (n ? ' (상태 바뀐 내 피드백 ' + n + '건)' : '')).on('click', function () { sheet.close(); $('#fbBtn').trigger('click'); });
+		var rows = [$('<div class="bo-sheet-row">').append(fb)[0]];
+		$('.main-header .mode-switch:not([hidden]) a').each(function () {
+			rows.push($('<div class="bo-sheet-row">').toggleClass('on', $(this).hasClass('active')).append($(this).clone().attr('class', 't'))[0]);
+		});
+		sheet = window.boSheet('더보기', rows);
 	}
 	function startPresence() {
 		var last = '', sentAt = 0;
@@ -198,6 +221,7 @@
 		// 탭 안 화면(iframe)은 상단 메뉴가 없어 맨 위 창만 숫자를 읽는다
 		if (window.top !== window || !document.getElementById('fbBtn')) return;
 		if (document.getElementById('boWho')) startPresence();
+		if (window.boSheet) { $(document).on('click', '.bo-who-n', openWho); $(document).on('click', '#boMore', openMore); }
 		$.post('/admin/feedback/badgeData.do').done(function (res) {
 			if (!res.result) return;
 			paintBadge(res.result.unseen);

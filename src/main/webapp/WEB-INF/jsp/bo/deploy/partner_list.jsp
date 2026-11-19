@@ -35,6 +35,11 @@
 	.pt-seg input:checked + label::before { content: '✓'; }
 	.pt-seg input:focus-visible + label { box-shadow: 0 0 0 .2rem rgba(0,123,255,.35); position: relative; }
 	#partnerForm .pt-auto { background: #e3f6fb; border-color: #7fcde0; }
+	@media (hover: none) { .pt-chip .big { display: none !important; } } /* 터치는 크게 보기 없이 */
+	@media (max-width: 767px) {
+		.pt-q select { height: 34px; }
+		.pt-chip .x { min-width: 32px; min-height: 32px; }
+	}
 </style>
 
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>

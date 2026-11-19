@@ -57,11 +57,11 @@ if (document.documentElement.classList.contains('in-pop')) (function() {
   <link rel="stylesheet" href="/resources/bo/plugins/jsgrid/jsgrid-theme.min.css">
 
 
-<script src="/resources/common/ui-table.js?v=20261118pin"></script>
+<script src="/resources/common/ui-table.js?v=20261119m"></script>
 <script src="/resources/common/bo-list.js?v=20261113"></script>
-<script src="/resources/common/bo-view.js?v=20261117"></script>
-<script src="/resources/common/bo-tabs.js?v=20261118home"></script>
-<script src="/resources/common/bo-feedback.js?v=20261119w"></script>
+<script src="/resources/common/bo-view.js?v=20261119m"></script>
+<script src="/resources/common/bo-tabs.js?v=20261119m"></script>
+<script src="/resources/common/bo-feedback.js?v=20261119m"></script>
 <script>
 // 체크박스 Shift+클릭 범위 선택: 같은 목록·같은 class 의 직전 클릭 칸부터 지금 칸까지 지금 칸 상태로 맞춘다
 (function() {
@@ -107,9 +107,17 @@ $(document).ajaxComplete(function(e, xhr) {
 	var r = xhr.responseJSON;
 	if (r && typeof r.error === 'string' && !xhr.boNeedLinkDone) { xhr.boNeedLinkDone = true; boNeedLink(r.error); }
 });
+// 폰 전체 화면 팝업: 저장 줄(sticky)이 머리 바로 아래 붙게 머리 높이를 넘긴다(include_top 의 --bo-mh)
+$(document).on('shown.bs.modal', '.modal', function() {
+	if (!window.matchMedia('(max-width: 767px)').matches) return;
+	var h = $(this).find('.modal-header').outerHeight();
+	if (h) this.style.setProperty('--bo-mh', h + 'px');
+});
 // 메모 입력: Enter 는 등록, Shift+Enter 는 줄바꿈. 한글 조합 중 Enter(isComposing)는 넘긴다(크롬은 조합 확정 뒤 Enter 를 한 번 더 보낸다)
 $(document).on('keydown', 'textarea.enter-send, textarea.bootbox-input-textarea', function(e) {
 	if (e.key !== 'Enter' || e.shiftKey || e.originalEvent.isComposing) return;
+	// 폰(767px 이하·터치)은 Shift 가 없으니 Enter 는 줄바꿈, 저장은 옆의 등록 버튼으로
+	if (window.matchMedia('(max-width: 767px), (pointer: coarse)').matches) return;
 	e.preventDefault();
 	// bootbox prompt 입력칸만 확인 버튼을 누른다. 메모 창(bootbox.dialog)의 메모 칸은 자기 '남기기'로
 	if ($(this).is('.bootbox-input-textarea')) $(this).closest('.bootbox').find('.bootbox-accept').click(); else $(this).trigger('enter-send');

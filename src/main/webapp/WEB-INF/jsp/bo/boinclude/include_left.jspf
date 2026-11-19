@@ -29,6 +29,8 @@
       <a href="/eep/mainPage.do" class="mode-switch-item"><i class="fas fa-home"></i> 홈페이지</a>
       <a href="/admin/home.do" class="mode-switch-item active" aria-current="page"><i class="fas fa-cog"></i> 관리자</a>
     </div>
+    <%-- 휴대폰(767px 이하)에서만 보임: 피드백·화면 전환을 이 메뉴로 옮긴다(bo-feedback.js) --%>
+    <button type="button" id="boMore" class="nav-link bo-pill bo-more" aria-label="더보기: 피드백·화면 전환" aria-haspopup="dialog">⋯</button>
     <style>
     .mode-switch { display: inline-flex; align-items: center; align-self: center; height: 34px; padding: 3px; gap: 2px; border-radius: 999px; background: #F2F8FE; border: 1px solid rgba(17,17,17,.08); white-space: nowrap; }
     .mode-switch[hidden] { display: none; }
@@ -124,6 +126,36 @@
     .bo-tab-menu button[disabled] { color: #aab2b9; }
     .bo-tab-menu hr { margin: 4px 0; }
     .bo-tab-toast { position: fixed; top: 64px; right: 16px; z-index: 1100; max-width: 360px; padding: 8px 12px; border-radius: 8px; background: #111; color: #fff; font-size: 12.5px; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+    /* ── 휴대폰(767px 이하) 전용. 데스크톱에서는 아래 두 줄로 숨긴 것 말고 바뀌는 것이 없다 ── */
+    .main-header .bo-more, .bo-who-n { display: none; }
+    /* 아래에서 올라오는 목록(window.boSheet, bo-tabs.js). 폰 화면에서만 연다 */
+    .bo-sheet-bg { position: fixed; inset: 0; z-index: 1075; background: rgba(15,23,42,.45); display: flex; align-items: flex-end; }
+    .bo-sheet { width: 100%; max-height: 75vh; overflow-y: auto; background: #fff; border-radius: 14px 14px 0 0; box-shadow: 0 -6px 24px rgba(0,0,0,.18); padding: 4px 0 calc(8px + env(safe-area-inset-bottom)); }
+    .bo-sheet-h { position: sticky; top: 0; display: flex; align-items: center; padding: 8px 6px 8px 16px; background: #fff; font-weight: 700; font-size: 14px; color: #111; }
+    .bo-sheet-x { margin-left: auto; width: 40px; height: 40px; border: 0; border-radius: 8px; background: none; color: #6c757d; font-size: 15px; }
+    .bo-sheet-row { display: flex; align-items: center; min-height: 46px; border-top: 1px solid #eef0f2; font-size: 14px; color: #222; }
+    .bo-sheet-row > .t { flex: 1 1 auto; min-width: 0; min-height: 46px; padding: 0 16px; display: flex; align-items: center; gap: 6px; border: 0; background: none; text-align: left; color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bo-sheet-row > .x { flex: 0 0 auto; width: 46px; height: 46px; border: 0; background: none; color: #9aa4ac; font-size: 14px; }
+    .bo-sheet-row.on > .t { color: #0b6e8a; font-weight: 700; }
+    .bo-sheet-row .busy { color: #c82333; font-weight: 600; }
+    @media (max-width: 767px) {
+      .bo-push-txt, .bo-back-txt { display: none; }
+      .main-header .bo-pill { padding: 0 10px; margin: 0 2px; }
+      .main-header #fbBtn, .main-header .mode-switch { display: none; }
+      .main-header .bo-more { display: inline-flex; position: relative; font-size: 18px; }
+      /* 안 본 피드백 상태가 있으면 ⋯ 에 노란 점 */
+      .main-header #fbBtn:has(.fb-dot:not([hidden])) ~ .bo-more::after { content: ''; position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%; background: #e0a800; }
+      .main-header .bo-who { margin-right: 2px; }
+      .main-header .bo-who > .fa-user-friends, .main-header .bo-who-chip { display: none; }
+      .main-header .bo-who-n { display: inline-flex; align-items: center; height: 34px; padding: 0 10px; border-radius: 999px; border: 1px solid rgba(17,17,17,.12); background: #fff; color: #0b6e8a; font-size: 13px; font-weight: 700; white-space: nowrap; }
+      .main-header .bo-who-n.busy { border-color: #c82333; color: #a32020; background: #fdeaea; }
+      .bo-tabs .bo-tab-pick { flex: 0 1 auto; min-width: 0; max-width: 100%; height: 34px; padding: 0 12px; border: 1px solid #0b6e8a; border-radius: 8px; background: #eef9fc; color: #0b6e8a; font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      /* 터치 영역 36px 이상 */
+      .bo-user-btn { width: 36px; height: 36px; }
+      .bo-link button { min-height: 36px; min-width: 48px; }
+    }
+    /* 마우스 올리기가 없는 기기: 구글 연결 「해제」를 늘 보인다 */
+    @media (hover: none) { .bo-link .off { display: inline-block; } }
     </style>
 
   </nav>

@@ -63,7 +63,7 @@
 							<div class="ml-auto"><button type="button" class="btn btn-sm btn-outline-secondary" id="btnOpenAll">모두 펴기</button><button type="button" class="btn btn-sm btn-outline-secondary" id="btnFoldAll">모두 접기</button></div>
 						</div>
 						<div class="ta-scroll">
-							<table class="table table-sm cal-table mb-0 ta" id="ta">
+							<table data-no-card class="table table-sm cal-table mb-0 ta" id="ta">
 								<thead id="taHead"></thead>
 								<tbody id="taBody"></tbody>
 								<tfoot id="taFoot"></tfoot>
@@ -97,19 +97,19 @@
 				<div class="modal-body">
 					<input type="hidden" id="TRADE_SQ">
 					<div class="form-row">
-						<div class="form-group col-7"><label for="PARTNER_SQ" id="partnerLabel">거래처</label><select id="PARTNER_SQ" class="form-control form-control-sm" required></select>
+						<div class="form-group col-12 col-md-7"><label for="PARTNER_SQ" id="partnerLabel">거래처</label><select id="PARTNER_SQ" class="form-control form-control-sm" required></select>
 							<label for="PARTNER_NM" class="sr-only">거래처 이름 직접 입력</label><input id="PARTNER_NM" class="form-control form-control-sm mt-1" maxlength="200" placeholder="거래처 이름 직접 입력" style="display:none;"></div>
-						<div class="form-group col-5"><label for="TYPE_NM">구분</label><input id="TYPE_NM" class="form-control form-control-sm" maxlength="50" list="typeList" required placeholder="임대료, 장비, 용역…"><datalist id="typeList"></datalist></div>
+						<div class="form-group col-12 col-md-5"><label for="TYPE_NM">구분</label><input id="TYPE_NM" class="form-control form-control-sm" maxlength="50" list="typeList" required placeholder="임대료, 장비, 용역…"><datalist id="typeList"></datalist></div>
 					</div>
 					<div class="form-group"><label for="ITEM_NM">품목</label><input id="ITEM_NM" class="form-control form-control-sm" maxlength="300" required></div>
 					<div class="form-row">
-						<div class="form-group col-6"><label for="START_DT">시작일</label><input type="date" id="START_DT" class="form-control form-control-sm"></div>
-						<div class="form-group col-6"><label for="END_DT">종료일</label><input type="date" id="END_DT" class="form-control form-control-sm"></div>
+						<div class="form-group col-12 col-md-6"><label for="START_DT">시작일</label><input type="date" id="START_DT" class="form-control form-control-sm"></div>
+						<div class="form-group col-12 col-md-6"><label for="END_DT">종료일</label><input type="date" id="END_DT" class="form-control form-control-sm"></div>
 					</div>
 					<div class="form-row">
-						<div class="form-group col-4"><label for="AMT">공급가액</label><input id="AMT" class="form-control form-control-sm text-right" inputmode="numeric" required></div>
-						<div class="form-group col-4"><label for="VAT">세액 (10% 자동)</label><input id="VAT" class="form-control form-control-sm text-right" readonly tabindex="-1"></div>
-						<div class="form-group col-4"><label for="TOTAL">합계금액</label><input id="TOTAL" class="form-control form-control-sm text-right" readonly tabindex="-1"></div>
+						<div class="form-group col-12 col-md-4"><label for="AMT">공급가액</label><input id="AMT" class="form-control form-control-sm text-right" inputmode="numeric" required></div>
+						<div class="form-group col-12 col-md-4"><label for="VAT">세액 (10% 자동)</label><input id="VAT" class="form-control form-control-sm text-right" readonly tabindex="-1"></div>
+						<div class="form-group col-12 col-md-4"><label for="TOTAL">합계금액</label><input id="TOTAL" class="form-control form-control-sm text-right" readonly tabindex="-1"></div>
 					</div>
 					<div class="form-group"><label for="MEMO">메모</label><input id="MEMO" class="form-control form-control-sm" maxlength="500"></div>
 					<div class="form-row align-items-center mb-0">

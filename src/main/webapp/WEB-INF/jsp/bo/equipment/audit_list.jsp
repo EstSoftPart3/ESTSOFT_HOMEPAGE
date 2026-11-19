@@ -21,6 +21,7 @@
 	.au-link { background: none; border: 0; padding: 0; color: #0b6e8a; text-decoration: underline; }
 	.au-who { font-size: 12px; white-space: nowrap; }
 	@media (max-width: 768px) { .au-layout { grid-template-columns: 1fr; } }
+	.m-back { display: none; } @media (max-width: 767px) { .m-back { display: inline-block; } }
 </style>
 
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
@@ -36,6 +37,7 @@
 						<div id="rounds" role="group" aria-label="조사 회차"></div>
 						<div class="cal-panel">
 							<div class="cal-panel-head">
+								<button type="button" class="btn btn-sm btn-light m-back" onclick="document.getElementById('rounds').scrollIntoView({ behavior: 'smooth' });">← 목록</button>
 								<span id="title">회차를 골라 주세요</span>
 								<span class="au-tools">
 									<label for="q" class="sr-only">이름·장비번호 검색</label>
@@ -146,7 +148,7 @@
 			var want = pick || (current && current.AUDIT_SQ) || (rounds[0] && rounds[0].AUDIT_SQ);
 			rounds.forEach(function(x) {
 				$r.append($('<button type="button" class="au-round">').toggleClass('active', x.AUDIT_SQ === want).attr('aria-pressed', x.AUDIT_SQ === want).append($('<span>').text(x.AUDIT_YM)).append($('<span class="eq-pill">').toggleClass('warn', x.STATUS_CD === 'OPEN').text(x.STATUS_CD === 'OPEN' ? '진행' : '마감'))
-					.on('click', function() { loadRounds(x.AUDIT_SQ); }));
+					.on('click', function() { loadRounds(x.AUDIT_SQ); if (matchMedia('(max-width: 767px)').matches) $('#title').closest('.cal-panel')[0].scrollIntoView({ behavior: 'smooth' }); }));
 			});
 			current = rounds.filter(function(x) { return x.AUDIT_SQ === want; })[0] || null;
 			if (current) loadDetail();

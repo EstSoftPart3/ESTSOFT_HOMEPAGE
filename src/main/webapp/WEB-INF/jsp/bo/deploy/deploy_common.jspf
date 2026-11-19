@@ -42,6 +42,14 @@
 	.dp-pill[tabindex] { cursor: help; }
 	.dp-info { border: 0; background: none; color: #0b6e8a; font-size: 13px; line-height: 1; padding: 0 3px; cursor: pointer; vertical-align: middle; }
 	.dp-info:hover, .dp-info:focus { color: #06222b; outline: 2px solid #16d5ff; border-radius: 3px; }
+	/* 터치 화면 시트(dpTap 이 hover:none 에서만 만든다) */
+	#dpSheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2000; max-height: 70vh; overflow: auto; background: #fff; border-radius: 14px 14px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,.25); padding: 8px 0 12px; display: none; }
+	#dpSheet .dp-card { width: auto; border: 0; box-shadow: none; }
+	#dpSheet .dp-sheet-x { position: sticky; top: 0; float: right; margin-right: 6px; width: 40px; height: 40px; border: 0; background: #fff; font-size: 24px; line-height: 1; color: #5f6b75; border-radius: 50%; }
+	@media (max-width: 767px) {
+		.dp-direct { width: 32px; height: 32px; font-size: 14px; }
+		.dp-info { min-width: 32px; min-height: 32px; font-size: 16px; }
+	}
 </style>
 <div id="dpCard" aria-hidden="true"></div>
 <div class="modal fade" id="dpInfo" tabindex="-1" role="dialog" aria-labelledby="dpInfoTitle" aria-hidden="true" style="z-index:1065">
@@ -115,7 +123,7 @@ function dpInfo(title, body) {
 	$('#dpInfoTitle').text(title);
 	var $b = $('#dpInfoBody').empty();
 	if (body instanceof $) $b.append(body);
-	else $b.append($('<table class="table table-sm mb-0">').append(body.map(function(r) { return $('<tr>').append($('<th class="text-muted font-weight-normal" style="width:140px">').text(r[0])).append($('<td>').text(r[1] || '—')); })));
+	else $b.append($('<table class="table table-sm mb-0">').append(body.map(function(r) { return $('<tr>').append($('<th class="text-muted font-weight-normal">').css('width', window.matchMedia('(max-width: 767px)').matches ? 96 : 140).text(r[0])).append($('<td>').text(r[1] || '—')); })));
 	$('#dpInfo').modal('show');
 }
 // 이 파일은 jQuery(include_bottom)보다 먼저 읽히므로 문서가 다 읽힌 뒤에 붙인다
@@ -132,6 +140,7 @@ function dpHide() { $('#dpCard').hide(); }
 // html(): 카드 HTML 또는 Promise. 마우스와 키보드 초점 모두 연다
 function dpHover($row, $focus, html) {
 	var token = 0;
+	if (window.matchMedia && matchMedia('(hover: none)').matches) { dpTap($row, html); return; }
 	function open(x, y) {
 		var my = ++token, h = html();
 		if (!h) return;
@@ -141,5 +150,25 @@ function dpHover($row, $focus, html) {
 	$row.on('mouseenter', function(e) { open(e.clientX, e.clientY); }).on('mousemove', function(e) { if ($('#dpCard').is(':visible')) dpPlace(e.clientX, e.clientY); })
 		.on('mouseleave', function() { token++; dpHide(); });
 	$focus.on('focus', function() { var r = this.getBoundingClientRect(); open(r.left, r.bottom); }).on('blur', function() { token++; dpHide(); });
+}
+// 터치 화면(hover:none): 누르면 같은 카드를 화면 아래 시트로. 누르기 동작이 나중에 붙는 것(🧮·🤝)은 시트가 열린 채 한 번 더 누르면 그 동작.
+// 이미 누르기 동작이 붙은 것(▸ 중복계약·📂 등)은 그 동작이 먼저라 시트를 붙이지 않는다
+function dpTap($row, html) {
+	$row.filter(function() { var ev = $._data(this, 'events'); return !(ev && ev.click); }).css('cursor', 'pointer').on('click', function(e) {
+		var el = this, $s = $('#dpSheet');
+		if ($s.is(':visible') && $s.data('for') === el) { $s.hide(); return; } // 다음 핸들러(원래 동작)로 넘긴다
+		e.stopImmediatePropagation(); e.preventDefault();
+		var evs = $._data(el, 'events'), more = evs && evs.click && evs.click.length > 1;
+		$.when(html()).then(function(h) {
+			if (!h) return;
+			if (!$s.length) {
+				$s = $('<div id="dpSheet" role="dialog" aria-modal="false"><button type="button" class="dp-sheet-x" aria-label="닫기">×</button><div class="dp-sheet-b"></div></div>').appendTo('body');
+				$s.on('click', '.dp-sheet-x', function() { $s.hide(); });
+				$(document).on('click', function(ev) { if ($s.is(':visible') && !$(ev.target).closest('#dpSheet').length && ev.target !== $s.data('for')) $s.hide(); });
+			}
+			$s.data('for', el).find('.dp-sheet-b').html(h).append(more ? '<div class="dp-mute small p-2">한 번 더 누르면 열어요</div>' : '');
+			$s.show();
+		});
+	});
 }
 </script>

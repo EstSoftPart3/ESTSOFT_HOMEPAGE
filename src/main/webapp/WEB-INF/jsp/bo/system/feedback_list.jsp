@@ -28,7 +28,8 @@
 	.fl-tabs { display: flex; gap: 4px; margin: 10px 0 2px; border-bottom: 1px solid rgba(17,17,17,.1); }
 	.fl-tabs button { border: 0; background: none; padding: 5px 12px; font-size: 13px; font-weight: 700; color: #5f6b75; border-bottom: 2px solid transparent; margin-bottom: -1px; }
 	.fl-tabs button.on { color: #0b6e8a; border-bottom-color: #0b6e8a; }
-	@media (max-width: 991px) { .fl-split { grid-template-columns: 1fr; } .fl-split > div + div { border-left: 0; border-top: 1px solid rgba(17,17,17,.08); } .fl-split > .fl-handle { display: none; } }
+	@media (max-width: 991px) { .fl-split { grid-template-columns: 1fr; } .fl-split > div + div { border-left: 0; border-top: 1px solid rgba(17,17,17,.08); } .fl-split > .fl-handle { display: none; } .fl-split { min-height: 0; } }
+	.m-back { display: none; } @media (max-width: 767px) { .m-back { display: inline-block; } }
 </style>
 
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
@@ -119,7 +120,7 @@
 		var rows = data.list.filter(function(f) { return checked[f.STATUS_CD]; }), $b = $('#flBody').empty();
 		if (!rows.length) boEmpty($b, '해당하는 피드백이 없습니다.');
 		rows.forEach(function(f) {
-			$b.append($('<tr>').toggleClass('sel', f.FB_SQ === pick).on('click', function() { pick = f.FB_SQ; render(); })
+			$b.append($('<tr>').toggleClass('sel', f.FB_SQ === pick).on('click', function() { pick = f.FB_SQ; render(); if (matchMedia('(max-width: 767px)').matches) document.getElementById('flDetail').scrollIntoView({ behavior: 'smooth' }); })
 				.append($('<td>').text(f.REG_DT.substr(5, 5))).append($('<td>').append($('<span class="fb-pill">').addClass(BO_FB.tone[f.STATUS_CD] || '').text(st[f.STATUS_CD] || f.STATUS_CD)))
 				.append($('<td>').text(f.SCREEN_NM || '')).append($('<td>').text(kind[f.KIND_CD] || f.KIND_CD))
 				.append($('<td>').append($('<span class="td-cut">').text(f.CONTENT.replace(/\s+/g, ' '))))
@@ -135,6 +136,7 @@
 		if (!f) { $d.append('<div class="text-muted">왼쪽에서 피드백을 고르세요.</div>'); return; }
 		var st = BO_FB.status(), open = f.STATUS_CD !== 'DONE' && f.STATUS_CD !== 'REJECT';
 		// 머리: 왼쪽 번호·상태·요청자, 오른쪽 위 진행·보류·반려(어느 탭에서나, 가이드 버튼과 안 겹치게)
+		$d.append($('<button type="button" class="btn btn-sm btn-light m-back mb-2">← 목록</button>').on('click', function() { document.getElementById('flBody').scrollIntoView({ behavior: 'smooth' }); }));
 		var $head = $('<div class="fl-head">').appendTo($d), $ttl = $('<div>').appendTo($head);
 		$ttl.append($('<h4>').text('#' + f.FB_SQ).append($('<span class="fb-pill">').addClass(BO_FB.tone[f.STATUS_CD] || '').text(st[f.STATUS_CD])));
 		$ttl.append($('<div class="small text-muted">').text([f.EMPLY_NM || f.EMPLY_ID, f.REG_DT, f.SCREEN_NM, BO_FB.kind()[f.KIND_CD]].filter(Boolean).join(' · ')));

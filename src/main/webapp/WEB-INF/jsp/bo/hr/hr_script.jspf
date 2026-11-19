@@ -40,8 +40,9 @@ function hrMemoFeed($box, api, key, changed, focus) {
 	var data = $.isPlainObject(key) ? key : { TARGET_SQ: key };
 	hrPost(api.list, data, function(res) {
 		function redraw() { hrMemoFeed($box, api, key, changed, true); if (changed) changed(); }
-		var $ta = $('<textarea class="form-control form-control-sm enter-send" rows="2" aria-label="메모 입력" placeholder="새 메모 · Enter 등록, Shift+Enter 줄바꿈 (작성자·일시는 자동)">').attr('maxlength', api.max || 2000);
-		var $add = $('<button type="button" class="btn btn-sm btn-primary">남기기</button>').on('click', function() {
+		var phone = window.matchMedia('(max-width: 767px), (pointer: coarse)').matches; // 폰은 Enter=줄바꿈(include_bottom), 버튼으로 등록
+		var $ta = $('<textarea class="form-control form-control-sm enter-send" rows="2" aria-label="메모 입력">').attr('placeholder', phone ? '새 메모 · 작성 후 「메모 등록」 (작성자·일시는 자동)' : '새 메모 · Enter 등록, Shift+Enter 줄바꿈 (작성자·일시는 자동)').attr('maxlength', api.max || 2000);
+		var $add = $('<button type="button" class="btn btn-sm btn-primary">').text(phone ? '메모 등록' : '남기기').on('click', function() {
 			if (!$.trim($ta.val())) { $ta.focus(); return; }
 			$add.prop('disabled', true);
 			hrPost(api.save, $.extend({ CONTENT: $ta.val() }, data), redraw, function() { $add.prop('disabled', false); });

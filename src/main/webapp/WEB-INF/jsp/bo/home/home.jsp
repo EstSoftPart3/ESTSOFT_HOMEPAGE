@@ -79,6 +79,15 @@
 	.hm-pop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; border: 0; z-index: 1060; background: transparent; }
 	.hm-pop-wait { position: fixed; inset: 0; z-index: 1059; background: rgba(0,0,0,.25); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; }
 	@media (max-width: 991px) { .hm-money { grid-template-columns: 1fr; } }
+	#hmWg .mv { border: 1px solid #ccd3d8; border-radius: 4px; background: #fff; padding: 0 5px; font-size: 10px; line-height: 16px; color: #5f6b75; }
+	#hmWgBtn { display: none; }
+	@media (max-width: 767px) {
+		#hmWgTab { display: none !important; }
+		#hmWgBtn { display: inline-block; margin-left: auto; }
+		.hm-hello .ml-auto { margin-left: 0 !important; width: 100%; }
+		#hmWg .mv, #hmWg .sz { min-width: 34px; min-height: 34px; font-size: 13px; }
+		.hm-pk .m { grid-template-columns: repeat(8, 1fr); grid-auto-rows: 28px; gap: 4px; }
+	}
 </style>
 <link rel="stylesheet" href="/resources/bo/plugins/fullcalendar/main.min.css">
 <link rel="stylesheet" href="/resources/bo/plugins/fullcalendar-daygrid/main.min.css">
@@ -87,6 +96,7 @@
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-body">
 					<div class="hm-hello"><b><c:out value="${loginInfo.loginInfo[0].emplyNm}"/>님, 안녕하세요</b><span class="text-muted" id="hmToday"></span>
+						<button type="button" class="btn btn-sm btn-outline-secondary" id="hmWgBtn" aria-controls="hmWg">⚙ 위젯</button>
 						<span class="ml-auto text-muted">열 때 한 번 불러와요 · <a href="/admin/home.do">새로고침</a></span></div>
 					<div class="hm-grid" id="hmCards">
 						<div class="hm-card" id="hmKpiCard" data-key="KPI"><header>숫자 한눈에 보기</header><div class="hm-body"><div class="hm-kpis" id="hmKpis"></div></div></div>
@@ -105,6 +115,7 @@
 	// 서버가 넣은 것: cards(열 수 있는 카드), journals(내 결재 차례), memos(최근 메모)
 	var HOME = ${homeJson};
 	var today = moment().startOf('day');
+	var PHONE = window.matchMedia && matchMedia('(max-width: 767px)').matches;
 	var URL = {
 		staff: '/admin/staff/openStaffList.do', deploy: '/admin/deploy/openDeployList.do', intv: '/admin/hr/openInterviewList.do', trainee: '/admin/hr/openTraineeList.do',
 		pay: '/admin/pay/openPayList.do', journal: '/admin/lab/openJournalList.do', eqp: '/admin/equipment/openEquipmentList.do', member: '/admin/member/memberList.do', lab: '/admin/lab/openLabManage.do'
@@ -274,7 +285,7 @@
 	function openTask(o, sel) {
 		var t = o ? $.extend({}, o.t, { START_DT: o.occ, END_DT: o.end }) : $.extend({ RPT_CD: 'NONE', ALL_DAY: 'Y' }, sel);
 		function inp(type, k) { return $('<input class="form-control form-control-sm">').attr({ type: type, name: k }).val(t[k] || ''); }
-		function row(label, $c) { return $('<div class="form-group row mb-2">').append($('<label class="col-3 col-form-label col-form-label-sm">').text(label)).append($('<div class="col-9 form-row-x">').append($c)); }
+		function row(label, $c) { return $('<div class="form-group row mb-2">').append($('<label class="col-12 col-md-3 col-form-label col-form-label-sm">').text(label)).append($('<div class="col-12 col-md-9 form-row-x">').append($c)); }
 		var $all = $('<label class="mb-0"><input type="checkbox" name="ALL_DAY"> 종일</label>');
 		$all.find('input').prop('checked', t.ALL_DAY !== 'N');
 		var $rpt = $('<select class="form-control form-control-sm" name="RPT_CD" style="width:auto">').append([['NONE', '반복 없음'], ['DAY', '매일'], ['WEEK', '매주'], ['MONTH', '매월 (같은 날)']].map(function(r) { return $('<option>').val(r[0]).text(r[1]); })).val(t.RPT_CD || 'NONE');
@@ -408,8 +419,9 @@
 			},
 			eventDrop: taskMoved, eventResize: taskMoved,
 			locales: window.FullCalendarLocales ? [FullCalendarLocales.ko] : [], locale: 'ko',
-			defaultView: ['dayGridMonth', 'timeGridWeek', 'timeGridDay'].indexOf(store('hmCalView')) >= 0 ? store('hmCalView') : 'dayGridMonth',
-			header: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
+			// 폰: list 플러그인이 없어 월 보기 고정, 주·일 버튼은 뺀다
+			defaultView: !PHONE && ['dayGridMonth', 'timeGridWeek', 'timeGridDay'].indexOf(store('hmCalView')) >= 0 ? store('hmCalView') : 'dayGridMonth',
+			header: PHONE ? { left: 'prev,next', center: 'title', right: 'today' } : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
 			buttonText: { today: '오늘', month: '월', week: '주', day: '일' },
 			height: 'auto', nowIndicator: true, minTime: '08:00:00', maxTime: '20:00:00', slotDuration: '01:00:00', snapDuration: '00:30:00',
 			// 월 보기 행 높이를 폭에 비례해 강제하지 않게(일정 수만큼만, 빈 주는 날짜 숫자 줄만): monthMode 는 auto 여도 폭÷aspectRatio 를 6주로 나눠 넣는다
@@ -510,6 +522,8 @@
 				$('<span class="g" tabindex="0" role="button" title="끌어서 순서 바꾸기 (↑↓ 키로도)">⠿⠿</span>').attr('aria-label', wg(k).nm + ' 순서 옮기기'),
 				$('<input type="checkbox">').attr({ id: id, title: '홈에 보이기' }).prop('checked', !$c.hasClass('hm-off')),
 				$('<label class="nm">').attr('for', id).text(wg(k).nm),
+				$('<button type="button" class="mv" data-d="-1">▲</button>').attr('aria-label', wg(k).nm + ' 위로'),
+				$('<button type="button" class="mv" data-d="1">▼</button>').attr('aria-label', wg(k).nm + ' 아래로'),
 				$('<button type="button" class="sz" aria-expanded="false">').attr('aria-label', wg(k).nm + ' 크기 ' + s[0] + '×' + s[1] + ' 바꾸기').text(s[0] + '×' + s[1])));
 		});
 	}
@@ -556,8 +570,9 @@
 			});
 		}
 		$tab.on('click', function() { open(true); });
+		$('#hmWgBtn').on('click', function() { open(!$p.hasClass('open')); });
 		$(document).on('keydown', function(e) { if (e.key === 'Escape' && $p.hasClass('open') && !$('.modal.show').length) open(false); });
-		$(document).on('mousedown', function(e) { if ($p.hasClass('open') && !$(e.target).closest('#hmWg, #hmWgTab, .modal, .bootbox').length) open(false); });
+		$(document).on('mousedown', function(e) { if ($p.hasClass('open') && !$(e.target).closest('#hmWg, #hmWgTab, #hmWgBtn, .modal, .bootbox').length) open(false); });
 		var $u = $p.find('ul'), drag = null;
 		function card(k) { return cards().filter('[data-key="' + k + '"]'); }
 		// 메뉴 순서 = 홈 순서
@@ -586,6 +601,13 @@
 			$u.children('li.pk').remove(); $u.find('.sz').attr('aria-expanded', false);
 			if (e.key === 'ArrowUp' && $li.prev().length) $li.prev().before($li); else if (e.key === 'ArrowDown' && $li.next().length) $li.next().after($li); else return;
 			e.preventDefault(); $(this).focus(); syncOrder();
+		});
+		// ▲▼: 끌기·키 없이(폰) 한 칸씩 옮긴다
+		$u.on('click', '.mv', function() {
+			var $li = $(this).closest('li'), up = $(this).attr('data-d') === '-1';
+			$u.children('li.pk').remove(); $u.find('.sz').attr('aria-expanded', false);
+			if (up && $li.prev('li.wg').length) $li.prev().before($li); else if (!up && $li.next('li.wg').length) $li.next().after($li); else return;
+			$(this).focus(); syncOrder();
 		});
 	}
 

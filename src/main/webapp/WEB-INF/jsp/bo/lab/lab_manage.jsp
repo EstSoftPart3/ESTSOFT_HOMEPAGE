@@ -4,6 +4,7 @@
 <%@ include file="/WEB-INF/jsp/bo/lab/lab_style.jspf"%>
 <style>
 	.lab-tl { table-layout: fixed; min-width: 760px; }
+	@media (max-width: 767px) { .lab-tl-wrap::before { content: '← 가로로 넘겨 보세요 →'; display: inline-block; position: sticky; left: 8px; font-size: 11px; color: #868e96; margin: 4px 0; } }
 	.lab-tl th, .lab-tl td { padding: 8px 6px; }
 	.lab-tl .m { text-align: center; font-size: 13px; padding: 8px 0; }
 	.lab-tl .m.now { background: #343a40; color: #fff; }
@@ -343,7 +344,7 @@
 			});
 			$r.append($('<td class="small">').text(p.periods.slice().reverse().map(function(x) { return x.START_DT + ' ~ ' + (x.END_DT || '소속 중'); }).join(' · '))).appendTo($t);
 		});
-		$b.append($('<div class="table-responsive">').append($('<table class="table table-sm cal-table mb-0 lab-tl">').append($('<thead>').append($h), $t)));
+		$b.append($('<div class="table-responsive lab-tl-wrap">').append($('<table class="table table-sm cal-table mb-0 lab-tl">').append($('<thead>').append($h), $t)));
 	}
 
 	// ── 결재라인: 목록에서 바로 순서 변경·추가·삭제, 바꾸면 바로 저장 ──

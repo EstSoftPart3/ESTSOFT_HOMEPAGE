@@ -13,7 +13,7 @@
 							<div class="sys-roles" id="roles"></div>
 						</div>
 						<div class="cal-panel">
-							<div class="cal-panel-head"><span id="roleTitle"></span><span id="roleTools"></span></div>
+							<div class="cal-panel-head"><button type="button" class="btn btn-sm btn-light m-back" onclick="sysToList();">← 목록</button><span id="roleTitle"></span><span id="roleTools"></span></div>
 							<div class="cate-tabs" id="tabs" role="tablist" aria-label="권한 설정"></div>
 							<div class="cal-panel-body" id="tabBody"></div>
 						</div>
@@ -72,7 +72,7 @@
 			$('<button type="button" class="sys-role">').toggleClass('on', r === current).attr('aria-pressed', r === current)
 				.append($('<span class="sys-role-name">').append($('<span>').text(r.ROLE_NM)).append(r.SYSTEM_YN === 'Y' ? '<span class="sys-pill info">시스템</span>' : ''))
 				.append($('<small>').text(count + ' · ' + users(r).length + '명'))
-				.on('click', function() { pick(r); }).appendTo($r);
+				.on('click', function() { pick(r); sysToDetail(); }).appendTo($r);
 		});
 		$('#roleTitle').text(current.ROLE_NM + (current.ROLE_DESC ? ' · ' + current.ROLE_DESC : ''));
 		var $tools = $('#roleTools').empty();

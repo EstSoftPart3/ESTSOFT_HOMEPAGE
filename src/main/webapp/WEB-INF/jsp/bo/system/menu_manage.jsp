@@ -18,7 +18,7 @@
 							<div class="cal-panel-body sys-tree" id="tree"></div>
 						</div>
 						<div class="cal-panel">
-							<div class="cal-panel-head bo-sticky"><span id="formTitle">메뉴를 선택해 주세요</span><span class="bo-actions" id="menuActs" hidden>
+							<div class="cal-panel-head bo-sticky"><button type="button" class="btn btn-sm btn-light m-back" onclick="sysToList();">← 목록</button><span id="formTitle">메뉴를 선택해 주세요</span><span class="bo-actions" id="menuActs" hidden>
 								<button type="button" class="btn btn-sm btn-outline-danger" id="delBtn" onclick="deleteMenu();">삭제</button>
 								<button type="submit" form="menuForm" class="btn btn-sm btn-primary">저장</button>
 							</span></div>
@@ -195,7 +195,7 @@
 
 	function node(m, cls) {
 		// 드래그를 놓을 때 뒤따르는 click 으로 폼이 열리지 않게 한다
-		var $b = $('<button type="button" class="sys-node">').addClass(cls).attr('data-code', m.MENU_CODE).toggleClass('on', !!selected && selected.MENU_CODE === m.MENU_CODE).on('click', function() { if (Date.now() - draggedAt > 300) select(m); });
+		var $b = $('<button type="button" class="sys-node">').addClass(cls).attr('data-code', m.MENU_CODE).toggleClass('on', !!selected && selected.MENU_CODE === m.MENU_CODE).on('click', function() { if (Date.now() - draggedAt > 300) { select(m); sysToDetail(); } });
 		$b.append('<i class="fas fa-grip-vertical sys-grip" aria-hidden="true"></i>');
 		if (cls === 'sys-node-group') $b.append($('<i class="fas fa-fw" aria-hidden="true">').addClass(m.ICON_NM || 'fa-folder'));
 		if (cls !== 'sys-node-group' && m.ICON_NM) $b.append($('<i class="fas fa-fw" aria-hidden="true">').addClass(m.ICON_NM));

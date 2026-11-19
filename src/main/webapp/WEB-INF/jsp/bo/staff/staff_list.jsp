@@ -68,6 +68,14 @@
 	.st-pick input.st-add { display: inline-block; width: 110px; height: 26px; font-size: 12px; padding: 0 8px; vertical-align: middle; border-radius: 999px; }
 	.st-docbar { height: 6px; border-radius: 3px; background: #e8edf2; overflow: hidden; margin-bottom: 10px; } .st-docbar i { display: block; height: 100%; background: #1d7a4a; }
 	#copyToast { position: fixed; right: 18px; bottom: 18px; z-index: 2000; background: #222; color: #fff; font-size: 12px; padding: 6px 12px; border-radius: 6px; display: none; }
+	/* 폰: 카드 1열, 서류 줄은 2칸×2줄, 고르기 칸은 이름 위·값 아래, select 는 손가락 크기 */
+	@media (max-width: 767px) {
+		.st-cards { grid-template-columns: minmax(0, 1fr); }
+		.st-doc-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+		.st-pick { grid-template-columns: minmax(0, 1fr); }
+		.st-pick .k { padding-top: 0; }
+		.st-bn select { height: 36px; font-size: 13px; }
+	}
 </style>
 
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
@@ -118,7 +126,7 @@
 							</div>
 						</div>
 						<div class="table-responsive px-3">
-							<table class="table table-sm table-hover cal-table mb-0">
+							<table data-no-card class="table table-sm table-hover cal-table mb-0">
 								<thead id="listHead"></thead>
 								<tbody id="listBody"></tbody>
 							</table>

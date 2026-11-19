@@ -12,6 +12,9 @@
 (function () {
 	var BO = !!document.querySelector('.content-wrapper');
 	var NUM = /^[-+]?[\d,]*\.?\d+\s*(원|%|일|건|개월|명|개|년|시간)?$/;
+	// 폰 폭(767px 이하)일 때만 카드·필터 접기를 바꾼다. 데스크톱 동작은 그대로
+	var MQ = window.matchMedia ? window.matchMedia('(max-width: 767px)') : null;
+	function mob() { return !!(MQ && MQ.matches); }
 
 	function text(c) { return c ? (c.getAttribute('data-sort') || c.textContent).replace(/\s+/g, ' ').trim() : ''; }
 	function key(s) { return NUM.test(s) ? parseFloat(s.replace(/[^\d.+-]/g, '')) : s; }
@@ -176,8 +179,12 @@
 				d.appendChild(t);
 			}
 			if (BO && moreable(t)) applyMore(t);
+			if (BO && (mob() || t.classList.contains('cd-on'))) card(t);
 			topBar(t);
 			if (BO && freezable(t)) freeze(t);
+			// 카드일 때 표 위 '📌 틀고정' 은 숨긴다(같은 줄의 '보기' 는 남김)
+			var fb = BO && anchor(t.closest('.tbl-scroll, .table-responsive, .pl-scroll') || t).previousElementSibling;
+			if (fb && fb._t === t) fb.classList.toggle('cd-bar', t.classList.contains('cd-on'));
 		});
 		// 틀고정·글꼴이 자리 잡은 뒤 폭이 조금 달라져 한 번 더 잰다
 		sizeTops();
@@ -198,11 +205,13 @@
 		if (cs.some(function (c) { return c._ci === undefined; })) cs.forEach(function (c, i) { c._ci = i; });
 		return cs;
 	}
-	// 머리글 글자(정렬 ▲▼ 같은 버튼 글자는 뺀다). 글자가 없거나 같은 칸은 번호를 붙여 구분
+	// 머리글 글자(정렬 ▲▼ 같은 버튼 글자는 뺀다)
+	function hText(th) { return [].map.call(th.childNodes, function (x) { return x.nodeType === 3 ? x.nodeValue : x.tagName === 'BUTTON' ? '' : x.textContent; }).join('').replace(/\s+/g, ' ').trim(); }
+	// 글자가 없거나 같은 칸은 번호를 붙여 구분
 	function mKeys(ths) {
 		var seen = {};
 		return ths.map(function (th, i) {
-			var k = [].map.call(th.childNodes, function (x) { return x.nodeType === 3 ? x.nodeValue : x.tagName === 'BUTTON' ? '' : x.textContent; }).join('').replace(/\s+/g, ' ').trim();
+			var k = hText(th);
 			if (!k || seen[k]) k += '#' + i;
 			seen[k] = 1;
 			return k;
@@ -244,10 +253,58 @@
 		var s = mState(t);
 		s.ord.splice(s.ord.indexOf(from._ci), 1);
 		s.ord.splice(s.ord.indexOf(to._ci) + (after ? 1 : 0), 0, from._ci);
+		mSave(t);
+	}
+	function mSave(t) {
+		var s = mState(t);
 		s.moved = true;
 		try { localStorage.setItem(s.store, JSON.stringify(s.ord.map(function (x) { return s.keys[x]; }))); } catch (e) { /* 저장 못 해도 지금 화면엔 적용 */ }
 		arrange(t);
 		if (freezable(t)) freeze(t);
+		if (t.classList.contains('cd-on')) card(t);
+	}
+	// '보기' 창(bo-view.js)의 칸 순서 ▲▼ 용. 체크박스 칸은 목록에서 빼고 옮기지 않는다
+	function mFixed(t, ci) { var th = mCells(t.tHead.rows[0]).filter(function (c) { return c._ci === ci; })[0]; return !th || !!th.querySelector('input[type=checkbox]'); }
+	window.boCols = {
+		list: function (t) {
+			if (!t || !movable(t)) return null;
+			var s = mState(t);
+			return s.ord.filter(function (ci) { return !mFixed(t, ci); }).map(function (ci) { return { ci: ci, name: s.keys[ci].replace(/#\d+$/, '') }; });
+		},
+		move: function (t, ci, d) {
+			var s = mState(t), pos = s.ord.map(function (x, i) { return i; }).filter(function (i) { return !mFixed(t, s.ord[i]); });
+			var k = pos.indexOf(s.ord.indexOf(ci)), a = pos[k], b = pos[k + d];
+			if (k < 0 || b === undefined) return;
+			s.ord[a] = s.ord[b];
+			s.ord[b] = ci;
+			mSave(t);
+		}
+	};
+
+	// ── 폰 카드 (폭 767px 이하, plans/mobile-ux-spec.html 2번) ──
+	// 줄마다 칸에 머리글을 data-label 로 붙이고, 체크 칸을 뺀 앞 4칸만 보인다(첫 칸은 제목, 체크 칸은 오른쪽 위). 모양은 아래 CSS @media 안에만 있다.
+	// 칸을 눌러 바로 고치는 표(.hr-cell·입력칸), 머리글 두 줄·칸/줄 합친 표, data-no-card 안의 표는 카드로 바꾸지 않고 가로 스크롤 그대로
+	function cardable(t) {
+		return pickable(t) && t.tHead.rows.length === 1 && rowsOk(t) && ![].some.call(t.tHead.rows[0].cells, function (c) { return c.colSpan > 1; })
+			&& !t.closest('[data-no-card]') && !t.tBodies[0].querySelector('.hr-cell, input:not([type=checkbox]):not([type=hidden]), select, textarea');
+	}
+	function card(t) {
+		var on = mob() && cardable(t);
+		t.classList.toggle('cd-on', on);
+		if (!on) return;
+		var hc = [].slice.call(t.tHead.rows[0].cells), pk = hc[0] && hc[0].querySelector('input[type=checkbox]') ? 1 : 0, names = hc.map(hText);
+		[].forEach.call(t.tBodies[0].rows, function (tr) {
+			// 체크 칸을 아직 못 넣은 줄(방금 다시 그린 줄)은 한 칸 밀어서 맞춘다. 칸 수가 다른 줄('목록이 없습니다')은 그대로
+			var cs = tr.cells, off = cs.length === hc.length ? 0 : pk && cs.length === hc.length - 1 ? 1 : -1;
+			if (off < 0) return;
+			[].forEach.call(cs, function (c, i) {
+				var k = i + off - pk;
+				if (c.getAttribute('data-label') !== names[i + off]) c.setAttribute('data-label', names[i + off]);
+				c.classList.toggle('cd-pk', k < 0);
+				c.classList.toggle('cd-1', k === 0);
+				c.classList.toggle('cd-x', k >= 4);
+			});
+		});
 	}
 	if (BO) {
 		var mDrag = null;
@@ -540,7 +597,8 @@
 		function on() {
 			var t = top();
 			panel.style.top = t + 'px';
-			panel.classList.toggle('flt-stuck', mark.getBoundingClientRect().top < t);
+			// 폰에서는 붙이지 않는다(CSS 도 position:static)
+			panel.classList.toggle('flt-stuck', !mob() && mark.getBoundingClientRect().top < t);
 		}
 		window.addEventListener('scroll', on, { passive: true });
 		window.addEventListener('resize', on);
@@ -571,15 +629,17 @@
 			function on(v) { try { return v === undefined ? localStorage.getItem(store) : localStorage.setItem(store, v); } catch (e) { return null; } }
 			function paint() {
 				var closed = body.classList.contains('flt-closed');
-				var used = [].filter.call(row.querySelectorAll('.flt-more select'), function (s) { return s.selectedIndex > 0 && s.value !== ''; }).length;
-				btn.textContent = closed ? '▾ 필터' + (used ? ' (' + used + '개 적용)' : '') : '▴ 접기';
+				var used = [].filter.call(row.querySelectorAll(mob() ? 'select, input[type=search]' : '.flt-more select'), function (s) { return s.tagName === 'SELECT' ? s.selectedIndex > 0 && s.value !== '' : !!s.value; }).length;
+				// 폰에서 접으면 검색어까지 숨기고 이 버튼 하나만 남는다
+				btn.textContent = closed ? (mob() ? '🔍 검색·필터' : '▾ 필터') + (used ? ' (' + used + '개 적용)' : '') : '▴ 접기';
 				btn.setAttribute('aria-expanded', !closed);
 				btn.classList.toggle('btn-warning', closed && used > 0);
 			}
-			btn.addEventListener('click', function () { body.classList.toggle('flt-closed'); on(body.classList.contains('flt-closed') ? '1' : '0'); paint(); });
+			// 폰에서 펴고 접은 것은 기억하지 않는다(데스크톱 저장값·보기 설정을 건드리지 않게)
+			btn.addEventListener('click', function () { body.classList.toggle('flt-closed'); if (!mob()) on(body.classList.contains('flt-closed') ? '1' : '0'); paint(); });
 			row.addEventListener('change', paint);
-			// 처음은 접힌 상태(표를 더 많이 보이게). 화면마다 마지막 상태를 기억
-			body.classList.toggle('flt-closed', on() !== '0');
+			// 처음은 접힌 상태(표를 더 많이 보이게). 화면마다 마지막 상태를 기억, 폰은 늘 접힌 채 시작
+			body.classList.toggle('flt-closed', mob() || on() !== '0');
 			paint();
 		});
 	}
@@ -686,7 +746,28 @@
 			+ '.table tr.frz-top>td{background-color:#fff8e3}.table tr.frz-r>td{background-color:#eef9fc}'
 			+ '.table tr.frz-last>td{box-shadow:inset 0 -2px 0 #0b6e8a}.table tr.frz-top.frz-last>td{box-shadow:inset 0 -2px 0 #e0a800}.table tr.frz-last>td.frz-edge{box-shadow:inset -2px -2px 0 #0b6e8a}'
 			+ '.frz-pin{border:0;background:none;padding:0 2px;margin-left:3px;font-size:10px;line-height:1;color:#9aa4ac;opacity:0;vertical-align:middle;cursor:pointer}'
-			+ '.frz-pin::before{content:"📌"}th:hover>.frz-pin,.frz-pin:focus,.frz-pin.on,.frz-show-c th>.frz-pin,.frz-rpin{opacity:1}.frz-pin.on{filter:none;color:#0b6e8a}.frz-pin:not(.on){filter:grayscale(1)}';
+			+ '.frz-pin::before{content:"📌"}th:hover>.frz-pin,.frz-pin:focus,.frz-pin.on,.frz-show-c th>.frz-pin,.frz-rpin{opacity:1}.frz-pin.on{filter:none;color:#0b6e8a}.frz-pin:not(.on){filter:grayscale(1)}'
+			// 폰(767px 이하): 목록 표 카드(cd-on, 페이지 스크롤 하나·틀고정/위 스크롤바/칸 끌기 없음), 검색필터는 고정 없이 버튼 하나로 접힘, 누르는 것 36px 이상
+			+ '@media (max-width:767px){'
+			+ 'table.cd-on,table.cd-on>tbody{display:block;width:100%!important;min-width:0!important}table.cd-on>thead{display:none}'
+			+ '.tbl-scroll:has(>table.cd-on),.table-responsive:has(>table.cd-on),.pl-scroll:has(>table.cd-on){max-height:none!important;overflow:visible!important}'
+			+ 'table.cd-on>tbody>tr:not(.more-hide){display:block;position:relative;margin:0 0 8px;padding:6px 0;border:1px solid #dfe4e8;border-radius:10px;background:#fff;overflow:hidden}'
+			+ 'table.cd-on>tbody>tr.tp-on{background:#eef4ff}'
+			+ 'table.cd-on>tbody>tr>td{display:block;position:relative!important;left:auto!important;top:auto!important;border:0!important;padding:2px 12px!important;white-space:normal;overflow-wrap:anywhere;text-align:left!important;width:auto!important;max-width:none!important;box-shadow:none!important}'
+			+ 'table.cd-on>tbody>tr>td.frz-c{background-color:transparent}'
+			+ 'table.cd-on>tbody>tr>td[data-label]{padding-left:100px!important;line-height:22px}'
+			+ 'table.cd-on>tbody>tr>td[data-label]::before{content:attr(data-label);position:absolute;left:12px;top:2px;width:82px;line-height:22px;color:#8a949c;font-size:12px;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+			+ 'table.cd-on>tbody>tr:has(>td.cd-pk)>td.cd-1{padding-right:48px!important}'
+			+ 'table.cd-on>tbody>tr>td.cd-1{padding-left:12px!important;font-weight:700;font-size:14px}table.cd-on>tbody>tr>td.cd-x{display:none}'
+			+ 'table.cd-on>tbody>tr>td.cd-pk{position:absolute!important;top:0!important;right:0;left:auto!important;width:44px!important;height:44px;padding:12px!important;text-align:center!important}'
+			+ 'table.cd-on>tbody>tr>td.cd-pk input{width:20px;height:20px;margin:0}table.cd-on>tbody>tr>td.cd-1::before,table.cd-on>tbody>tr>td.cd-pk::before{content:none}'
+			+ '.cd-on .td-cut{display:inline;max-width:none;white-space:normal;overflow:visible}'
+			+ '.frz-bar.cd-bar .frz-btn,.frz-bar.cd-bar .frz-menu{display:none!important}'
+			+ '.frz-btn{min-height:36px;padding:0 12px}.frz-menu{top:40px}.frz-menu button{min-height:36px}.pl-chip,.pl-all{min-height:36px}.table th.th-sort{height:36px}.tbl-more{padding:14px 12px}'
+			+ '.flt-pin{position:static!important;box-shadow:none!important}'
+			+ '.flt-closed>.form-row:first-child>:not(.flt-tg){display:none!important}.flt-tg{flex:1 1 100%!important;max-width:100%!important;margin:0!important}.flt-tg .btn{width:100%;min-height:36px}}'
+			// 마우스가 없는 기기: 올려야 보이던 ↕·📌 를 늘 보인다
+			+ '@media (hover:none){th.th-sort:not([aria-sort])::after{content:" ↕";color:#9aa4ac;font-size:10px}.frz-pin{opacity:1}}';
 		document.head.appendChild(css);
 	}
 
@@ -706,7 +787,7 @@
 	var timer = null;
 	function later() {
 		// 칸을 옮겨 둔 표는 화면이 줄을 다시 그리자마자 맞춘다(120ms 뒤에 하면 원래 순서가 잠깐 보인다)
-		if (BO) [].forEach.call(document.querySelectorAll('table.table'), function (t) { if (t._col && t._col.moved && movable(t)) arrange(t); });
+		if (BO) [].forEach.call(document.querySelectorAll('table.table'), function (t) { if (t._col && t._col.moved && movable(t)) arrange(t); if (t.classList.contains('cd-on')) card(t); });
 		clearTimeout(timer);
 		timer = setTimeout(scan, 120);
 	}
@@ -727,6 +808,8 @@
 	function start() {
 		scan();
 		new MutationObserver(later).observe(document.body, { childList: true, subtree: true });
+		// 폭이 폰↔데스크톱으로 바뀌면 카드를 다시 맞춘다
+		if (BO && MQ) { if (MQ.addEventListener) MQ.addEventListener('change', scan); else MQ.addListener(scan); }
 	}
 	// 화면이 처음 목록을 부르기 전에 걸어 둔다(이 파일은 jQuery 바로 뒤에 읽힌다)
 	watchNet();

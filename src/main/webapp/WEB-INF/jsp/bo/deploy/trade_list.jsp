@@ -44,6 +44,7 @@
 	.tr-right td.item { white-space: normal; width: 100%; }
 	.tr-right tr[draggable] { cursor: grab; }
 	.tr-right select { width: auto; }
+	@media (max-width: 767px) { .tr-cp { min-width: 32px; min-height: 32px; font-size: 14px; } }
 	@media (max-width: 767px) { .tr-split { flex-direction: column; } .tr-split > .tr-left, .tr-split > .tr-right { flex-basis: auto; width: 100%; } .tr-split > .tr-right { position: static; max-height: none; } .tr-grip { display: none; } }
 	#trToast { position: fixed; right: 18px; bottom: 18px; z-index: 2000; background: #222; color: #fff; font-size: 13px; padding: 8px 14px; border-radius: 6px; display: none; }
 </style>
@@ -109,15 +110,15 @@
 				<div class="modal-body">
 					<input type="hidden" id="TRADE_SQ">
 					<div class="form-row">
-						<div class="form-group col-7"><label for="PARTNER_SQ">거래처</label><select id="PARTNER_SQ" class="form-control form-control-sm" required></select>
+						<div class="form-group col-12 col-md-7"><label for="PARTNER_SQ">거래처</label><select id="PARTNER_SQ" class="form-control form-control-sm" required></select>
 							<label for="PARTNER_NM" class="sr-only">거래처 이름 직접 입력</label><input id="PARTNER_NM" class="form-control form-control-sm mt-1" maxlength="200" placeholder="거래처 이름 직접 입력" style="display:none;"></div>
-						<div class="form-group col-5"><label for="TYPE_NM">구분</label><input id="TYPE_NM" class="form-control form-control-sm" maxlength="50" list="typeList" required placeholder="임대료, 장비, 용역…"><datalist id="typeList"></datalist></div>
+						<div class="form-group col-12 col-md-5"><label for="TYPE_NM">구분</label><input id="TYPE_NM" class="form-control form-control-sm" maxlength="50" list="typeList" required placeholder="임대료, 장비, 용역…"><datalist id="typeList"></datalist></div>
 					</div>
 					<div class="form-group"><label for="ITEM_NM">품목</label><input id="ITEM_NM" class="form-control form-control-sm" maxlength="300" required></div>
 					<div class="form-row">
-						<div class="form-group col-4"><label for="START_DT">시작일</label><input type="date" id="START_DT" class="form-control form-control-sm"></div>
-						<div class="form-group col-4"><label for="END_DT">종료일</label><input type="date" id="END_DT" class="form-control form-control-sm"></div>
-						<div class="form-group col-4"><label for="AMT">공급가액</label><input id="AMT" class="form-control form-control-sm text-right" inputmode="numeric" required></div>
+						<div class="form-group col-12 col-md-4"><label for="START_DT">시작일</label><input type="date" id="START_DT" class="form-control form-control-sm"></div>
+						<div class="form-group col-12 col-md-4"><label for="END_DT">종료일</label><input type="date" id="END_DT" class="form-control form-control-sm"></div>
+						<div class="form-group col-12 col-md-4"><label for="AMT">공급가액</label><input id="AMT" class="form-control form-control-sm text-right" inputmode="numeric" required></div>
 					</div>
 					<div class="form-group mb-0"><label for="MEMO">메모</label><input id="MEMO" class="form-control form-control-sm" maxlength="500"></div>
 				</div>

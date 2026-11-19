@@ -76,6 +76,16 @@
 	.rc-wayb[aria-pressed=true] { background: #0b6e8a; border-color: #0b6e8a; color: #fff; font-weight: 700; }
 	.rc-join2 { background: #fff9db; border: 1px solid #ffe066; border-radius: 8px; padding: 10px; }
 	@media (max-width: 900px) { .rc-lay { flex-direction: column; } .rc-side { width: auto !important; max-width: none; padding-left: 0; } .rc-grip { display: none; } }
+	.rc-add { border: 1px dashed #0b6e8a; background: #fff; color: #0b6e8a; border-radius: 999px; padding: 1px 10px; font-size: 11.5px; font-weight: 700; margin-top: 6px; }
+	.rc-pick { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; width: 100%; text-align: left; border: 1px solid #dee2e6; background: #fff; border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; font-size: 13px; }
+	.rc-pick:hover, .rc-pick:focus { border-color: #0b6e8a; background: #eef9fc; }
+	@media (max-width: 767px) {
+		.rc-views { flex-wrap: wrap; margin-left: 0; }
+		.rc-add { padding: 6px 14px; font-size: 13px; }
+		.rc-cal { font-size: 10px; } .rc-cal th { padding: 2px 0; } .rc-cal td { height: auto; min-height: 44px; padding: 1px; }
+		.rc-cal .ev { font-size: 0; height: 6px; padding: 0; margin-top: 1px; } /* 폰: 일정은 색 띠만, 누르면 상세 */
+		.rc-board-wrap::before, .rc-tl-wrap::before { content: '← 가로로 넘겨 보세요 →'; display: inline-block; position: sticky; left: 8px; font-size: 11px; color: #868e96; margin: 4px 0; }
+	}
 </style>
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 <div class="card-header d-flex align-items-center flex-wrap" style="gap:6px">
@@ -323,6 +333,7 @@ function card(r, compact) {
 	apps.filter(function(a) { return a.STEP_CD !== 'DROP'; }).forEach(function(a) {
 		$c.append($('<div class="rc-app">').append($('<b>').text(a.STAFF_NM)).append(stepChip(a)));
 	});
+	$c.append(addBtn(r.RECRUIT_SQ));
 	$c.on('click', function(e) { if (!$(e.target).closest('button, a').length) detail(r.RECRUIT_SQ); }).on('keydown', function(e) { if (e.key === 'Enter' && e.target === this) detail(r.RECRUIT_SQ); });
 	dropTarget($c, r.RECRUIT_SQ);
 	return $c;
@@ -344,7 +355,7 @@ function viewTable($m, list) {
 		$tr.append($('<td>').append(miss.length ? $('<span class="rc-pill warn">').text('⚠ ' + miss.length) : ''));
 		[r.CLIENT_NM, r.PRJ_NM, gradeLine(r), period(r), r.WORK_AREA, r.PRICE_TXT, r.SKILLS, r.SALE_PARTNER_NM || r.SALE_PARTNER_TXT].forEach(function(v) { $tr.append($('<td>').append(q(v))); });
 		$tr.append($('<td>').text(apps.length + ' · ' + joinedCnt(r) + '/' + (r.HEAD_CNT || '?')));
-		$tr.append($('<td>').append(apps.map(function(a) { return $('<div class="text-nowrap">').append(document.createTextNode(a.STAFF_NM + ' ')).append(stepChip(a)); })));
+		$tr.append($('<td>').append(apps.map(function(a) { return $('<div class="text-nowrap">').append(document.createTextNode(a.STAFF_NM + ' ')).append(stepChip(a)); })).append(addBtn(r.RECRUIT_SQ)));
 		$tr.append($('<td>').text(left === null ? '' : left >= 0 ? 'D-' + left : '지남'));
 		$tr.append($('<td>').text(r.REG_D || ''));
 		dropTarget($tr, r.RECRUIT_SQ);
@@ -371,7 +382,7 @@ function viewBoard($m, list) {
 		});
 		$g.append($col);
 	});
-	$m.append($('<div class="rc-note mb-2">').text('모집 카드를 옆 칸으로 끌면 상태가 바뀌어요. 대기자를 카드에 놓으면 지원이에요.')).append($('<div style="overflow:auto">').append($g));
+	$m.append($('<div class="rc-note mb-2">').text('모집 카드를 옆 칸으로 끌면 상태가 바뀌어요. 대기자를 카드에 놓으면 지원이에요.')).append($('<div class="rc-board-wrap" style="overflow:auto">').append($g));
 }
 // 달력: 등록·마감·인터뷰·투입 시작
 function viewCal($m, list) {
@@ -429,7 +440,7 @@ function viewTimeline($m, list) {
 		var $trk = $('<span class="trk" style="background:none">').append($('<i class="bar pp">').css({ left: 0, width: pos(st.row.END_DT) + '%' }).attr('title', s.STAFF_NM + ' 철수 ' + st.row.END_DT));
 		$g.append($('<span class="text-success">').text(s.STAFF_NM + ' 철수')).append($trk);
 	});
-	$m.append($('<div style="overflow:auto">').append($g)).append('<div class="rc-note mt-2">주황 막대: 모집 투입 기간(점선 끝은 종료 미정) · 초록 얇은 막대: 30일 안에 철수하는 사람</div>');
+	$m.append($('<div class="rc-tl-wrap" style="overflow:auto">').append($g)).append('<div class="rc-note mt-2">주황 막대: 모집 투입 기간(점선 끝은 종료 미정) · 초록 얇은 막대: 30일 안에 철수하는 사람</div>');
 }
 
 // ── 지원 단계 ──
@@ -656,6 +667,31 @@ function pasteDialog() {
 			});
 			return false;
 		} } } }).on('shown.bs.modal', function() { $ta.focus(); });
+}
+
+// ── 「＋ 지원자 추가」: 끌어 놓기 대신 대기자 패널과 같은 사람 중에서 골라 applyDialog 로 ──
+function addBtn(recruitSq) {
+	return $('<button type="button" class="rc-add">＋ 지원자 추가</button>').on('click', function(e) { e.stopPropagation(); pickApplicant(recruitSq); });
+}
+function pickApplicant(recruitSq) {
+	var applied = appsOf(recruitSq).map(function(a) { return String(a.STAFF_SQ); });
+	var $find = $('<input type="search" class="form-control form-control-sm mb-2" placeholder="이름 찾기 (비우면 대기자만)" aria-label="지원자 이름 찾기">'), $list = $('<div style="max-height:55vh;overflow:auto">');
+	var dlg = bootbox.dialog({ title: '지원자 고르기', message: $('<div>').append($find).append($list), onEscape: true, buttons: { cancel: { label: '닫기', className: 'btn-secondary' } } });
+	function paint() {
+		var q = $.trim($find.val());
+		var rows = D.staff.filter(function(s) { return applied.indexOf(String(s.STAFF_SQ)) < 0 && (q ? String(s.STAFF_NM).indexOf(q) >= 0 : PP_CHK[personState(s.STAFF_SQ).k]); });
+		$list.empty();
+		rows.slice(0, 50).forEach(function(s) {
+			var st = personState(s.STAFF_SQ), has = profilesOf(s.STAFF_SQ).length > 0;
+			$list.append($('<button type="button" class="rc-pick">').prop('disabled', !has).append($('<b>').text((has ? '' : '🚫 ') + s.STAFF_NM))
+				.append($('<span class="rc-pill">').addClass(st.k === 'SOON' ? 'warn' : st.k === 'FUTURE' ? 'FILLED' : '').text(st.label))
+				.append($('<span class="rc-note">').text(has ? [s.POSITION_NM, s.DEPT_NM].filter(Boolean).join(' · ') : '프로필 없음'))
+				.on('click', function() { dlg.modal('hide'); applyDialog(recruitSq, s.STAFF_SQ); }));
+		});
+		if (!rows.length) $list.append('<div class="text-muted p-2">고를 사람이 없습니다.</div>');
+	}
+	$find.on('input', paint);
+	paint();
 }
 
 // ── 지원 창 ──

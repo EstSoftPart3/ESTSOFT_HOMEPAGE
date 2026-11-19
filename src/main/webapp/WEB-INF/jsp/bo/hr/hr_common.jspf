@@ -82,4 +82,13 @@
 	.hr-memo-feed .who b { font-size: 12.5px; color: #111; }
 	.hr-memo-feed .txt { padding: 7px 10px; white-space: pre-wrap; word-break: break-word; font-size: 13px; color: #222; }
 	.hr-memo-feed .it.old .txt { color: #555; }
+	/* 폰: 기술 select·💬 버튼은 손가락 크기, 메모는 입력칸 아래 큰 등록 버튼, 메모 목록 내부 스크롤 해제(팝업이 스크롤) */
+	@media (max-width: 767px) {
+		.hr-skill { height: 36px; width: 64px; }
+		.hr-memo-btn { min-height: 36px; min-width: 36px; }
+		.hr-memo-new { flex-direction: column; align-items: stretch; }
+		.hr-memo-new textarea { min-height: 88px; }
+		.hr-memo-new .btn { min-height: 44px; font-size: 15px; }
+		.hr-memo-feed { max-height: none; overflow-y: visible; }
+	}
 </style>
