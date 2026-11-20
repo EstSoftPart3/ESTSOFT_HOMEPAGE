@@ -101,6 +101,8 @@ public class RecruitService {
 					+ " FILE_SIZE BIGINT NULL, FILE_URL VARCHAR(500) NULL, REG_EMPLY_ID VARCHAR(50) NULL, REG_DT DATETIME NOT NULL, KEY IX_RECRUIT_FILE (RECRUIT_SQ)) COMMENT '모집 첨부'");
 			jdbc.execute("CREATE TABLE IF NOT EXISTS TB_EEP_RECRUIT_LOG_H (LOG_SQ INT AUTO_INCREMENT PRIMARY KEY, RECRUIT_SQ INT NULL, APPLY_SQ INT NULL, ACT VARCHAR(30) NOT NULL,"
 					+ " SUMMARY VARCHAR(2000) NULL, EMPLY_ID VARCHAR(50) NULL, REG_DT DATETIME NOT NULL, KEY IX_RECRUIT_LOG (RECRUIT_SQ)) COMMENT '모집 이력'");
+			// 인터뷰 기록(칩으로 고른 결과·평가·확인할 것·메모 JSON). 2026-11-20 추가, 사용자 승인
+			jdbc.execute("ALTER TABLE TB_EEP_RECRUIT_APPLY_R ADD COLUMN IF NOT EXISTS INTV_NOTE TEXT NULL COMMENT '인터뷰 기록 JSON' AFTER INTV_WITH");
 			jdbc.update("INSERT IGNORE INTO TB_EEP_MAIL_USE_M (USE_CD, ACC_SQ, TO_LIST) VALUES (?, 1, NULL)", MAIL_INTV);
 			seedMenu();
 		} catch (RuntimeException e) {
@@ -150,7 +152,7 @@ public class RecruitService {
 	/** 지원 전체. 직원 이름 포함 */
 	public List<Map<String, Object>> applies() {
 		return jdbc.queryForList("SELECT A.APPLY_SQ, A.RECRUIT_SQ, A.STAFF_SQ, A.STEP_CD, A.VER_NO, A.VER_LABEL, A.FILE_ID, A.FILE_NM, A.DEPLOY_SQ, A.DROP_REASON, A.DRAFT,"
-				+ " DATE_FORMAT(A.INTV_DT, '%Y-%m-%d %H:%i') AS INTV_DT, DATE_FORMAT(A.INTV_END_DT, '%Y-%m-%d %H:%i') AS INTV_END_DT, A.INTV_WAY, A.INTV_PLACE, A.INTV_WITH,"
+				+ " DATE_FORMAT(A.INTV_DT, '%Y-%m-%d %H:%i') AS INTV_DT, DATE_FORMAT(A.INTV_END_DT, '%Y-%m-%d %H:%i') AS INTV_END_DT, A.INTV_WAY, A.INTV_PLACE, A.INTV_WITH, A.INTV_NOTE,"
 				+ " DATE_FORMAT(A.UPDT_DT, '%Y-%m-%d %H:%i') AS UPDT_DT, A.UPDT_EMPLY_ID, S.STAFF_NM, S.POSITION_NM, S.DEPT_NM"
 				+ " FROM TB_EEP_RECRUIT_APPLY_R A JOIN TB_EEP_HR_STAFF_M S ON S.STAFF_SQ = A.STAFF_SQ JOIN TB_EEP_RECRUIT_M R ON R.RECRUIT_SQ = A.RECRUIT_SQ AND R.DEL_YN = 'N' ORDER BY A.APPLY_SQ");
 	}
@@ -513,6 +515,14 @@ public class RecruitService {
 		log(a.get("RECRUIT_SQ"), null, "CANCEL", a.get("STAFF_NM") + " 지원 취소(기록 삭제, " + stepName(s(a.get("STEP_CD"))) + "에서)", loginId);
 		refreshFill(a.get("RECRUIT_SQ"), loginId);
 		return notes;
+	}
+
+	/** 인터뷰 기록 저장(화면이 칩으로 만든 JSON). summary 는 이력용 한 줄 */
+	public void note(Object applySq, String note, String summary, String loginId) {
+		Map<String, Object> a = apply(applySq);
+		require(s(note).length() <= 4000, "인터뷰 기록이 너무 깁니다.");
+		jdbc.update("UPDATE TB_EEP_RECRUIT_APPLY_R SET INTV_NOTE = ?, UPDT_EMPLY_ID = ?, UPDT_DT = NOW() WHERE APPLY_SQ = ?", s(note).trim().isEmpty() ? null : note, loginId, applySq);
+		log(a.get("RECRUIT_SQ"), applySq, "NOTE", a.get("STAFF_NM") + " 인터뷰 기록" + (s(summary).trim().isEmpty() ? "" : " · " + cut(summary.trim(), 300)), loginId);
 	}
 
 	/** 인터뷰 일정 저장 → 단계 인터뷰확정, 본인 회사 메일(항상, 변경 때도). @return notes */

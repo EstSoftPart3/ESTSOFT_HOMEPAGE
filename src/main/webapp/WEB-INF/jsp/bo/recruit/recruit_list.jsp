@@ -76,6 +76,8 @@
 	.rc-cal .ev { display: block; border-radius: 4px; padding: 0 4px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 	.rc-cal .ev.intv, .rc-cal-legend .ev.intv { background: #fff; color: #c2410c; border: 1px solid #ffc9a8; border-left: 4px solid #e8590c; border-radius: 3px; }
 	.rc-cal .ev.intv b, .rc-cal-legend .ev.intv b { font-weight: 800; } .rc-cal .ev.intv small { color: #868e96; }
+	.rc-notebtn { border: 1px dashed #b197fc; background: #fff; color: #6741d9; border-radius: 999px; padding: 0 9px; font-size: 11.5px; font-weight: 700; max-width: 100%; white-space: normal; text-align: left; }
+	.rc-notebtn.has { border-style: solid; background: #f3f0ff; } .rc-notebtn:hover, .rc-notebtn:focus { background: #e5dbff; }
 	.ist { font-style: normal; font-size: 10px; font-weight: 800; border-radius: 4px; padding: 0 4px; background: #fff4e6; color: #d9480f; }
 	.ist.ok { background: #d3f9d8; color: #2b8a3e; } .ist.wait { background: #fff3bf; color: #e67700; } .ist.x { background: #e9ecef; color: #868e96; }
 	.rc-cal .ev.intv.x { border-left-color: #adb5bd; border-color: #dee2e6; color: #868e96; text-decoration: line-through; } .rc-cal .ev.intv.x .ist { text-decoration: none; }
@@ -559,7 +561,7 @@ function viewCal($m, list) {
 			var x = ev[key];
 			if (x) {
 				x.intv.sort(function(p, q) { return p.a.INTV_DT.localeCompare(q.a.INTV_DT); }).forEach(function(v) {
-					var is = intvState(v.a), tip = '🎤 인터뷰 ' + v.a.INTV_DT.substring(11, 16) + ' · ' + is[1] + ' · ' + v.a.STAFF_NM + ' · ' + (v.r.CLIENT_NM || '') + ' ' + (v.r.PRJ_NM || '') + (v.a.INTV_PLACE ? ' · ' + v.a.INTV_PLACE : '');
+					var is = intvState(v.a), sum = noteSummary(noteOf(v.a)), tip = '🎤 인터뷰 ' + v.a.INTV_DT.substring(11, 16) + ' · ' + is[1] + ' · ' + v.a.STAFF_NM + ' · ' + (v.r.CLIENT_NM || '') + ' ' + (v.r.PRJ_NM || '') + (v.a.INTV_PLACE ? ' · ' + v.a.INTV_PLACE : '') + (sum ? '\n📝 ' + sum : '');
 					$td.append($('<span class="ev intv">').addClass(is[0]).attr('title', tip).append($('<b>').text(v.a.INTV_DT.substring(11, 16))).append(document.createTextNode(' 🎤 ' + v.a.STAFF_NM + ' ')).append($('<i class="ist">').addClass(is[0]).text(is[1])).append(' ').append($('<small>').text(v.r.CLIENT_NM || ''))
 						.on('click', function() { detail(v.r.RECRUIT_SQ); }));
 				});
@@ -581,6 +583,8 @@ function viewCal($m, list) {
 function intvState(a) {
 	if (a.STEP_CD === 'DROP') return ['x', '탈락'];
 	if (a.STEP_CD === 'JOIN_WAIT' || a.STEP_CD === 'JOIN') return ['ok', '통과'];
+	var res = noteOf(a).r; // 기록한 결과가 있으면 그것을
+	if (res === '합격') return ['ok', '합격']; if (res === '불합격') return ['x', '불합격']; if (res === '보류') return ['wait', '보류'];
 	return a.INTV_DT.substring(0, 16) > nowYmdHm() ? ['plan', '예정'] : ['wait', '결과 대기'];
 }
 function nowYmdHm() { var d = new Date(); return today() + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
@@ -751,6 +755,10 @@ function applyRow(a) {
 	if (a.FILE_ID) $r.append($('<a target="_blank" rel="noopener" title="모집 폴더에 저장된 프로필 워드">').attr('href', 'https://drive.google.com/file/d/' + a.FILE_ID + '/view').text('📄 ' + (a.FILE_NM || '워드')));
 	else $r.append($('<button type="button" class="btn btn-sm btn-warning py-0 font-weight-bold" title="지원할 때 드라이브에 올리지 못했어요">⚠ 드라이브에 없음 · 다시 저장</button>').on('click', function() { hrPost('/admin/recruit/wordData.do', { APPLY_SQ: a.APPLY_SQ }, function() { hrToast('드라이브에 저장했어요.'); reload(); }); }));
 	if (a.INTV_DT) { var is = intvState(a); $r.append($('<span class="rc-note">').text('🎤 ' + a.INTV_DT + ' · ' + (WAY[a.INTV_WAY] || '') + (a.INTV_PLACE ? ' · ' + a.INTV_PLACE : '') + ' ').append($('<i class="ist">').addClass(is[0]).text(is[1]))); }
+	if (a.INTV_DT || a.INTV_NOTE) {
+		var sum = noteSummary(noteOf(a));
+		$r.append($('<button type="button" class="rc-notebtn">').toggleClass('has', !!sum).attr('title', sum ? '인터뷰 기록 고치기' : '인터뷰 기록 남기기').text(sum ? '📝 ' + sum : '📝 인터뷰 기록').on('click', function(e) { e.stopPropagation(); noteDialog(a); }));
+	}
 	if (a.DEPLOY_SQ) $r.append($('<a href="/admin/deploy/openDeployList.do" target="_blank" rel="noopener">투입현황 보기 ↗</a>'));
 	if (a.DRAFT && a.STEP_CD === 'JOIN_WAIT') $r.append($('<button type="button" class="btn btn-sm btn-link p-0">투입확정 임시 저장 이어서 ›</button>').on('click', function() { joinDialog(a); }));
 	return $r;
@@ -919,6 +927,50 @@ function applyDialog(recruitSq, staffSq) {
 		cancel: { label: '취소', className: 'btn-sm btn-outline-secondary' },
 		ok: { label: '지원 · 드라이브에 저장', className: 'btn-sm btn-primary', callback: function() {
 			hrPost('/admin/recruit/applyData.do', { RECRUIT_SQ: recruitSq, STAFF_SQ: staffSq, VER: pick }, function(res) { dlg.modal('hide'); notes(res.result.notes); hrToast(s.STAFF_NM + ' 지원을 등록했어요.'); reload(); });
+			return false;
+		} } } });
+}
+
+// ── 인터뷰 기록: 칩을 눌러 고르고(한 묶음에 하나, 「여러 개」 묶음은 여럿) 메모만 글로 ──
+var NOTE_CATS = [['r', '결과', ['합격', '보류', '불합격', '결과 대기']], ['tech', '기술 역량', ['상', '중', '하']], ['comm', '의사소통', ['상', '중', '하']],
+	['att', '태도·인상', ['좋음', '보통', '아쉬움']], ['cli', '고객사 반응', ['긍정', '보통', '부정']],
+	['chk', '확인할 것', ['단가 협의', '일정 조율', '재택 문의', '추가 인터뷰', '경력 확인', '투입일 협의'], true], ['ask', '질문받은 기술', null, true]];
+function noteOf(a) { try { return JSON.parse(a.INTV_NOTE || '{}') || {}; } catch (e) { return {}; } }
+function noteSummary(n) {
+	return [n.r, n.tech && '기술 ' + n.tech, n.comm && '소통 ' + n.comm, n.att && '태도 ' + n.att, n.cli && '고객 ' + n.cli].concat(n.chk || []).filter(Boolean).join(' · ') + (n.memo ? ' · 💬' : '');
+}
+function noteDialog(a) {
+	var r = recruitOf(a.RECRUIT_SQ) || {}, n = $.extend({ chk: [], ask: [] }, noteOf(a));
+	var skills = String(r.SKILLS || '').split(/[,/·]+/).map(function(x) { return $.trim(x); }).filter(Boolean).concat(['경력·프로젝트', '업무 이해도']);
+	var $k = $('<div class="rc-kv">');
+	NOTE_CATS.forEach(function(c) {
+		var opts = c[2] || skills, $g = $('<span class="d-flex flex-wrap" style="gap:4px" role="group">').attr('aria-label', c[1]);
+		function paint() { $g.find('button').each(function() { var v = $(this).data('v'); $(this).attr('aria-pressed', c[3] ? n[c[0]].indexOf(v) >= 0 : n[c[0]] === v); }); }
+		opts.forEach(function(v) {
+			$g.append($('<button type="button" class="rc-wayb">').data('v', v).text(v).on('click', function() {
+				if (c[3]) { var i = n[c[0]].indexOf(v); if (i >= 0) n[c[0]].splice(i, 1); else n[c[0]].push(v); }
+				else n[c[0]] = n[c[0]] === v ? '' : v; // 다시 누르면 고른 것 풀기
+				paint();
+			}));
+		});
+		paint();
+		$k.append($('<label>').text(c[1] + (c[3] ? ' (여러 개)' : ''))).append($g);
+	});
+	var $memo = $('<input class="form-control form-control-sm" maxlength="500" placeholder="필요할 때만 (예: 다음 주 2차 인터뷰 요청)">').val(n.memo || '');
+	$k.append('<label>메모</label>').append($memo);
+	var dlg = bootbox.dialog({ title: '📝 ' + a.STAFF_NM + ' · ' + (r.CLIENT_NM || '') + ' 인터뷰 기록' + (a.INTV_DT ? ' (' + a.INTV_DT + ')' : ''), message: $k, size: 'large', onEscape: true, buttons: {
+		cancel: { label: '닫기', className: 'btn-sm btn-outline-secondary' },
+		ok: { label: '기록 저장', className: 'btn-sm btn-primary', callback: function() {
+			n.memo = $.trim($memo.val());
+			hrPost('/admin/recruit/noteData.do', { APPLY_SQ: a.APPLY_SQ, INTV_NOTE: JSON.stringify(n), SUMMARY: noteSummary(n) }, function() {
+				dlg.modal('hide');
+				hrToast('인터뷰 기록을 저장했어요.');
+				// 결과에 맞춰 단계도 바꿀지 묻는다(합격 → 투입대기, 불합격 → 탈락)
+				var to = n.r === '합격' && ['DOC', 'INTV_WAIT', 'INTV'].indexOf(a.STEP_CD) >= 0 ? 'JOIN_WAIT' : n.r === '불합격' && a.STEP_CD !== 'DROP' && a.STEP_CD !== 'JOIN' ? 'DROP' : null;
+				if (!to) return reload();
+				bootbox.confirm({ message: a.STAFF_NM + ' 님을 「' + STEP_NM[to] + '」 단계로 바꿀까요?', buttons: { confirm: { label: STEP_NM[to] + '(으)로', className: 'btn-sm ' + (to === 'DROP' ? 'btn-danger' : 'btn-primary') }, cancel: { label: '그대로', className: 'btn-sm btn-outline-secondary' } },
+					callback: function(yes) { if (yes) changeStep(a, to); else reload(); } });
+			});
 			return false;
 		} } } });
 }

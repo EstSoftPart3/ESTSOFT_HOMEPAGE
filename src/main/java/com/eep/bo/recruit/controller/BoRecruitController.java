@@ -149,6 +149,12 @@ public class BoRecruitController {
 		return run(() -> { guardApply(applySq, session); return recruit.cancel(applySq, loginId(session)); });
 	}
 
+	@RequestMapping(value = "/admin/recruit/noteData.do", method = RequestMethod.POST)
+	public ModelAndView noteData(@RequestParam("APPLY_SQ") int applySq, @RequestParam(value = "INTV_NOTE", defaultValue = "") String note,
+			@RequestParam(value = "SUMMARY", defaultValue = "") String summary, HttpSession session) {
+		return run(() -> { guardApply(applySq, session); recruit.note(applySq, note, summary, loginId(session)); return "OK"; });
+	}
+
 	@RequestMapping(value = "/admin/recruit/interviewData.do", method = RequestMethod.POST)
 	public ModelAndView interviewData(@RequestParam("APPLY_SQ") int applySq, @RequestParam Map<String, Object> p, HttpSession session) {
 		return run(() -> { guardApply(applySq, session); return recruit.interview(applySq, p, loginId(session)); });
