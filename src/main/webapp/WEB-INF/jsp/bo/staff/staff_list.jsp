@@ -1196,8 +1196,8 @@
 		genTrees();
 		genSlots();
 		var photo = docFiles(find(sq) || {}, 'DOC_PHOTO').length > 0;
-		genChips('scGenPhoto', [['', '넣지 않음'], ['Y', '워드에 넣기']], ['']);
-		$('#scGenPhoto [data-v=Y]').prop('disabled', !photo).attr('title', photo ? '서류 탭 증명사진을 워드 첫 장에 넣어요' : '서류 탭에 증명사진 파일이 없어요');
+		genChips('scGenPhoto', [['Y', '보이기'], ['', '가리기']], [photo ? 'Y' : '']);
+		$('#scGenPhoto [data-v=Y]').prop('disabled', !photo).attr('title', photo ? '서류 탭 증명사진을 워드 첫 장에 보여요' : '서류 탭에 증명사진 파일이 없어요');
 		$('#scGenModal').modal('show');
 		if (!d.items.length) {
 			// 고를 프로젝트가 없으면 계산하지 않고 어디서 채우는지 알려 준다
