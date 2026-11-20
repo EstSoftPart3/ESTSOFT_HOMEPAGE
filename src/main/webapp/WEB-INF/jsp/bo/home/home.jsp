@@ -67,6 +67,7 @@
 	#hmWeek li.day.today::after { content: ' 오늘'; color: #b8860b; }
 	#hmWeek li a { color: #111; } #hmWeek li.done a { color: #9aa4ac; text-decoration: line-through; }
 	#hmWeek li small { display: block; color: #5f6b75; }
+	#hmWeek li input[type=checkbox] { width: 16px; height: 16px; flex: none; cursor: pointer; accent-color: #5b3fa8; }
 	#hmWeek .hm-empty { padding: 8px 0; }
 	.hm-tk .form-row-x { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 	.hm-tk label.hm-dow { font-weight: 400; margin: 0 4px 0 0; }
@@ -314,6 +315,10 @@
 		if (o) buttons.del = { label: '삭제', className: 'btn-sm btn-outline-danger mr-auto', callback: function() {
 			if (rpt) askScope('반복 할 일 삭제', function(s) { deleteScope(o, s).always(taskReload); });
 			else bootbox.confirm('이 할 일을 지울까요?', function(ok) { if (ok) deleteScope(o, 'ALL').always(taskReload); });
+		} };
+		// 완료는 이 회차만(반복 할 일도 다른 회차는 그대로)
+		if (o) buttons.done = { label: o.done ? '완료 취소' : '✓ 완료', className: 'btn-sm btn-outline-success', callback: function() {
+			api('/admin/my/markTaskData.do', { TASK_SQ: o.t.TASK_SQ, OCC: o.occ, act: o.done ? 'UNDONE' : 'DONE' }).always(taskReload);
 		} };
 		buttons.close = { label: '닫기', className: 'btn-sm btn-secondary' };
 		buttons.save = { label: '저장', className: 'btn-sm btn-primary', callback: function() {
