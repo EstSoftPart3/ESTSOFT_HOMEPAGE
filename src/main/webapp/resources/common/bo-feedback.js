@@ -206,7 +206,8 @@
 		var last = '', sentAt = 0;
 		function send(st) {
 			last = JSON.stringify(st); sentAt = Date.now();
-			$.post('/admin/feedback/presenceData.do', st).done(function (res) { if (res && res.result) paintWho(res.result); });
+			// global:false — 배경 신호라 재시작 중 502·끊김이 나도 화면의 ajaxError 경고창(면접 등)을 띄우지 않게
+			$.ajax({ url: '/admin/feedback/presenceData.do', type: 'POST', data: st, global: false }).done(function (res) { if (res && res.result) paintWho(res.result); });
 		}
 		// 2초마다 살펴 팝업을 열고 닫거나 탭을 바꾸면 바로, 아니면 30초마다 보낸다
 		setInterval(function () {

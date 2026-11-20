@@ -28,6 +28,8 @@
 	.ic-ATTEND { background: #198754; } .ic-CANCEL, .ic-ABSENT { background: #6c757d; } .ic-CHANGE { background: #0dcaf0; color: #212529; }
 	.ic-PASS { background: #198754; } .ic-FAIL { background: #dc3545; } .ic-HOLD { background: #fd7e14; }
 	.ic-chip.ic-ATTEND { background: #fff; color: #198754; box-shadow: inset 0 0 0 1px #198754; }
+	.ic-chip.ic-st { background: #fff; color: #6c757d; box-shadow: inset 0 0 0 1px currentColor; }
+	.ic-st.t-good { color: #198754; } .ic-st.t-bad { color: #dc3545; } .ic-st.t-warn { color: #d9480f; } .ic-st.t-info { color: #0a7ea4; }
 	#calView.is-file-over { outline: 2px dashed #28a745; outline-offset: -4px; }
 	.ic-drop { position: absolute; z-index: 5; pointer-events: none; border: 2px dashed #28a745; background: rgba(40,167,69,.12); border-radius: 4px; color: #1e7e34; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 	#editForm .ic-auto { background: #e8f5e9; }
@@ -77,6 +79,8 @@
 								<div class="col-md-1 col-6 mb-2"><label for="fNotice">통보</label><select id="fNotice" class="form-control form-control-sm hr-filter-input"></select></div>
 								<div class="col-md-1 col-6 mb-2"><label for="fJoin">입사</label><select id="fJoin" class="form-control form-control-sm hr-filter-input"></select></div>
 								<div class="col-12 mb-2 text-right">
+									<%-- 대시보드는 검색 필터와 함께 위에 고정된다 --%>
+									<button type="button" class="btn btn-sm btn-outline-primary" id="btnDash"><i class="fas fa-chart-bar" aria-hidden="true"></i> 대시보드</button>
 									<button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetFilters();"><i class="fas fa-undo"></i> 필터 초기화</button>
 								</div>
 							</div>
@@ -87,7 +91,6 @@
 						<div class="d-flex justify-content-between align-items-center flex-wrap pr-3">
 							<div class="cate-tabs" id="tabs" role="tablist" aria-label="면접 결과"></div>
 							<div class="d-flex align-items-center" style="gap:6px;">
-								<button type="button" class="btn btn-sm btn-outline-primary" id="btnDash"><i class="fas fa-chart-bar" aria-hidden="true"></i> 대시보드</button>
 								<div class="btn-group btn-group-sm" id="viewSwitch" role="group" aria-label="보기 전환">
 									<button type="button" class="btn btn-outline-secondary" data-view="list"><i class="fas fa-list"></i> 목록</button>
 									<button type="button" class="btn btn-outline-secondary" data-view="cal"><i class="far fa-calendar-alt"></i> 캘린더</button>
@@ -671,7 +674,10 @@
 	function eventHtml(r) {
 		function chip(cls, grp, cd) { return cd ? '<span class="' + cls + ' ic-' + esc(cd) + '">' + esc(hrCodeName(grp, cd)) + '</span>' : ''; }
 		var subs = eventSubs(r);
+		// 합격이면 뒤에 통보 상태·입사 답변을 테두리 칩으로(목록 칸과 같은 색 기준 TONES)
+		function st(field, grp) { return r[field] ? '<span class="ic-chip ic-st t-' + (TONES[field][r[field]] || 'mute') + '">' + esc(hrCodeName(grp, r[field])) + '</span>' : ''; }
 		return chip('ic-badge', 'HR_HIRE', r.HIRE_CD) + '<span class="ic-name">' + esc(r.APLY_NM) + '</span>' + chip('ic-chip', 'HR_ATTEND', r.ATTEND_ST) + chip('ic-chip', 'HR_RESULT', r.RESULT_ST)
+			+ (r.RESULT_ST === 'PASS' ? st('NOTICE_ST', 'HR_NOTICE') + st('JOIN_ST', 'HR_JOIN') : '')
 			+ (subs.length ? '<span class="ic-sub">' + esc(subs.join(' · ')) + '</span>' : '');
 	}
 
