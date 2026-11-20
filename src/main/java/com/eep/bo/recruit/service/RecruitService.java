@@ -476,12 +476,15 @@ public class RecruitService {
 				notes.add("이미 투입일이 지나 투입현황의 투입 건은 지우지 않았습니다.");
 			}
 		}
-		// 앞으로 잡힌 인터뷰에서 앞 단계·탈락(DROP 은 -1)으로 가면 취소. 지난 인터뷰는 기록으로 둔다
+		// 앞으로 잡힌 인터뷰에서 앞 단계·탈락(DROP 은 -1)으로 가면 취소 메일. 지난 인터뷰는 기록으로 둔다.
+		// 탈락은 인터뷰 일시를 남겨 달력에 「탈락」으로 보이게 하고(메일은 이때 한 번), 탈락에서 되살릴 때는 메일 없이 일시만 비운다
 		LocalDateTime intv = dateTime(a.get("INTV_DT"));
 		if (STEPS.indexOf(step) < STEPS.indexOf("INTV") && intv != null && intv.isAfter(LocalDateTime.now(SEOUL))) {
-			notes.addAll(mailInterview(a, "취소", intv, dateTime(a.get("INTV_END_DT")), s(a.get("INTV_WAY")), s(a.get("INTV_PLACE")), s(a.get("INTV_WITH"))));
-			jdbc.update("UPDATE TB_EEP_RECRUIT_APPLY_R SET INTV_DT = NULL, INTV_END_DT = NULL WHERE APPLY_SQ = ?", applySq);
-			log(a.get("RECRUIT_SQ"), applySq, "INTV", a.get("STAFF_NM") + " 인터뷰 취소", loginId);
+			if (!"DROP".equals(before)) {
+				notes.addAll(mailInterview(a, "취소", intv, dateTime(a.get("INTV_END_DT")), s(a.get("INTV_WAY")), s(a.get("INTV_PLACE")), s(a.get("INTV_WITH"))));
+				log(a.get("RECRUIT_SQ"), applySq, "INTV", a.get("STAFF_NM") + " 인터뷰 취소", loginId);
+			}
+			if (!"DROP".equals(step)) jdbc.update("UPDATE TB_EEP_RECRUIT_APPLY_R SET INTV_DT = NULL, INTV_END_DT = NULL WHERE APPLY_SQ = ?", applySq);
 		}
 		jdbc.update("UPDATE TB_EEP_RECRUIT_APPLY_R SET STEP_CD = ?, DROP_REASON = ?, UPDT_EMPLY_ID = ?, UPDT_DT = NOW() WHERE APPLY_SQ = ?",
 				step, "DROP".equals(step) ? cut(s(reason).trim(), 500) : null, loginId, applySq);

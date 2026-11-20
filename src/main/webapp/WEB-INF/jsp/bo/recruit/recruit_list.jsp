@@ -16,7 +16,7 @@
 	.rc-pf { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
 	.rc-pf .form-control { height: 30px; font-size: 12.5px; flex: 1 1 120px; width: auto; }
 	.rc-yr { font-weight: 700; } .rc-loc { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 11.5px; color: #495057; overflow-wrap: anywhere; }
-	#ppTable { table-layout: fixed; width: 100%; } #ppTable td { overflow-wrap: anywhere; } #ppTable tr[draggable=true]:hover td { background: #eef9fc; }
+	#ppTable { table-layout: fixed; width: 100%; } #ppTable td { overflow-wrap: anywhere; white-space: normal !important; } /* BO 공통은 표 칸을 한 줄로 묶어 칩이 옆 칸으로 넘친다 */ #ppTable tr[draggable=true]:hover td { background: #eef9fc; }
 	.rc-rel { margin-top: 3px; font-size: 11px; color: #5f3dc4; } .rc-rel b { letter-spacing: 1px; }
 	.rc-tk.on { background: #5f3dc4; color: #fff; }
 	.rc-prof-ok { display: inline-block; background: #d3f9d8; color: #2b8a3e; border-radius: 6px; padding: 0 6px; font-size: 11px; font-weight: 800; margin-right: 3px; }
@@ -76,6 +76,9 @@
 	.rc-cal .ev { display: block; border-radius: 4px; padding: 0 4px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 	.rc-cal .ev.intv, .rc-cal-legend .ev.intv { background: #fff; color: #c2410c; border: 1px solid #ffc9a8; border-left: 4px solid #e8590c; border-radius: 3px; }
 	.rc-cal .ev.intv b, .rc-cal-legend .ev.intv b { font-weight: 800; } .rc-cal .ev.intv small { color: #868e96; }
+	.ist { font-style: normal; font-size: 10px; font-weight: 800; border-radius: 4px; padding: 0 4px; background: #fff4e6; color: #d9480f; }
+	.ist.ok { background: #d3f9d8; color: #2b8a3e; } .ist.wait { background: #fff3bf; color: #e67700; } .ist.x { background: #e9ecef; color: #868e96; }
+	.rc-cal .ev.intv.x { border-left-color: #adb5bd; border-color: #dee2e6; color: #868e96; text-decoration: line-through; } .rc-cal .ev.intv.x .ist { text-decoration: none; }
 	.rc-cal-legend { display: flex; gap: 6px; align-items: center; font-size: 11px; flex-wrap: wrap; }
 	.rc-cal-legend .ev { display: inline-block; border-radius: 4px; padding: 0 5px; }
 	.rc-cal-legend .ev.reg { background: #e7f5ff; color: #1864ab; } .rc-cal-legend .ev.due { background: #ffe3e3; color: #c92a2a; } .rc-cal-legend .ev.start { background: #d3f9d8; color: #2b8a3e; } .rc-cal-legend .ev-ap { color: #495057; }
@@ -283,13 +286,14 @@ function lv(t) { var o = {}; String(t || '').replace(/[초중고특]/g, function
 function relOf(s, st) {
 	var r = CUR_SQ && recruitOf(CUR_SQ), out = { score: 0, max: 1, why: [], tech: {} };
 	if (!r) return out;
-	var mine = (s.TECHS || []).map(techKey), need = String(r.SKILLS || '').split(/[,/·]/).map(function(x) { return $.trim(x); }).filter(Boolean);
+	var mine = (s.TECHS || []).map(techKey), need = String(r.SKILLS || '').split(/[,/·\s\-+&]+/).map(function(x) { return $.trim(x); }).filter(Boolean);
 	// Spring·SpringBoot·Spring Framework, React·ReactJS 는 같은 기술로(Java 와 JavaScript 는 다름)
 	function same(a, b) { var x = function(k) { return k.replace(/(boot|framework|mvc|js)$/, ''); }; return !!a && x(a) === x(b); }
 	var hit = need.filter(function(n) { var k = techKey(n); return mine.some(function(m) { return same(m, k); }); });
-	(s.TECHS || []).forEach(function(t) { var k = techKey(t); if (hit.some(function(n) { return same(k, techKey(n)); })) out.tech[k] = 1; });
+	var names = (s.TECHS || []).filter(function(t) { var k = techKey(t); return hit.some(function(n) { return same(k, techKey(n)); }); });
+	names.forEach(function(t) { out.tech[techKey(t)] = 1; });
 	out.score += hit.length * 3; out.max = need.length * 3 + 2 + 2 + 2 + 1;
-	if (hit.length) out.why.push('기술 ' + hit.join('·'));
+	if (hit.length) out.why.push('기술 ' + names.join('·'));
 	var need2 = lv(r.GRADE_TXT), me2 = lv(s.GRADE_NM);
 	if (Object.keys(me2).some(function(k) { return need2[k]; })) { out.score += 2; out.why.push('등급 ' + s.GRADE_NM); }
 	var wish = String(s.WISH_LOC || '').replace(/\s/g, ''), area = String(r.WORK_AREA || '').split(/[\s,/·()]+/).map(function(w) { return w.replace(/(역|상주|근무|인근|부근)$/, ''); }).filter(function(w) { return w.length >= 2; });
@@ -534,7 +538,7 @@ function viewCal($m, list) {
 		add(r.REG_D, 'reg', r.RECRUIT_SQ);
 		add(r.CLOSE_DT, 'due', r.RECRUIT_SQ);
 		add(r.START_DT, 'start', r.RECRUIT_SQ);
-		appsOf(r.RECRUIT_SQ).forEach(function(a) { if (a.INTV_DT && a.STEP_CD !== 'DROP') day(a.INTV_DT).intv.push({ a: a, r: r }); });
+		appsOf(r.RECRUIT_SQ).forEach(function(a) { if (a.INTV_DT) day(a.INTV_DT).intv.push({ a: a, r: r }); }); // 탈락한 인터뷰도 「탈락」으로 남긴다
 	});
 	var $nav = $('<div class="d-flex align-items-center mb-2" style="gap:6px">')
 		.append($('<button type="button" class="btn btn-sm btn-outline-secondary" aria-label="이전 달">‹</button>').on('click', function() { var d = new Date(y, mo - 2, 1); calMonth = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2); render(); }))
@@ -555,8 +559,8 @@ function viewCal($m, list) {
 			var x = ev[key];
 			if (x) {
 				x.intv.sort(function(p, q) { return p.a.INTV_DT.localeCompare(q.a.INTV_DT); }).forEach(function(v) {
-					var tip = '🎤 인터뷰 ' + v.a.INTV_DT.substring(11, 16) + ' · ' + v.a.STAFF_NM + ' · ' + (v.r.CLIENT_NM || '') + ' ' + (v.r.PRJ_NM || '') + (v.a.INTV_PLACE ? ' · ' + v.a.INTV_PLACE : '');
-					$td.append($('<span class="ev intv">').attr('title', tip).append($('<b>').text(v.a.INTV_DT.substring(11, 16))).append(document.createTextNode(' 🎤 ' + v.a.STAFF_NM + ' 인터뷰 ')).append($('<small>').text(v.r.CLIENT_NM || ''))
+					var is = intvState(v.a), tip = '🎤 인터뷰 ' + v.a.INTV_DT.substring(11, 16) + ' · ' + is[1] + ' · ' + v.a.STAFF_NM + ' · ' + (v.r.CLIENT_NM || '') + ' ' + (v.r.PRJ_NM || '') + (v.a.INTV_PLACE ? ' · ' + v.a.INTV_PLACE : '');
+					$td.append($('<span class="ev intv">').addClass(is[0]).attr('title', tip).append($('<b>').text(v.a.INTV_DT.substring(11, 16))).append(document.createTextNode(' 🎤 ' + v.a.STAFF_NM + ' ')).append($('<i class="ist">').addClass(is[0]).text(is[1])).append(' ').append($('<small>').text(v.r.CLIENT_NM || ''))
 						.on('click', function() { detail(v.r.RECRUIT_SQ); }));
 				});
 				x.order.forEach(function(sq) {
@@ -573,6 +577,13 @@ function viewCal($m, list) {
 	}
 	$m.append($nav).append($t);
 }
+// 인터뷰 상태 [클래스, 이름]: 탈락 / 통과(투입대기·확정) / 예정(앞으로) / 결과 대기(지났는데 인터뷰확정 그대로)
+function intvState(a) {
+	if (a.STEP_CD === 'DROP') return ['x', '탈락'];
+	if (a.STEP_CD === 'JOIN_WAIT' || a.STEP_CD === 'JOIN') return ['ok', '통과'];
+	return a.INTV_DT.substring(0, 16) > nowYmdHm() ? ['plan', '예정'] : ['wait', '결과 대기'];
+}
+function nowYmdHm() { var d = new Date(); return today() + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
 // 타임라인: 이번 달부터 6개월, 모집 투입 기간 막대 + 철수 임박 인원
 function viewTimeline($m, list) {
 	var t = today(), from = new Date(+t.substring(0, 4), +t.substring(5, 7) - 1, 1), to = new Date(from); to.setMonth(to.getMonth() + 6);
@@ -739,7 +750,7 @@ function applyRow(a) {
 	if (a.STEP_CD !== 'JOIN') $r.append($('<button type="button" class="rc-x" title="지원 기록을 지워요 — 다시 지원시킬 수 있어요">↺ 취소</button>').on('click', function() { cancelApply(a); }));
 	if (a.FILE_ID) $r.append($('<a target="_blank" rel="noopener" title="모집 폴더에 저장된 프로필 워드">').attr('href', 'https://drive.google.com/file/d/' + a.FILE_ID + '/view').text('📄 ' + (a.FILE_NM || '워드')));
 	else $r.append($('<button type="button" class="btn btn-sm btn-warning py-0 font-weight-bold" title="지원할 때 드라이브에 올리지 못했어요">⚠ 드라이브에 없음 · 다시 저장</button>').on('click', function() { hrPost('/admin/recruit/wordData.do', { APPLY_SQ: a.APPLY_SQ }, function() { hrToast('드라이브에 저장했어요.'); reload(); }); }));
-	if (a.INTV_DT && a.STEP_CD !== 'DROP') $r.append($('<span class="rc-note">').text('🎤 ' + a.INTV_DT + ' · ' + (WAY[a.INTV_WAY] || '') + (a.INTV_PLACE ? ' · ' + a.INTV_PLACE : '')));
+	if (a.INTV_DT) { var is = intvState(a); $r.append($('<span class="rc-note">').text('🎤 ' + a.INTV_DT + ' · ' + (WAY[a.INTV_WAY] || '') + (a.INTV_PLACE ? ' · ' + a.INTV_PLACE : '') + ' ').append($('<i class="ist">').addClass(is[0]).text(is[1]))); }
 	if (a.DEPLOY_SQ) $r.append($('<a href="/admin/deploy/openDeployList.do" target="_blank" rel="noopener">투입현황 보기 ↗</a>'));
 	if (a.DRAFT && a.STEP_CD === 'JOIN_WAIT') $r.append($('<button type="button" class="btn btn-sm btn-link p-0">투입확정 임시 저장 이어서 ›</button>').on('click', function() { joinDialog(a); }));
 	return $r;
