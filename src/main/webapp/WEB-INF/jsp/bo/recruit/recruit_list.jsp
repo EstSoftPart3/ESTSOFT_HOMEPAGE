@@ -10,8 +10,8 @@
 	/* 모집 상세 팝업: 왼쪽 모집 정보, 오른쪽 대기자 패널(#rcSide 를 평소엔 숨겨 두었다가 옮겨 붙임) */
 	.rc-detail .modal-dialog { max-width: min(1640px, 96vw); }
 	.rc-dwrap { display: flex; gap: 16px; align-items: flex-start; }
-	.rc-dwrap > #rcDetail { flex: 1 1 auto; min-width: 0; }
-	.rc-side { flex: none; width: 600px; position: sticky; top: 0; max-height: calc(100vh - 190px); overflow: auto; border-left: 1px solid #eef1f4; padding-left: 14px; }
+	.rc-dwrap > #rcDetail { flex: 1 1 0; min-width: 0; } /* 좌우 반반 */
+	.rc-side { flex: 1 1 0; min-width: 0; position: sticky; top: 0; max-height: calc(100vh - 190px); overflow: auto; border-left: 1px solid #eef1f4; padding-left: 14px; }
 	@media (max-width: 1199px) { .rc-dwrap { flex-direction: column; } .rc-side { width: auto; position: static; max-height: none; border-left: 0; padding-left: 0; border-top: 1px solid #eef1f4; padding-top: 10px; } }
 	.rc-pf { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
 	.rc-pf .form-control { height: 30px; font-size: 12.5px; flex: 1 1 120px; width: auto; }
