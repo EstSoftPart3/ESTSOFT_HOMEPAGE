@@ -23,7 +23,7 @@
 	.st-chip { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 10px; background: #eef1f4; color: #444; margin: 0 4px 4px 0; }
 	.st-chip b { color: #111; }
 	[data-copy]:focus { outline: 2px solid #16d5ff; outline-offset: -2px; }
-	/* 서류 탭: 요약 숫자 → 종류별 묶음 → 서류 한 장씩 타일. 상태색: 파일(초록)·파일 없음(주황)·미제출(빨강)·해당없음(회색) */
+	/* 서류 탭: 요약 숫자 → 종류별 묶음 → 서류 한 장씩 타일. 상태색: 파일 있음(초록)·미제출(빨강)·해당없음(회색) */
 	.st-dsum { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; font-weight: 400; color: #6b7785; }
 	.st-dsum span { display: inline-flex; align-items: center; gap: 4px; } .st-dsum i { width: 8px; height: 8px; border-radius: 50%; background: var(--st-c); } .st-dsum b { color: var(--st-c); font-size: 13px; }
 	.st-dbar { display: flex; height: 4px; border-radius: 2px; background: #e8edf2; overflow: hidden; margin-bottom: 12px; } .st-dbar i { background: var(--st-c); }
@@ -31,7 +31,7 @@
 	.st-drop > i { font-size: 26px; color: #8a9bab; } .st-drop b { display: block; font-size: 13px; } .st-drop small { color: #8a96a3; font-size: 11.5px; }
 	.st-drop:hover { border-color: #16a0c4; }
 	.st-drop.is-over { border-color: #16a0c4; border-style: solid; background: #e3f6fb; } .st-drop.is-over > i { color: #16a0c4; }
-	[data-s=file] { --st-c: #1d7a4a; --st-bg: #e7f5ec; } [data-s=nofile] { --st-c: #b7791f; --st-bg: #fdf3e1; }
+	[data-s=file] { --st-c: #1d7a4a; --st-bg: #e7f5ec; }
 	[data-s=miss] { --st-c: #c0392b; --st-bg: #fdecea; } [data-s=na] { --st-c: #8a96a3; --st-bg: #f1f3f5; }
 	.st-dgroup { margin-bottom: 14px; }
 	.st-dgroup h6 { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: #3a4654; margin: 0 0 8px; }
@@ -368,7 +368,8 @@
 		'비상연락망': { cd: 'EMG', title: '비상연락망', cols: [['C1', '관계', null, true], ['C2', '연락처', null, true]], base: [['EMG_REL1', 'EMG_TEL1'], ['EMG_REL2', 'EMG_TEL2']] }
 	};
 	var items = null; // { sq, list }
-	var DOC_VALUES = { list: [['', '미제출'], ['O', 'O'], ['X', 'X'], ['-', '해당없음']] };
+	// 제출 여부는 파일 연결로 정하고, 사람은 해당없음만 고른다(옛 O·X 값은 DB 에 남아도 무시)
+	var DOC_VALUES = { list: [['', '미제출'], ['-', '해당없음']] };
 	var DOCS = [['DOC_REG', '주민등본'], ['DOC_ID', '신분증'], ['DOC_GRAD', '졸업증명'], ['DOC_BANK', '통장사본'], ['DOC_PHOTO', '증명사진'],
 		['DOC_HI', '건보득실확인서'], ['DOC_CONTRACT', '근로계약'], ['DOC_BIZ', '사업자사실증명'], ['DOC_EI', '고용보험자격이력'], ['DOC_SEC', '보안서약서'],
 		['DOC_EDU', '직무교육동의서'], ['DOC_NEP', '국민취업제도참여'], ['DOC_PRIV', '이력비공개'], ['DOC_CRIME', '범죄기록회보'], ['DOC_MIL', '병적증명서']];
@@ -378,7 +379,7 @@
 		['학력·경력', 'fa-graduation-cap', '학력과 경력·보험 이력', ['DOC_GRAD', 'DOC_MIL', 'DOC_HI', 'DOC_EI']],
 		['계약·서약', 'fa-file-signature', '입사 때 받는 동의·서약', ['DOC_CONTRACT', 'DOC_SEC', 'DOC_EDU', 'DOC_PRIV']],
 		['해당자만', 'fa-user-check', '프리·제도 참여자 등 해당될 때', ['DOC_BIZ', 'DOC_NEP', 'DOC_CRIME']]];
-	var DOC_STATES = [['file', '파일 있음', 'fa-check-circle'], ['nofile', '파일 없음', 'fa-exclamation-circle'], ['miss', '미제출', 'fa-times-circle'], ['na', '해당없음', 'fa-minus-circle']];
+	var DOC_STATES = [['file', '파일 있음', 'fa-check-circle'],['miss', '미제출', 'fa-times-circle'], ['na', '해당없음', 'fa-minus-circle']];
 	// 인사카드 칸: [필드, 라벨, 종류]. 종류 'secret' 은 가린 값 + 원문 보기
 	var SECTIONS = [
 		['기초정보', [['STAFF_NM', '성명'], ['ORG_NM', '소속'], ['DEPT_NM', '부서'], ['POSITION_NM', '직급'], ['SEQ_NO', 'NO'],
@@ -562,7 +563,7 @@
 	}
 
 	function missingDocs(r) {
-		return DOCS.filter(function(d) { return !r[d[0]] || r[d[0]] === 'X'; });
+		return DOCS.filter(function(d) { return docState(r, d) === 'miss'; });
 	}
 
 	function render() {
@@ -687,7 +688,7 @@
 		if (cardTab === TAB.SALES) salesTab(card, r);
 		if (cardTab === TAB.CAREER) careerTab(card(true), r);
 		if (cardTab === TAB.DOCS) {
-			var $dc = card(true), cnt = { file: 0, nofile: 0, miss: 0, na: 0 };
+			var $dc = card(true), cnt = { file: 0, miss: 0, na: 0 };
 			DOCS.forEach(function(d) { cnt[docState(r, d)]++; });
 			var $sum = $('<div class="st-dsum">'), $bar = $('<div class="st-dbar">'), need = DOCS.length - cnt.na;
 			DOC_STATES.forEach(function(s) {
@@ -1237,13 +1238,10 @@
 	function docFiles(r, code) {
 		return ((docs && docs.sq === r.STAFF_SQ ? docs.list : []) || []).filter(function(f) { return f.DOC_CD === code; });
 	}
-	// 파일이 연결돼 있으면 'file', 아니면 손으로 고른 값으로: O → 'nofile', - → 'na', 빈칸·X → 'miss'. 파일 목록을 읽기 전에는 O 를 'file' 로 본다
+	// 파일이 연결돼 있으면 'file', 해당없음(-)이면 'na', 나머지는 'miss'. 이 직원 파일 목록을 아직 안 읽었으면 목록 조회의 DOC_FILES(파일 있는 서류 코드)로 본다
 	function docState(r, d) {
-		var v = r[d[0]];
-		if (docFiles(r, d[0]).length) return 'file';
-		if (v === '-') return 'na';
-		if (v === 'O') return docs && docs.sq === r.STAFF_SQ ? 'nofile' : 'file';
-		return 'miss';
+		var has = docs && docs.sq === r.STAFF_SQ ? docFiles(r, d[0]).length > 0 : (',' + (r.DOC_FILES || '') + ',').indexOf(',' + d[0] + ',') >= 0;
+		return has ? 'file' : r[d[0]] === '-' ? 'na' : 'miss';
 	}
 	function fileIcon(name) {
 		var ext = String(name || '').split('.').pop().toLowerCase();
@@ -1252,11 +1250,13 @@
 
 	function docRow(r, d) {
 		var state = docState(r, d), files = docFiles(r, d[0]), st = DOC_STATES.filter(function(s) { return s[0] === state; })[0];
-		var $cell = $('<div class="st-dstat" title="눌러서 제출 상태 바꾸기">');
-		hrEditable($cell, {
+		var $cell = $('<div class="st-dstat">'), badge = $('<span class="st-badge">').append($('<i class="fas">').addClass(st[2])).append(document.createTextNode(st[1]));
+		// 파일이 붙은 서류는 상태를 고를 게 없다. 없으면 미제출·해당없음 중에서 고른다
+		if (state === 'file') $cell.css('cursor', 'default').append(badge);
+		else hrEditable($cell.attr('title', '눌러서 미제출·해당없음 바꾸기'), {
 			url: '/admin/staff/saveStaffFieldData.do', key: { STAFF_SQ: r.STAFF_SQ }, field: d[0], type: DOC_VALUES, label: r.STAFF_NM + ' ' + d[1],
-			show: function() { return st[1]; }, value: function() { return r[d[0]]; },
-			paint: function($c, text) { $c.append($('<span class="st-badge">').append($('<i class="fas">').addClass(st[2])).append(document.createTextNode(text))); },
+			show: function() { return st[1]; }, value: function() { return r[d[0]] === '-' ? '-' : ''; },
+			paint: function($c) { $c.append(badge.clone()); },
 			saved: function(v) { r[d[0]] = v; paintCard(); }
 		});
 		var $files = $('<div class="st-files">');
@@ -1269,7 +1269,7 @@
 			$f.append($('<button type="button">').attr('aria-label', f.FILE_NM + ' 연결 끊기').attr('title', '연결 끊기 (드라이브 파일은 남는다)').html('&times;')
 				.on('click', function() {
 					bootbox.confirm(f.FILE_NM + ' 연결을 끊을까요? 드라이브의 파일은 지우지 않습니다.', function(ok) {
-						if (ok) hrPost('/admin/staff/unlinkStaffDocData.do', { STAFF_SQ: r.STAFF_SQ, DOC_SQ: f.DOC_SQ }, function() { loadDocs(r.STAFF_SQ); });
+						if (ok) hrPost('/admin/staff/unlinkStaffDocData.do', { STAFF_SQ: r.STAFF_SQ, DOC_SQ: f.DOC_SQ }, function() { load(function() { loadDocs(r.STAFF_SQ); }); }); // 목록 미제출 수도 다시
 					});
 				}));
 			$files.append($f);
