@@ -1,7 +1,11 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%-- 면접·교육생 관리 공통 스크립트 --%>
 <script>
-$(document).ajaxError(function() { bootbox.alert('처리하지 못했습니다. 입력 길이를 줄이거나 다시 로그인한 뒤 시도해 주세요.'); });
+// 응답 없음·502~504 는 배포로 서버가 재시작되는 중이라 문구를 나눈다(저장 실패를 알아야 하니 창은 띄운다)
+$(document).ajaxError(function(e, xhr) {
+	var restart = !xhr.status || (xhr.status >= 502 && xhr.status <= 504);
+	bootbox.alert(restart ? '서버를 새로 올리는 중이라 처리하지 못했습니다. 10초쯤 뒤 다시 시도해 주세요.' : '처리하지 못했습니다. 입력 길이를 줄이거나 다시 로그인한 뒤 시도해 주세요.');
+});
 
 // 공통코드관리의 HR_ 그룹. { 그룹: [{CD, NM}] }
 var HR_CODES = null;
