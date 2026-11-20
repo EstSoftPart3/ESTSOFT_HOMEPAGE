@@ -126,7 +126,10 @@ public class StaffPrjCheck {
 		check("2020-03".equals(ar.get(0).get("START_YM")) && "Y".equals(ar.get(0).get("PIN")), "고정 줄 기간");
 		slots.add(kv("t", "IND", "v", "의료 > 병원"));
 		ar = StaffCareerService.arrange(all, new ArrayList<>(all), conf, 10);
-		check("EBDC_A".equals(names(ar)), "못 채운 자리는 빈칸, 나머지는 순서대로: " + names(ar));
+		check("EBDC_".equals(names(ar)), "자리를 고르면 고른 자리(+고정)만, 못 채운 자리는 빈칸: " + names(ar));
+		conf.remove("slots");
+		ar = StaffCareerService.arrange(all, new ArrayList<>(all), conf, 3);
+		check("EAB".equals(names(ar)), "자리를 안 고르면 횟수만큼 순서대로(고정 E 포함 3줄): " + names(ar));
 		check("금융 > 은행".equals(StaffCareerService.codeName(" 금융>은행 ")), "코드 이름 다듬기");
 		check("Spring Boot".equals(StaffCareerService.techName("  Spring   Boot ")) && "C>".equals(StaffCareerService.techName("C>")), "기술 이름 다듬기(한 단계라 > 허용)");
 		// 기술 이름 맞추기·나누기

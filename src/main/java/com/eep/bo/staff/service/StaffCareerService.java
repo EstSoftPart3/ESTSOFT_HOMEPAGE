@@ -382,7 +382,7 @@ public class StaffCareerService {
 		return jdbc.queryForObject("SELECT COUNT(*) FROM TB_EEP_HR_STAFF_PRJ_VER_H WHERE STAFF_SQ = ? AND VER_NO = ? AND VER_KIND = 'SAMPLE'", Integer.class, staffSq, verNo) > 0;
 	}
 
-	/** 줄 배치: 고정 줄은 그 자리에, 고른 자리는 순서대로 가장 잘 맞는 프로젝트로, 나머지는 pool 순서대로 max 줄까지(0 이면 전부). all·pool 의 줄은 KEY·ORIG_START·ORIG_END 를 가진다 */
+	/** 줄 배치: 고정 줄은 그 자리에, 고른 자리는 순서대로 가장 잘 맞는 프로젝트로. 자리를 하나도 안 골랐을 때만 나머지를 pool 순서대로 max 줄까지(0 이면 전부). all·pool 의 줄은 KEY·ORIG_START·ORIG_END 를 가진다 */
 	static List<Map<String, Object>> arrange(List<Map<String, Object>> all, List<Map<String, Object>> pool, Map<String, Object> conf, int max) {
 		// 고정 줄: 기간 안에 없어도 사람이 고정했으면 남긴다. 기간은 실제 기간 안으로만 자른다
 		Map<Integer, Map<String, Object>> pinned = new java.util.TreeMap<>();
@@ -428,7 +428,7 @@ public class StaffCareerService {
 				picked.add(best);
 			}
 		}
-		// 나머지는 정렬 순서대로, 실제 줄 수가 프로젝트 횟수가 될 때까지
+		// 자리를 안 골랐으면 정렬 순서대로, 실제 줄 수가 프로젝트 횟수가 될 때까지
 		int limit = max > 0 ? max : Integer.MAX_VALUE;
 		int real = pinned.size();
 		List<Map<String, Object>> body = new ArrayList<>();
@@ -436,7 +436,7 @@ public class StaffCareerService {
 			if (!"Y".equals(m.get("EMPTY"))) { if (real >= limit) continue; real++; }
 			body.add(m);
 		}
-		for (Map<String, Object> m : pool) {
+		for (Map<String, Object> m : picked.isEmpty() ? pool : Collections.<Map<String, Object>> emptyList()) { // 자리를 골랐으면 고른 자리(+고정 줄)만
 			if (real >= limit) break;
 			if (used.contains(m.get("KEY"))) continue;
 			used.add(s(m.get("KEY")));

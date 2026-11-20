@@ -1307,7 +1307,7 @@
 	}
 	function genSlots() {
 		var $s = $('#scGenSlots').empty();
-		if (!scGen.slots.length) { $s.append('<span class="small text-muted">고른 자리 없음 · 아래에서 고르면 그 산업·역할 프로젝트가 고른 순서대로 앞에 놓여요(두 번 고르면 두 줄)</span>'); return; }
+		if (!scGen.slots.length) { $s.append('<span class="small text-muted">고른 자리 없음 · 아래에서 고르면 고른 산업·역할 프로젝트만 고른 순서대로 들어가요(두 번 고르면 두 줄)</span>'); return; }
 		scGen.slots.forEach(function(s, i) {
 			$s.append($('<span class="sc-slot">').attr('data-kind', s.t).append($('<em>').text((i + 1) + ' ' + GEN_KIND[s.t])).append(document.createTextNode(' ' + s.v))
 				.append($('<button type="button" class="sc-slot-x">').attr({ 'data-i': i, 'aria-label': (i + 1) + '번 자리 ' + s.v + ' 빼기' }).html('&times;')));
