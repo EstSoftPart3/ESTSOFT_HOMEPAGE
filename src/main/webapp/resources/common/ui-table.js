@@ -59,7 +59,7 @@
 	// ── 50줄씩 더 보이기 (BO 목록 표) ──
 	// 줄은 화면이 전부 그려 두고, 여기서 50줄 넘는 줄을 숨겼다가 표 끝이 보이면 로딩 화면을 잠깐 띄우고 50줄을 더 보인다.
 	// 월별 화면(기준월 칸이 있는 화면)·팝업 안 표·줄 합친 표·data-nomore 표는 빼고, 줄 수가 달라지면(검색·탭 바꿈) 처음 50줄로 돌아간다
-	var STEP = 50, more = new WeakMap(), monthly = null, busy = false, loadEl = null;
+	var STEP = 50, more = new WeakMap(), monthly = null, loadEl = null;
 
 	function moreable(t) {
 		if (monthly === null) monthly = [].some.call(document.querySelectorAll('.content-wrapper input[type=month]'), function (m) { return !m.closest('.modal'); });
@@ -86,10 +86,10 @@
 		if (foot.hidden !== !t.offsetParent) foot.hidden = !t.offsetParent;
 	}
 
-	// 화면을 잠그고 로딩 표시를 띄운다. 더 보이기(busy) 중이거나 서버 호출이 0.3초 넘게 걸리는(netOn) 동안 켜 둔다
+	// 화면을 잠그고 로딩 표시를 띄운다. 서버 호출이 0.3초 넘게 걸리는(netOn) 동안 켜 둔다
 	var netN = 0, netOn = false, netTimer = null;
 	function lock() {
-		var on = busy || netOn;
+		var on = netOn;
 		if (!loadEl) {
 			if (!on) return;
 			loadEl = document.createElement('div');
@@ -132,17 +132,12 @@
 
 	function loadMore(foot) {
 		var t = foot.previousElementSibling, st = t && more.get(t);
-		if (!st || st.show >= st.n || busy) return;
-		busy = true;
-		lock();
-		setTimeout(function () {
-			st.show += STEP;
-			applyMore(t);
-			busy = false;
-			lock();
-			// 더 보인 뒤에도 표 끝이 화면 안이면 이어서 불러온다
-			setTimeout(checkMore, 0);
-		}, 450);
+		if (!st || st.show >= st.n) return;
+		// 이미 받은 줄을 더 보이는 것이라 잠그지 않는다(스크롤·크기 신호만으로 저절로 로딩 창이 뜨던 원인)
+		st.show += STEP;
+		applyMore(t);
+		// 더 보인 뒤에도 표 끝이 화면 안이면 이어서 붙인다
+		setTimeout(checkMore, 0);
 	}
 
 	// 안내 줄이 화면(스크롤 상자가 있으면 그 상자) 아래 끝 가까이 왔는지. IntersectionObserver 는 가려진 탭에서 안 돌아 직접 잰다

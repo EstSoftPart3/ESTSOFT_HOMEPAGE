@@ -57,11 +57,11 @@ if (document.documentElement.classList.contains('in-pop')) (function() {
   <link rel="stylesheet" href="/resources/bo/plugins/jsgrid/jsgrid-theme.min.css">
 
 
-<script src="/resources/common/ui-table.js?v=20261119m"></script>
+<script src="/resources/common/ui-table.js?v=20261120load"></script>
 <script src="/resources/common/bo-list.js?v=20261113"></script>
-<script src="/resources/common/bo-view.js?v=20261119m"></script>
+<script src="/resources/common/bo-view.js?v=20261120load"></script>
 <script src="/resources/common/bo-tabs.js?v=20261119m"></script>
-<script src="/resources/common/bo-feedback.js?v=20261119m"></script>
+<script src="/resources/common/bo-feedback.js?v=20261120load"></script>
 <script>
 // 체크박스 Shift+클릭 범위 선택: 같은 목록·같은 class 의 직전 클릭 칸부터 지금 칸까지 지금 칸 상태로 맞춘다
 (function() {

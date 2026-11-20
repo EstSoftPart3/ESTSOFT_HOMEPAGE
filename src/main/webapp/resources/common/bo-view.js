@@ -109,10 +109,11 @@
 	// ── 서버 ──
 	function post(url, d, ok) {
 		d.page = PATH;
-		return $.post('/admin/my/' + url, d, function (r) {
+		// 화면을 열 때 읽는 보기 목록(viewPresetData)은 배경 호출이라 로딩 창을 띄우지 않는다. 저장은 그대로 띄운다
+		return $.ajax({ url: '/admin/my/' + url, type: 'POST', data: d, dataType: 'json', global: url !== 'viewPresetData.do' }).done(function (r) {
 			if (r && r.error) return toast(r.error, true);
 			if (ok) ok(r ? r.result : null);
-		}, 'json').fail(function () { toast('보기를 저장하지 못했습니다. 잠시 뒤 다시 시도해 주세요.', true); });
+		}).fail(function () { toast('보기를 저장하지 못했습니다. 잠시 뒤 다시 시도해 주세요.', true); });
 	}
 
 	// ── 화면 ──

@@ -223,7 +223,8 @@
 		if (window.top !== window || !document.getElementById('fbBtn')) return;
 		if (document.getElementById('boWho')) startPresence();
 		if (window.boSheet) { $(document).on('click', '.bo-who-n', openWho); $(document).on('click', '#boMore', openMore); }
-		$.post('/admin/feedback/badgeData.do').done(function (res) {
+		// global:false — 배경 호출이라 느려도 로딩 창을 띄우지 않는다
+		$.ajax({ url: '/admin/feedback/badgeData.do', type: 'POST', global: false }).done(function (res) {
 			if (!res.result) return;
 			paintBadge(res.result.unseen);
 			paintNew(res.result.latestUpdate);
