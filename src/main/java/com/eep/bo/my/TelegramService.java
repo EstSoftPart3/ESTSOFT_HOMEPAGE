@@ -433,7 +433,7 @@ public class TelegramService {
 		}
 		for (Map<String, Object> r : jdbc.queryForList("SELECT A.APPLY_SQ, A.RECRUIT_SQ, DATE_FORMAT(A.INTV_DT, '%Y-%m-%d %H:%i') AT, A.INTV_PLACE, S.STAFF_NM, R.CLIENT_NM"
 				+ " FROM TB_EEP_RECRUIT_APPLY_R A JOIN TB_EEP_RECRUIT_M R ON R.RECRUIT_SQ = A.RECRUIT_SQ AND R.DEL_YN = 'N' JOIN TB_EEP_HR_STAFF_M S ON S.STAFF_SQ = A.STAFF_SQ"
-				+ " WHERE A.STEP_CD IN ('INTV', 'INTV_SUB', 'INTV_CHK') AND A.INTV_DT BETWEEN ? AND ?" // 홈 달력과 같은 단계, from.format(AT), to.format(AT))) {
+				+ " WHERE A.STEP_CD IN ('INTV', 'INTV_SUB', 'INTV_CHK') AND A.INTV_DT BETWEEN ? AND ?", from.format(AT), to.format(AT))) { // 홈 달력과 같은 단계
 			Object place = r.get("INTV_PLACE");
 			out.add(new Ev("RC_INTV", String.valueOf(r.get("APPLY_SQ")), LocalDateTime.parse((String) r.get("AT"), AT),
 					r.get("STAFF_NM") + (r.get("CLIENT_NM") == null ? "" : " · " + r.get("CLIENT_NM")), place == null || "".equals(place) ? null : "장소: " + place,
