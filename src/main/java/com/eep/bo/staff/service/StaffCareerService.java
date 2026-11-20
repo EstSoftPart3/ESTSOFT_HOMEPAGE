@@ -304,7 +304,8 @@ public class StaffCareerService {
 	 * 돌려주는 줄: 프로젝트 칸 + MATCH(기술 일치 수), SLOT(채운 자리 이름), PIN(Y), KEY, ORIG_START·ORIG_END(실제 기간), EMPTY(Y 면 못 채운 자리 — 저장·워드에는 빠진다)
 	 */
 	public List<Map<String, Object>> generate(Object staffSq, Map<String, Object> conf) {
-		List<String> skills = strs(conf.get("skills")), inds = strs(conf.get("inds")), roles = strs(conf.get("roles"));
+		List<String> skills = new ArrayList<>(), inds = strs(conf.get("inds")), roles = strs(conf.get("roles"));
+		for (String k : strs(conf.get("skills"))) skills.add(techKey(k)); // JAVA·Java 처럼 표기만 다른 값도 같은 기술로 센다
 		int months = conf.containsKey("months") ? num(conf.get("months")) : num(conf.get("years")) * 12, max = Math.min(100, num(conf.get("max")));
 		boolean deploy = !Boolean.FALSE.equals(conf.get("deploy")), ext = !Boolean.FALSE.equals(conf.get("ext")), only = "only".equals(conf.get("show"));
 		String cutYm = months > 0 ? LocalDate.now().minusMonths(Math.min(1200, months)).toString().substring(0, 7) : "";
@@ -315,7 +316,7 @@ public class StaffCareerService {
 			int hit = 0;
 			for (String c : TECH) {
 				List<String> on = new ArrayList<>(), off = new ArrayList<>();
-				for (String t : tokens(s(it.get(c)))) (skills.contains(t) ? on : off).add(t);
+				for (String t : tokens(s(it.get(c)))) (skills.contains(techKey(t)) ? on : off).add(t);
 				hit += on.size();
 				if (!skills.isEmpty()) {
 					if (!only) on.addAll(off);
@@ -336,6 +337,9 @@ public class StaffCareerService {
 			pool.add(m);
 		}
 		// 정렬은 안정 정렬이라 같은 일치 수 안에서는 원래 순서(진행중 먼저·최근순)를 지킨다
+		// 🎲 다시 뽑기: seed 가 있으면 먼저 섞는다. 기술 일치순이면 같은 일치 수끼리만 섞이고, 최신순이면 순서 전체가 섞인다(같은 seed 면 같은 결과라 저장해도 그대로)
+		long seed = conf.get("seed") instanceof Number ? ((Number) conf.get("seed")).longValue() : 0;
+		if (seed != 0) Collections.shuffle(pool, new java.util.Random(seed));
 		if ("match".equals(conf.get("sort"))) pool.sort((a, b) -> num(b.get("MATCH")) - num(a.get("MATCH")));
 		return arrange(all, pool, conf, max);
 	}
@@ -861,11 +865,45 @@ public class StaffCareerService {
 	}
 
 	/** 입력값을 확인하고 저장할 모양으로 다듬는다. 여러 값 칸은 "a, b" 로 맞춘다 */
+	// ── 기술 이름 맞추기: 대소문자·띄어쓰기·하이픈·점만 다른 값은 한 이름으로(2026-11-20 사용자 확인한 표) ──
+	static final Map<String, String> TECH_ALIAS = new HashMap<>();
+	static {
+		String[] names = { "Java", "JavaScript", "jQuery", "Thymeleaf", "HTML", "JSP", "PHP", "MyBatis", "iBatis", "Spring", "SpringBoot", "전자정부프레임워크", "ProFrame",
+				"MiBuilder", "Vue.js", "MSSQL", "MySQL", "MariaDB", "Oracle", "Tibero", "DBeaver", "Eclipse", "IntelliJ", "SourceTree", "STS", "MySQL Workbench", "HeidiSQL",
+				"MiPlatform", "Nexacro", "Toad", "SQL Developer", "Framework" };
+		for (String n : names) TECH_ALIAS.put(techKey(n), n);
+		String[][] alias = { { "전자정부", "전자정부프레임워크" }, { "전자정부프레임웍", "전자정부프레임워크" }, { "프레임웍", "전자정부프레임워크" }, { "MyBulider", "MiBuilder" },
+				{ "DBever", "DBeaver" }, { "Workbench", "MySQL Workbench" } };
+		for (String[] a : alias) TECH_ALIAS.put(techKey(a[0]), a[1]);
+	}
+	static final List<String> TECH_COLS = Arrays.asList("LANG_NM", "FRAMEWORK_NM", "DBMS_NM", "TOOL_NM");
+
+	/** 비교용 열쇠: 소문자, 띄어쓰기·하이픈·점·밑줄 없앰 */
+	static String techKey(String t) {
+		return s(t).toLowerCase().replaceAll("[\\s._-]", "");
+	}
+
+	/** 쉼표 값들을 아는 이름으로 맞추고, 띄어쓰기로 붙은 값은 조각이 모두 아는 이름이면 나눈다. 열쇠가 같은 값은 처음 것 하나만 */
+	static String canonTech(String v) {
+		Map<String, String> out = new LinkedHashMap<>();
+		for (String t : tokens(v)) {
+			List<String> parts = new ArrayList<>();
+			String whole = TECH_ALIAS.get(techKey(t));
+			if (whole != null) parts.add(whole);
+			else {
+				for (String p : t.split("\\s+")) parts.add(TECH_ALIAS.get(techKey(p)));
+				if (parts.size() < 2 || parts.contains(null)) parts = Collections.singletonList(t);
+			}
+			for (String p : parts) out.putIfAbsent(techKey(p), p);
+		}
+		return String.join(", ", out.values());
+	}
+
 	static Map<String, Object> clean(Map<String, Object> p) {
 		Map<String, Object> row = new LinkedHashMap<>();
 		for (String c : COLS) {
 			String v = s(p.get(c)).trim();
-			row.put(c, blankToNull(MULTI.contains(c) ? String.join(", ", new LinkedHashSet<>(tokens(v))) : v));
+			row.put(c, blankToNull(TECH_COLS.contains(c) ? canonTech(v) : MULTI.contains(c) ? String.join(", ", new LinkedHashSet<>(tokens(v))) : v));
 		}
 		if (row.get("PRJ_NM") == null) throw new IllegalArgumentException("프로젝트명을 입력해 주세요.");
 		String start = s(row.get("START_YM")), end = s(row.get("END_YM"));

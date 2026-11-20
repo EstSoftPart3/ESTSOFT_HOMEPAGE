@@ -129,6 +129,13 @@ public class StaffPrjCheck {
 		check("EBDC_A".equals(names(ar)), "못 채운 자리는 빈칸, 나머지는 순서대로: " + names(ar));
 		check("금융 > 은행".equals(StaffCareerService.codeName(" 금융>은행 ")), "코드 이름 다듬기");
 		check("Spring Boot".equals(StaffCareerService.techName("  Spring   Boot ")) && "C>".equals(StaffCareerService.techName("C>")), "기술 이름 다듬기(한 단계라 > 허용)");
+		// 기술 이름 맞추기·나누기
+		check("Java, JavaScript".equals(StaffCareerService.canonTech("JAVA, Java, Java-Script, JavaScript")), "대소문자·하이픈 중복: " + StaffCareerService.canonTech("JAVA, Java, Java-Script, JavaScript"));
+		check("MySQL, MSSQL".equals(StaffCareerService.canonTech("MY-SQL, My SQL, mySql, MS-SQL")), "MySQL·MSSQL: " + StaffCareerService.canonTech("MY-SQL, My SQL, mySql, MS-SQL"));
+		check("STS, MySQL Workbench, HeidiSQL".equals(StaffCareerService.canonTech("STS Workbench HeidiSQL")), "붙은 값 나누기: " + StaffCareerService.canonTech("STS Workbench HeidiSQL"));
+		check("IntelliJ, SourceTree".equals(StaffCareerService.canonTech("IntelliJ SourceTree")) && "iBatis, MyBatis".equals(StaffCareerService.canonTech("iBatis myBatis")), "붙은 값 나누기 2");
+		check("전자정부프레임워크, iBatis".equals(StaffCareerService.canonTech("전자정부, 프레임웍, iBatis")), "전자정부+프레임웍 하나로");
+		check("Visual Studio Code, Putty".equals(StaffCareerService.canonTech("Visual Studio Code, Putty")), "모르는 값·모르는 조각이 섞인 값은 그대로");
 		try {
 			StaffCareerService.techName("Java, JSP");
 			check(false, "기술 이름 쉼표는 막아야 함");

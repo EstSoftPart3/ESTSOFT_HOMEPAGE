@@ -357,7 +357,10 @@
 						</div>
 						<span class="k">증명사진</span><div id="scGenPhoto" data-one></div>
 					</div>
-					<div class="hr-section mt-3" id="scGenSum">미리보기</div>
+					<div class="d-flex align-items-center mt-3 mb-2" style="gap:8px">
+						<div class="hr-section m-0 p-0 border-0" id="scGenSum">미리보기</div>
+						<button type="button" class="btn btn-sm btn-outline-primary ml-auto" id="scGenDice" title="📌 고정 줄은 두고 나머지를 조건 안에서 무작위로 다시 골라요">🎲 다시 뽑기</button>
+					</div>
 					<div id="scGenView"></div>
 				</div>
 				<div class="modal-footer">
@@ -1172,7 +1175,7 @@
 		function one(id) { return $('#' + id + ' .sc-chip.on').attr('data-v'); }
 		var pins = Object.keys(scGen.pins).map(function(k) { var p = scGen.pins[k]; return { key: k, pos: p.pos, start: p.start, end: p.end }; });
 		return { skills: scGen.skills.slice(), months: +$('#scGenMonths').val(), max: +$('#scGenMaxR').val(),
-			sort: one('scGenSort'), slots: scGen.slots, pins: pins, photo: one('scGenPhoto') === 'Y', sample: !!scGen.sample };
+			sort: one('scGenSort'), slots: scGen.slots, pins: pins, photo: one('scGenPhoto') === 'Y', sample: !!scGen.sample, seed: scGen.seed || 0 };
 	}
 	// 볼륨 스위치처럼 끄는 막대(--p 만큼 채움)와 옆 숫자 칸을 맞춘다
 	function volPaint() {
@@ -1243,19 +1246,28 @@
 	// 필수 기술: 언어·프레임워크·DBMS·TOOL 네 줄. [구분, 수행이력 칸, 이름]
 	var GEN_TECH = [['LANG', 'LANG_NM', '언어'], ['FW', 'FRAMEWORK_NM', '프레임워크'], ['DBMS', 'DBMS_NM', 'DBMS'], ['TOOL', 'TOOL_NM', 'TOOL']];
 	// 한 줄의 칩 [이름, 이 직원 프로젝트 수]: 이 직원이 쓴 것 먼저, 그다음 목록(공통코드, 없으면 회사에서 자주 쓰는 값), 고른 값은 목록에서 빠져도 남긴다
+	// JAVA·Java·Java-Script 처럼 표기만 다른 값은 한 칩(서버 techKey 와 같은 규칙). 이름은 목록(공통코드) 표기를 먼저 쓴다
+	function techKey(v) { return String(v || '').toLowerCase().replace(/[\s._-]/g, ''); }
 	function genTechList(t) {
-		var cnt = {}, names = [];
-		scCount(career.d.items, t[1]).forEach(function(x) { cnt[x[0]] = x[1]; names.push(x[0]); });
-		(scGen.codes[t[0]] || (career.d.chips[t[1]] || []).slice(0, 20)).forEach(function(n) { if (names.indexOf(n) < 0) names.push(n); });
-		return names.map(function(n) { return [n, cnt[n] || 0]; });
+		var by = {}, order = [], codes = scGen.codes[t[0]] || [];
+		function add(n, c) {
+			var k = techKey(n);
+			if (!by[k]) { by[k] = [n, 0]; order.push(k); }
+			by[k][1] += c;
+		}
+		codes.forEach(function(n) { by[techKey(n)] = [n, 0]; });
+		scCount(career.d.items, t[1]).forEach(function(x) { add(x[0], x[1]); });
+		(codes.length ? codes : (career.d.chips[t[1]] || []).slice(0, 20)).forEach(function(n) { add(n, 0); });
+		return order.map(function(k) { return by[k]; });
 	}
+	function genSkillOn(n) { return scGen.skills.some(function(s) { return techKey(s) === techKey(n); }); }
 	function genSkills() {
 		var $s = $('#scGenSkills').empty();
 		GEN_TECH.forEach(function(t) {
-			var list = genTechList(t), on = list.filter(function(x) { return scGen.skills.indexOf(x[0]) >= 0; }).length;
+			var list = genTechList(t), on = list.filter(function(x) { return genSkillOn(x[0]); }).length;
 			var $row = $('<div class="sc-sk-row">').appendTo($s).append($('<span class="sc-tree-k">').text(t[2]).append(on ? $('<b>').text(' ' + on) : ''));
 			list.forEach(function(x) {
-				var sel = scGen.skills.indexOf(x[0]) >= 0;
+				var sel = genSkillOn(x[0]);
 				var $c = $('<button type="button" class="sc-chip gray sc-sk-chip">').attr({ 'data-v': x[0], 'aria-pressed': sel }).toggleClass('on', sel).text(x[0]).append(x[1] ? $('<em>').text(' ' + x[1]) : '');
 				$row.append(scGen.skEdit ? $('<span class="sc-del-wrap">').append($c).append(genDelBtn(t[0], x[0])) : $c);
 			});
@@ -1377,8 +1389,8 @@
 				if (nv !== null && $.trim(nv) && $.trim(nv) !== v) genCode(k, v, 'EDIT', $.trim(nv));
 			} });
 		}).on('click', '.sc-sk-chip', function() {
-			var v = $(this).attr('data-v'), i = scGen.skills.indexOf(v);
-			if (i >= 0) scGen.skills.splice(i, 1); else scGen.skills.push(v);
+			var v = $(this).attr('data-v');
+			if (genSkillOn(v)) scGen.skills = scGen.skills.filter(function(s) { return techKey(s) !== techKey(v); }); else scGen.skills.push(v);
 			genSkills();
 			genPreview();
 		}).on('click', '.sc-sk-edit', function() {
@@ -1411,6 +1423,7 @@
 			volPaint();
 			genPreview();
 		});
+		$('#scGenDice').on('click', function() { scGen.seed = 1 + Math.floor(Math.random() * 2147483646); genPreview(); });
 		$('#scGenN').on('change', function() { $('#scGenMaxR').val(clampNum(this.value, 1, 100)); volPaint(); genPreview(); });
 		$('#scGenSave').on('click', function() {
 			hrPost('/admin/staff/saveCareerGenData.do', { STAFF_SQ: scGen.sq, GEN: JSON.stringify(genConf()) }, function(res) { $('#scGenModal').modal('hide'); toast((scGen.sample ? '면접 교육용 샘플 v' : '가필 v') + res.result + ' 로 저장했습니다' + (scGen.sample ? ' (버전 창에서 다시 볼 수 있어요)' : ' (순정은 그대로)')); loadCareer(scGen.sq); });
