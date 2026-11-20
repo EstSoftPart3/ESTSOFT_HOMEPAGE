@@ -158,8 +158,26 @@ public class RecruitService {
 	/** 대기자 패널: 재직·대기 직원 + 프로필 버전. 투입 상태는 화면이 투입현황 목록(current)으로 계산한다 */
 	public Map<String, Object> people() {
 		Map<String, Object> out = new HashMap<>();
-		out.put("staff", jdbc.queryForList("SELECT STAFF_SQ, STAFF_NM, STATUS_CD, POSITION_NM, DEPT_NM, WISH_LOC, ADDR, DATE_FORMAT(JOIN_DT, '%Y-%m-%d') AS JOIN_DT"
-				+ " FROM TB_EEP_HR_STAFF_M WHERE STATUS_CD IN ('WORK', 'WAIT') ORDER BY STAFF_NM"));
+		List<Map<String, Object>> staff = jdbc.queryForList("SELECT STAFF_SQ, STAFF_NM, STATUS_CD, POSITION_NM, DEPT_NM, WISH_LOC, ADDR, GRADE_NM, REAL_CAREER, DATE_FORMAT(JOIN_DT, '%Y-%m-%d') AS JOIN_DT"
+				+ " FROM TB_EEP_HR_STAFF_M WHERE STATUS_CD IN ('WORK', 'WAIT') ORDER BY STAFF_NM");
+		// 연차(실경력이 없을 때)·주요기술 필터용: 수행이력 줄의 가장 이른 시작월, 언어·프레임워크·DBMS·TOOL 많이 쓴 순 5개
+		Map<String, String> first = new HashMap<>();
+		Map<String, Map<String, Integer>> tech = new HashMap<>();
+		for (Map<String, Object> p : jdbc.queryForList("SELECT STAFF_SQ, START_YM, LANG_NM, FRAMEWORK_NM, DBMS_NM, TOOL_NM FROM TB_EEP_HR_STAFF_PRJ_R")) {
+			String sq = String.valueOf(p.get("STAFF_SQ")), ym = Objects.toString(p.get("START_YM"), "");
+			if (ym.matches("\\d{4}-\\d{2}.*") && (first.get(sq) == null || ym.compareTo(first.get(sq)) < 0)) first.put(sq, ym.substring(0, 7));
+			for (String c : new String[] { "LANG_NM", "FRAMEWORK_NM", "DBMS_NM", "TOOL_NM" })
+				for (String t : StaffCareerService.tokens(Objects.toString(p.get(c), ""))) tech.computeIfAbsent(sq, k -> new LinkedHashMap<>()).merge(t, 1, Integer::sum);
+		}
+		for (Map<String, Object> s : staff) {
+			String sq = String.valueOf(s.get("STAFF_SQ"));
+			Map<String, Integer> m = tech.getOrDefault(sq, new HashMap<>());
+			List<String> keys = new ArrayList<>(m.keySet());
+			keys.sort((a, b) -> m.get(b) - m.get(a));
+			s.put("FIRST_YM", first.get(sq));
+			s.put("TECHS", new ArrayList<>(keys.subList(0, Math.min(5, keys.size()))));
+		}
+		out.put("staff", staff);
 		out.put("profiles", profiles());
 		out.put("current", deployService.deployList(false).get("current"));
 		return out;

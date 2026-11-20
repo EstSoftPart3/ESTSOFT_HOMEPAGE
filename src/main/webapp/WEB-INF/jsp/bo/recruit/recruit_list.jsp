@@ -1,17 +1,30 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_head.jspf"%>
-<%-- 모집 관리(plans/deploy-recruit-split-spec.html). 왼쪽 모집(5가지 보기) + 오른쪽 대기자 패널, 대기자를 모집에 끌어 놓으면 지원 --%>
+<%-- 모집 관리(plans/deploy-recruit-split-spec.html). 모집 5가지 보기(달력이 처음). 대기자 패널은 모집 상세 팝업 오른쪽에 붙고, 대기자를 끌어 놓거나 누르면 그 모집에 지원 --%>
 <style>
 	.rc-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
 	.rc-views { display: inline-flex; gap: 4px; margin-left: auto; }
 	.rc-views button { border: 1px solid rgba(17,17,17,.15); background: #fff; border-radius: 999px; padding: 3px 11px; font-size: 12.5px; font-weight: 700; color: #444; }
 	.rc-views button[aria-pressed=true] { background: #111; border-color: #111; color: #fff; }
-	.rc-lay { display: flex; gap: 0; align-items: stretch; min-height: 480px; }
-	.rc-main { flex: 1 1 auto; min-width: 320px; overflow: auto; padding-right: 10px; }
-	.rc-grip { flex: none; width: 10px; cursor: col-resize; background: linear-gradient(90deg, transparent 4px, #d5dbe0 4px, #d5dbe0 6px, transparent 6px); }
-	.rc-grip:hover, .rc-grip:focus { background: linear-gradient(90deg, transparent 3px, #0b6e8a 3px, #0b6e8a 7px, transparent 7px); outline: none; }
-	.rc-side { flex: none; width: 380px; min-width: 260px; max-width: 70%; padding-left: 10px; overflow: auto; }
-	.rc-side h3, .rc-main h3 { font-size: 14px; font-weight: 800; margin: 0 0 8px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+	.rc-main { min-height: 480px; overflow: auto; }
+	/* 모집 상세 팝업: 왼쪽 모집 정보, 오른쪽 대기자 패널(#rcSide 를 평소엔 숨겨 두었다가 옮겨 붙임) */
+	.rc-detail .modal-dialog { max-width: min(1640px, 96vw); }
+	.rc-dwrap { display: flex; gap: 16px; align-items: flex-start; }
+	.rc-dwrap > #rcDetail { flex: 1 1 auto; min-width: 0; }
+	.rc-side { flex: none; width: 600px; position: sticky; top: 0; max-height: calc(100vh - 190px); overflow: auto; border-left: 1px solid #eef1f4; padding-left: 14px; }
+	@media (max-width: 1199px) { .rc-dwrap { flex-direction: column; } .rc-side { width: auto; position: static; max-height: none; border-left: 0; padding-left: 0; border-top: 1px solid #eef1f4; padding-top: 10px; } }
+	.rc-pf { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+	.rc-pf .form-control { height: 30px; font-size: 12.5px; flex: 1 1 120px; width: auto; }
+	.rc-yr { font-weight: 700; white-space: nowrap; } .rc-loc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 150px; font-size: 11.5px; color: #495057; }
+	.rc-tk { display: inline-block; background: #e7f5ff; color: #1864ab; border-radius: 4px; padding: 0 5px; margin: 1px 2px 1px 0; font-size: 11px; font-weight: 600; }
+	.rc-noprof { border: 1px solid #fa5252; background: #fff5f5; color: #c92a2a; border-radius: 6px; padding: 1px 7px; font-size: 11.5px; font-weight: 800; white-space: nowrap; }
+	button.rc-noprof:hover, button.rc-noprof:focus { background: #ffe3e3; }
+	#ppTable tr.noprof td { background: #fffafa; }
+	.rc-cal td { cursor: pointer; } .rc-cal td:hover { background: #f8fbfc; }
+	.rc-day-add { float: right; border: 0; background: none; color: #0b6e8a; font-weight: 800; padding: 0 4px; line-height: 16px; opacity: 0; }
+	.rc-cal td:hover .rc-day-add, .rc-day-add:focus { opacity: 1; }
+	.rc-cal .ev-ap { display: block; padding: 0 4px 1px 10px; font-size: 10.5px; color: #495057; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+	.rc-side h3, .rc-main h3, #rcDetail h3 { font-size: 14px; font-weight: 800; margin: 0 0 8px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 	.rc-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
 	.rc-card { border: 1px solid rgba(17,17,17,.12); border-radius: 10px; padding: 10px 12px; background: #fff; cursor: pointer; position: relative; }
 	.rc-card:hover { border-color: #0b6e8a; }
@@ -51,14 +64,15 @@
 	.rc-cal th { text-align: center; background: #f6f8fa; padding: 4px; } .rc-cal td { vertical-align: top; height: 82px; border: 1px solid #eef1f4; padding: 3px; }
 	.rc-cal td.out { background: #fafbfc; color: #adb5bd; } .rc-cal td.today { background: #eef9fc; }
 	.rc-cal .ev { display: block; border-radius: 4px; padding: 0 4px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
-	.rc-cal .ev.close { background: #ffe3e3; color: #c92a2a; } .rc-cal .ev.intv { background: #fff4e6; color: #d9480f; } .rc-cal .ev.start { background: #d3f9d8; color: #2b8a3e; } .rc-cal .ev.reg { background: #e7f5ff; color: #1864ab; }
+	.rc-cal .ev.due { background: #ffe3e3; color: #c92a2a; } .rc-cal .ev.intv { background: #fff4e6; color: #d9480f; } .rc-cal .ev.start { background: #d3f9d8; color: #2b8a3e; } .rc-cal .ev.reg { background: #e7f5ff; color: #1864ab; }
 	.rc-tl { display: grid; grid-template-columns: 160px 1fr; gap: 5px 8px; align-items: center; font-size: 12px; min-width: 640px; }
 	.rc-tl .mon { display: grid; font-weight: 700; color: #868e96; } .rc-tl .trk { position: relative; height: 16px; background: #f1f3f5; border-radius: 4px; }
 	.rc-tl .bar { position: absolute; top: 0; bottom: 0; background: #ffd8a8; border-radius: 4px; cursor: pointer; } .rc-tl .bar.open { border-right: 2px dashed #d9480f; }
 	.rc-tl .bar.FILLED { background: #b2f2bb; } .rc-tl .bar.pp { top: 5px; bottom: 5px; background: #96f2d7; } .rc-tl .now { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #0b6e8a; }
 	#ppTable td { vertical-align: top; font-size: 12px; }
 	#ppTable tr[draggable=true] td:first-child { cursor: grab; }
-	#ppTable tr.off td { opacity: .55; } #ppTable .sub { color: #868e96; font-size: 11px; }
+	#ppTable td:first-child b { white-space: nowrap; }
+	#ppTable .sub { color: #868e96; font-size: 11px; }
 	.rc-ver { display: inline-block; border: 1px solid #ced4da; border-radius: 6px; padding: 0 5px; font-size: 10.5px; margin: 1px 2px 1px 0; color: #495057; background: #fff; text-decoration: none !important; }
 	.rc-ver.EDIT { border-color: #b197fc; color: #6741d9; background: #f3f0ff; }
 	.rc-find { position: relative; margin-bottom: 8px; }
@@ -79,7 +93,6 @@
 	.rc-wayb { border: 1px solid #ced4da; background: #fff; border-radius: 999px; padding: 2px 12px; font-size: 12.5px; margin-right: 4px; }
 	.rc-wayb[aria-pressed=true] { background: #0b6e8a; border-color: #0b6e8a; color: #fff; font-weight: 700; }
 	.rc-join2 { background: #fff9db; border: 1px solid #ffe066; border-radius: 8px; padding: 10px; }
-	@media (max-width: 900px) { .rc-lay { flex-direction: column; } .rc-side { width: auto !important; max-width: none; padding-left: 0; } .rc-grip { display: none; } }
 	.rc-add { border: 1px dashed #0b6e8a; background: #fff; color: #0b6e8a; border-radius: 999px; padding: 1px 10px; font-size: 11.5px; font-weight: 700; margin-top: 6px; }
 	.rc-pick { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; width: 100%; text-align: left; border: 1px solid #dee2e6; background: #fff; border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; font-size: 13px; }
 	.rc-pick:hover, .rc-pick:focus { border-color: #0b6e8a; background: #eef9fc; }
@@ -88,46 +101,54 @@
 		.rc-add { padding: 6px 14px; font-size: 13px; }
 		.rc-cal { font-size: 10px; } .rc-cal th { padding: 2px 0; } .rc-cal td { height: auto; min-height: 44px; padding: 1px; }
 		.rc-cal .ev { font-size: 0; height: 6px; padding: 0; margin-top: 1px; } /* 폰: 일정은 색 띠만, 누르면 상세 */
+		.rc-cal .ev-ap { display: none; } .rc-day-add { opacity: 1; }
 		.rc-board-wrap::before, .rc-tl-wrap::before { content: '← 가로로 넘겨 보세요 →'; display: inline-block; position: sticky; left: 8px; font-size: 11px; color: #868e96; margin: 4px 0; }
 	}
 </style>
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 <div class="card-header d-flex align-items-center flex-wrap" style="gap:6px">
 	<h3 class="card-title bTitle mr-auto"><b>모집 관리</b></h3>
-	<button type="button" class="btn btn-sm btn-primary" id="addBtn">+ 모집 등록</button>
 </div>
 <div class="card-body">
 	<div class="rc-top">
 		<div id="stChips" class="rc-chips d-flex flex-wrap align-items-center" style="gap:4px" role="group" aria-label="모집 상태"></div>
 		<input type="search" id="rcFind" class="form-control form-control-sm" style="width:200px" placeholder="고객사·사업명·기술 찾기" aria-label="모집 찾기">
 		<div class="rc-views" role="group" aria-label="보기">
-			<button type="button" data-view="card" aria-pressed="true">▦ 카드</button><button type="button" data-view="table" aria-pressed="false">☰ 표</button><button type="button" data-view="board" aria-pressed="false">▥ 상태 보드</button><button type="button" data-view="cal" aria-pressed="false">📅 달력</button><button type="button" data-view="tl" aria-pressed="false">▬ 타임라인</button>
+			<button type="button" data-view="cal" aria-pressed="true">📅 달력</button><button type="button" data-view="card" aria-pressed="false">▦ 카드</button><button type="button" data-view="table" aria-pressed="false">☰ 표</button><button type="button" data-view="board" aria-pressed="false">▥ 상태 보드</button><button type="button" data-view="tl" aria-pressed="false">▬ 타임라인</button>
 		</div>
+		<button type="button" class="btn btn-sm btn-primary" id="addBtn">+ 모집 등록</button>
 	</div>
-	<div class="rc-lay">
-		<div class="rc-main" id="rcMain"><div class="text-muted p-3">불러오는 중…</div></div>
-		<div class="rc-grip" id="rcGrip" role="separator" aria-orientation="vertical" aria-label="모집·대기자 너비 조절 (←→)" tabindex="0" title="끌어서 너비 조절"></div>
+	<div class="rc-main" id="rcMain"><div class="text-muted p-3">불러오는 중…</div></div>
+	<div id="rcSideHome" hidden>
 		<div class="rc-side" id="rcSide">
 			<h3>대기자 <span id="ppCnt" class="text-muted"></span></h3>
 			<div id="ppChips" class="rc-chips d-flex flex-wrap align-items-center mb-2" style="gap:4px" role="group" aria-label="대기자 구분"></div>
+			<div class="rc-pf" role="group" aria-label="대기자 거르기">
+				<input type="search" id="pfLoc" class="form-control form-control-sm" placeholder="📍 지역 (예: 강남 판교)" aria-label="지역으로 거르기 (띄어 쓰면 하나라도 맞는 사람)" autocomplete="off">
+				<select id="pfYear" class="form-control form-control-sm" aria-label="연차로 거르기">
+					<option value="">연차 전체</option><option value="0-1">1년 미만</option><option value="1-3">1~3년</option><option value="3-5">3~5년</option><option value="5-10">5~10년</option><option value="10-99">10년 이상</option>
+				</select>
+				<input type="search" id="pfTech" class="form-control form-control-sm" list="pfTechList" placeholder="🛠 주요기술 (예: Java)" aria-label="주요기술로 거르기" autocomplete="off">
+				<datalist id="pfTechList"></datalist>
+			</div>
 			<div class="rc-find">
 				<input type="search" id="ppFind" class="form-control form-control-sm" placeholder="🔍 전체 직원에서 찾기 (투입 중 포함)" aria-label="전체 직원에서 찾기" autocomplete="off">
 				<div class="rc-find-list" id="ppFindList" hidden></div>
 			</div>
 			<div class="tbl-scroll"><!-- 없으면 ui-table.js 가 .rc-side 를 스크롤 상자로 보고 그 앞(가로 flex)에 위 스크롤바를 끼워 넣어 가운데 빈 영역이 생긴다 -->
-			<table class="table table-sm" id="ppTable">
-				<thead><tr><th scope="col">성명</th><th scope="col">상태</th><th scope="col">프로필</th><th scope="col">지원 중</th></tr></thead>
+			<table class="table table-sm" id="ppTable" data-nopick><!-- 팝업 안으로 옮겨 다시 그리면 공통 체크 칸이 머리글에만 남아 칸이 어긋난다 -->
+				<thead><tr><th scope="col">성명</th><th scope="col">연차</th><th scope="col">지역</th><th scope="col">주요기술</th><th scope="col">상태</th><th scope="col">프로필</th></tr></thead>
 				<tbody id="ppBody"></tbody>
 			</table>
 			</div>
-			<div class="rc-note">사람을 잡아 왼쪽 모집에 놓으면 지원 창이 떠요. 프로필(수행이력 버전)이 없는 사람은 끌리지 않아요.</div>
+			<div class="rc-note">줄을 누르거나 왼쪽 모집 정보에 끌어 놓으면 이 모집 지원 창이 떠요. 프로필(수행이력 버전)이 없는 사람은 먼저 등록해야 해요.</div>
 		</div>
 	</div>
 </div>
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
 <script>
-var PATH = location.pathname, D = null, VIEW = 'card', ST_CHK = { OPEN: true, APPLY: true, FILLED: true, CLOSED: false, MISS: false }, PP_CHK = { WAIT: true, FUTURE: true, SOON: true };
+var PATH = location.pathname, D = null, VIEW = 'cal', ST_CHK = { OPEN: true, APPLY: true, FILLED: true, CLOSED: false, MISS: false }, PP_CHK = { WAIT: true, FUTURE: true, SOON: true };
 var STATUS = { OPEN: '모집중', APPLY: '지원 진행', FILLED: '충원 완료', CLOSED: '마감' };
 var STEPS = [['DOC', '서류검토'], ['INTV_WAIT', '인터뷰대기'], ['INTV', '인터뷰확정'], ['JOIN_WAIT', '투입대기'], ['JOIN', '투입확정']];
 var STEP_NM = { DROP: '탈락·취소' }; STEPS.forEach(function(s) { STEP_NM[s[0]] = s[1]; });
@@ -139,7 +160,6 @@ var FIELDS = [['CLIENT_NM', '고객사'], ['PRJ_NM', '사업명'], ['GRADE_TXT',
 var SECTION_AT = { CLIENT_NM: '사업 정보', START_DT: '기간·근무지', PRICE_TXT: '조건', SALE_PARTNER_SQ: '거래처·마감' };
 var calMonth = null;
 
-function ls(k, v) { try { if (v === undefined) return localStorage.getItem('flt:' + PATH + ':' + k); localStorage.setItem('flt:' + PATH + ':' + k, v); } catch (e) { return null; } }
 function today() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 function days(a, b) { return Math.round((new Date(b) - new Date(a)) / 86400000); }
 function md(d) { return d ? d.substring(5, 10).replace('-', '/') : ''; }
@@ -147,13 +167,12 @@ function esc(s) { return $('<div>').text(s == null ? '' : s).html(); }
 function notes(list) { if (list && list.length) bootbox.alert({ title: '알림', message: $('<ul class="mb-0 pl-3">').append(list.map(function(n) { return $('<li>').text(n); })) }); }
 
 $(function() {
-	VIEW = ls('view') || 'card';
-	var w = parseInt(ls('split'), 10);
-	if (w > 200) $('#rcSide').css('width', w + 'px');
-	$('.rc-views').on('click', 'button', function() { VIEW = $(this).data('view'); ls('view', VIEW); render(); });
+	// 열 때는 늘 달력부터(보기 버튼으로 바꾼 것은 이번 화면에서만)
+	$('.rc-views').on('click', 'button', function() { VIEW = $(this).data('view'); render(); });
 	$('#rcFind').on('input', render);
 	$('#addBtn').on('click', function() { pasteDialog(); });
-	grip();
+	$('#pfLoc, #pfTech').on('input', people);
+	$('#pfYear').on('change', people);
 	findBox();
 	hrDriveGear('RECRUIT');
 	// 투입현황 대기 현황의 「지원 중 모집」 링크(?open=모집번호)는 그 모집 상세를 연다
@@ -167,18 +186,6 @@ function load(after) {
 		people();
 		render();
 		if (after) after();
-	});
-}
-
-// ── 좌우 너비(보기 저장의 flt: 값으로 계정별 저장) ──
-function grip() {
-	var $g = $('#rcGrip'), $s = $('#rcSide'), startX, startW;
-	function set(w) { w = Math.max(260, Math.min(w, $('.rc-lay').width() - 330)); $s.css('width', w + 'px'); ls('split', Math.round(w)); }
-	$g.on('mousedown', function(e) {
-		startX = e.pageX; startW = $s.outerWidth(); e.preventDefault();
-		$(document).on('mousemove.rcg', function(m) { set(startW - (m.pageX - startX)); }).on('mouseup.rcg', function() { $(document).off('.rcg'); });
-	}).on('keydown', function(e) {
-		if (e.key === 'ArrowLeft') { set($s.outerWidth() + 30); e.preventDefault(); } else if (e.key === 'ArrowRight') { set($s.outerWidth() - 30); e.preventDefault(); }
 	});
 }
 
@@ -213,7 +220,11 @@ function recruitOf(sq) { return D.recruits.filter(function(r) { return String(r.
 // ── 대기자 패널 ──
 function verChips(staffSq) {
 	var ps = profilesOf(staffSq);
-	if (!ps.length) return $('<span class="rc-pill bad">프로필 없음</span>').attr('title', '인사카드 › 수행이력에서 버전을 저장해야 지원할 수 있어요');
+	if (!ps.length) {
+		if (!D.canStaff) return $('<span class="rc-noprof">프로필 없음</span>').attr('title', '인사카드 › 수행이력에서 버전을 저장해야 지원할 수 있어요');
+		return $('<button type="button" class="rc-noprof">프로필 없음 · ＋ 등록</button>').attr('title', '인사카드 › 수행이력을 열어 「새 버전으로 저장」으로 등록해요')
+			.on('click', function(e) { e.stopPropagation(); staffPop(staffSq, true); });
+	}
 	return $('<span>').append(ps.slice(0, 4).map(function(p) {
 		return $('<a class="rc-ver">').addClass(p.VER_KIND).attr({ href: '/admin/recruit/profileWord.do?STAFF_SQ=' + staffSq + '&VER_NO=' + p.VER_NO, title: p.REG_DT + ' · 프로젝트 ' + (p.PRJ_CNT || 0) + '건 · 눌러서 워드 받기' })
 			.text((p.VER_KIND === 'EDIT' ? '가필 v' : '순정 v') + p.VER_NO).on('click', function(e) { e.stopPropagation(); });
@@ -221,34 +232,62 @@ function verChips(staffSq) {
 }
 function people() {
 	var cnt = { WAIT: 0, FUTURE: 0, SOON: 0 }, rows = [];
+	var loc = $.trim($('#pfLoc').val()).split(/[\s,]+/).filter(Boolean), yr = ($('#pfYear').val() || '').split('-'), tk = techKey($('#pfTech').val());
+	var techs = {}, exact = false;
+	D.staff.forEach(function(s) { (s.TECHS || []).forEach(function(t) { techs[t] = 1; if (techKey(t) === tk) exact = true; }); });
+	// 아는 기술 이름 그대로면(Java) 그 기술만, 아니면 들어간 글자로(spr → Spring) 찾는다
+	function techOk(t) { return exact ? techKey(t) === tk : techKey(t).indexOf(tk) >= 0; }
 	D.staff.forEach(function(s) {
 		var st = personState(s.STAFF_SQ);
 		if (cnt[st.k] !== undefined) cnt[st.k]++;
-		if (PP_CHK[st.k]) rows.push({ s: s, st: st });
+		if (!PP_CHK[st.k]) return;
+		var where = String((s.WISH_LOC || '') + ' ' + (s.ADDR || '')).replace(/\s/g, ''), y = career(s).y;
+		if (loc.length && !loc.some(function(w) { return where.indexOf(w) >= 0; })) return;
+		if (yr[0] !== '' && (y === null || y < +yr[0] || y >= +yr[1])) return;
+		if (tk && !(s.TECHS || []).some(techOk)) return;
+		rows.push({ s: s, st: st });
 	});
 	boChips('#ppChips', [{ k: 'WAIT', name: '대기', n: cnt.WAIT }, { k: 'FUTURE', name: '투입 예정', n: cnt.FUTURE }, { k: 'SOON', name: '철수 임박', n: cnt.SOON }], PP_CHK, people);
+	var $dl = $('#pfTechList');
+	if ($dl.children().length !== Object.keys(techs).length) $dl.empty().append(Object.keys(techs).sort().map(function(t) { return $('<option>').val(t); }));
 	var $b = $('#ppBody').empty();
 	rows.sort(function(a, b) { return ['WAIT', 'SOON', 'FUTURE'].indexOf(a.st.k) - ['WAIT', 'SOON', 'FUTURE'].indexOf(b.st.k) || String(a.s.STAFF_NM).localeCompare(b.s.STAFF_NM); });
 	rows.forEach(function(x) { $b.append(personRow(x.s, x.st)); });
-	if (!rows.length) boEmpty($b, '고른 구분에 해당하는 사람이 없습니다.');
+	if (!rows.length) boEmpty($b, '고른 조건에 해당하는 사람이 없습니다.');
 	$('#ppCnt').text(rows.length);
 }
+// JAVA·Java·Spring Boot·SpringBoot 처럼 표기만 다른 기술을 같게 본다(서버 StaffCareerService.techKey 와 같은 규칙)
+function techKey(t) { return String(t || '').toLowerCase().replace(/[\s\-_.]/g, ''); }
+// 연차: 실경력(예: 4년2개월, 신입)을 읽고, 없거나 못 읽으면 수행이력 첫 시작월부터 센다. y 는 년(소수), 못 정하면 null
+function career(s) {
+	var t = $.trim(s.REAL_CAREER || ''), m;
+	if (/신입|없음/.test(t)) return { y: 0, label: '신입' };
+	if ((m = /(\d+)\s*년(?:\s*(\d+)\s*개월)?|(\d+)\s*개월/.exec(t))) return { y: m[3] ? m[3] / 12 : +m[1] + (m[2] ? m[2] / 12 : 0), label: t };
+	if (s.FIRST_YM) {
+		var d = new Date(), mon = (d.getFullYear() - +s.FIRST_YM.substring(0, 4)) * 12 + d.getMonth() + 1 - +s.FIRST_YM.substring(5, 7);
+		if (mon >= 0) return { y: mon / 12, label: '약 ' + (mon >= 12 ? Math.floor(mon / 12) + '년' : mon + '개월'), guess: true };
+	}
+	return { y: null, label: t };
+}
 function personRow(s, st) {
-	var has = profilesOf(s.STAFF_SQ).length > 0, apps = activeAppsOfStaff(s.STAFF_SQ);
-	var $tr = $('<tr>').attr({ draggable: has, 'data-staff': s.STAFF_SQ }).toggleClass('off', !has);
-	$tr.append($('<td>').append(nameEl(s, has)).append($('<div class="sub">').text([s.POSITION_NM, s.DEPT_NM, s.WISH_LOC ? s.WISH_LOC + ' 희망' : ''].filter(Boolean).join(' · '))));
-	$tr.append($('<td>').append($('<span class="rc-pill">').addClass(st.k === 'SOON' ? 'warn' : st.k === 'FUTURE' ? 'FILLED' : '').text(st.label)).append(st.row && st.k !== 'WAIT' ? $('<div class="sub">').text(st.row.CLIENT_NM || '') : ''));
-	$tr.append($('<td>').append(verChips(s.STAFF_SQ)));
-	$tr.append($('<td>').append(apps.map(function(a) {
+	var has = profilesOf(s.STAFF_SQ).length > 0, apps = activeAppsOfStaff(s.STAFF_SQ), c = career(s), techs = s.TECHS || [];
+	var $tr = $('<tr>').attr({ draggable: has, 'data-staff': s.STAFF_SQ }).toggleClass('noprof', !has);
+	$tr.append($('<td>').append(nameEl(s, has)).append($('<div class="sub">').text([s.POSITION_NM, s.DEPT_NM].filter(Boolean).join(' · '))));
+	$tr.append($('<td>').append($('<span class="rc-yr">').text(c.label || '-').attr('title', c.guess ? '실경력이 비어 있어 수행이력 첫 시작월(' + s.FIRST_YM + ')부터 셌어요' : '인사카드 실경력')).append(s.GRADE_NM ? $('<div class="sub">').text(s.GRADE_NM) : ''));
+	$tr.append($('<td>').append(s.WISH_LOC ? $('<span class="rc-loc">').text(s.WISH_LOC).attr('title', s.WISH_LOC) : $('<span class="sub">-</span>')));
+	$tr.append($('<td>').append(techs.slice(0, 3).map(function(t) { return $('<span class="rc-tk">').text(t); })).attr('title', techs.join(', ')));
+	var $st = $('<td>').append($('<span class="rc-pill">').addClass(st.k === 'SOON' ? 'warn' : st.k === 'FUTURE' ? 'FILLED' : '').text(st.label)).append(st.row && st.k !== 'WAIT' ? $('<div class="sub">').text(st.row.CLIENT_NM || '') : '');
+	apps.forEach(function(a) {
 		var r = recruitOf(a.RECRUIT_SQ);
-		return $('<div class="sub">').append($('<a href="#">').text((r ? r.CLIENT_NM || '(고객사)' : '') + ' · ' + STEP_NM[a.STEP_CD] + (a.INTV_DT && a.STEP_CD === 'INTV' ? ' 🎤' + md(a.INTV_DT) : '')).on('click', function(e) { e.preventDefault(); detail(a.RECRUIT_SQ); }));
-	})));
+		$st.append($('<div class="sub">').append($('<a href="#">').text('지원: ' + (r ? r.CLIENT_NM || '(고객사)' : '') + ' · ' + STEP_NM[a.STEP_CD] + (a.INTV_DT && a.STEP_CD === 'INTV' ? ' 🎤' + md(a.INTV_DT) : '')).on('click', function(e) { e.preventDefault(); e.stopPropagation(); detail(a.RECRUIT_SQ); })));
+	});
+	$tr.append($st).append($('<td>').append(verChips(s.STAFF_SQ)));
 	dragSource($tr, s.STAFF_SQ, has);
 	return $tr;
 }
 // 이름을 누르면 인사카드를 이 화면 위에 띄운다(홈 일정 팝업과 같은 ?embed=1&popup=1 틀). 닫으면 다시 불러와 프로필을 새로 그린다
 function nameEl(s, has) {
-	var $b = $('<b>').text((has ? '⠿ ' : '🚫 ') + s.STAFF_NM);
+	var $b = $('<b>').text((has ? '⠿ ' : '') + s.STAFF_NM);
 	if (!D.canStaff) return $b;
 	return $('<button type="button" class="rc-who">').attr('title', has ? '인사카드 열기' : '인사카드 › 수행이력에서 프로필 등록').append($b)
 		.on('click', function(e) { e.stopPropagation(); staffPop(s.STAFF_SQ, !has); });
@@ -268,7 +307,8 @@ function staffPop(sq, career) {
 function dragSource($el, staffSq, ok) {
 	if (!ok && D.canStaff) { $el.on('click', function() { staffPop(staffSq, true); }); return; }
 	if (!ok) { $el.on('click', function() { bootbox.alert('저장된 수행이력 프로필이 없어 지원할 수 없어요. 인사카드 › 수행이력에서 「새 버전으로 저장」을 먼저 해 주세요.'); }); return; }
-	$el.attr('draggable', true).on('dragstart', function(e) { e.originalEvent.dataTransfer.setData('text/plain', 'staff:' + staffSq); e.originalEvent.dataTransfer.effectAllowed = 'copy'; });
+	$el.attr('draggable', true).on('dragstart', function(e) { e.originalEvent.dataTransfer.setData('text/plain', 'staff:' + staffSq); e.originalEvent.dataTransfer.effectAllowed = 'copy'; })
+		.on('click', function(e) { var sq = $('#rcDetail').data('sq'); if (sq && !$(e.target).closest('a, button').length) applyDialog(sq, staffSq); }); // 상세 팝업 안에서 줄을 누르면 그 모집에 지원
 }
 function dropTarget($el, recruitSq) {
 	$el.on('dragover', function(e) { if (!dragKind(e)) return; e.preventDefault(); $el.addClass('over'); })
@@ -277,6 +317,8 @@ function dropTarget($el, recruitSq) {
 			var v = e.originalEvent.dataTransfer.getData('text/plain') || '';
 			if (v.indexOf('staff:') !== 0) return;
 			e.preventDefault();
+			e.stopPropagation(); // 상세 팝업은 안쪽(지원자 칸)과 바깥(모집 정보 전체)이 둘 다 받으므로 한 번만
+			$el.parents('.over').removeClass('over');
 			applyDialog(recruitSq, v.substring(6));
 		});
 }
@@ -291,7 +333,7 @@ function findBox() {
 		if (!q || !D) return;
 		D.staff.filter(function(s) { return String(s.STAFF_NM).indexOf(q) >= 0; }).slice(0, 30).forEach(function(s) {
 			var st = personState(s.STAFF_SQ), has = profilesOf(s.STAFF_SQ).length > 0;
-			var $it = $('<div class="it">').append(nameEl(s, has)).append($('<span class="rc-pill">').toggleClass('FILLED', st.k === 'ACTIVE').text(st.label))
+			var $it = $('<div class="it">').append(nameEl(s, has)).append($('<span class="rc-yr small">').text(career(s).label || '')).append($('<span class="rc-pill">').toggleClass('FILLED', st.k === 'ACTIVE').text(st.label))
 				.append($('<span class="rc-note">').text(st.row && st.k !== 'WAIT' ? (st.row.CLIENT_NM || '') + (st.row.END_DT ? ' · ~' + st.row.END_DT : '') : '')).append($('<div style="width:100%">').append(verChips(s.STAFF_SQ)));
 			dragSource($it, s.STAFF_SQ, has);
 			$list.append($it);
@@ -408,7 +450,7 @@ function viewBoard($m, list) {
 		});
 		$g.append($col);
 	});
-	$m.append($('<div class="rc-note mb-2">').text('모집 카드를 옆 칸으로 끌면 상태가 바뀌어요. 대기자를 카드에 놓으면 지원이에요.')).append($('<div class="rc-board-wrap" style="overflow:auto">').append($g));
+	$m.append($('<div class="rc-note mb-2">').text('모집 카드를 옆 칸으로 끌면 상태가 바뀌어요. 지원자는 카드를 눌러 상세 팝업 오른쪽 대기자에서 추가해요.')).append($('<div class="rc-board-wrap" style="overflow:auto">').append($g));
 }
 // 달력: 등록·마감·인터뷰·투입 시작
 function viewCal($m, list) {
@@ -416,9 +458,16 @@ function viewCal($m, list) {
 	var first = new Date(y, mo - 1, 1), start = new Date(first); start.setDate(1 - ((first.getDay() + 6) % 7));
 	var ev = {};
 	function add(d, cls, text, sq) { if (!d) return; d = d.substring(0, 10); (ev[d] = ev[d] || []).push({ cls: cls, text: text, sq: sq }); }
+	// 모집 일정 아래 지원자 한 줄(이름 단계, 탈락 제외)
+	function apLine(sq) {
+		var ap = appsOf(sq).filter(function(a) { return a.STEP_CD !== 'DROP'; });
+		if (!ap.length) return null;
+		var txt = '👤 ' + ap.map(function(a) { return a.STAFF_NM + ' ' + STEP_NM[a.STEP_CD]; }).join(' · ');
+		return $('<span class="ev-ap">').text(txt).attr('title', txt).on('click', function(e) { e.stopPropagation(); detail(sq); });
+	}
 	list.forEach(function(r) {
 		add(r.REG_D, 'reg', '● ' + (r.CLIENT_NM || '모집') + ' 등록', r.RECRUIT_SQ);
-		add(r.CLOSE_DT, 'close', '⏰ ' + (r.CLIENT_NM || '') + ' 마감', r.RECRUIT_SQ);
+		add(r.CLOSE_DT, 'due', '⏰ ' + (r.CLIENT_NM || '') + ' 마감', r.RECRUIT_SQ);
 		add(r.START_DT, 'start', '▶ ' + (r.CLIENT_NM || '') + ' 투입', r.RECRUIT_SQ);
 		appsOf(r.RECRUIT_SQ).forEach(function(a) { if (a.INTV_DT && a.STEP_CD !== 'DROP') add(a.INTV_DT, 'intv', '🎤 ' + (r.CLIENT_NM || '') + ' · ' + a.STAFF_NM + ' ' + a.INTV_DT.substring(11, 16), r.RECRUIT_SQ); });
 	});
@@ -433,8 +482,14 @@ function viewCal($m, list) {
 		for (var i = 0; i < 7; i++) {
 			var d = new Date(start); d.setDate(start.getDate() + w * 7 + i);
 			var key = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
-			var $td = $('<td>').toggleClass('out', d.getMonth() !== mo - 1).toggleClass('today', key === t).append($('<div>').text(d.getDate()));
-			(ev[key] || []).forEach(function(e) { $td.append($('<span class="ev">').addClass(e.cls).text(e.text).attr('title', e.text).on('click', function() { detail(e.sq); })); });
+			var label = (d.getMonth() + 1) + '월 ' + d.getDate() + '일';
+			var $td = $('<td>').toggleClass('out', d.getMonth() !== mo - 1).toggleClass('today', key === t).attr('title', label + ' · 빈 곳을 누르면 이 날짜로 모집 등록')
+				.append($('<div>').text(d.getDate()).append($('<button type="button" class="rc-day-add">+</button>').attr('aria-label', label + ' 모집 등록')));
+			(function(key) { $td.on('click', function(e) { if (!$(e.target).closest('.ev, .ev-ap').length) pasteDialog(key); }); })(key);
+			(ev[key] || []).forEach(function(e) {
+				$td.append($('<span class="ev">').addClass(e.cls).text(e.text).attr('title', e.text).on('click', function() { detail(e.sq); }));
+				if (e.cls !== 'intv') $td.append(apLine(e.sq));
+			});
 			$tr.append($td);
 		}
 		$b.append($tr);
@@ -526,6 +581,7 @@ function detail(sq) {
 	hrPost('/admin/recruit/detailData.do', { RECRUIT_SQ: sq }, function(res) {
 		// 다시 열 때(저장 뒤 reload)는 애니메이션 없이 바꿔 끼운다: fade 를 빼면 동기로 닫혀 hidden 이 새 팝업보다 먼저 끝나 modal-open 이 지워지지 않는다
 		var $old = $('#rcDetailModal'), swap = $old.hasClass('show'), top = $old.scrollTop();
+		$('#rcSide').appendTo('#rcSideHome'); // 닫히는 팝업과 함께 지워지지 않게 먼저 빼 둔다
 		if (swap) $old.removeClass('fade').modal('hide');
 		bootbox.hideAll();
 		var r = res.result.recruit, miss = missing(r), apps = appsOf(sq);
@@ -538,6 +594,13 @@ function detail(sq) {
 		if (miss.length) $head.append($('<span class="rc-pill warn">').text('⚠ 확인 필요 ' + miss.length));
 		$head.append($('<span class="rc-note">').text(r.REG_D + ' 등록 · ' + (r.REG_EMPLY_ID || '')));
 		$f.append($head);
+		// 지원자(맨 위)
+		var $ap = $('<div>');
+		apps.forEach(function(a) { $ap.append(applyRow(a)); });
+		if (!apps.length) $ap.append('<div class="rc-note">아직 지원자가 없어요. 오른쪽 대기자 줄을 누르거나 여기로 끌어 놓으면 지원 창이 떠요.</div>');
+		var $apDrop = $('<div class="rc-drop-hint">⠿ 대기자를 여기에 끌어 놓아도 지원돼요</div>');
+		dropTarget($apDrop, sq);
+		$f.append($('<div class="rc-sec" style="border-top:0;margin-top:0;padding-top:0">').append($('<h4>').text('지원자 ' + apps.filter(function(a) { return a.STEP_CD !== 'DROP'; }).length)).append($ap).append($apDrop));
 		var $form = fieldForm(r, miss);
 		$f.append($form);
 		// 원문: 글자를 끌어 선택하면 넣을 칸을 고른다
@@ -562,18 +625,12 @@ function detail(sq) {
 		var $drop = $('<div class="rc-drop-hint" tabindex="0" role="button">📎 여기에 파일을 끌어 놓거나 눌러서 고르기</div>').on('click keydown', function(e) { if (e.type === 'click' || e.key === 'Enter') $up.click(); })
 			.on('dragover', function(e) { e.preventDefault(); }).on('drop', function(e) { e.preventDefault(); uploadFiles(sq, e.originalEvent.dataTransfer.files, reload); });
 		$f.append($('<div class="rc-sec">').append($('<h4>').text('첨부 ' + res.result.files.length)).append($files).append($drop).append($up));
-		// 지원자
-		var $ap = $('<div>');
-		apps.forEach(function(a) { $ap.append(applyRow(a)); });
-		if (!apps.length) $ap.append('<div class="rc-note">아직 지원자가 없어요. 오른쪽 대기자를 이 모집 카드에 끌어 놓으면 지원돼요.</div>');
-		var $apDrop = $('<div class="rc-drop-hint">⠿ 대기자를 여기에 끌어 놓아도 지원돼요</div>');
-		dropTarget($apDrop, sq);
-		$f.append($('<div class="rc-sec">').append($('<h4>').text('지원자 ' + apps.filter(function(a) { return a.STEP_CD !== 'DROP'; }).length)).append($ap).append($apDrop));
 		// 이력
 		var $log = $('<details class="rc-sec">').append($('<summary class="small font-weight-bold">').text('변경 이력 ' + res.result.logs.length));
 		res.result.logs.forEach(function(l) { $log.append($('<div class="small">').text(l.REG_DT + ' · ' + (l.EMPLY_ID || '') + ' · ' + l.SUMMARY)); });
 		$f.append($log);
-		var $dlg = bootbox.dialog({ title: (r.CLIENT_NM || '(고객사 미입력)') + ' · ' + (r.PRJ_NM || ''), message: $f, size: 'large', onEscape: true, backdrop: true, animate: !swap, buttons: {
+		dropTarget($f, sq); // 왼쪽 모집 정보 어디에 놓아도 지원
+		var $dlg = bootbox.dialog({ title: (r.CLIENT_NM || '(고객사 미입력)') + ' · ' + (r.PRJ_NM || ''), message: $('<div class="rc-dwrap">').append($f).append($('#rcSide')), size: 'extra-large', className: 'rc-detail', onEscape: true, backdrop: true, animate: !swap, buttons: {
 			del: { label: '모집 삭제', className: 'btn-sm btn-outline-danger mr-auto', callback: function() {
 				bootbox.confirm('이 모집을 지울까요? 드라이브 폴더는 그대로 남아요.', function(ok) { if (ok) hrPost('/admin/recruit/deleteData.do', { RECRUIT_SQ: sq }, function() { bootbox.hideAll(); load(); }); });
 				return false;
@@ -583,7 +640,7 @@ function detail(sq) {
 				var data = $.extend({ RECRUIT_SQ: sq }, formData($form));
 				hrPost('/admin/recruit/saveData.do', data, function(res2) { notes(res2.result.notes); hrToast('저장했습니다.'); reload(); });
 				return false;
-			} } } }).attr('id', 'rcDetailModal');
+			} } } }).attr('id', 'rcDetailModal').on('hide.bs.modal', function(e) { if (e.target === this) $('#rcSide').appendTo('#rcSideHome'); });
 		if (swap) $dlg.scrollTop(top);
 	});
 }
@@ -669,26 +726,37 @@ function uploadFiles(sq, files, done) {
 	})(0);
 }
 
-// ── + 모집 등록(원문 붙여 넣기) ──
-function pasteDialog() {
-	var $f = $('<div>'), $ta = $('<textarea class="form-control" rows="7" aria-label="원문 붙여 넣기" placeholder="메일·카톡·문서 원문을 그대로 붙여 넣어 주세요.&#10;예) [모집] 신한금융그룹 책무이행시스템 초급 1명&#10;기간: 12월 초 ~ 6개월&#10;근무지: 을지로 상주">');
+// ── + 모집 등록(원문 붙여 넣기). day: 달력에서 고른 날짜 → 투입 시작(또는 지원 마감)에 넣는다 ──
+function pasteDialog(day) {
+	var $f = $('<div>'), dayKey = 'START_DT', $ta = $('<textarea class="form-control" rows="7" aria-label="원문 붙여 넣기" placeholder="메일·카톡·문서 원문을 그대로 붙여 넣어 주세요.&#10;예) [모집] 신한금융그룹 책무이행시스템 초급 1명&#10;기간: 12월 초 ~ 6개월&#10;근무지: 을지로 상주">');
 	var $res = $('<div class="mt-2 p-2" style="border:1px dashed #bac8ff;border-radius:8px;background:#f8f9ff">').append('<div class="rc-note">붙여 넣으면 바로 읽어서 아래에 채워요. 고쳐서 저장하면 돼요.</div>');
 	var $files = $('<input type="file" multiple class="form-control-file form-control-sm" aria-label="첨부 파일">'), $form = null, timer;
+	if (day) {
+		var $sel = $('<select class="form-control form-control-sm d-inline-block mx-1" style="width:auto" aria-label="고른 날짜를 넣을 칸"><option value="START_DT">투입 시작</option><option value="CLOSE_DT">지원 마감</option></select>').on('change', function() {
+			var old = dayKey;
+			dayKey = this.value;
+			if ($form) { if ($form.find('[name=' + old + ']').val() === day) $form.find('[name=' + old + ']').val(''); if (!$form.find('[name=' + dayKey + ']').val()) $form.find('[name=' + dayKey + ']').val(day); }
+		});
+		$f.append($('<div class="alert alert-info py-1 px-2 small mb-2">').append('📅 ' + (+day.substring(5, 7)) + '월 ' + (+day.substring(8, 10)) + '일을').append($sel).append('칸에 넣어요. 원문에 날짜가 있으면 원문 값이 먼저예요.'));
+	}
 	$f.append('<div class="small font-weight-bold mb-1">원문 붙여 넣기</div>').append($ta).append($res)
 		.append($('<div class="mt-2 small">').append('<b>첨부</b> ').append($files).append('<div class="rc-note">저장한 뒤 모집 드라이브 폴더의 「첨부」에 올라가요.</div>'));
 	function parse() {
 		hrPost('/admin/recruit/parseData.do', { RAW_TEXT: $ta.val() }, function(res) {
-			var r = res.result, miss = missing(r);
+			var r = res.result;
+			if (day && !r[dayKey]) r[dayKey] = day;
+			var miss = missing(r);
 			$form = fieldForm(r, miss);
 			$res.empty().append($('<div class="small font-weight-bold mb-2">').text('읽은 결과' + (miss.length ? ' · ⚠ 못 읽은 칸 ' + miss.length + ' (주황, 그대로 저장해도 돼요)' : ''))).append($form);
 		});
 	}
 	$ta.on('input', function() { clearTimeout(timer); timer = setTimeout(parse, 400); });
-	bootbox.dialog({ title: '+ 모집 등록', message: $f, size: 'large', onEscape: true, buttons: {
+	bootbox.dialog({ title: '+ 모집 등록' + (day ? ' · ' + md(day) : ''), message: $f, size: 'large', onEscape: true, buttons: {
 		cancel: { label: '취소', className: 'btn-sm btn-outline-secondary' },
 		ok: { label: '등록 · 드라이브 폴더 만들기', className: 'btn-sm btn-primary', callback: function() {
 			if (!$.trim($ta.val())) { $ta.focus(); return false; }
 			var data = $.extend({ RAW_TEXT: $ta.val() }, $form ? formData($form) : {});
+			if (day && !data[dayKey]) data[dayKey] = day;
 			hrPost('/admin/recruit/saveData.do', data, function(res) {
 				var sq = res.result.RECRUIT_SQ, files = $files[0].files;
 				bootbox.hideAll();
@@ -713,7 +781,7 @@ function pickApplicant(recruitSq) {
 		$list.empty();
 		rows.slice(0, 50).forEach(function(s) {
 			var st = personState(s.STAFF_SQ), has = profilesOf(s.STAFF_SQ).length > 0;
-			$list.append($('<button type="button" class="rc-pick">').prop('disabled', !has).append($('<b>').text((has ? '' : '🚫 ') + s.STAFF_NM))
+			$list.append($('<button type="button" class="rc-pick">').prop('disabled', !has).append($('<b>').text(s.STAFF_NM))
 				.append($('<span class="rc-pill">').addClass(st.k === 'SOON' ? 'warn' : st.k === 'FUTURE' ? 'FILLED' : '').text(st.label))
 				.append($('<span class="rc-note">').text(has ? [s.POSITION_NM, s.DEPT_NM].filter(Boolean).join(' · ') : '프로필 없음'))
 				.on('click', function() { /* 앞 창이 다 닫힌 뒤 열어야 body.modal-open 이 안 지워져 스크롤된다 */ dlg.one('hidden.bs.modal', function() { applyDialog(recruitSq, s.STAFF_SQ); }).modal('hide'); }));
@@ -749,10 +817,11 @@ function applyDialog(recruitSq, staffSq) {
 	}
 	paintName();
 	$f.append($name);
-	bootbox.dialog({ title: s.STAFF_NM + ' → ' + (r.CLIENT_NM || '모집') + ' 지원', message: $f, onEscape: true, buttons: {
+	// 이 창만 닫고 reload: 상세 팝업이 열려 있으면 깜빡임 없이 그 자리에서 지원자가 늘어난다
+	var dlg = bootbox.dialog({ title: s.STAFF_NM + ' → ' + (r.CLIENT_NM || '모집') + ' 지원', message: $f, onEscape: true, buttons: {
 		cancel: { label: '취소', className: 'btn-sm btn-outline-secondary' },
 		ok: { label: '지원 · 드라이브에 저장', className: 'btn-sm btn-primary', callback: function() {
-			hrPost('/admin/recruit/applyData.do', { RECRUIT_SQ: recruitSq, STAFF_SQ: staffSq, VER: pick }, function(res) { bootbox.hideAll(); notes(res.result.notes); hrToast(s.STAFF_NM + ' 지원을 등록했어요.'); load(); });
+			hrPost('/admin/recruit/applyData.do', { RECRUIT_SQ: recruitSq, STAFF_SQ: staffSq, VER: pick }, function(res) { dlg.modal('hide'); notes(res.result.notes); hrToast(s.STAFF_NM + ' 지원을 등록했어요.'); reload(); });
 			return false;
 		} } } });
 }
@@ -770,14 +839,14 @@ function interviewDialog(a) {
 	var $k = $('<div class="rc-kv">').append('<label for="ivD">일시</label>').append($('<div class="d-flex align-items-center" style="gap:4px">').append($d).append($s).append('~').append($e))
 		.append('<label>방식</label>').append($w).append('<label for="ivP">장소</label>').append($p).append('<label for="ivW">동행</label>').append($with)
 		.append('<label>알림</label>').append('<span class="small">✉ 저장하면 본인 회사 메일로 자동 발송 · 바꾸거나 취소해도 다시 보내요</span>');
-	bootbox.dialog({ title: '🎤 ' + a.STAFF_NM + ' · ' + (r.CLIENT_NM || '') + ' 인터뷰 일정', message: $k, onEscape: true, buttons: {
+	var dlg = bootbox.dialog({ title: '🎤 ' + a.STAFF_NM + ' · ' + (r.CLIENT_NM || '') + ' 인터뷰 일정', message: $k, onEscape: true, buttons: {
 		later: { label: '나중에', className: 'btn-sm btn-outline-secondary', callback: function() {
 			if (a.STEP_CD === 'DOC') hrPost('/admin/recruit/stepData.do', { APPLY_SQ: a.APPLY_SQ, STEP_CD: 'INTV_WAIT' }, reload); // 일정을 비우면 인터뷰대기에 머문다
 		} },
 		ok: { label: '일정 저장', className: 'btn-sm btn-primary', callback: function() {
 			if (!$d.val() || !$s.val()) { bootbox.alert('날짜와 시작 시각을 넣어 주세요.'); return false; }
 			hrPost('/admin/recruit/interviewData.do', { APPLY_SQ: a.APPLY_SQ, INTV_DT: $d.val() + ' ' + $s.val(), INTV_END_DT: $e.val() ? $d.val() + ' ' + $e.val() : '', INTV_WAY: way, INTV_PLACE: $p.val(), INTV_WITH: $with.val() },
-				function(res) { bootbox.hideAll(); notes(res.result); reload(); });
+				function(res) { dlg.modal('hide'); notes(res.result); reload(); });
 			return false;
 		} } } });
 }
@@ -823,14 +892,14 @@ function joinDialog(a) {
 		if (d.COST_PRICE) d.COST_PRICE = d.COST_PRICE.replace(/[^\d]/g, '');
 		return d;
 	}
-	bootbox.dialog({ title: '✅ ' + a.STAFF_NM + ' 투입확정', message: $f, size: 'large', onEscape: true, buttons: {
+	var dlg = bootbox.dialog({ title: '✅ ' + a.STAFF_NM + ' 투입확정', message: $f, size: 'large', onEscape: true, buttons: {
 		cancel: { label: '취소', className: 'btn-sm btn-outline-secondary' },
-		draft: { label: '임시 저장', className: 'btn-sm btn-outline-primary', callback: function() { hrPost('/admin/recruit/joinData.do', data(true), function() { bootbox.hideAll(); hrToast('임시 저장했어요(투입대기).'); reload(); }); return false; } },
+		draft: { label: '임시 저장', className: 'btn-sm btn-outline-primary', callback: function() { hrPost('/admin/recruit/joinData.do', data(true), function() { dlg.modal('hide'); hrToast('임시 저장했어요(투입대기).'); reload(); }); return false; } },
 		ok: { label: '투입확정 · 투입 예정 등록', className: 'btn-sm btn-primary', callback: function() {
 			var d = data(false);
 			if (!d.EMP_TYPE_CD || !d.START_DT) { bootbox.alert('형태와 투입일을 넣어 주세요.'); return false; }
 			hrPost('/admin/recruit/joinData.do', d, function(res) {
-				bootbox.hideAll();
+				dlg.modal('hide');
 				hrToast(a.STAFF_NM + ' 투입확정 · 투입현황에 투입 예정으로 등록했어요.');
 				var others = res.result.others || [];
 				if (!others.length) return reload();
