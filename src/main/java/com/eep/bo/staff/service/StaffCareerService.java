@@ -42,7 +42,7 @@ public class StaffCareerService {
 	public static final List<String> MULTI = Arrays.asList("ROLE_NM", "IND_NM", "APP_NM", "MACHINE_NM", "OS_NM", "LANG_NM", "DBMS_NM", "TOOL_NM", "FRAMEWORK_NM", "ETC_NM");
 	private static final Map<String, String> LABEL = new LinkedHashMap<>();
 	static {
-		String[][] l = { { "PRJ_NM", "프로젝트명" }, { "CLIENT_NM", "고객사" }, { "COMPANY_NM", "근무회사" }, { "WORK_NM", "업무단" }, { "WORK_AREA", "근무지" }, { "ROLE_NM", "역할" },
+		String[][] l = { { "PRJ_NM", "프로젝트명" }, { "CLIENT_NM", "고객사" }, { "COMPANY_NM", "근무회사" }, { "WORK_NM", "담당업무" }, { "WORK_AREA", "근무지" }, { "ROLE_NM", "역할" },
 				{ "START_YM", "시작월" }, { "END_YM", "종료월" }, { "IND_NM", "산업" }, { "APP_NM", "응용" }, { "MACHINE_NM", "기종" }, { "OS_NM", "O.S" }, { "LANG_NM", "언어" },
 				{ "DBMS_NM", "DBMS" }, { "TOOL_NM", "TOOL" }, { "FRAMEWORK_NM", "FRAMEWORK" }, { "ETC_NM", "기타" } };
 		for (String[] x : l) LABEL.put(x[0], x[1]);

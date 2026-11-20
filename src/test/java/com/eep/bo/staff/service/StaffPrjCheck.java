@@ -70,6 +70,20 @@ public class StaffPrjCheck {
 		Map<String, Object> first = read.get(0); // 워드는 오래된 것부터
 		check("보험 고도화".equals(first.get("PRJ_NM")) && "2017-11".equals(first.get("START_YM")) && "2018-04".equals(first.get("END_YM")) && "Java, Oracle".equals(first.get("LANG_NM")), "워드 왕복 값: " + first);
 		check("".equals(read.get(read.size() - 1).get("END_YM")), "워드의 '현재'는 진행중");
+		// 머리글로 칸 맞추기: 담당업무 양식과 근무회사 양식, 머리글 두 줄(개발분야·개발환경 합친 칸)
+		String[] h1 = { "프로젝트명 (업무명)", "참여기간", "고객사", "담당업무", "개발분야", "개발분야", "역할", "개발환경", "개발환경", "개발환경", "개발환경", "개발환경", "개발환경", "개발환경" };
+		String[] h2 = { "", "", "", "", "산업", "응용", "", "기종", "O.S", "언어", "DBMS", "TOOL", "FRAME WORK", "기타" };
+		String[] f = StaffCareerWord.headFields(Arrays.asList(h1, h2));
+		check(f != null && "WORK_NM".equals(f[3]) && "IND_NM".equals(f[4]) && "OS_NM".equals(f[8]) && "TOOL_NM".equals(f[11]) && "FRAMEWORK_NM".equals(f[12]), "담당업무 양식 머리글: " + Arrays.toString(f));
+		h1[3] = "근무회사";
+		check("COMPANY_NM".equals(StaffCareerWord.headFields(Arrays.asList(h1, h2))[3]), "근무회사 양식 머리글");
+		String[] cellsRow = { "포털 구축", "2020.01\n~\n2020.12", "가은행", "백엔드 개발(Rest API)", "금융", "", "PL 및 개발자", "", "Win/ Linux", "Java", "Oracle", "Eclipse", "Spring", "" };
+		Map<String, Object> pr = StaffCareerWord.parseRow(cellsRow, f);
+		check("백엔드 개발(Rest API)".equals(pr.get("WORK_NM")) && "PL 및 개발자".equals(pr.get("ROLE_NM")) && "Win, Linux".equals(pr.get("OS_NM")) && "2020-01".equals(pr.get("START_YM")), "머리글대로 읽기·역할은 띄어쓰기로 안 나눔: " + pr);
+		Map<String, Object> withWork = new HashMap<>(items.get(3));
+		withWork.put("WORK_NM", "대출 화면 개발");
+		List<Map<String, Object>> wr = StaffCareerWord.parse(new ByteArrayInputStream(StaffCareerWord.build(info, Collections.<String[]> emptyList(), Collections.<String[]> emptyList(), Collections.<String[]> emptyList(), Arrays.asList(withWork))));
+		check(wr.size() == 1 && "대출 화면 개발".equals(wr.get(0).get("WORK_NM")), "담당업무 워드 왕복: " + wr);
 		// 증명사진: 첫 표 5번째 칸에 그림 1개, 프로젝트 줄은 그대로
 		java.io.ByteArrayOutputStream png = new java.io.ByteArrayOutputStream();
 		javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(30, 40, java.awt.image.BufferedImage.TYPE_INT_RGB), "png", png);

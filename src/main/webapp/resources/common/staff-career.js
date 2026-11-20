@@ -72,7 +72,7 @@
 		var act = o.edit || o.copy || o.del;
 		var $t = $('<table class="sc-table" data-nosort>').append($('<thead>').append($('<tr>')
 			.append(o.check ? '<th style="width:26px;"><span class="sr-only">선택</span></th>' : '')
-			.append('<th><span class="sr-only">흐름</span></th><th>참여기간</th><th>프로젝트명</th><th>업무 상세</th><th>고객사</th><th>역할</th><th>산업·응용</th><th>개발환경</th>')
+			.append('<th><span class="sr-only">흐름</span></th><th>참여기간</th><th>프로젝트명</th><th>담당업무</th><th>고객사</th><th>역할</th><th>산업·응용</th><th>개발환경</th>')
 			.append(act ? '<th><span class="sr-only">관리</span></th>' : '')));
 		var $b = $('<tbody>').appendTo($t), cols = 8 + (o.check ? 1 : 0) + (act ? 1 : 0), year = null, picks = [].concat(o.pick || []);
 		// 그 줄에서 달라진 칸이 들어 있는 td 를 노랗게

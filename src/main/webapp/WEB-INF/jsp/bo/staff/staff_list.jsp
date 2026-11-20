@@ -83,6 +83,7 @@
 	.sc-sk-row .sc-sk-add { width: 130px; height: 26px; font-size: 12px; border-radius: 999px; }
 	.sc-tree .sc-add { width: 200px; height: 26px; font-size: 12px; border-radius: 999px; }
 	.sc-gen-tbl { font-size: 12.5px; } .sc-gen-tbl td { vertical-align: middle; white-space: nowrap; }
+	.sc-gen-tbl td.sc-gen-nm, .sc-gen-tbl td.sc-gen-work, .sc-gen-tbl td.sc-tech { white-space: normal; min-width: 140px; } .sc-gen-tbl td.sc-tech { min-width: 200px; }
 	.sc-gen-tbl tr.sc-gen-pin td { background: #fffaf0; } .sc-gen-tbl tr.sc-gen-hole td { color: #8a96a3; background: #f7f8fa; font-style: italic; }
 	.sc-pin-off { opacity: .25; filter: grayscale(1); } .sc-pin-off:hover, .sc-pin-off:focus { opacity: .7; }
 	.sc-ym { width: 128px; height: 26px; font-size: 12px; border: 1px solid #d5dde5; border-radius: 6px; padding: 0 4px; }
@@ -307,10 +308,10 @@
 							<div class="col-md-3 mb-2"><label for="scSTART_YM">시작월 *</label><input type="month" id="scSTART_YM" class="form-control form-control-sm" required></div>
 							<div class="col-md-3 mb-2"><label for="scEND_YM">종료월 *</label><input type="month" id="scEND_YM" class="form-control form-control-sm">
 								<div class="form-check mt-1"><input type="checkbox" class="form-check-input" id="scOngoing"><label class="form-check-label small" for="scOngoing">진행중</label></div></div>
-							<div class="col-md-3 mb-2"><label for="scWORK_NM">업무단</label><input id="scWORK_NM" class="form-control form-control-sm" maxlength="500"></div>
+							<div class="col-md-3 mb-2"><label for="scWORK_NM">담당업무</label><input id="scWORK_NM" class="form-control form-control-sm" maxlength="500"></div>
 							<div class="col-md-3 mb-2"><label for="scWORK_AREA">근무지</label><input id="scWORK_AREA" class="form-control form-control-sm" maxlength="200"></div>
 						</div>
-						<div class="small text-muted" id="scDeployNote" hidden>투입현황에 등록된 건이라 프로젝트명·고객사·기간은 투입현황에서 고칩니다. 여기서는 업무단·역할·개발환경을 보탭니다.</div>
+						<div class="small text-muted" id="scDeployNote" hidden>투입현황에 등록된 건이라 프로젝트명·고객사·기간은 투입현황에서 고칩니다. 여기서는 담당업무·역할·개발환경을 보탭니다.</div>
 						<div class="st-pick" id="scPick"></div>
 						<div class="small text-muted mt-2">칩을 누르면 켜지고 다시 누르면 꺼집니다. 목록에 없는 값은 「＋ 직접 입력」 칸에 적고 Enter. 한 번 넣은 값은 다음부터 칩으로 나옵니다.
 							<button type="button" class="btn btn-link btn-sm p-0" id="scCopyPrev">이전 프로젝트의 개발환경 복사</button></div>
@@ -419,7 +420,7 @@
 
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
 	<script>$(function() { hrDriveGear('STAFF'); }); // 드라이브 폴더·파일 이름 규칙 ⚙</script>
-	<script src="/resources/common/staff-career.js?v=20261117"></script>
+	<script src="/resources/common/staff-career.js?v=20261120w"></script>
 
 	<script>
 	// 공통코드 HR_STAFF_STATUS 의 이름·순서. 코드가 없을 때만 기본값
@@ -1381,7 +1382,7 @@
 		items.forEach(function(it, i) {
 			var $tr = $('<tr>').attr('data-i', i).appendTo($tb);
 			if (it.EMPTY === 'Y') {
-				$tr.addClass('sc-gen-hole').append($('<td>').text(i + 1)).append('<td></td>').append($('<td colspan="7">').text(it.SLOT + ' — 맞는 실제 프로젝트가 없어 비워 둔 자리(저장·워드에는 빠져요)'));
+				$tr.addClass('sc-gen-hole').append($('<td>').text(i + 1)).append('<td></td>').append($('<td colspan="8">').text(it.SLOT + ' — 맞는 실제 프로젝트가 없어 비워 둔 자리(저장·워드에는 빠져요)'));
 				return;
 			}
 			var pin = !!scGen.pins[it.KEY];
@@ -1396,12 +1397,20 @@
 				.append(' ~ ')
 				.append($('<input type="month" class="sc-ym" data-f="end">').attr({ min: it.ORIG_START, max: max, 'aria-label': it.PRJ_NM + ' 종료월(비우면 진행중)' }).val(it.END_YM || ''))
 				.toggleClass('sc-changed', it.START_YM !== it.ORIG_START || (it.END_YM || '') !== (it.ORIG_END || '')));
-			$tr.append($('<td>').text(it.PRJ_NM)).append($('<td>').text(it.CLIENT_NM || '')).append($('<td>').text(it.IND_NM || '')).append($('<td>').text(it.ROLE_NM || ''))
-				.append($('<td class="text-center">').text(skills.length ? it.MATCH : ''));
+			// 수행이력 표와 같은 칸 순서: 프로젝트명 · 담당업무 · 고객사 · 역할 · 산업·응용 · 개발환경(고른 기술은 진하게, 끝에 일치 수)
+			var $env = $('<td class="sc-tech">'), skKeys = skills.map(techKey);
+			scEnv.forEach(function(c, k) {
+				String(it[c[0]] || '').split(/[,\n]/).map($.trim).filter(Boolean).forEach(function(t) {
+					$env.append($('<span class="sc-chip">').toggleClass('gray', k > 3).toggleClass('on', skKeys.indexOf(techKey(t)) >= 0).attr('title', c[1]).text(t));
+				});
+			});
+			if (skills.length) $env.append($('<small class="text-muted ml-1">').text('일치 ' + it.MATCH));
+			$tr.append($('<td class="sc-gen-nm">').text(it.PRJ_NM)).append($('<td class="sc-gen-work">').text(it.WORK_NM || '')).append($('<td>').text(it.CLIENT_NM || ''))
+				.append($('<td>').text(it.ROLE_NM || '')).append($('<td>').text([it.IND_NM, it.APP_NM].filter(Boolean).join(' · ') || '—')).append($env);
 		});
-		if (!items.length) $tb.append('<tr><td colspan="9" class="text-center text-muted py-3">조건에 맞는 프로젝트가 없습니다. 기간을 늘리거나 고른 산업·역할을 줄여 보세요.</td></tr>');
+		if (!items.length) $tb.append('<tr><td colspan="10" class="text-center text-muted py-3">조건에 맞는 프로젝트가 없습니다. 기간을 늘리거나 고른 산업·역할을 줄여 보세요.</td></tr>');
 		$('#scGenView').empty().append($('<div class="table-responsive">').append($('<table class="table table-sm sc-gen-tbl" data-nomore data-no-card>')
-			.append('<thead><tr><th>순서</th><th>고정</th><th>자리</th><th>참여기간</th><th>프로젝트명</th><th>고객사</th><th>산업</th><th>역할</th><th>기술 일치</th></tr></thead>').append($tb)));
+			.append('<thead><tr><th>순서</th><th>고정</th><th>자리</th><th>참여기간</th><th>프로젝트명</th><th>담당업무</th><th>고객사</th><th>역할</th><th>산업·응용</th><th>개발환경</th></tr></thead>').append($tb)));
 	}
 	// 줄을 지금 자리·기간으로 고정한다
 	function genPinRow(i, extra) {

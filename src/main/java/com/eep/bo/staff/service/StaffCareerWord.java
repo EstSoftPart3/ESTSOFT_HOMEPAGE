@@ -29,48 +29,105 @@ import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 public final class StaffCareerWord {
 
 	private static final Pattern PERIOD = Pattern.compile("((?:19|20)\\d{2})\\s*[.\\-/년]\\s*(\\d{1,2})[^~\\d]*~\\s*(?:((?:19|20)\\d{2})\\s*[.\\-/년]\\s*(\\d{1,2}))?");
-	/** SKILL INVENTORY 한 줄의 칸 순서 */
-	private static final String[] CELLS = { "PRJ_NM", "PERIOD", "CLIENT_NM", "COMPANY_NM", "IND_NM", "APP_NM", "ROLE_NM", "MACHINE_NM", "OS_NM", "LANG_NM", "DBMS_NM", "TOOL_NM", "FRAMEWORK_NM", "ETC_NM" };
+	/** 머리글이 없을 때 SKILL INVENTORY 한 줄의 칸 순서(회사 양식: 4번째는 담당업무) */
+	private static final String[] CELLS = { "PRJ_NM", "PERIOD", "CLIENT_NM", "WORK_NM", "IND_NM", "APP_NM", "ROLE_NM", "MACHINE_NM", "OS_NM", "LANG_NM", "DBMS_NM", "TOOL_NM", "FRAMEWORK_NM", "ETC_NM" };
+	/** 머리글 글자 → 칸. 앞에 있는 것부터 본다(「근무회사」를 「업무」보다, 「응용」을 「개발분야」보다 먼저) */
+	private static final String[][] HEADS = { { "프로젝트|업무명", "PRJ_NM" }, { "기간", "PERIOD" }, { "고객", "CLIENT_NM" }, { "근무회사|소속", "COMPANY_NM" }, { "업무", "WORK_NM" },
+			{ "산업", "IND_NM" }, { "응용", "APP_NM" }, { "역할", "ROLE_NM" }, { "기종", "MACHINE_NM" }, { "TOOL|툴", "TOOL_NM" }, { "^O\\.?S$|운영체제", "OS_NM" }, { "언어", "LANG_NM" },
+			{ "DBMS|^DB$", "DBMS_NM" }, { "FRAME|프레임", "FRAMEWORK_NM" }, { "기타", "ETC_NM" } };
 
 	private StaffCareerWord() {
 	}
 
 	// ── 가져오기 ──
 
-	/** 표 줄 가운데 둘째 칸이 '2010.03 ~ 2012.10' 같은 기간이고 칸이 13개 이상인 줄을 프로젝트로 읽는다(표가 쪽마다 나뉘어 있어도 된다) */
+	/**
+	 * 기간 칸이 '2010.03 ~ 2012.10' 같은 줄을 프로젝트로 읽는다(표가 쪽마다 나뉘어 있어도 된다).
+	 * 칸은 표 머리글 글자로 맞춘다(합친 칸은 칸 너비대로 펼친다). 머리글을 못 찾은 표는 회사 양식 순서(CELLS)로 읽는다
+	 */
 	public static List<Map<String, Object>> parse(InputStream in) throws IOException {
 		List<Map<String, Object>> out = new ArrayList<>();
 		try (XWPFDocument doc = new XWPFDocument(in)) {
+			String[] fields = null; // 앞 표에서 읽은 머리글(쪽이 나뉜 표는 머리글이 첫 표에만 있을 수 있다)
 			for (XWPFTable t : doc.getTables()) {
+				List<String[]> heads = new ArrayList<>();
+				boolean data = false;
 				for (XWPFTableRow r : t.getRows()) {
-					List<XWPFTableCell> cells = r.getTableCells();
-					if (cells.size() < 13) continue;
-					Map<String, Object> row = parseRow(cells);
-					if (row != null) out.add(row);
+					String[] cells = grid(r);
+					boolean known = fields != null && fields.length == cells.length;
+					Map<String, Object> row = known || cells.length >= 13 ? parseRow(cells, known ? fields : CELLS) : null;
+					if (row != null) {
+						out.add(row);
+						data = true;
+						continue;
+					}
+					String all = String.join(" ", cells);
+					if (!data && (heads.isEmpty() ? all.contains("프로젝트") && all.contains("기간") : heads.size() < 3)) {
+						heads.add(cells);
+						String[] f = headFields(heads);
+						if (f != null) fields = f;
+					}
 				}
 			}
 		}
 		return out;
 	}
 
-	private static Map<String, Object> parseRow(List<XWPFTableCell> cells) {
-		Matcher m = PERIOD.matcher(text(cells.get(1), " "));
+	/** 한 줄의 칸 글자를 칸 너비(gridSpan)대로 펼친다. 합친 칸은 같은 글자가 여러 칸에 들어간다 */
+	private static String[] grid(XWPFTableRow r) {
+		List<String> out = new ArrayList<>();
+		for (XWPFTableCell c : r.getTableCells()) {
+			int span = 1;
+			if (c.getCTTc().getTcPr() != null && c.getCTTc().getTcPr().getGridSpan() != null) span = Math.max(1, c.getCTTc().getTcPr().getGridSpan().getVal().intValue());
+			String t = text(c, "\n");
+			for (int i = 0; i < span; i++) out.add(t);
+		}
+		return out.toArray(new String[0]);
+	}
+
+	/** 머리글 줄들(위 줄 → 아래 줄)로 칸마다 필드를 정한다. 아래 줄 글자가 있으면 그것을 쓴다. 프로젝트명·기간을 못 찾으면 null */
+	static String[] headFields(List<String[]> heads) {
+		int n = 0;
+		for (String[] h : heads) n = Math.max(n, h.length);
+		String[] out = new String[n];
+		for (int i = 0; i < n; i++) {
+			String label = "";
+			for (String[] h : heads) if (i < h.length && !h[i].trim().isEmpty()) label = h[i].replaceAll("\\s+", "");
+			out[i] = "";
+			for (String[] x : HEADS) {
+				if (Pattern.compile(x[0], Pattern.CASE_INSENSITIVE).matcher(label).find()) {
+					out[i] = x[1];
+					break;
+				}
+			}
+		}
+		List<String> f = java.util.Arrays.asList(out);
+		return f.contains("PRJ_NM") && f.contains("PERIOD") ? out : null;
+	}
+
+	static Map<String, Object> parseRow(String[] cells, String[] fields) {
+		int p = java.util.Arrays.asList(fields).indexOf("PERIOD");
+		if (p < 0 || p >= cells.length) return null;
+		Matcher m = PERIOD.matcher(cells[p].replace('\n', ' '));
 		if (!m.find()) return null;
 		Map<String, Object> row = new LinkedHashMap<>();
-		for (int i = 0; i < CELLS.length && i < cells.size(); i++) {
-			String c = CELLS[i];
+		for (int i = 0; i < fields.length && i < cells.length; i++) {
+			String c = fields[i];
+			if (c.isEmpty() || row.containsKey(c)) continue; // 모르는 칸·합친 칸의 둘째 이후는 건너뜀
 			if ("PERIOD".equals(c)) {
 				row.put("START_YM", m.group(1) + "-" + pad(m.group(2)));
 				row.put("END_YM", m.group(3) == null ? "" : m.group(3) + "-" + pad(m.group(4)));
-			} else if ("ROLE_NM".equals(c)) {
-				row.put(c, join(text(cells.get(i), "\n").split("[\\s,/]+"))); // 역할은 한 낱말씩
+				row.put("PERIOD", "");
 			} else if (StaffCareerService.MULTI.contains(c)) {
-				row.put(c, join(text(cells.get(i), "\n").split("[,\\n]")));
+				// 여러 값은 쉼표·줄바꿈·「/」로만 나눈다(「PL 및 개발자」 같은 띄어 쓴 역할은 한 값)
+				row.put(c, join(cells[i].split("[,\\n/]")));
 			} else {
-				row.put(c, text(cells.get(i), " ").replaceAll("\\s+", " ").trim());
+				row.put(c, cells[i].replaceAll("\\s+", " ").trim());
 			}
 		}
-		return row.get("PRJ_NM").toString().isEmpty() ? null : row;
+		row.remove("PERIOD");
+		Object prj = row.get("PRJ_NM");
+		return prj == null || prj.toString().isEmpty() ? null : row;
 	}
 
 	private static String text(XWPFTableCell cell, String sep) {
@@ -137,12 +194,12 @@ public final class StaffCareerWord {
 		if (sample) b.append(sampleNote());
 		int[] ws = { 2300, 1100, 1300, 1100, 700, 700, 900, 700, 700, 1300, 1000, 1200, 1300, 600 };
 		List<String> rs = new ArrayList<>();
-		rs.add(row(hv("프로젝트명 (업무명)", true), hv("참여기간", true), hv("고객사", true), hv("근무회사", true), hs("개발분야", 2), hv("역할", true), hs("개발환경", 7)));
+		rs.add(row(hv("프로젝트명 (업무명)", true), hv("참여기간", true), hv("고객사", true), hv("담당업무", true), hs("개발분야", 2), hv("역할", true), hs("개발환경", 7)));
 		rs.add(row(hv("", false), hv("", false), hv("", false), hv("", false), h("산업"), h("응용"), hv("", false), h("기종"), h("O.S"), h("언어"), h("DBMS"), h("TOOL"), h("FRAME WORK"), h("기타")));
 		for (int i = items.size() - 1; i >= 0; i--) { // 워드 양식은 오래된 것부터
 			Map<String, Object> it = items.get(i);
 			String end = s(it.get("END_YM"));
-			rs.add(row(c(s(it.get("PRJ_NM"))), c(s(it.get("START_YM")).replace('-', '.') + "\n~\n" + (end.isEmpty() ? "현재" : end.replace('-', '.'))), c(s(it.get("CLIENT_NM"))), c(s(it.get("COMPANY_NM"))),
+			rs.add(row(c(s(it.get("PRJ_NM"))), c(s(it.get("START_YM")).replace('-', '.') + "\n~\n" + (end.isEmpty() ? "현재" : end.replace('-', '.'))), c(s(it.get("CLIENT_NM"))), c(s(it.get("WORK_NM"))),
 					c(lines(it.get("IND_NM"))), c(lines(it.get("APP_NM"))), c(lines(it.get("ROLE_NM"))), c(lines(it.get("MACHINE_NM"))), c(lines(it.get("OS_NM"))), c(lines(it.get("LANG_NM"))),
 					c(lines(it.get("DBMS_NM"))), c(lines(it.get("TOOL_NM"))), c(lines(it.get("FRAMEWORK_NM"))), c(lines(it.get("ETC_NM")))));
 		}

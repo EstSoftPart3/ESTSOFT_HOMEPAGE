@@ -188,7 +188,7 @@
 	</div>
 
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
-	<script src="/resources/common/staff-career.js?v=20261116"></script>
+	<script src="/resources/common/staff-career.js?v=20261120w"></script>
 
 	<script>
 	var COLS = [['STAFF_NM', '성명'], ['EMP_TYPE_CD', '형태'], ['HOME_AREA', '거주지역'], ['WORK_AREA', '근무지역'], ['SALE_PARTNER_NM', '매출처'], ['BUY_PARTNER_NM', '매입처'], ['SALE_PRICE', '매출단가', true], ['COST_PRICE', '계약단가', true],
