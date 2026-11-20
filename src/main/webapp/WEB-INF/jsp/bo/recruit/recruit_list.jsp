@@ -15,7 +15,15 @@
 	@media (max-width: 1199px) { .rc-dwrap { flex-direction: column; } .rc-side { width: auto; position: static; max-height: none; border-left: 0; padding-left: 0; border-top: 1px solid #eef1f4; padding-top: 10px; } }
 	.rc-pf { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
 	.rc-pf .form-control { height: 30px; font-size: 12.5px; flex: 1 1 120px; width: auto; }
-	.rc-yr { font-weight: 700; white-space: nowrap; } .rc-loc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 150px; font-size: 11.5px; color: #495057; }
+	.rc-yr { font-weight: 700; } .rc-loc { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 11.5px; color: #495057; overflow-wrap: anywhere; }
+	#ppTable { table-layout: fixed; width: 100%; } #ppTable td { overflow-wrap: anywhere; } #ppTable tr[draggable=true]:hover td { background: #eef9fc; }
+	.rc-prof-ok { display: inline-block; background: #d3f9d8; color: #2b8a3e; border-radius: 6px; padding: 0 6px; font-size: 11px; font-weight: 800; margin-right: 3px; }
+	.rc-x { border: 1px solid #ced4da; background: #fff; border-radius: 999px; padding: 0 9px; font-size: 11.5px; font-weight: 700; color: #495057; }
+	.rc-x.drop { border-color: #ffa8a8; color: #c92a2a; } .rc-x:hover, .rc-x:focus { background: #f1f3f5; }
+	.rc-dropzone { display: flex; flex-direction: column; align-items: center; gap: 2px; border: 2px dashed #0b6e8a; background: #eef9fc; color: #0b6e8a; border-radius: 10px; padding: 14px 10px; margin-top: 8px; text-align: center; font-size: 13px; }
+	.rc-dropzone span { font-size: 11.5px; color: #5f7f8a; }
+	body.rc-dragging .rc-dropzone { background: #d0f0fa; border-color: #087f9c; box-shadow: 0 0 0 4px rgba(11,110,138,.15); }
+	.rc-dropzone.over { background: #b8e8f5 !important; outline: none !important; }
 	.rc-tk { display: inline-block; background: #e7f5ff; color: #1864ab; border-radius: 4px; padding: 0 5px; margin: 1px 2px 1px 0; font-size: 11px; font-weight: 600; }
 	.rc-noprof { border: 1px solid #fa5252; background: #fff5f5; color: #c92a2a; border-radius: 6px; padding: 1px 7px; font-size: 11.5px; font-weight: 800; white-space: nowrap; }
 	button.rc-noprof:hover, button.rc-noprof:focus { background: #ffe3e3; }
@@ -137,7 +145,8 @@
 			</div>
 			<div class="tbl-scroll"><!-- 없으면 ui-table.js 가 .rc-side 를 스크롤 상자로 보고 그 앞(가로 flex)에 위 스크롤바를 끼워 넣어 가운데 빈 영역이 생긴다 -->
 			<table class="table table-sm" id="ppTable" data-nopick><!-- 팝업 안으로 옮겨 다시 그리면 공통 체크 칸이 머리글에만 남아 칸이 어긋난다 -->
-				<thead><tr><th scope="col">성명</th><th scope="col">연차</th><th scope="col">지역</th><th scope="col">주요기술</th><th scope="col">상태</th><th scope="col">프로필</th></tr></thead>
+				<colgroup><col style="width:30%"><col style="width:14%"><col style="width:20%"><col style="width:18%"><col style="width:18%"></colgroup>
+				<thead><tr><th scope="col">성명 · 프로필</th><th scope="col">연차</th><th scope="col">지역</th><th scope="col">주요기술</th><th scope="col">상태</th></tr></thead>
 				<tbody id="ppBody"></tbody>
 			</table>
 			</div>
@@ -151,7 +160,7 @@
 var PATH = location.pathname, D = null, VIEW = 'cal', ST_CHK = { OPEN: true, APPLY: true, FILLED: true, CLOSED: false, MISS: false }, PP_CHK = { WAIT: true, FUTURE: true, SOON: true };
 var STATUS = { OPEN: '모집중', APPLY: '지원 진행', FILLED: '충원 완료', CLOSED: '마감' };
 var STEPS = [['DOC', '서류검토'], ['INTV_WAIT', '인터뷰대기'], ['INTV', '인터뷰확정'], ['JOIN_WAIT', '투입대기'], ['JOIN', '투입확정']];
-var STEP_NM = { DROP: '탈락·취소' }; STEPS.forEach(function(s) { STEP_NM[s[0]] = s[1]; });
+var STEP_NM = { DROP: '탈락' }; STEPS.forEach(function(s) { STEP_NM[s[0]] = s[1]; });
 var WAY = { FACE: '대면', VIDEO: '화상', PHONE: '전화' };
 var MISS = [['CLIENT_NM', '고객사'], ['PRJ_NM', '사업명'], ['GRADE_TXT', '등급·인원'], ['START_DT', '투입 시작'], ['WORK_AREA', '근무지'], ['SALE_PARTNER_SQ', '매출처'], ['PRICE_TXT', '단가']];
 var FIELDS = [['CLIENT_NM', '고객사'], ['PRJ_NM', '사업명'], ['GRADE_TXT', '등급·인원', '예: 중급 2 · 고급 1'], ['HEAD_CNT', '정원(명)', '', 'number'], ['START_DT', '투입 시작', '', 'date'], ['END_DT', '투입 종료', '비우면 미정', 'date'],
@@ -271,17 +280,23 @@ function career(s) {
 }
 function personRow(s, st) {
 	var has = profilesOf(s.STAFF_SQ).length > 0, apps = activeAppsOfStaff(s.STAFF_SQ), c = career(s), techs = s.TECHS || [];
+	var ps = profilesOf(s.STAFF_SQ);
 	var $tr = $('<tr>').attr({ draggable: has, 'data-staff': s.STAFF_SQ }).toggleClass('noprof', !has);
-	$tr.append($('<td>').append(nameEl(s, has)).append($('<div class="sub">').text([s.POSITION_NM, s.DEPT_NM].filter(Boolean).join(' · '))));
-	$tr.append($('<td>').append($('<span class="rc-yr">').text(c.label || '-').attr('title', c.guess ? '실경력이 비어 있어 수행이력 첫 시작월(' + s.FIRST_YM + ')부터 셌어요' : '인사카드 실경력')).append(s.GRADE_NM ? $('<div class="sub">').text(s.GRADE_NM) : ''));
-	$tr.append($('<td>').append(s.WISH_LOC ? $('<span class="rc-loc">').text(s.WISH_LOC).attr('title', s.WISH_LOC) : $('<span class="sub">-</span>')));
-	$tr.append($('<td>').append(techs.slice(0, 3).map(function(t) { return $('<span class="rc-tk">').text(t); })).attr('title', techs.join(', ')));
+	// 마우스를 올리면 잘린 정보까지 한 번에 보인다
+	$tr.attr('title', [s.STAFF_NM + ' (' + [s.POSITION_NM, s.DEPT_NM, s.GRADE_NM].filter(Boolean).join(' · ') + ')', '연차: ' + (c.label || '-'), '지역: ' + (s.WISH_LOC || '-'), '주요기술: ' + (techs.join(', ') || '-'),
+		'상태: ' + st.label + (st.row && st.k !== 'WAIT' ? ' · ' + (st.row.CLIENT_NM || '') : ''), '프로필: ' + (has ? ps.map(function(p) { return (p.VER_KIND === 'EDIT' ? '가필 v' : '순정 v') + p.VER_NO; }).join(', ') : '없음'),
+		has ? '모집 상세에서 줄을 누르거나 왼쪽에 끌어 놓으면 지원' : '프로필이 없어 지원할 수 없어요'].join('\n'));
+	$tr.append($('<td>').append(nameEl(s, has)).append($('<div class="sub">').text([s.POSITION_NM, s.DEPT_NM].filter(Boolean).join(' · ')))
+		.append($('<div class="mt-1">').append(has ? $('<span class="rc-prof-ok">✓ 프로필</span>').add(verChips(s.STAFF_SQ)) : verChips(s.STAFF_SQ))));
+	$tr.append($('<td>').append($('<span class="rc-yr">').text(c.label || '-')).append(s.GRADE_NM ? $('<div class="sub">').text(s.GRADE_NM) : ''));
+	$tr.append($('<td>').append(s.WISH_LOC ? $('<span class="rc-loc">').text(s.WISH_LOC) : $('<span class="sub">-</span>')));
+	$tr.append($('<td>').append(techs.map(function(t) { return $('<span class="rc-tk">').text(t); })));
 	var $st = $('<td>').append($('<span class="rc-pill">').addClass(st.k === 'SOON' ? 'warn' : st.k === 'FUTURE' ? 'FILLED' : '').text(st.label)).append(st.row && st.k !== 'WAIT' ? $('<div class="sub">').text(st.row.CLIENT_NM || '') : '');
 	apps.forEach(function(a) {
 		var r = recruitOf(a.RECRUIT_SQ);
 		$st.append($('<div class="sub">').append($('<a href="#">').text('지원: ' + (r ? r.CLIENT_NM || '(고객사)' : '') + ' · ' + STEP_NM[a.STEP_CD] + (a.INTV_DT && a.STEP_CD === 'INTV' ? ' 🎤' + md(a.INTV_DT) : '')).on('click', function(e) { e.preventDefault(); e.stopPropagation(); detail(a.RECRUIT_SQ); })));
 	});
-	$tr.append($st).append($('<td>').append(verChips(s.STAFF_SQ)));
+	$tr.append($st);
 	dragSource($tr, s.STAFF_SQ, has);
 	return $tr;
 }
@@ -307,7 +322,8 @@ function staffPop(sq, career) {
 function dragSource($el, staffSq, ok) {
 	if (!ok && D.canStaff) { $el.on('click', function() { staffPop(staffSq, true); }); return; }
 	if (!ok) { $el.on('click', function() { bootbox.alert('저장된 수행이력 프로필이 없어 지원할 수 없어요. 인사카드 › 수행이력에서 「새 버전으로 저장」을 먼저 해 주세요.'); }); return; }
-	$el.attr('draggable', true).on('dragstart', function(e) { e.originalEvent.dataTransfer.setData('text/plain', 'staff:' + staffSq); e.originalEvent.dataTransfer.effectAllowed = 'copy'; })
+	$el.attr('draggable', true).on('dragstart', function(e) { e.originalEvent.dataTransfer.setData('text/plain', 'staff:' + staffSq); e.originalEvent.dataTransfer.effectAllowed = 'copy'; $('body').addClass('rc-dragging'); })
+		.on('dragend', function() { $('body').removeClass('rc-dragging'); })
 		.on('click', function(e) { var sq = $('#rcDetail').data('sq'); if (sq && !$(e.target).closest('a, button').length) applyDialog(sq, staffSq); }); // 상세 팝업 안에서 줄을 누르면 그 모집에 지원
 }
 function dropTarget($el, recruitSq) {
@@ -318,6 +334,7 @@ function dropTarget($el, recruitSq) {
 			if (v.indexOf('staff:') !== 0) return;
 			e.preventDefault();
 			e.stopPropagation(); // 상세 팝업은 안쪽(지원자 칸)과 바깥(모집 정보 전체)이 둘 다 받으므로 한 번만
+			$('body').removeClass('rc-dragging');
 			$el.parents('.over').removeClass('over');
 			applyDialog(recruitSq, v.substring(6));
 		});
@@ -535,9 +552,10 @@ function stepChip(a) {
 function stepMenu($at, a) {
 	$('.rc-menu').remove();
 	var $menu = $('<div class="rc-menu" role="menu">');
-	STEPS.concat([['DROP', '✕ 탈락·취소']]).forEach(function(s) {
+	STEPS.concat([['DROP', '✕ 탈락']]).forEach(function(s) {
 		$menu.append($('<button type="button" role="menuitem">').toggleClass('cur', s[0] === a.STEP_CD).text((s[0] === a.STEP_CD ? '● ' : '') + s[1]).on('click', function() { $menu.remove(); changeStep(a, s[0]); }));
 	});
+	if (a.STEP_CD !== 'JOIN') $menu.append($('<button type="button" role="menuitem">↺ 지원 취소 (기록 지움)</button>').on('click', function() { $menu.remove(); cancelApply(a); }));
 	var o = $at.offset();
 	$menu.css({ left: o.left, top: o.top + $at.outerHeight() + 2 }).appendTo('body');
 	$menu.find('button').first().focus();
@@ -563,7 +581,7 @@ function changeStep(a, step) {
 	}
 	function ask(del) {
 		if (step !== 'DROP') return send(del);
-		bootbox.prompt({ title: a.STAFF_NM + ' 탈락·취소 사유 (선택)', inputType: 'text', callback: function(v) { if (v !== null) send(del, v); } });
+		bootbox.prompt({ title: a.STAFF_NM + ' 탈락 사유 (선택)', inputType: 'text', callback: function(v) { if (v !== null) send(del, v); } });
 	}
 	if (a.STEP_CD === 'JOIN' && a.DEPLOY_SQ) {
 		bootbox.dialog({ title: '투입확정을 되돌려요', message: '투입현황에 만든 「투입 예정」도 지울까요? 이미 투입일이 지나 투입 중이면 지우지 않아요.', onEscape: true, buttons: {
@@ -573,6 +591,12 @@ function changeStep(a, step) {
 		return;
 	}
 	ask(false);
+}
+// 지원 취소: 탈락과 달리 지원 기록을 지워 같은 사람을 다시 지원시킬 수 있다
+function cancelApply(a) {
+	bootbox.confirm({ title: a.STAFF_NM + ' 지원 취소', message: '이 지원 기록을 지워요. 나중에 다시 지원시킬 수 있고, 드라이브의 프로필 워드는 휴지통으로 가요' + (a.INTV_DT ? '. 앞으로 잡힌 인터뷰는 취소 메일이 가요' : '') + '.<br><span class="rc-note">떨어진 거라면 「탈락」을 쓰세요. 탈락은 기록이 남아요.</span>',
+		buttons: { confirm: { label: '지원 취소', className: 'btn-sm btn-danger' }, cancel: { label: '닫기', className: 'btn-sm btn-outline-secondary' } },
+		callback: function(ok) { if (ok) hrPost('/admin/recruit/cancelData.do', { APPLY_SQ: a.APPLY_SQ }, function(res) { notes(res.result); hrToast(a.STAFF_NM + ' 지원을 취소했어요.'); reload(); }); } });
 }
 function reload() { var open = $('#rcDetail').data('sq'); load(function() { if (open) detail(open); }); }
 
@@ -598,7 +622,7 @@ function detail(sq) {
 		var $ap = $('<div>');
 		apps.forEach(function(a) { $ap.append(applyRow(a)); });
 		if (!apps.length) $ap.append('<div class="rc-note">아직 지원자가 없어요. 오른쪽 대기자 줄을 누르거나 여기로 끌어 놓으면 지원 창이 떠요.</div>');
-		var $apDrop = $('<div class="rc-drop-hint">⠿ 대기자를 여기에 끌어 놓아도 지원돼요</div>');
+		var $apDrop = $('<div class="rc-dropzone">').append('<b>⬇ 여기에 대기자를 끌어 놓으면 지원</b>').append('<span>오른쪽 대기자 줄을 잡아 이 상자에 놓거나, 줄을 한 번 누르세요</span>');
 		dropTarget($apDrop, sq);
 		$f.append($('<div class="rc-sec" style="border-top:0;margin-top:0;padding-top:0">').append($('<h4>').text('지원자 ' + apps.filter(function(a) { return a.STEP_CD !== 'DROP'; }).length)).append($ap).append($apDrop));
 		var $form = fieldForm(r, miss);
@@ -648,11 +672,12 @@ function applyRow(a) {
 	var $r = $('<div class="d-flex align-items-center flex-wrap mb-2" style="gap:8px">').toggleClass('text-muted', a.STEP_CD === 'DROP');
 	$r.append($('<b style="min-width:56px">').text(a.STAFF_NM));
 	$r.append($('<span class="rc-ver">').addClass(String(a.VER_LABEL || '').indexOf('가필') === 0 ? 'EDIT' : '').text(a.VER_LABEL || '-'));
-	if (a.STEP_CD === 'DROP') $r.append($('<span class="rc-step DROP">').text('탈락·취소')).append($('<span class="rc-note">').text(a.DROP_REASON || ''))
+	if (a.STEP_CD === 'DROP') $r.append($('<span class="rc-step DROP">').text('탈락')).append($('<span class="rc-note">').text(a.DROP_REASON || ''))
 		.append($('<button type="button" class="btn btn-sm btn-link p-0">되살리기</button>').on('click', function() { changeStep(a, 'DOC'); }));
-	else $r.append(stepper(a)).append($('<button type="button" class="btn btn-sm btn-link text-danger p-0">✕ 탈락·취소</button>').on('click', function() { changeStep(a, 'DROP'); }));
+	else $r.append(stepper(a)).append($('<button type="button" class="rc-x drop" title="떨어짐 — 기록이 남아요">✕ 탈락</button>').on('click', function() { changeStep(a, 'DROP'); }));
+	if (a.STEP_CD !== 'JOIN') $r.append($('<button type="button" class="rc-x" title="지원 기록을 지워요 — 다시 지원시킬 수 있어요">↺ 취소</button>').on('click', function() { cancelApply(a); }));
 	if (a.FILE_ID) $r.append($('<a target="_blank" rel="noopener" title="모집 폴더에 저장된 프로필 워드">').attr('href', 'https://drive.google.com/file/d/' + a.FILE_ID + '/view').text('📄 ' + (a.FILE_NM || '워드')));
-	else $r.append($('<button type="button" class="btn btn-sm btn-outline-warning py-0">📄 드라이브에 다시 저장</button>').on('click', function() { hrPost('/admin/recruit/wordData.do', { APPLY_SQ: a.APPLY_SQ }, reload); }));
+	else $r.append($('<button type="button" class="btn btn-sm btn-warning py-0 font-weight-bold" title="지원할 때 드라이브에 올리지 못했어요">⚠ 드라이브에 없음 · 다시 저장</button>').on('click', function() { hrPost('/admin/recruit/wordData.do', { APPLY_SQ: a.APPLY_SQ }, function() { hrToast('드라이브에 저장했어요.'); reload(); }); }));
 	if (a.INTV_DT && a.STEP_CD !== 'DROP') $r.append($('<span class="rc-note">').text('🎤 ' + a.INTV_DT + ' · ' + (WAY[a.INTV_WAY] || '') + (a.INTV_PLACE ? ' · ' + a.INTV_PLACE : '')));
 	if (a.DEPLOY_SQ) $r.append($('<a href="/admin/deploy/openDeployList.do" target="_blank" rel="noopener">투입현황 보기 ↗</a>'));
 	if (a.DRAFT && a.STEP_CD === 'JOIN_WAIT') $r.append($('<button type="button" class="btn btn-sm btn-link p-0">투입확정 임시 저장 이어서 ›</button>').on('click', function() { joinDialog(a); }));
@@ -904,7 +929,7 @@ function joinDialog(a) {
 				var others = res.result.others || [];
 				if (!others.length) return reload();
 				bootbox.confirm({ title: '다른 모집 ' + others.length + '건 진행 중', message: $('<div>').append('<p class="mb-1">같은 사람이 다른 모집에서도 진행 중이에요. 모두 취소할까요?</p>').append($('<ul class="mb-0">').append(others.map(function(o) { return $('<li>').text((o.CLIENT_NM || '') + ' ' + (o.PRJ_NM || '') + ' · ' + STEP_NM[o.STEP_CD]); }))),
-					buttons: { confirm: { label: '모두 취소', className: 'btn-sm btn-danger' }, cancel: { label: '그대로 두기', className: 'btn-sm btn-outline-secondary' } },
+					buttons: { confirm: { label: '모두 탈락 처리', className: 'btn-sm btn-danger' }, cancel: { label: '그대로 두기', className: 'btn-sm btn-outline-secondary' } },
 					callback: function(yes) {
 						if (!yes) return reload();
 						(function next(i) { if (i >= others.length) return reload(); hrPost('/admin/recruit/stepData.do', { APPLY_SQ: others[i].APPLY_SQ, STEP_CD: 'DROP', REASON: '다른 모집 투입확정' }, function() { next(i + 1); }, function() { next(i + 1); }); })(0);

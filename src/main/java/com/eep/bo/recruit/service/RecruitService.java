@@ -409,10 +409,16 @@ public class RecruitService {
 		log(sq, applySq, "APPLY", staffNm + " 지원 · 프로필 " + label, loginId);
 		if ("OPEN".equals(r.get("STATUS_CD"))) setStatus(sq, "APPLY", loginId);
 		List<String> notes = new ArrayList<>();
-		try {
-			saveWord(applySq, loginId);
-		} catch (RuntimeException e) {
-			notes.add("프로필 워드를 드라이브에 저장하지 못했습니다: " + googleWhy(e) + " (지원자 줄의 📄 에서 다시 저장할 수 있습니다)");
+		// 지원하면 바로 드라이브에 올린다. 한 번 실패하면(폴더를 막 만든 직후 등) 잠깐 뒤 한 번 더
+		for (int i = 0; i < 2; i++) {
+			try {
+				saveWord(applySq, loginId);
+				break;
+			} catch (RuntimeException e) {
+				log.warn("recruit word upload failed (apply " + applySq + ", try " + (i + 1) + "): " + e);
+				if (i == 1) notes.add("프로필 워드를 드라이브에 저장하지 못했습니다: " + googleWhy(e) + " (지원자 줄의 「⚠ 다시 저장」으로 다시 올릴 수 있습니다)");
+				else try { Thread.sleep(1500); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+			}
 		}
 		Map<String, Object> out = new HashMap<>();
 		out.put("APPLY_SQ", applySq);
@@ -480,6 +486,28 @@ public class RecruitService {
 		jdbc.update("UPDATE TB_EEP_RECRUIT_APPLY_R SET STEP_CD = ?, DROP_REASON = ?, UPDT_EMPLY_ID = ?, UPDT_DT = NOW() WHERE APPLY_SQ = ?",
 				step, "DROP".equals(step) ? cut(s(reason).trim(), 500) : null, loginId, applySq);
 		log(a.get("RECRUIT_SQ"), applySq, "STEP", a.get("STAFF_NM") + " " + stepName(before) + " → " + stepName(step) + ("DROP".equals(step) && !s(reason).trim().isEmpty() ? " (" + reason.trim() + ")" : ""), loginId);
+		refreshFill(a.get("RECRUIT_SQ"), loginId);
+		return notes;
+	}
+
+	/** 지원 취소: 지원 기록을 지워 다시 지원할 수 있게 한다(탈락은 step DROP 으로 기록이 남음). 앞으로 잡힌 인터뷰는 취소 메일, 워드는 드라이브 휴지통. @return notes */
+	public List<String> cancel(Object applySq, String loginId) {
+		Map<String, Object> a = apply(applySq);
+		require(!"JOIN".equals(s(a.get("STEP_CD"))), "투입확정된 지원은 취소할 수 없습니다. 먼저 단계를 되돌려 주세요.");
+		List<String> notes = new ArrayList<>();
+		LocalDateTime intv = dateTime(a.get("INTV_DT"));
+		if (intv != null && intv.isAfter(LocalDateTime.now(SEOUL)))
+			notes.addAll(mailInterview(a, "취소", intv, dateTime(a.get("INTV_END_DT")), s(a.get("INTV_WAY")), s(a.get("INTV_PLACE")), s(a.get("INTV_WITH"))));
+		String fileId = jdbc.queryForObject("SELECT IFNULL(FILE_ID, '') FROM TB_EEP_RECRUIT_APPLY_R WHERE APPLY_SQ = ?", String.class, applySq);
+		if (!fileId.isEmpty()) {
+			try {
+				drive.trash(fileId, googleLink.accessToken(GoogleLinkService.COMPANY, GoogleLinkService.DRIVE));
+			} catch (RuntimeException e) {
+				notes.add("드라이브의 프로필 워드를 휴지통으로 옮기지 못했습니다: " + googleWhy(e));
+			}
+		}
+		jdbc.update("DELETE FROM TB_EEP_RECRUIT_APPLY_R WHERE APPLY_SQ = ?", applySq);
+		log(a.get("RECRUIT_SQ"), null, "CANCEL", a.get("STAFF_NM") + " 지원 취소(기록 삭제, " + stepName(s(a.get("STEP_CD"))) + "에서)", loginId);
 		refreshFill(a.get("RECRUIT_SQ"), loginId);
 		return notes;
 	}
@@ -605,7 +633,7 @@ public class RecruitService {
 		case "INTV": return "인터뷰확정";
 		case "JOIN_WAIT": return "투입대기";
 		case "JOIN": return "투입확정";
-		case "DROP": return "탈락·취소";
+		case "DROP": return "탈락";
 		default: return s;
 		}
 	}
