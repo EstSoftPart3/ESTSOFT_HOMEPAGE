@@ -84,7 +84,7 @@
 	@media (max-width: 767px) { .rc-qa-row { grid-template-columns: 1fr 20px; } .rc-qa-row .a { grid-column: 1; } }
 	.rc-linkbtn { border: 1px solid #0b6e8a; background: #eef9fc; color: #0b6e8a; border-radius: 999px; padding: 0 9px; font-size: 11.5px; font-weight: 700; }
 	.rc-linkbtn.sent { border-style: dashed; background: #fff; } .rc-linkbtn:hover, .rc-linkbtn:focus { background: #d0f0fa; }
-	.rc-self { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 800; background: #d3f9d8; color: #2b8a3e; } .rc-self.adm { background: #e7f5ff; color: #1864ab; }
+	.rc-self { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 800; background: #d3f9d8; color: #2b8a3e; } .rc-self.adm { background: #e7f5ff; color: #1864ab; } .rc-self.wait { background: #fff3bf; color: #e67700; }
 	.rc-newdot { color: #e8590c; font-size: 12px; } .rc-selfev { color: #2b8a3e; font-size: 10px; }
 	.rc-vchip { background: #eef9fc; color: #0b6e8a; border: 1px solid #b6e3ef; border-radius: 999px; padding: 0 9px; font-size: 12.5px; font-weight: 700; }
 	.rc-qview { border: 1px solid #dfe4e8; border-radius: 10px; overflow: hidden; } .rc-qview > div { display: grid; grid-template-columns: 30px 1fr; gap: 6px; padding: 7px 10px; border-bottom: 1px solid #eef1f4; font-size: 13px; }
@@ -1038,6 +1038,19 @@ function noteDialog(a, edit) {
 	var skills = String(r.SKILLS || '').split(/[,/·]+/).map(function(x) { return $.trim(x); }).filter(Boolean);
 	var $k = $('<div class="rc-kv rc-note-kv">');
 	var $edit = $('<button type="button" class="btn btn-sm btn-link p-0">✎ 예시 빼기</button>').on('click', function() { editing = !editing; $k.toggleClass('editing', editing); $(this).text(editing ? '✓ 다 뺐어요' : '✎ 예시 빼기'); });
+	// 제출 상태 + 본인에게 보낼 링크 복사(살아 있는 링크면 그대로, 없으면 새로 만듦)
+	var live = linkLive(a), $state = $('<div class="d-flex flex-wrap align-items-center" style="grid-column:1/-1;gap:6px">');
+	if (a.LINK_SUBMIT_DT) $state.append($('<span class="rc-self">').text('본인 제출 ' + md(a.LINK_SUBMIT_DT) + ' ' + a.LINK_SUBMIT_DT.substring(11)));
+	else $state.append($('<span class="rc-self wait">').text('제출 전' + (live ? ' · 링크 보냄 ' + md(a.LINK_EXP_DT) + ' 만료' : '')));
+	$state.append($('<button type="button" class="rc-linkbtn">🔗 제출 링크 복사</button>').attr('title', '본인이 계정 없이 이 기록을 남기는 링크').on('click', function() {
+		if (linkLive(a)) copyText(linkUrl(a.LINK_TOKEN), '링크를 복사했어요 · ' + md(a.LINK_EXP_DT) + ' 까지 열려요');
+		else hrPost('/admin/recruit/linkData.do', { APPLY_SQ: a.APPLY_SQ }, function(res) {
+			a.LINK_TOKEN = res.result.TOKEN; a.LINK_EXP_DT = res.result.LINK_EXP_DT;
+			copyText(linkUrl(a.LINK_TOKEN), '링크를 복사했어요 · ' + md(a.LINK_EXP_DT) + ' 까지 열려요');
+			if (!a.LINK_SUBMIT_DT) $state.find('.rc-self').text('제출 전 · 링크 보냄 ' + md(a.LINK_EXP_DT) + ' 만료');
+		});
+	}));
+	$k.append($state);
 	$k.append($('<div class="rc-note" style="grid-column:1/-1">').text('통화로 들은 내용을 칩으로 골라요. 없는 예시는 「＋」로 바로 추가하면 다음부터 고를 수 있어요. ').append($edit));
 	NOTE_CATS.forEach(function(c) {
 		var key = c[0], $g = $('<span class="d-flex flex-wrap" style="gap:4px" role="group">').attr('aria-label', c[2]);
