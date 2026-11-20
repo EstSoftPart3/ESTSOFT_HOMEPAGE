@@ -50,6 +50,21 @@
 	.gl-step-b { border-top: 1px solid #f0f1f3; padding: 10px 14px 12px; }
 	.gl-step.lock { opacity: .55; }
 	.gl-step .gl-cards { max-width: none; } .gl-step .gl-card { margin-bottom: 8px; }
+	/* 휴대폰 알림(텔레그램) */
+	.gl-logo.TG { background: #2aa3df; font-size: 16px; }
+	.tg-l { font-size: 12.5px; color: #5f6b75; margin: 10px 0 4px; }
+	.tg-chip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid rgba(17,17,17,.18); border-radius: 999px; padding: 3px 12px; margin: 0 4px 4px 0; font-size: 13px; cursor: pointer; background: #fff; min-height: 32px; }
+	.tg-chip.on { background: #e8f4fb; border-color: #2aa3df; color: #0f6c99; font-weight: 600; }
+	.tg-chip input { margin: 0; }
+	.tg-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+	.tg-wait { background: #fff5dc; color: #7a5600; border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-top: 8px; }
+	.tg-qr { background: #fff; padding: 6px; border: 1px solid #e0e0e0; border-radius: 6px; display: inline-block; margin-top: 6px; }
+	.gl-g .tgm { background: #dfe8ee; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+	.gl-g .tgm .b { background: #fff; border-radius: 10px; padding: 6px 9px; max-width: 88%; position: relative; font-size: 12.5px; }
+	.gl-g .tgm .me { align-self: flex-end; background: #e1f7c9; }
+	.gl-g .tgbar { background: #fff; border: 1px solid #ccd; border-radius: 8px; padding: 6px 10px; color: #8a949e; position: relative; margin-top: 6px; }
+	.gl-g .tgstart { display: block; text-align: center; background: #fff; color: #2aa3df; font-weight: 700; border-radius: 8px; padding: 8px; position: relative; margin-top: 6px; }
+	.gl-g .tgbtn { display: block; text-align: center; background: #f0f6fb; color: #1a73b0; border-radius: 6px; padding: 3px; margin-top: 5px; }
 	@media (max-width: 767px) { .gl-guide .modal-body { grid-template-columns: 1fr; } .gl-steps { border-right: 0; border-bottom: 1px solid rgba(17,17,17,.1); } }
 </style>
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
@@ -91,6 +106,32 @@
 						</div>
 					</div>
 					</c:if>
+					<%-- 휴대폰 알림(텔레그램): 봇은 시스템 관리자가 한 번, 연결·설정은 각자 --%>
+					<div class="gl-step mt-3" id="tgBox">
+						<div class="gl-step-h"><span class="gl-logo TG">✈</span><div><b>휴대폰 알림 (텔레그램)</b><div class="gl-step-s" id="tgState">확인 중…</div></div>
+							<button type="button" class="gl-help ml-auto" id="tgHelp">연결 방법</button></div>
+						<c:if test="${superUser}">
+						<div class="gl-step-b" id="tgBot">
+							<div class="d-flex align-items-center" style="gap:8px"><b class="small">알림 봇</b><span class="gl-step-s" id="tgBotState"></span>
+								<button type="button" class="gl-help ml-auto" id="tgBotToggle">바꾸기</button></div>
+							<div id="tgBotForm" hidden>
+								<div class="small text-muted my-1">텔레그램 앱의 <b>@BotFather</b> 에서 봇을 만들고 받은 토큰을 넣습니다. 처음 한 번만 하면 모든 관리자가 이 봇으로 알림을 받습니다. <button type="button" class="gl-help" id="tgBotHelp">봇 만드는 방법 보기</button></div>
+								<div class="form-row" style="max-width:620px">
+									<div class="col-md-9 mb-1"><label for="tgToken" class="sr-only">봇 토큰</label><input id="tgToken" type="password" class="form-control form-control-sm" autocomplete="off" placeholder="123456789:AA… (BotFather 가 준 토큰)"></div>
+									<div class="col-md-3 mb-1"><button type="button" class="btn btn-sm btn-primary btn-block" id="tgBotSave">확인 후 저장</button></div>
+								</div>
+							</div>
+						</div>
+						</c:if>
+						<div class="gl-step-b" id="tgLink"></div>
+						<div class="gl-step-b" id="tgConf" hidden>
+							<div class="tg-l">일정 몇 분 전에 받을 일정</div><div id="tgKinds"></div>
+							<div class="tg-l">몇 분 전</div>
+							<div class="btn-group btn-group-sm" role="group" aria-label="몇 분 전" id="tgBefore"><button type="button" class="btn btn-outline-secondary" data-v="10">10분</button><button type="button" class="btn btn-outline-secondary" data-v="30">30분</button><button type="button" class="btn btn-outline-secondary" data-v="60">60분</button></div>
+							<div class="tg-l">시간이 바뀌거나 취소되면 바로 알림 <span class="text-muted">(기본 끔)</span></div><div id="tgChange"></div>
+							<div class="mt-2"><button type="button" class="btn btn-sm btn-primary" id="tgConfSave">설정 저장</button></div>
+						</div>
+					</div>
 				</div>
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
 
@@ -177,6 +218,136 @@
 		});
 	}
 
+	// ── 휴대폰 알림(텔레그램) ──
+	var tg = null, tgWaitTimer = null, IS_PHONE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+	$(function() {
+		tgLoad();
+		$('#tgHelp').on('click', function() { guide('TG_LINK'); });
+		$('#tgBotHelp').on('click', function() { guide('TG_BOT'); });
+		$('#tgBotToggle').on('click', function() { var open = $('#tgBotForm').prop('hidden'); $('#tgBotForm').prop('hidden', !open); $(this).text(open ? '접기' : '바꾸기'); });
+		$('#tgBotSave').on('click', function() {
+			var t = $.trim($('#tgToken').val());
+			if (!t) { bootbox.alert('BotFather 가 준 토큰을 붙여 넣어 주세요.'); return; }
+			var $b = $(this).prop('disabled', true).text('텔레그램에 확인 중…');
+			hrPost('/admin/my/tgSaveBotData.do', { token: t }, function() { $('#tgToken').val(''); hrToast('알림 봇을 저장했습니다.'); tgLoad(); $b.prop('disabled', false).text('확인 후 저장'); },
+				function() { $b.prop('disabled', false).text('확인 후 저장'); });
+		});
+		$('#tgBefore').on('click', 'button', function() { $('#tgBefore button').removeClass('active'); $(this).addClass('active'); });
+		$('#tgConfSave').on('click', function() {
+			hrPost('/admin/my/tgSaveConfData.do', { kinds: tgChecked('#tgKinds'), before: $('#tgBefore .active').data('v') || 30, changeKinds: tgChecked('#tgChange') }, function(res) { tgPaint(res.result); hrToast('알림 설정을 저장했습니다.'); });
+		});
+		$(document).on('change', '.tg-chip input', function() { $(this).closest('.tg-chip').toggleClass('on', this.checked); });
+	});
+	function tgChecked(box) { return $(box).find('input:checked').map(function() { return this.value; }).get().join(','); }
+	function tgLoad() { hrPost('/admin/my/tgData.do', {}, function(res) { tgPaint(res.result); }); }
+
+	function tgPaint(d) {
+		tg = d;
+		var bot = d.bot || {}, l = d.link, on = l && l.STATUS_CD === 'ON';
+		$('#tgBotState').attr('class', 'gl-step-s ' + (bot.ready ? 'ok' : 'warn')).text(bot.ready ? '✓ @' + bot.name + ' · 토큰 ' + bot.mask : '아직 없음 · 먼저 봇을 만들어 토큰을 넣어 주세요');
+		if (!bot.ready) { $('#tgBotForm').prop('hidden', false); $('#tgBotToggle').prop('hidden', true); } else { $('#tgBotToggle').prop('hidden', false); }
+		$('#tgState').attr('class', 'gl-step-s ' + (on ? 'ok' : '')).text(!bot.ready ? '시스템 관리자의 봇 설정이 필요합니다' : on ? '● 연결됨 · ' + (l.TG_USER_NM || '') + ' · ' + l.LINK_DT : '면접·인터뷰·내 할 일 몇 분 전에 내 휴대폰이 울립니다 (나만)');
+		var $l = $('#tgLink').empty();
+		if (!bot.ready) {
+			$l.append($('<div class="small text-muted">').text(IS_ADMIN ? '위 「알림 봇」에 토큰을 넣으면 연결 버튼이 나타납니다.' : '관리자 설정이 필요합니다. 시스템 관리자가 알림 봇을 설정하면 여기서 연결할 수 있습니다.'));
+		} else if (on) {
+			$l.append($('<div class="tg-row">')
+				.append($('<button type="button" class="btn btn-sm btn-outline-primary" id="tgTest">').text('시험 알림 보내기').on('click', function() { hrPost('/admin/my/tgTestData.do', {}, function() { hrToast('보냈습니다. 휴대폰을 확인해 주세요.'); }); }))
+				.append($('<button type="button" class="btn btn-sm btn-outline-secondary">').text('다른 휴대폰으로 바꾸기').on('click', tgStart))
+				.append($('<button type="button" class="btn btn-sm btn-outline-danger" id="tgUnlink">').text('연결 끊기').on('click', function() {
+					bootbox.confirm('텔레그램 알림 연결을 끊을까요? 다시 연결할 때까지 알림이 오지 않습니다.', function(ok) { if (ok) hrPost('/admin/my/tgUnlinkData.do', {}, function(res) { tgPaint(res.result); }); });
+				})));
+		} else {
+			$l.append($('<div class="tg-row">').append($('<button type="button" class="btn btn-sm btn-primary" id="tgStart" style="background:#2aa3df;border-color:#2aa3df">').text('✈ 텔레그램 연결').on('click', tgStart))
+				.append($('<span class="small text-muted">').text('휴대폰에 텔레그램이 있어야 합니다.')));
+		}
+		// 설정: 연결됐을 때만. 볼 권한이 있는 종류만 칩으로
+		$('#tgConf').prop('hidden', !on);
+		if (on) {
+			var kinds = (l.KINDS || '').split(','), ch = (l.CHANGE_KINDS || '').split(',');
+			var chip = function(k, list) { var c = list.indexOf(k.cd) >= 0; return $('<label class="tg-chip">').toggleClass('on', c).append($('<input type="checkbox">').val(k.cd).prop('checked', c)).append(document.createTextNode(k.nm)); };
+			$('#tgKinds').empty().append(d.kinds.map(function(k) { return chip(k, kinds); }));
+			$('#tgChange').empty().append(d.kinds.filter(function(k) { return k.change; }).map(function(k) { return chip(k, ch); }));
+			if (!$('#tgChange').children().length) $('#tgChange').append('<span class="small text-muted">면접·모집 화면 권한이 있을 때 고를 수 있습니다.</span>');
+			$('#tgBefore button').removeClass('active').filter('[data-v="' + l.BEFORE_MIN + '"]').addClass('active');
+		}
+	}
+
+	// 1회용 코드 링크를 열고, 봇에서 「시작」을 누를 때까지 3초마다 확인(최대 10분)
+	function tgStart() {
+		var w = IS_PHONE ? null : window.open('about:blank', '_blank'); // 팝업 차단을 피하려고 클릭 순간에 연다
+		hrPost('/admin/my/tgStartData.do', {}, function(res) {
+			var url = res.result;
+			if (IS_PHONE) location.href = url; else if (w) w.location = url;
+			var $w = $('<div class="tg-wait" id="tgWait">').append($('<div>').html('휴대폰 텔레그램에서 봇 대화가 열리면 <b>「시작」</b>을 눌러 주세요. 연결되면 여기가 바로 바뀝니다. (10분 안)'));
+			if (!IS_PHONE) {
+				$w.append($('<div class="small mt-1">').text('PC 에 텔레그램이 없으면 휴대폰 카메라로 아래 QR 을 찍으세요.'));
+				var $qr = $('<div class="tg-qr">').appendTo($w);
+				tgQr($qr[0], url);
+				$w.append($('<div class="small mt-1">').append($('<a target="_blank" rel="noopener">').attr('href', url).text('링크 다시 열기')));
+			}
+			$w.append($('<div class="mt-2">').append($('<button type="button" class="btn btn-sm btn-outline-secondary">').text('연결 확인').on('click', tgCheck)));
+			$('#tgLink').append($w);
+			clearInterval(tgWaitTimer);
+			var until = Date.now() + 600000;
+			tgWaitTimer = setInterval(function() { if (Date.now() > until) { clearInterval(tgWaitTimer); return; } tgCheck(true); }, 3000);
+		}, function() { if (w) w.close(); });
+	}
+	function tgCheck(quiet) {
+		$.post('/admin/my/tgCheckData.do', {}, function(res) {
+			if (!res.result) return;
+			// 코드가 쓰이면(WAITING 0) 연결된 것. 「다른 휴대폰으로 바꾸기」도 같은 조건
+			if (res.result.link && res.result.link.STATUS_CD === 'ON' && !Number(res.result.link.WAITING)) {
+				clearInterval(tgWaitTimer); tgPaint(res.result); hrToast('텔레그램이 연결됐습니다. 「시험 알림 보내기」로 확인해 보세요.'); return;
+			}
+			if (quiet !== true) hrToast('아직 「시작」 메시지가 오지 않았습니다. 봇 대화에서 「시작」을 눌러 주세요.');
+		});
+	}
+	// QR 은 cdnjs 의 qrcodejs 를 이 화면에서만 불러 그린다. 못 불러오면 링크만 보인다
+	function tgQr(el, url) {
+		var draw = function() { try { new QRCode(el, { text: url, width: 150, height: 150 }); } catch (e) { $(el).remove(); } };
+		if (window.QRCode) return draw();
+		$.ajax({ url: 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js', dataType: 'script', cache: true }).done(draw).fail(function() { $(el).remove(); });
+	}
+
+	// 화면 안 가이드(텔레그램). 실제 화면처럼 그린 목업, 누를 곳은 노란 테두리+번호
+	var TG_GUIDE = {
+		TG_BOT: { title: '알림 봇 만드는 방법 (시스템 관리자, 처음 한 번)', steps: function() { return [
+			{ t: 'BotFather 찾기', h: '1. 텔레그램에서 @BotFather 찾기',
+				shot: '<div class="gl-g"><div class="tgbar">🔍 BotFather' + pin('inset:-4px', 1) + '</div><div class="acc"><span class="av" style="background:#2aa3df;color:#fff">B</span><div>BotFather ✔<br><small class="text-muted">@BotFather · 공식 봇</small></div>' + pin('inset:2px -4px', 2) + '</div></div>',
+				li: ['휴대폰이나 PC 텔레그램에서 ① 검색창에 BotFather 를 입력하고', '② 파란 체크(✔)가 붙은 @BotFather 를 누릅니다.', '대화가 처음이면 아래 「시작」을 누릅니다.'],
+				warn: '이름이 비슷한 가짜 봇이 있습니다. 반드시 파란 체크가 있는 @BotFather 를 고르세요.' },
+			{ t: '/newbot 입력', h: '2. /newbot 보내기',
+				shot: '<div class="gl-g"><div class="tgm"><div class="b me">/newbot' + pin('inset:-4px', 1) + '</div><div class="b">Alright, a new bot. How are we going to call it? Please choose a name for your bot.</div></div></div>',
+				li: ['① 입력창에 /newbot 을 쓰고 보냅니다.', '봇 이름을 물어보면 다음 단계로 갑니다.'] },
+			{ t: '이름 정하기', h: '3. 봇 이름(보이는 이름) 보내기',
+				shot: '<div class="gl-g"><div class="tgm"><div class="b me">EST 일정 알림' + pin('inset:-4px', 1) + '</div><div class="b">Good. Now let\'s choose a username for your bot. It must end in `bot`.</div></div></div>',
+				li: ['① 알림을 받을 때 보일 이름을 보냅니다. 예: EST 일정 알림', '한글도 됩니다. 나중에 BotFather 에서 바꿀 수 있습니다.'] },
+			{ t: '아이디 정하기', h: '4. 봇 아이디 보내기 (영문, bot 으로 끝)',
+				shot: '<div class="gl-g"><div class="tgm"><div class="b me">est_schedule_alarm_bot' + pin('inset:-4px', 1) + '</div><div class="b">Done! Congratulations on your new bot. … Use this token to access the HTTP API:<br><b style="color:#d6336c">123456789:AAH…xyz</b>' + pin('left:6px;right:6px;bottom:2px;height:22px', 2) + '</div></div></div>',
+				li: ['① 영문·숫자·밑줄로, 끝이 bot 인 아이디를 보냅니다. 예: est_schedule_alarm_bot', '이미 있는 아이디면 다른 이름을 달라고 합니다. 바꿔서 다시 보내세요.', '② 완료 메시지 안의 「숫자:영문」 긴 값이 토큰입니다. 길게 눌러 복사합니다.'],
+				warn: '토큰은 비밀번호와 같습니다. 채팅방·메일·메모에 붙여 넣지 말고 이 화면에만 넣으세요.' },
+			{ t: '토큰 넣기', h: '5. 이 화면 「알림 봇」 칸에 붙여 넣고 저장',
+				shot: '<div class="gl-g" style="background:#f6f8fa"><div class="d-flex" style="gap:6px"><div class="form-control form-control-sm" style="position:relative">••••••••••••' + pin('inset:-4px', 1) + '</div><span class="btn btn-sm btn-primary" style="position:relative;white-space:nowrap">확인 후 저장' + pin('inset:-6px', 2) + '</span></div><div class="m mt-2" style="color:#17692f">✓ @est_schedule_alarm_bot · 토큰 ****dxyz</div></div>',
+				li: ['① 복사한 토큰을 붙여 넣고 ② 「확인 후 저장」', '서버가 텔레그램에 토큰을 확인한 뒤 저장합니다(암호화). 봇 아이디가 초록으로 보이면 끝입니다.', '이제 모든 관리자에게 「텔레그램 연결」 버튼이 보입니다. 토큰을 새로 받았을 때만 「바꾸기」로 다시 넣습니다.'],
+				warn: '다른 봇의 토큰으로 바꾸면 모든 관리자의 연결이 끊겨 각자 다시 연결해야 합니다.' }
+		]; } },
+		TG_LINK: { title: '내 휴대폰 연결 방법', steps: function() { return [
+			{ t: '텔레그램 설치', h: '1. 휴대폰에 텔레그램 설치·가입',
+				shot: '<div class="gl-g"><div class="acc"><span class="av" style="background:#2aa3df;color:#fff">✈</span><div>Telegram Messenger<br><small class="text-muted">앱스토어 · 플레이스토어</small></div><span class="gb" style="margin-left:auto;position:relative">받기' + pin('inset:-6px', 1) + '</span></div></div>',
+				li: ['① 앱스토어(아이폰)·플레이스토어(안드로이드)에서 Telegram 을 설치하고 전화번호로 가입합니다.', '이미 쓰고 있으면 넘어갑니다.'] },
+			{ t: '연결 누르기', h: '2. 이 화면에서 「✈ 텔레그램 연결」',
+				shot: '<div class="gl-g" style="background:#f6f8fa"><div class="gl-card" style="margin:0"><div class="gl-logo TG">✈</div><div><div class="t">휴대폰 알림 (텔레그램)</div></div><span class="btn btn-sm btn-primary" style="background:#2aa3df;border-color:#2aa3df;position:relative">✈ 텔레그램 연결' + pin('inset:-6px', 1) + '</span></div></div>',
+				li: ['① 휴대폰으로 관리자 화면을 열었다면 누르면 텔레그램 앱이 바로 열립니다.', 'PC 라면 새 창이 열리고, 화면에 QR 이 나옵니다. 휴대폰 카메라로 QR 을 찍으세요.', '이 링크는 10분 동안 한 번만 쓸 수 있습니다.'] },
+			{ t: '「시작」 누르기', h: '3. 봇 대화에서 「시작」',
+				shot: '<div class="gl-g"><div class="tgm"><div class="b">회사 관리자 화면 일정 알림 봇입니다.</div></div><span class="tgstart">시작' + pin('inset:-4px', 1) + '</span></div>',
+				li: ['① 아래쪽 「시작」(START)을 누릅니다.', '「✅ 관리자 계정 … 과 연결됐습니다」 답장이 오고, 이 화면도 「● 연결됨」으로 바뀝니다.', '안 바뀌면 이 화면의 「연결 확인」을 누르세요.'] },
+			{ t: '시험·설정', h: '4. 시험 알림 보내고 받을 일정 고르기',
+				shot: '<div class="gl-g"><div class="tgm"><div class="b">🔔 <b>14:00 신입면접 홍길동</b> (30분 후)<span class="tgbtn">상세 보기 ↗</span></div></div><div class="mt-2"><span class="tg-chip on">✓ 신입면접</span><span class="tg-chip on">✓ 경력면접</span><span class="tg-chip on">✓ 모집 인터뷰</span><span class="tg-chip on">✓ 내 할 일</span></div><div class="mt-1" style="position:relative;display:inline-block"><span class="btn btn-sm btn-outline-secondary">30분</span>' + pin('inset:-6px', 1) + '</div></div>',
+				li: ['「시험 알림 보내기」로 휴대폰이 울리는지 확인합니다.', '받을 일정 종류와 ① 몇 분 전(10·30·60)을 고르고 「설정 저장」.', '시간이 바뀌거나 취소될 때도 받고 싶으면 아래 칸에서 종류를 켭니다(기본 끔).', '소리가 안 나면 휴대폰 설정 › 알림 › Telegram 이 켜져 있는지 보세요.'] }
+		]; } }
+	};
+
 	// ── 연결 가이드: 왼쪽 단계, 오른쪽 화면(누를 곳은 노란 테두리+번호) ──
 	function pin(style, n) { return '<span class="gl-pin" style="' + style + '"><b>' + n + '</b></span>'; }
 	function steps(svc) {
@@ -204,8 +375,8 @@
 
 	var gAt = 0, gList = [];
 	function guide(svc) {
-		gAt = 0; gList = steps(svc);
-		$('#glGuideTitle').text(SVC[svc].nm + ' 연결 방법');
+		gAt = 0; gList = TG_GUIDE[svc] ? TG_GUIDE[svc].steps() : steps(svc);
+		$('#glGuideTitle').text(TG_GUIDE[svc] ? TG_GUIDE[svc].title : SVC[svc].nm + ' 연결 방법');
 		paintGuide();
 		$('#glGuide').modal('show');
 	}
