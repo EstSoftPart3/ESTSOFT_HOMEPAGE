@@ -1012,9 +1012,10 @@ function selfNew(a) { var n = noteOf(a); return !!a.LINK_SUBMIT_DT && n.by === '
 // 본인이 제출한 기록은 보기 전용으로 먼저 연다(✎ 고치기로 입력 창)
 function noteView(a) {
 	var r = recruitOf(a.RECRUIT_SQ) || {}, n = noteOf(a), fromDetail = $('#rcDetail').length > 0, wasNew = selfNew(a), next = false;
+	var canCheck = ['DOC', 'INTV_WAIT', 'INTV', 'INTV_SUB'].indexOf(a.STEP_CD) >= 0;
 	var $k = $('<div class="rc-kv rc-note-kv">');
 	$k.append($('<div class="d-flex flex-wrap align-items-center" style="grid-column:1/-1;gap:6px">').append($('<span class="rc-self">').text('본인 제출 ' + (n.selfAt || a.LINK_SUBMIT_DT || '')))
-		.append(n.adminAt ? $('<span class="rc-self adm ml-1">').text('관리자 수정 ' + n.adminAt) : '').append($('<span class="rc-note ml-2">').text(a.INTV_DT ? '인터뷰 ' + a.INTV_DT + ' ' + (WAY[a.INTV_WAY] || '') + (a.INTV_PLACE ? ' · ' + a.INTV_PLACE : '') : '')));
+		.append(n.adminAt ? $('<span class="rc-self adm ml-1">').text('관리자 수정 ' + n.adminAt) : '').append($('<span class="rc-step ml-1">').addClass(a.STEP_CD).text(STEP_NM[a.STEP_CD] || '')).append($('<span class="rc-note ml-2">').text(a.INTV_DT ? '인터뷰 ' + a.INTV_DT + ' ' + (WAY[a.INTV_WAY] || '') + (a.INTV_PLACE ? ' · ' + a.INTV_PLACE : '') : '')));
 	NOTE_CATS.forEach(function(c) {
 		var v = c[3] ? (n[c[0]] || []) : (n[c[0]] ? [n[c[0]]] : []);
 		$k.append($('<label>').text(c[2])).append($('<span class="d-flex flex-wrap" style="gap:4px">').append(v.length ? v.map(function(x) { return $('<span class="rc-vchip">').text(x); }) : $('<span class="text-muted small">').text('고르지 않음')));
@@ -1031,7 +1032,12 @@ function noteView(a) {
 		} },
 		open: { label: '모집 상세 열기', className: 'btn-sm btn-outline-primary mr-auto' + (fromDetail ? ' d-none' : ''), callback: function() { next = true; dlg.one('hidden.bs.modal', function() { detail(a.RECRUIT_SQ); }); } },
 		edit: { label: '✎ 고치기', className: 'btn-sm btn-outline-secondary', callback: function() { next = true; dlg.one('hidden.bs.modal', function() { noteDialog(a, true); }); } },
-		close: { label: '닫기', className: 'btn-sm btn-primary' } } });
+		// 담당자가 보고서를 확인하면 「인터뷰 결과 확인중」(서버 noteCheck)
+		check: { label: '✓ 확인 · 결과 확인중으로', className: 'btn-sm btn-success' + (canCheck ? '' : ' d-none'), callback: function() {
+			hrPost('/admin/recruit/noteCheckData.do', { APPLY_SQ: a.APPLY_SQ }, function() { next = true; dlg.modal('hide'); hrToast(a.STAFF_NM + ' · 인터뷰 결과 확인중으로 바꿨어요.'); reload(); });
+			return false;
+		} },
+		close: { label: '닫기', className: 'btn-sm ' + (canCheck ? 'btn-outline-secondary' : 'btn-primary') } } });
 	// 새 제출을 열어 봤으면 닫을 때 다시 불러와 ● 를 끈다(다음 창을 여는 중이면 그 창 저장 때 다시 불러온다)
 	if (wasNew) dlg.one('hidden.bs.modal', function() { if (!next) reload(); });
 }

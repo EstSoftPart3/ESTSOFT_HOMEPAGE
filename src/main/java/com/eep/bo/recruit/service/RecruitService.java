@@ -666,13 +666,20 @@ public class RecruitService {
 	}
 
 	/** 관리자가 본인 제출 기록을 열어 봄 → 새 제출 표시(●)를 끈다 */
-	public void noteSeen(Object applySq, String loginId) {
-		autoStep(apply(applySq), Arrays.asList("INTV_SUB"), "INTV_CHK", loginId);
+	public void noteSeen(Object applySq) {
 		String raw = jdbc.queryForObject("SELECT IFNULL(INTV_NOTE, '') FROM TB_EEP_RECRUIT_APPLY_R WHERE APPLY_SQ = ?", String.class, applySq);
 		if (raw.isEmpty()) return;
 		Map<String, Object> n = parseNote(raw);
 		n.put("seenAt", LocalDateTime.now(SEOUL).format(DT));
 		jdbc.update("UPDATE TB_EEP_RECRUIT_APPLY_R SET INTV_NOTE = ? WHERE APPLY_SQ = ?", json(n), applySq);
+	}
+
+	/** 담당자가 보고서(본인 제출 기록)를 「✓ 확인」 → 인터뷰 결과 확인중 */
+	public void noteCheck(Object applySq, String loginId) {
+		Map<String, Object> a = apply(applySq);
+		require(Arrays.asList("DOC", "INTV_WAIT", "INTV", "INTV_SUB").contains(s(a.get("STEP_CD"))), "이미 확인중이거나 다음 단계예요.");
+		noteSeen(applySq);
+		autoStep(a, Arrays.asList("DOC", "INTV_WAIT", "INTV", "INTV_SUB"), "INTV_CHK", loginId);
 	}
 
 	@SuppressWarnings("unchecked")
