@@ -149,6 +149,21 @@ public class BoRecruitController {
 		return run(() -> { guardApply(applySq, session); return recruit.cancel(applySq, loginId(session)); });
 	}
 
+	/** 지원 창: 프로필 버전마다 기간·역할·산업·많이 쓴 기술 */
+	@RequestMapping(value = "/admin/recruit/versionsData.do", method = RequestMethod.POST)
+	public ModelAndView versionsData(@RequestParam("STAFF_SQ") int staffSq, HttpSession session) {
+		return run(() -> {
+			secret.view(loginId(session)).guard(staffSq);
+			List<Map<String, Object>> out = new ArrayList<>();
+			for (Map<String, Object> v : career.versions(staffSq)) {
+				Map<String, Object> m = new HashMap<>();
+				for (String k : new String[] { "VER_NO", "SPAN", "ROLES", "INDS", "TECHS" }) m.put(k, v.get(k));
+				out.add(m);
+			}
+			return out;
+		});
+	}
+
 	@RequestMapping(value = "/admin/recruit/noteData.do", method = RequestMethod.POST)
 	public ModelAndView noteData(@RequestParam("APPLY_SQ") int applySq, @RequestParam(value = "INTV_NOTE", defaultValue = "") String note,
 			@RequestParam(value = "SUMMARY", defaultValue = "") String summary, HttpSession session) {

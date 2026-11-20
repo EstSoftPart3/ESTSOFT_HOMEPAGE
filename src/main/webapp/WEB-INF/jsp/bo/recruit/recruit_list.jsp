@@ -103,10 +103,18 @@
 	.rc-kv .form-control { height: 30px; font-size: 13px; }
 	.rc-kv > .rc-sec { grid-column: 1 / -1; margin: 8px 0 0; }
 	.rc-kv > .rc-sec:first-child { margin-top: 0; }
+	.rc-kv4 { grid-template-columns: 72px minmax(0, 1fr) 72px minmax(0, 1fr); gap: 4px 8px; }
+	.rc-kv4 > label { font-size: 12px; } .rc-kv4 .form-control { height: 28px; font-size: 12.5px; padding: 2px 8px; } .rc-kv4 textarea.form-control { height: auto; }
+	.rc-kv4 > .wide { grid-column: span 3; }
+	.rc-kv4 > .rc-sec { margin: 6px 0 0; padding-top: 6px; font-size: 12px; font-weight: 800; color: #868e96; }
+	@media (max-width: 767px) { .rc-kv4 { grid-template-columns: 72px minmax(0, 1fr); } .rc-kv4 > .wide { grid-column: auto; } }
+	.rc-rawbox { margin: 0 0 8px; border: 1px solid #e9ecef; border-radius: 8px; padding: 4px 10px; background: #fafbfc; }
+	.rc-rawbox > summary { font-size: 12.5px; font-weight: 800; cursor: pointer; color: #495057; } .rc-rawbox[open] > summary { margin-bottom: 4px; }
 	.rc-raw { font: 12px/1.7 ui-monospace, Consolas, monospace; white-space: pre-wrap; background: #fafbfc; border: 1px solid #e9ecef; border-radius: 8px; padding: 8px 10px; max-height: 240px; overflow: auto; }
 	.rc-sec { border-top: 1px solid #eef1f4; padding-top: 10px; margin-top: 12px; } .rc-sec h4 { font-size: 13px; font-weight: 800; margin-bottom: 8px; display: flex; gap: 6px; align-items: center; }
 	.rc-opt { display: flex; gap: 8px; align-items: center; border: 1px solid #dee2e6; border-radius: 8px; padding: 7px 10px; margin-bottom: 6px; cursor: pointer; font-size: 13px; }
 	.rc-opt.on { border-color: #0b6e8a; background: #eef9fc; }
+	.rc-opt { flex-wrap: wrap; } .rc-psum { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 3px 8px; align-items: center; font-size: 11.5px; color: #5f6b75; }
 	.rc-note { font-size: 11.5px; color: #868e96; }
 	.rc-chips .pl-chip { margin-bottom: 0; }
 	.rc-drop-hint { border: 1px dashed #c9ced6; border-radius: 8px; padding: 10px; text-align: center; color: #868e96; font-size: 12px; margin-top: 6px; }
@@ -563,7 +571,7 @@ function viewCal($m, list) {
 				x.intv.sort(function(p, q) { return p.a.INTV_DT.localeCompare(q.a.INTV_DT); }).forEach(function(v) {
 					var is = intvState(v.a), sum = noteSummary(noteOf(v.a)), tip = '🎤 인터뷰 ' + v.a.INTV_DT.substring(11, 16) + ' · ' + is[1] + ' · ' + v.a.STAFF_NM + ' · ' + (v.r.CLIENT_NM || '') + ' ' + (v.r.PRJ_NM || '') + (v.a.INTV_PLACE ? ' · ' + v.a.INTV_PLACE : '') + (sum ? '\n📝 ' + sum : '');
 					$td.append($('<span class="ev intv">').addClass(is[0]).attr('title', tip).append($('<b>').text(v.a.INTV_DT.substring(11, 16))).append(document.createTextNode(' 🎤 ' + v.a.STAFF_NM + ' ')).append($('<i class="ist">').addClass(is[0]).text(is[1])).append(' ').append($('<small>').text(v.r.CLIENT_NM || ''))
-						.on('click', function() { detail(v.r.RECRUIT_SQ); }));
+						.on('click', function() { noteDialog(v.a); })); // 달력 인터뷰는 바로 기록 창
 				});
 				x.order.forEach(function(sq) {
 					var r = recruitOf(sq), kinds = x.rec[sq], txt = kinds.map(function(k) { return KIND[k]; }).join(' · ') + ' ' + (r.CLIENT_NM || '모집');
@@ -692,7 +700,14 @@ function detail(sq) {
 		if (miss.length) $head.append($('<span class="rc-pill warn">').text('⚠ 확인 필요 ' + miss.length));
 		$head.append($('<span class="rc-note">').text(r.REG_D + ' 등록 · ' + (r.REG_EMPLY_ID || '')));
 		$f.append($head);
-		// 지원자(맨 위)
+		// 원문(맨 위, 접고 펴기 — 펼친 상태는 이 브라우저에 기억). 글자를 끌어 선택하면 넣을 칸을 고른다
+		var $raw = $('<div class="rc-raw" tabindex="0">').text(r.RAW_TEXT || '(원문 없음)'), rawOpen = false;
+		try { rawOpen = localStorage.getItem('rc:rawOpen') === 'Y'; } catch (e) {}
+		var $rawBox = $('<details class="rc-rawbox">').prop('open', rawOpen).append($('<summary>').text('📄 등록 원문 ' + (r.RAW_TEXT ? '(' + String(r.RAW_TEXT).split('\n').length + '줄)' : '(없음)')))
+			.append($raw).append('<div class="rc-note mt-1">글자를 끌어 선택하면 넣을 칸을 고르는 메뉴가 떠요.</div>')
+			.on('toggle', function() { try { localStorage.setItem('rc:rawOpen', this.open ? 'Y' : 'N'); } catch (e) {} });
+		$f.append($rawBox);
+		// 지원자
 		var $ap = $('<div>');
 		apps.forEach(function(a) { $ap.append(applyRow(a)); });
 		if (!apps.length) $ap.append('<div class="rc-note">아직 지원자가 없어요. 오른쪽 대기자 줄을 누르거나 여기로 끌어 놓으면 지원 창이 떠요.</div>');
@@ -701,9 +716,6 @@ function detail(sq) {
 		$f.append($('<div class="rc-sec" style="border-top:0;margin-top:0;padding-top:0">').append($('<h4>').text('지원자 ' + apps.filter(function(a) { return a.STEP_CD !== 'DROP'; }).length)).append($ap).append($apDrop));
 		var $form = fieldForm(r, miss);
 		$f.append($form);
-		// 원문: 글자를 끌어 선택하면 넣을 칸을 고른다
-		var $raw = $('<div class="rc-raw" tabindex="0">').text(r.RAW_TEXT || '(원문 없음)');
-		$f.append($('<div class="rc-sec">').append('<h4>등록 원문 (그대로 보관)</h4>').append($raw).append('<div class="rc-note mt-1">글자를 끌어 선택하면 넣을 칸을 고르는 메뉴가 떠요.</div>'));
 		rawPicker($raw, $form);
 		// 드라이브 폴더
 		var $fold = $('<div class="d-flex align-items-center" style="gap:6px">');
@@ -766,7 +778,7 @@ function applyRow(a) {
 
 // 칸 입력 폼(상세·등록 공통). 못 읽은 칸은 주황
 function fieldForm(r, miss) {
-	var missKeys = (miss || []).map(function(m) { return m[0]; }), $k = $('<div class="rc-kv">');
+	var missKeys = (miss || []).map(function(m) { return m[0]; }), $k = $('<div class="rc-kv rc-kv4">'); // 한 줄에 칸 두 쌍(rc-kv4)으로 높이를 줄인다
 	FIELDS.forEach(function(f) {
 		var id = 'rf_' + f[0], v = r[f[0]], $c;
 		if (SECTION_AT[f[0]]) $k.append($('<div class="hr-section rc-sec">').text(SECTION_AT[f[0]]));
@@ -775,14 +787,14 @@ function fieldForm(r, miss) {
 			$c = $('<select class="form-control form-control-sm">').append('<option value="">(고르기)</option>');
 			D.partners.filter(function(p) { return p.USE_YN === 'Y' && p.SALE_YN !== 'N'; }).forEach(function(p) { $c.append($('<option>').val(p.PARTNER_SQ).text(p.PARTNER_NM)); });
 			$c.val(v || '');
-			var $wrap = $('<div class="d-flex align-items-center flex-wrap" style="gap:6px">').append($c.css('width', 'auto').attr({ id: id, name: f[0] }));
+			var $wrap = $('<div class="d-flex align-items-center flex-wrap wide" style="gap:6px">').append($c.css('width', 'auto').attr({ id: id, name: f[0] }));
 			if (r.SALE_PARTNER_TXT && !v) $wrap.append($('<span class="rc-q small">').text('원문: "' + r.SALE_PARTNER_TXT + '" — 목록에 없음'));
 			$wrap.append('<a href="/admin/partner/openPartnerList.do" target="_blank" rel="noopener" class="small">+ 새 거래처로 등록 ↗</a>');
 			$wrap.append($('<input type="hidden" name="SALE_PARTNER_TXT">').val(r.SALE_PARTNER_TXT || ''));
 			$k.append($('<label>').attr('for', id).toggleClass('q', missKeys.indexOf(f[0]) >= 0).text(f[1])).append($wrap);
 			return;
 		}
-		$c = f[3] === 'textarea' ? $('<textarea rows="2" class="form-control form-control-sm">') : $('<input class="form-control form-control-sm">').attr('type', f[3] || 'text');
+		$c = f[3] === 'textarea' ? $('<textarea rows="2" class="form-control form-control-sm wide">') : $('<input class="form-control form-control-sm">').attr('type', f[3] || 'text');
 		$c.attr({ id: id, name: f[0], placeholder: f[2] || '' }).val(v == null ? '' : v);
 		$k.append($('<label>').attr('for', id).toggleClass('q', missKeys.indexOf(f[0]) >= 0).text(f[1])).append($c);
 	});
@@ -908,7 +920,7 @@ function applyDialog(recruitSq, staffSq) {
 	if (st.k === 'FUTURE') $f.append($('<div class="alert alert-info py-1 px-2 small">').text((st.row.CLIENT_NM || '') + ' 투입 예정(' + st.row.START_DT + ')인 사람이에요.'));
 	$f.append('<div class="small mb-1">함께 보낼 수행이력 프로필</div>');
 	function opt(val, html, sub, preview) {
-		var $o = $('<div class="rc-opt" role="radio" tabindex="0">').attr('aria-checked', pick === val).toggleClass('on', pick === val).append($('<b>').text(html)).append($('<span class="rc-note">').text(sub));
+		var $o = $('<div class="rc-opt" role="radio" tabindex="0">').attr({ 'aria-checked': pick === val, 'data-ver': val }).toggleClass('on', pick === val).append($('<b>').text(html)).append($('<span class="rc-note">').text(sub));
 		if (preview) $o.append($('<a class="ml-auto small">').attr('href', preview).text('미리보기(워드)').on('click', function(e) { e.stopPropagation(); }));
 		$o.on('click keydown', function(e) { if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return; e.preventDefault(); pick = val; $f.find('.rc-opt').removeClass('on').attr('aria-checked', false); $o.addClass('on').attr('aria-checked', true); paintName(); });
 		return $o;
@@ -922,6 +934,18 @@ function applyDialog(recruitSq, staffSq) {
 	}
 	paintName();
 	$f.append($name);
+	// 프로필마다 기간·역할·산업·많이 쓴 기술(모집 요구 기술과 같은 것은 보라색)
+	var want = String(r.SKILLS || '').split(/[,/·\s\-+&]+/).map(techKey).filter(Boolean);
+	hrPost('/admin/recruit/versionsData.do', { STAFF_SQ: staffSq }, function(res) {
+		(res.result || []).forEach(function(v) {
+			var $s = $('<div class="rc-psum">');
+			if (v.SPAN) $s.append($('<span>').text('📅 ' + v.SPAN));
+			if ((v.ROLES || []).length) $s.append($('<span>').text('역할 ' + v.ROLES.join('·')));
+			if ((v.INDS || []).length) $s.append($('<span>').text('산업 ' + v.INDS.join('·')));
+			(v.TECHS || []).forEach(function(t) { $s.append($('<span class="rc-tk">').toggleClass('on', want.indexOf(techKey(t)) >= 0).text(t)); });
+			$f.find('.rc-opt[data-ver="' + v.VER_NO + '"]').append($s);
+		});
+	});
 	// 이 창만 닫고 reload: 상세 팝업이 열려 있으면 깜빡임 없이 그 자리에서 지원자가 늘어난다
 	var dlg = bootbox.dialog({ title: s.STAFF_NM + ' → ' + (r.CLIENT_NM || '모집') + ' 지원', message: $f, onEscape: true, buttons: {
 		cancel: { label: '취소', className: 'btn-sm btn-outline-secondary' },
@@ -940,7 +964,7 @@ function noteSummary(n) {
 	return [n.r, n.tech && '기술 ' + n.tech, n.comm && '소통 ' + n.comm, n.att && '태도 ' + n.att, n.cli && '고객 ' + n.cli].concat(n.chk || []).filter(Boolean).join(' · ') + (n.memo ? ' · 💬' : '');
 }
 function noteDialog(a) {
-	var r = recruitOf(a.RECRUIT_SQ) || {}, n = $.extend({ chk: [], ask: [] }, noteOf(a));
+	var r = recruitOf(a.RECRUIT_SQ) || {}, n = $.extend({ chk: [], ask: [] }, noteOf(a)), fromDetail = $('#rcDetail').length > 0; // 달력에서 열면 「모집 상세 열기」를 보인다
 	var skills = String(r.SKILLS || '').split(/[,/·]+/).map(function(x) { return $.trim(x); }).filter(Boolean).concat(['경력·프로젝트', '업무 이해도']);
 	var $k = $('<div class="rc-kv">');
 	NOTE_CATS.forEach(function(c) {
@@ -959,6 +983,7 @@ function noteDialog(a) {
 	var $memo = $('<input class="form-control form-control-sm" maxlength="500" placeholder="필요할 때만 (예: 다음 주 2차 인터뷰 요청)">').val(n.memo || '');
 	$k.append('<label>메모</label>').append($memo);
 	var dlg = bootbox.dialog({ title: '📝 ' + a.STAFF_NM + ' · ' + (r.CLIENT_NM || '') + ' 인터뷰 기록' + (a.INTV_DT ? ' (' + a.INTV_DT + ')' : ''), message: $k, size: 'large', onEscape: true, buttons: {
+		open: { label: '모집 상세 열기', className: 'btn-sm btn-outline-primary mr-auto' + (fromDetail ? ' d-none' : ''), callback: function() { dlg.one('hidden.bs.modal', function() { detail(a.RECRUIT_SQ); }); } },
 		cancel: { label: '닫기', className: 'btn-sm btn-outline-secondary' },
 		ok: { label: '기록 저장', className: 'btn-sm btn-primary', callback: function() {
 			n.memo = $.trim($memo.val());

@@ -280,18 +280,20 @@ public class StaffCareerService {
 			List<Map<String, Object>> items = parse((String) v.remove("SNAPSHOT"));
 			String from = "", to = "";
 			boolean ongoing = false;
-			Map<String, Integer> roles = new LinkedHashMap<>(), techs = new LinkedHashMap<>();
+			Map<String, Integer> roles = new LinkedHashMap<>(), techs = new LinkedHashMap<>(), inds = new LinkedHashMap<>();
 			for (Map<String, Object> it : items) {
 				String s = s(it.get("START_YM")), e = s(it.get("END_YM"));
 				if (!s.isEmpty() && (from.isEmpty() || s.compareTo(from) < 0)) from = s;
 				if (e.isEmpty()) ongoing = true;
 				else if (e.compareTo(to) > 0) to = e;
 				for (String r : tokens(s(it.get("ROLE_NM")))) roles.merge(r, 1, Integer::sum);
+				for (String r : tokens(s(it.get("IND_NM")))) inds.merge(r, 1, Integer::sum);
 				for (String c : TECH_COLS) for (String t : tokens(s(it.get(c)))) techs.merge(t, 1, Integer::sum);
 			}
 			v.put("SPAN", from.isEmpty() ? "" : from.replace('-', '.') + " ~ " + (ongoing ? "현재" : to.replace('-', '.')));
 			v.put("ROLES", top(roles, 3));
 			v.put("TECHS", top(techs, 5));
+			v.put("INDS", top(inds, 3)); // 모집 지원 창의 프로필 요약
 		}
 		return list;
 	}
