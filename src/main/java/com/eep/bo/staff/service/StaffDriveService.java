@@ -351,7 +351,7 @@ public class StaffDriveService {
 	private static final Pattern PHOTO_NAME = Pattern.compile("사진|프로필|photo|profile", Pattern.CASE_INSENSITIVE);
 	private static final Pattern CAREER_NAME = Pattern.compile("이력|경력|프로필|skill|인벤토리|inventory", Pattern.CASE_INSENSITIVE);
 	/** 이 시스템이 만든 워드(이력카드(시스템)·지원 프로필 _수행이력_v1)는 가져올 원본이 아니다 */
-	private static final Pattern SYSTEM_WORD = Pattern.compile("\\(시스템\\)|_수행이력_v?\\d");
+	private static final Pattern SYSTEM_WORD = Pattern.compile("\\(시스템\\)|_수행이력_(순정|가필)?v?\\d");
 
 	/**
 	 * 드라이브 일괄 매핑 미리보기(아무것도 바꾸지 않는다, 폴더도 만들지 않는다).

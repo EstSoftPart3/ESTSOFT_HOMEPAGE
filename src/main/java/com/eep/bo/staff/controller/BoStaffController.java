@@ -319,6 +319,15 @@ public class BoStaffController {
 		});
 	}
 
+	/** 드라이브 가필 워드를 가필 버전으로만 남긴다(순정·작업 중 내용은 그대로). result 는 새 버전 번호, 같은 파일로 이미 남겼으면 0 */
+	@RequestMapping(value = "/admin/staff/driveGapilData.do", method = RequestMethod.POST)
+	public ModelAndView driveGapilData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("FILE_ID") String fileId, HttpSession session) {
+		return drive(() -> {
+			Map<String, Object> f = StaffDriveService.wordFile(fileId);
+			return career.importGapil(staffSq, StaffCareerWord.parse(new java.io.ByteArrayInputStream((byte[]) f.get("data"))), String.valueOf(f.get("name")), loginId(session));
+		});
+	}
+
 	/** {워드의 프로젝트 수, 그중 지금 수행이력에 없는 수} */
 	private int[] wordCounts(int staffSq, String fileId) throws IOException {
 		Map<String, Object> f = StaffDriveService.wordFile(fileId);

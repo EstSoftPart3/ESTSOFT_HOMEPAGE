@@ -666,6 +666,36 @@ public class StaffCareerService {
 		});
 	}
 
+	/**
+	 * 드라이브에 있던 가필 워드(제출용으로 고친 이력카드)를 가필 버전 하나로 남긴다. 순정·작업 중 수행이력은 건드리지 않는다.
+	 * 같은 파일 이름으로 이미 남긴 가필이 있으면 0. 칸이 모자란 줄(프로젝트명·시작월 없음)은 뺀다. @return 새 버전 번호
+	 */
+	public int importGapil(Object staffSq, List<Map<String, Object>> rows, String fileName, String loginId) {
+		String summary = cut("드라이브 가필 · " + fileName, 500);
+		return tx.execute(st -> {
+			if (jdbc.queryForObject("SELECT COUNT(*) FROM TB_EEP_HR_STAFF_PRJ_VER_H WHERE STAFF_SQ = ? AND VER_KIND = 'EDIT' AND SUMMARY = ?", Integer.class, staffSq, summary) > 0) return 0;
+			List<Map<String, Object>> items = new ArrayList<>();
+			for (Map<String, Object> r : rows) {
+				Map<String, Object> p = new HashMap<>(r);
+				if (s(p.get("END_YM")).isEmpty()) p.put("ONGOING_YN", "Y");
+				try {
+					Map<String, Object> row = clean(p);
+					row.put("SRC", "PRJ");
+					items.add(row);
+				} catch (IllegalArgumentException e) {
+					// 프로젝트명·기간이 없는 줄은 버전에 넣지 않는다
+				}
+			}
+			if (items.isEmpty()) throw new IllegalArgumentException("워드에서 넣을 수 있는 프로젝트를 찾지 못했습니다.");
+			Map<String, Object> base = latest(staffSq);
+			int no = nextNo(staffSq);
+			jdbc.update("INSERT INTO TB_EEP_HR_STAFF_PRJ_VER_H (STAFF_SQ, VER_NO, VER_KIND, BASE_VER, SNAPSHOT, SUMMARY, PRJ_CNT, REG_EMPLY_ID, REG_DT) VALUES (?, ?, 'EDIT', ?, ?, ?, ?, ?, NOW())",
+					staffSq, no, base == null ? null : base.get("VER_NO"), json(snapshot(items)), summary, items.size(), loginId);
+			log(staffSq, "VERSION", null, "v" + no + " 가필 저장 · " + summary, loginId);
+			return no;
+		});
+	}
+
 	/** 자동생성 결과로 바로 워드 */
 	public byte[] generatedWord(Object staffSq, String confJson, Object[] photo) {
 		Map<String, Object> conf = parseMap(confJson);
