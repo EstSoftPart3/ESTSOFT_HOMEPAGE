@@ -176,6 +176,34 @@ public class BoRecruitController {
 		return run(() -> { guardApply(applySq, session); recruit.note(applySq, note, summary, loginId(session)); return "OK"; });
 	}
 
+	/** 인터뷰 기록 링크 만들기(옛 링크는 막힘) */
+	@RequestMapping(value = "/admin/recruit/linkData.do", method = RequestMethod.POST)
+	public ModelAndView linkData(@RequestParam("APPLY_SQ") int applySq, HttpSession session) {
+		return run(() -> { guardApply(applySq, session); return recruit.linkIssue(applySq, loginId(session)); });
+	}
+
+	@RequestMapping(value = "/admin/recruit/noteSeenData.do", method = RequestMethod.POST)
+	public ModelAndView noteSeenData(@RequestParam("APPLY_SQ") int applySq, HttpSession session) {
+		return run(() -> { guardApply(applySq, session); recruit.noteSeen(applySq); return "OK"; });
+	}
+
+	// ── 공개(로그인 없음): /admin·/eep 밖이라 로그인 인터셉터를 타지 않는다. 토큰이 곧 권한 ──
+
+	@RequestMapping(value = "/intv.do", method = RequestMethod.GET)
+	public ModelAndView intvPage() {
+		return new ModelAndView("fo/intv/intv_link");
+	}
+
+	@RequestMapping(value = "/intvData.do", method = RequestMethod.POST)
+	public ModelAndView intvData(@RequestParam(value = "t", defaultValue = "") String token) {
+		return run(() -> recruit.linkView(token));
+	}
+
+	@RequestMapping(value = "/intvSave.do", method = RequestMethod.POST)
+	public ModelAndView intvSave(@RequestParam(value = "t", defaultValue = "") String token, @RequestParam(value = "INTV_NOTE", defaultValue = "") String note) {
+		return run(() -> { recruit.linkSave(token, note); return "OK"; });
+	}
+
 	@RequestMapping(value = "/admin/recruit/interviewData.do", method = RequestMethod.POST)
 	public ModelAndView interviewData(@RequestParam("APPLY_SQ") int applySq, @RequestParam Map<String, Object> p, HttpSession session) {
 		return run(() -> { guardApply(applySq, session); return recruit.interview(applySq, p, loginId(session)); });

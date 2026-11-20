@@ -82,6 +82,14 @@
 	.rc-qa-row { display: grid; grid-template-columns: 1fr 1.4fr 20px; gap: 4px; margin-bottom: 4px; align-items: start; }
 	.rc-qa-row textarea { font-size: 12.5px; }
 	@media (max-width: 767px) { .rc-qa-row { grid-template-columns: 1fr 20px; } .rc-qa-row .a { grid-column: 1; } }
+	.rc-linkbtn { border: 1px solid #0b6e8a; background: #eef9fc; color: #0b6e8a; border-radius: 999px; padding: 0 9px; font-size: 11.5px; font-weight: 700; }
+	.rc-linkbtn.sent { border-style: dashed; background: #fff; } .rc-linkbtn:hover, .rc-linkbtn:focus { background: #d0f0fa; }
+	.rc-self { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 800; background: #d3f9d8; color: #2b8a3e; } .rc-self.adm { background: #e7f5ff; color: #1864ab; }
+	.rc-newdot { color: #e8590c; font-size: 12px; } .rc-selfev { color: #2b8a3e; font-size: 10px; }
+	.rc-vchip { background: #eef9fc; color: #0b6e8a; border: 1px solid #b6e3ef; border-radius: 999px; padding: 0 9px; font-size: 12.5px; font-weight: 700; }
+	.rc-qview { border: 1px solid #dfe4e8; border-radius: 10px; overflow: hidden; } .rc-qview > div { display: grid; grid-template-columns: 30px 1fr; gap: 6px; padding: 7px 10px; border-bottom: 1px solid #eef1f4; font-size: 13px; }
+	.rc-qview > div:last-child { border-bottom: 0; } .rc-qview .n { color: #868e96; } .rc-qview .q { font-weight: 700; } .rc-qview .a { color: #495057; white-space: pre-wrap; }
+	.rc-memo { background: #fafbfc; border: 1px solid #e9ecef; border-radius: 8px; padding: 6px 10px; font-size: 13px; white-space: pre-wrap; }
 	.rc-notebtn { border: 1px dashed #b197fc; background: #fff; color: #6741d9; border-radius: 999px; padding: 0 9px; font-size: 11.5px; font-weight: 700; max-width: 100%; white-space: normal; text-align: left; }
 	.rc-notebtn.has { border-style: solid; background: #f3f0ff; } .rc-notebtn:hover, .rc-notebtn:focus { background: #e5dbff; }
 	.ist { font-style: normal; font-size: 10px; font-weight: 800; border-radius: 4px; padding: 0 4px; background: #fff4e6; color: #d9480f; }
@@ -576,8 +584,8 @@ function viewCal($m, list) {
 			if (x) {
 				x.intv.sort(function(p, q) { return p.a.INTV_DT.localeCompare(q.a.INTV_DT); }).forEach(function(v) {
 					var is = intvState(v.a), sum = noteSummary(noteOf(v.a)), tip = '🎤 인터뷰 ' + v.a.INTV_DT.substring(11, 16) + ' · ' + is[1] + ' · ' + v.a.STAFF_NM + ' · ' + (v.r.CLIENT_NM || '') + ' ' + (v.r.PRJ_NM || '') + (v.a.INTV_PLACE ? ' · ' + v.a.INTV_PLACE : '') + (sum ? '\n📝 ' + sum : '');
-					$td.append($('<span class="ev intv">').addClass(is[0]).attr('title', tip).append($('<b>').text(v.a.INTV_DT.substring(11, 16))).append(document.createTextNode(' 🎤 ' + v.a.STAFF_NM + ' ')).append($('<i class="ist">').addClass(is[0]).text(is[1])).append(' ').append($('<small>').text(v.r.CLIENT_NM || ''))
-						.on('click', function() { noteDialog(v.a); })); // 달력 인터뷰는 바로 기록 창
+					$td.append($('<span class="ev intv">').addClass(is[0]).attr('title', tip).append($('<b>').text(v.a.INTV_DT.substring(11, 16))).append(document.createTextNode(' 🎤 ' + v.a.STAFF_NM + ' ')).append($('<i class="ist">').addClass(is[0]).text(is[1])).append(' ').append($('<small>').text(v.r.CLIENT_NM || '')).append(v.a.LINK_SUBMIT_DT ? $('<b class="rc-selfev">').text(' 📝 제출' + (selfNew(v.a) ? ' ●' : '')) : '')
+						.on('click', function() { noteDialog(v.a); })); // 달력 인터뷰는 바로 기록 창(본인 제출이면 보기)
 				});
 				x.order.forEach(function(sq) {
 					var r = recruitOf(sq), kinds = x.rec[sq], txt = kinds.map(function(k) { return KIND[k]; }).join(' · ') + ' ' + (r.CLIENT_NM || '모집');
@@ -773,7 +781,9 @@ function applyRow(a) {
 	if (a.INTV_DT) { var is = intvState(a); $r.append($('<span class="rc-note">').text('🎤 ' + a.INTV_DT + ' · ' + (WAY[a.INTV_WAY] || '') + (a.INTV_PLACE ? ' · ' + a.INTV_PLACE : '') + ' ').append($('<i class="ist">').addClass(is[0]).text(is[1]))); }
 	if (a.INTV_DT || a.INTV_NOTE) {
 		var sum = noteSummary(noteOf(a));
-		$r.append($('<button type="button" class="rc-notebtn">').toggleClass('has', !!sum).attr('title', sum ? '인터뷰 기록 고치기' : '인터뷰 기록 남기기').text(sum ? '📝 ' + sum : '📝 인터뷰 기록').on('click', function(e) { e.stopPropagation(); noteDialog(a); }));
+		if (!a.LINK_SUBMIT_DT) $r.append(linkBtn(a));
+		$r.append($('<button type="button" class="rc-notebtn">').toggleClass('has', !!sum).attr('title', sum ? '인터뷰 기록 보기' : '인터뷰 기록 남기기').text(sum ? '📝 ' + sum : '📝 인터뷰 기록').on('click', function(e) { e.stopPropagation(); noteDialog(a); }));
+		if (a.LINK_SUBMIT_DT) $r.append($('<span class="rc-self">').text('본인 제출 ' + md(a.LINK_SUBMIT_DT) + ' ' + a.LINK_SUBMIT_DT.substring(11))).append(selfNew(a) ? $('<span class="rc-newdot" title="새로 제출됨">●</span>') : '');
 	}
 	if (a.DEPLOY_SQ) $r.append($('<a href="/admin/deploy/openDeployList.do" target="_blank" rel="noopener">투입현황 보기 ↗</a>'));
 	if (a.DRAFT && a.STEP_CD === 'JOIN_WAIT') $r.append($('<button type="button" class="btn btn-sm btn-link p-0">투입확정 임시 저장 이어서 ›</button>').on('click', function() { joinDialog(a); }));
@@ -970,7 +980,59 @@ function noteSummary(n) {
 	if (!s.length && n.r) s = [n.r, n.cli && '고객 ' + n.cli].filter(Boolean); // 2026-11-20 첫 버전(평가형) 기록
 	return s.join(' · ') + (qa ? ' · ❓' + qa : '') + (n.memo ? ' · 💬' : '');
 }
-function noteDialog(a) {
+// ── 인터뷰 기록 링크(계정 없이 본인이 제출, /intv.do?t=…) ──
+function linkUrl(token) { return location.origin + '/intv.do?t=' + token; }
+function copyText(t, done) {
+	var ok = function() { hrToast(done); };
+	if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(t).then(ok, function() { bootbox.prompt({ title: '링크를 복사해 주세요', value: t, callback: function() {} }); });
+	bootbox.prompt({ title: '링크를 복사해 주세요', value: t, callback: function() {} });
+}
+function linkLive(a) { return a.LINK_TOKEN && a.LINK_EXP_DT && a.LINK_EXP_DT > nowYmdHm(); }
+function newLink(a) {
+	hrPost('/admin/recruit/linkData.do', { APPLY_SQ: a.APPLY_SQ }, function(res) {
+		a.LINK_TOKEN = res.result.TOKEN; a.LINK_EXP_DT = res.result.LINK_EXP_DT;
+		copyText(linkUrl(a.LINK_TOKEN), '링크를 복사했어요 · ' + md(a.LINK_EXP_DT) + ' 까지 열려요');
+		reload();
+	});
+}
+function linkBtn(a) {
+	var live = linkLive(a);
+	return $('<button type="button" class="rc-linkbtn">').toggleClass('sent', !!live).attr('title', live ? '눌러서 같은 링크 다시 복사' : '본인이 계정 없이 인터뷰 기록을 남기는 링크를 만들어 복사')
+		.text(live ? '🔗 링크 보냄 · ' + md(a.LINK_EXP_DT) + ' 만료' : '🔗 기록 링크').on('click', function(e) {
+			e.stopPropagation();
+			if (live) copyText(linkUrl(a.LINK_TOKEN), '링크를 다시 복사했어요'); else newLink(a);
+		});
+}
+// 본인 제출 뒤 관리자가 아직 안 열어 봤으면 새 제출(●)
+function selfNew(a) { var n = noteOf(a); return !!a.LINK_SUBMIT_DT && n.by === 'SELF' && (!n.seenAt || n.seenAt < (n.selfAt || a.LINK_SUBMIT_DT)); }
+// 본인이 제출한 기록은 보기 전용으로 먼저 연다(✎ 고치기로 입력 창)
+function noteView(a) {
+	var r = recruitOf(a.RECRUIT_SQ) || {}, n = noteOf(a), fromDetail = $('#rcDetail').length > 0, wasNew = selfNew(a), next = false;
+	var $k = $('<div class="rc-kv rc-note-kv">');
+	$k.append($('<div class="d-flex flex-wrap align-items-center" style="grid-column:1/-1;gap:6px">').append($('<span class="rc-self">').text('본인 제출 ' + (n.selfAt || a.LINK_SUBMIT_DT || '')))
+		.append(n.adminAt ? $('<span class="rc-self adm ml-1">').text('관리자 수정 ' + n.adminAt) : '').append($('<span class="rc-note ml-2">').text(a.INTV_DT ? '인터뷰 ' + a.INTV_DT + ' ' + (WAY[a.INTV_WAY] || '') + (a.INTV_PLACE ? ' · ' + a.INTV_PLACE : '') : '')));
+	NOTE_CATS.forEach(function(c) {
+		var v = c[3] ? (n[c[0]] || []) : (n[c[0]] ? [n[c[0]]] : []);
+		$k.append($('<label>').text(c[2])).append($('<span class="d-flex flex-wrap" style="gap:4px">').append(v.length ? v.map(function(x) { return $('<span class="rc-vchip">').text(x); }) : $('<span class="text-muted small">').text('고르지 않음')));
+	});
+	var qa = (n.qa || []).filter(function(x) { return x.q || x.a; }), $qa = $('<div class="rc-qview">');
+	qa.forEach(function(x, i) { $qa.append($('<div>').append($('<b class="n">').text('Q' + (i + 1))).append($('<div>').append($('<div class="q">').text(x.q || '(질문 없음)')).append($('<div class="a">').text(x.a || '(답변 없음)')))); });
+	$k.append('<label>기억나는 질문</label>').append(qa.length ? $qa : $('<span class="text-muted small">').text('없음'));
+	$k.append('<label>메모</label>').append(n.memo ? $('<div class="rc-memo">').text(n.memo) : $('<span class="text-muted small">').text('없음'));
+	if (wasNew) hrPost('/admin/recruit/noteSeenData.do', { APPLY_SQ: a.APPLY_SQ }, function() {});
+	var dlg = bootbox.dialog({ title: '📝 ' + a.STAFF_NM + ' · ' + (r.CLIENT_NM || '') + ' 인터뷰 기록', message: $k, size: 'large', onEscape: true, buttons: {
+		relink: { label: '🔗 링크 다시 만들기', className: 'btn-sm btn-outline-info mr-1', callback: function() {
+			bootbox.confirm('새 링크를 만들까요? 지금 링크는 바로 막혀요.', function(ok) { if (ok) { next = true; dlg.modal('hide'); newLink(a); } });
+			return false;
+		} },
+		open: { label: '모집 상세 열기', className: 'btn-sm btn-outline-primary mr-auto' + (fromDetail ? ' d-none' : ''), callback: function() { next = true; dlg.one('hidden.bs.modal', function() { detail(a.RECRUIT_SQ); }); } },
+		edit: { label: '✎ 고치기', className: 'btn-sm btn-outline-secondary', callback: function() { next = true; dlg.one('hidden.bs.modal', function() { noteDialog(a, true); }); } },
+		close: { label: '닫기', className: 'btn-sm btn-primary' } } });
+	// 새 제출을 열어 봤으면 닫을 때 다시 불러와 ● 를 끈다(다음 창을 여는 중이면 그 창 저장 때 다시 불러온다)
+	if (wasNew) dlg.one('hidden.bs.modal', function() { if (!next) reload(); });
+}
+function noteDialog(a, edit) {
+	if (!edit && noteOf(a).by === 'SELF') return noteView(a);
 	var r = recruitOf(a.RECRUIT_SQ) || {}, n = $.extend({}, noteOf(a)), fromDetail = $('#rcDetail').length > 0, editing = false; // 달력에서 열면 「모집 상세 열기」를 보인다
 	NOTE_CATS.forEach(function(c) { if (c[3]) n[c[0]] = $.isArray(n[c[0]]) ? n[c[0]] : []; else n[c[0]] = n[c[0]] || ''; });
 	var skills = String(r.SKILLS || '').split(/[,/·]+/).map(function(x) { return $.trim(x); }).filter(Boolean);
@@ -1035,6 +1097,7 @@ function noteDialog(a) {
 		ok: { label: '기록 저장', className: 'btn-sm btn-primary', callback: function() {
 			n.qa = $qa.find('.rc-qa-row').map(function() { return { q: $.trim($(this).find('.q').val()), a: $.trim($(this).find('.a').val()) }; }).get().filter(function(x) { return x.q || x.a; });
 			n.memo = $.trim($memo.val());
+			if (n.by === 'SELF') n.adminAt = n.seenAt = nowYmdHm(); // 본인 제출을 관리자가 고친 시각(본 것으로도)
 			delete n.r; delete n.comm; delete n.att; delete n.chk; delete n.ask; // 첫 버전(평가형) 칸은 새로 저장할 때 정리
 			hrPost('/admin/recruit/noteData.do', { APPLY_SQ: a.APPLY_SQ, INTV_NOTE: JSON.stringify(n), SUMMARY: noteSummary(n) }, function() {
 				dlg.modal('hide');

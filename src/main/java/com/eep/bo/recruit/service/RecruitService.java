@@ -118,6 +118,9 @@ public class RecruitService {
 					+ " SUMMARY VARCHAR(2000) NULL, EMPLY_ID VARCHAR(50) NULL, REG_DT DATETIME NOT NULL, KEY IX_RECRUIT_LOG (RECRUIT_SQ)) COMMENT '모집 이력'");
 			// 인터뷰 기록(칩으로 고른 결과·평가·확인할 것·메모 JSON). 2026-11-20 추가, 사용자 승인
 			jdbc.execute("ALTER TABLE TB_EEP_RECRUIT_APPLY_R ADD COLUMN IF NOT EXISTS INTV_NOTE TEXT NULL COMMENT '인터뷰 기록 JSON' AFTER INTV_WITH");
+			// 인터뷰 기록 링크(계정 없이 본인이 제출). 2026-11-20 사용자 승인(A 방식)
+			jdbc.execute("ALTER TABLE TB_EEP_RECRUIT_APPLY_R ADD COLUMN IF NOT EXISTS LINK_TOKEN VARCHAR(64) NULL COMMENT '인터뷰 기록 링크 토큰' AFTER INTV_NOTE,"
+					+ " ADD COLUMN IF NOT EXISTS LINK_EXP_DT DATETIME NULL COMMENT '링크 만료' AFTER LINK_TOKEN, ADD COLUMN IF NOT EXISTS LINK_SUBMIT_DT DATETIME NULL COMMENT '본인 제출 시각' AFTER LINK_EXP_DT");
 			jdbc.update("INSERT IGNORE INTO TB_EEP_MAIL_USE_M (USE_CD, ACC_SQ, TO_LIST) VALUES (?, 1, NULL)", MAIL_INTV);
 			seedMenu();
 		} catch (RuntimeException e) {
@@ -211,7 +214,8 @@ public class RecruitService {
 	/** 지원 전체. 직원 이름 포함 */
 	public List<Map<String, Object>> applies() {
 		return jdbc.queryForList("SELECT A.APPLY_SQ, A.RECRUIT_SQ, A.STAFF_SQ, A.STEP_CD, A.VER_NO, A.VER_LABEL, A.FILE_ID, A.FILE_NM, A.DEPLOY_SQ, A.DROP_REASON, A.DRAFT,"
-				+ " DATE_FORMAT(A.INTV_DT, '%Y-%m-%d %H:%i') AS INTV_DT, DATE_FORMAT(A.INTV_END_DT, '%Y-%m-%d %H:%i') AS INTV_END_DT, A.INTV_WAY, A.INTV_PLACE, A.INTV_WITH, A.INTV_NOTE,"
+				+ " DATE_FORMAT(A.INTV_DT, '%Y-%m-%d %H:%i') AS INTV_DT, DATE_FORMAT(A.INTV_END_DT, '%Y-%m-%d %H:%i') AS INTV_END_DT, A.INTV_WAY, A.INTV_PLACE, A.INTV_WITH, A.INTV_NOTE, A.LINK_TOKEN,"
+				+ " DATE_FORMAT(A.LINK_EXP_DT, '%Y-%m-%d %H:%i') AS LINK_EXP_DT, DATE_FORMAT(A.LINK_SUBMIT_DT, '%Y-%m-%d %H:%i') AS LINK_SUBMIT_DT,"
 				+ " DATE_FORMAT(A.UPDT_DT, '%Y-%m-%d %H:%i') AS UPDT_DT, A.UPDT_EMPLY_ID, S.STAFF_NM, S.POSITION_NM, S.DEPT_NM"
 				+ " FROM TB_EEP_RECRUIT_APPLY_R A JOIN TB_EEP_HR_STAFF_M S ON S.STAFF_SQ = A.STAFF_SQ JOIN TB_EEP_RECRUIT_M R ON R.RECRUIT_SQ = A.RECRUIT_SQ AND R.DEL_YN = 'N' ORDER BY A.APPLY_SQ");
 	}
@@ -582,6 +586,117 @@ public class RecruitService {
 		require(s(note).length() <= 30000, "인터뷰 기록이 너무 깁니다."); // 질문·답변 여러 개(모의 인터뷰 자료)
 		jdbc.update("UPDATE TB_EEP_RECRUIT_APPLY_R SET INTV_NOTE = ?, UPDT_EMPLY_ID = ?, UPDT_DT = NOW() WHERE APPLY_SQ = ?", s(note).trim().isEmpty() ? null : note, loginId, applySq);
 		log(a.get("RECRUIT_SQ"), applySq, "NOTE", a.get("STAFF_NM") + " 인터뷰 기록" + (s(summary).trim().isEmpty() ? "" : " · " + cut(summary.trim(), 300)), loginId);
+	}
+
+	// ── 인터뷰 기록 링크: 계정 없이 본인이 제출(plans/recruit-intv-link-spec.html, A 방식) ──
+
+	static final int LINK_DAYS = 7;
+	static final String[] NOTE_ONE = { "mood", "dur", "feel", "cli", "notice" }, NOTE_MANY = { "who", "flow", "askd", "tech", "etc" };
+	private final Map<String, java.util.Deque<Long>> linkHits = new java.util.concurrent.ConcurrentHashMap<>();
+
+	/** 새 링크(옛 링크는 막힘). @return TOKEN, LINK_EXP_DT */
+	public Map<String, Object> linkIssue(Object applySq, String loginId) {
+		Map<String, Object> a = apply(applySq);
+		byte[] b = new byte[24];
+		new java.security.SecureRandom().nextBytes(b);
+		String token = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(b);
+		LocalDateTime exp = LocalDateTime.now(SEOUL).plusDays(LINK_DAYS);
+		jdbc.update("UPDATE TB_EEP_RECRUIT_APPLY_R SET LINK_TOKEN = ?, LINK_EXP_DT = ? WHERE APPLY_SQ = ?", token, exp.format(DT), applySq);
+		log(a.get("RECRUIT_SQ"), applySq, "LINK", a.get("STAFF_NM") + " 인터뷰 기록 링크 만듦(" + exp.format(DT) + " 만료)", loginId);
+		Map<String, Object> out = new HashMap<>();
+		out.put("TOKEN", token);
+		out.put("LINK_EXP_DT", exp.format(DT));
+		return out;
+	}
+
+	/** 링크 주인 지원 1건. 없거나 만료면 막는다 */
+	private Map<String, Object> linkApply(String token) {
+		require(s(token).matches("[A-Za-z0-9_-]{20,64}"), "링크가 올바르지 않아요.");
+		List<Map<String, Object>> l = jdbc.queryForList("SELECT A.APPLY_SQ, A.RECRUIT_SQ, A.INTV_NOTE, A.LINK_EXP_DT, DATE_FORMAT(A.INTV_DT, '%Y-%m-%d %H:%i') AS INTV_DT, A.INTV_WAY, A.INTV_PLACE,"
+				+ " S.STAFF_NM, R.CLIENT_NM, R.SKILLS FROM TB_EEP_RECRUIT_APPLY_R A JOIN TB_EEP_HR_STAFF_M S ON S.STAFF_SQ = A.STAFF_SQ"
+				+ " JOIN TB_EEP_RECRUIT_M R ON R.RECRUIT_SQ = A.RECRUIT_SQ AND R.DEL_YN = 'N' WHERE A.LINK_TOKEN = ?", token);
+		require(!l.isEmpty(), "링크가 없거나 새 링크로 바뀌었어요. 담당자에게 새 링크를 요청해 주세요.");
+		LocalDateTime exp = dateTime(l.get(0).get("LINK_EXP_DT"));
+		require(exp != null && exp.isAfter(LocalDateTime.now(SEOUL)), "링크가 만료됐어요. 담당자에게 새 링크를 요청해 주세요.");
+		return l.get(0);
+	}
+
+	/** 링크 화면에 보일 것: 이름·고객사·인터뷰 일시·고를 칩·지금 기록(허용한 칸만) */
+	public Map<String, Object> linkView(String token) {
+		Map<String, Object> a = linkApply(token);
+		Map<String, Object> out = new HashMap<>();
+		for (String k : new String[] { "STAFF_NM", "CLIENT_NM", "INTV_DT", "INTV_PLACE", "SKILLS" }) out.put(k, a.get(k));
+		out.put("INTV_WAY", a.get("INTV_DT") == null ? "" : wayName(s(a.get("INTV_WAY"))));
+		out.put("codes", intvCodes());
+		out.put("note", cleanNote(s(a.get("INTV_NOTE"))));
+		out.put("LINK_EXP_DT", dateTime(a.get("LINK_EXP_DT")).format(DT));
+		return out;
+	}
+
+	/** 본인 제출. 토큰마다 10분에 20번까지 */
+	public void linkSave(String token, String note) {
+		Map<String, Object> a = linkApply(token);
+		long now = System.currentTimeMillis();
+		java.util.Deque<Long> q = linkHits.computeIfAbsent(token, k -> new java.util.ArrayDeque<>());
+		synchronized (q) {
+			while (!q.isEmpty() && now - q.peekFirst() > 600_000) q.pollFirst();
+			require(q.size() < 20, "너무 자주 저장했어요. 잠시 뒤 다시 해 주세요.");
+			q.addLast(now);
+		}
+		require(s(note).length() <= 30000, "기록이 너무 깁니다.");
+		Map<String, Object> n = cleanNote(note);
+		Map<String, Object> old = cleanNote(s(a.get("INTV_NOTE")));
+		n.put("by", "SELF");
+		n.put("selfAt", LocalDateTime.now(SEOUL).format(DT));
+		if (old.get("adminAt") != null) n.put("adminAt", old.get("adminAt"));
+		jdbc.update("UPDATE TB_EEP_RECRUIT_APPLY_R SET INTV_NOTE = ?, LINK_SUBMIT_DT = NOW() WHERE APPLY_SQ = ?", json(n), a.get("APPLY_SQ"));
+		log(a.get("RECRUIT_SQ"), a.get("APPLY_SQ"), "NOTE", a.get("STAFF_NM") + " 인터뷰 기록 본인 제출", "(링크)");
+	}
+
+	/** 관리자가 본인 제출 기록을 열어 봄 → 새 제출 표시(●)를 끈다 */
+	public void noteSeen(Object applySq) {
+		String raw = jdbc.queryForObject("SELECT IFNULL(INTV_NOTE, '') FROM TB_EEP_RECRUIT_APPLY_R WHERE APPLY_SQ = ?", String.class, applySq);
+		if (raw.isEmpty()) return;
+		Map<String, Object> n = parseNote(raw);
+		n.put("seenAt", LocalDateTime.now(SEOUL).format(DT));
+		jdbc.update("UPDATE TB_EEP_RECRUIT_APPLY_R SET INTV_NOTE = ? WHERE APPLY_SQ = ?", json(n), applySq);
+	}
+
+	@SuppressWarnings("unchecked")
+	private static Map<String, Object> parseNote(String raw) {
+		try {
+			Object o = raw.trim().isEmpty() ? null : JSON.readValue(raw, Object.class);
+			return o instanceof Map ? new LinkedHashMap<>((Map<String, Object>) o) : new LinkedHashMap<>();
+		} catch (java.io.IOException e) {
+			throw new IllegalArgumentException("기록 형식이 올바르지 않아요.");
+		}
+	}
+
+	/** 공개 링크로 들어온 기록은 아는 칸·길이만 남긴다(글은 화면에서 글자 그대로만 표시) */
+	@SuppressWarnings("unchecked")
+	static Map<String, Object> cleanNote(String raw) {
+		Map<String, Object> in = parseNote(raw), out = new LinkedHashMap<>();
+		for (String k : NOTE_ONE) out.put(k, cut(s(in.get(k)).trim(), 100));
+		for (String k : NOTE_MANY) {
+			List<String> l = new ArrayList<>();
+			if (in.get(k) instanceof List) for (Object v : (List<Object>) in.get(k)) if (l.size() < 30 && !s(v).trim().isEmpty()) l.add(cut(s(v).trim(), 100));
+			out.put(k, l);
+		}
+		List<Map<String, String>> qa = new ArrayList<>();
+		if (in.get("qa") instanceof List) for (Object v : (List<Object>) in.get("qa")) {
+			if (!(v instanceof Map) || qa.size() >= 50) continue;
+			Map<String, Object> m = (Map<String, Object>) v;
+			String qq = cut(s(m.get("q")).trim(), 500), aa = cut(s(m.get("a")).trim(), 2000);
+			if (qq.isEmpty() && aa.isEmpty()) continue;
+			Map<String, String> x = new LinkedHashMap<>();
+			x.put("q", qq);
+			x.put("a", aa);
+			qa.add(x);
+		}
+		out.put("qa", qa);
+		out.put("memo", cut(s(in.get("memo")).trim(), 1000));
+		for (String k : new String[] { "by", "selfAt", "adminAt", "seenAt" }) if (in.get(k) != null) out.put(k, cut(s(in.get(k)), 30));
+		return out;
 	}
 
 	/** 인터뷰 일정 저장 → 단계 인터뷰확정, 본인 회사 메일(항상, 변경 때도). @return notes */
