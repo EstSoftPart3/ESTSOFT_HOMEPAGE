@@ -48,7 +48,9 @@ public class RecruitService {
 	public static final String PAGE = "/admin/recruit/openRecruitList.do";
 	public static final String MAIL_INTV = "RECRUIT_INTV";
 	/** 지원 단계 순서. DROP 은 탈락·취소 */
-	public static final List<String> STEPS = Arrays.asList("DOC", "INTV_WAIT", "INTV", "JOIN_WAIT", "JOIN");
+	// INTV_SUB 인터뷰 결과 제출(본인이 링크로 기록 제출), INTV_CHK 인터뷰 결과 확인중(관리자가 기록을 열어 보거나 직접 기록)
+	public static final List<String> STEPS = Arrays.asList("DOC", "INTV_WAIT", "INTV", "INTV_SUB", "INTV_CHK", "JOIN_WAIT", "JOIN");
+	static final String ACTIVE_IN = "('DOC', 'INTV_WAIT', 'INTV', 'INTV_SUB', 'INTV_CHK', 'JOIN_WAIT')";
 	private static final List<String> STATUS = Arrays.asList("OPEN", "APPLY", "FILLED", "CLOSED");
 	/** 사람이 고칠 수 있는 모집 칸 */
 	private static final List<String> EDIT_COLS = Arrays.asList("CLIENT_NM", "PRJ_NM", "GRADE_TXT", "HEAD_CNT", "START_DT", "END_DT", "PERIOD_TXT", "WORK_AREA", "PRICE_TXT",
@@ -256,7 +258,7 @@ public class RecruitService {
 	/** 투입현황 대기 현황의 「지원 중 모집」: 탈락·투입확정 전 단계 */
 	public List<Map<String, Object>> activeApplies() {
 		return jdbc.queryForList("SELECT A.STAFF_SQ, A.RECRUIT_SQ, A.STEP_CD, DATE_FORMAT(A.INTV_DT, '%m-%d %H:%i') AS INTV_DT, R.CLIENT_NM, R.PRJ_NM"
-				+ " FROM TB_EEP_RECRUIT_APPLY_R A JOIN TB_EEP_RECRUIT_M R ON R.RECRUIT_SQ = A.RECRUIT_SQ AND R.DEL_YN = 'N' WHERE A.STEP_CD IN ('DOC', 'INTV_WAIT', 'INTV', 'JOIN_WAIT') ORDER BY A.APPLY_SQ");
+				+ " FROM TB_EEP_RECRUIT_APPLY_R A JOIN TB_EEP_RECRUIT_M R ON R.RECRUIT_SQ = A.RECRUIT_SQ AND R.DEL_YN = 'N' WHERE A.STEP_CD IN " + ACTIVE_IN + " ORDER BY A.APPLY_SQ");
 	}
 
 	public List<Map<String, Object>> files(Object recruitSq) {
@@ -586,6 +588,7 @@ public class RecruitService {
 		require(s(note).length() <= 30000, "인터뷰 기록이 너무 깁니다."); // 질문·답변 여러 개(모의 인터뷰 자료)
 		jdbc.update("UPDATE TB_EEP_RECRUIT_APPLY_R SET INTV_NOTE = ?, UPDT_EMPLY_ID = ?, UPDT_DT = NOW() WHERE APPLY_SQ = ?", s(note).trim().isEmpty() ? null : note, loginId, applySq);
 		log(a.get("RECRUIT_SQ"), applySq, "NOTE", a.get("STAFF_NM") + " 인터뷰 기록" + (s(summary).trim().isEmpty() ? "" : " · " + cut(summary.trim(), 300)), loginId);
+		if (!s(note).trim().isEmpty()) autoStep(a, Arrays.asList("DOC", "INTV_WAIT", "INTV", "INTV_SUB"), "INTV_CHK", loginId); // 관리자가 통화로 기록하면 확인중
 	}
 
 	// ── 인터뷰 기록 링크: 계정 없이 본인이 제출(plans/recruit-intv-link-spec.html, A 방식) ──
@@ -612,7 +615,7 @@ public class RecruitService {
 	/** 링크 주인 지원 1건. 없거나 만료면 막는다 */
 	private Map<String, Object> linkApply(String token) {
 		require(s(token).matches("[A-Za-z0-9_-]{20,64}"), "링크가 올바르지 않아요.");
-		List<Map<String, Object>> l = jdbc.queryForList("SELECT A.APPLY_SQ, A.RECRUIT_SQ, A.INTV_NOTE, A.LINK_EXP_DT, DATE_FORMAT(A.INTV_DT, '%Y-%m-%d %H:%i') AS INTV_DT, A.INTV_WAY, A.INTV_PLACE,"
+		List<Map<String, Object>> l = jdbc.queryForList("SELECT A.APPLY_SQ, A.RECRUIT_SQ, A.STEP_CD, A.INTV_NOTE, A.LINK_EXP_DT, DATE_FORMAT(A.INTV_DT, '%Y-%m-%d %H:%i') AS INTV_DT, A.INTV_WAY, A.INTV_PLACE,"
 				+ " S.STAFF_NM, R.CLIENT_NM, R.SKILLS FROM TB_EEP_RECRUIT_APPLY_R A JOIN TB_EEP_HR_STAFF_M S ON S.STAFF_SQ = A.STAFF_SQ"
 				+ " JOIN TB_EEP_RECRUIT_M R ON R.RECRUIT_SQ = A.RECRUIT_SQ AND R.DEL_YN = 'N' WHERE A.LINK_TOKEN = ?", token);
 		require(!l.isEmpty(), "링크가 없거나 새 링크로 바뀌었어요. 담당자에게 새 링크를 요청해 주세요.");
@@ -651,10 +654,20 @@ public class RecruitService {
 		if (old.get("adminAt") != null) n.put("adminAt", old.get("adminAt"));
 		jdbc.update("UPDATE TB_EEP_RECRUIT_APPLY_R SET INTV_NOTE = ?, LINK_SUBMIT_DT = NOW() WHERE APPLY_SQ = ?", json(n), a.get("APPLY_SQ"));
 		log(a.get("RECRUIT_SQ"), a.get("APPLY_SQ"), "NOTE", a.get("STAFF_NM") + " 인터뷰 기록 본인 제출", "(링크)");
+		autoStep(a, Arrays.asList("DOC", "INTV_WAIT", "INTV", "INTV_CHK"), "INTV_SUB", "(링크)"); // 다시 제출하면 확인중에서도 결과 제출로
+	}
+
+	/** 인터뷰 기록에 따라 단계를 앞으로만 옮긴다(탈락·투입대기 이후는 그대로) */
+	private void autoStep(Map<String, Object> a, List<String> from, String to, String who) {
+		String before = s(a.get("STEP_CD"));
+		if (!from.contains(before)) return;
+		jdbc.update("UPDATE TB_EEP_RECRUIT_APPLY_R SET STEP_CD = ?, UPDT_DT = NOW() WHERE APPLY_SQ = ? AND STEP_CD = ?", to, a.get("APPLY_SQ"), before);
+		log(a.get("RECRUIT_SQ"), a.get("APPLY_SQ"), "STEP", a.get("STAFF_NM") + " " + stepName(before) + " → " + stepName(to) + " (인터뷰 기록)", who);
 	}
 
 	/** 관리자가 본인 제출 기록을 열어 봄 → 새 제출 표시(●)를 끈다 */
-	public void noteSeen(Object applySq) {
+	public void noteSeen(Object applySq, String loginId) {
+		autoStep(apply(applySq), Arrays.asList("INTV_SUB"), "INTV_CHK", loginId);
 		String raw = jdbc.queryForObject("SELECT IFNULL(INTV_NOTE, '') FROM TB_EEP_RECRUIT_APPLY_R WHERE APPLY_SQ = ?", String.class, applySq);
 		if (raw.isEmpty()) return;
 		Map<String, Object> n = parseNote(raw);
@@ -778,7 +791,7 @@ public class RecruitService {
 		refreshFill(a.get("RECRUIT_SQ"), loginId);
 		out.put("DEPLOY_SQ", deploySq);
 		out.put("others", jdbc.queryForList("SELECT A.APPLY_SQ, R.CLIENT_NM, R.PRJ_NM, A.STEP_CD FROM TB_EEP_RECRUIT_APPLY_R A JOIN TB_EEP_RECRUIT_M R ON R.RECRUIT_SQ = A.RECRUIT_SQ AND R.DEL_YN = 'N'"
-				+ " WHERE A.STAFF_SQ = ? AND A.APPLY_SQ <> ? AND A.STEP_CD IN ('DOC', 'INTV_WAIT', 'INTV', 'JOIN_WAIT')", a.get("STAFF_SQ"), applySq));
+				+ " WHERE A.STAFF_SQ = ? AND A.APPLY_SQ <> ? AND A.STEP_CD IN " + ACTIVE_IN, a.get("STAFF_SQ"), applySq));
 		return out;
 	}
 
@@ -818,6 +831,8 @@ public class RecruitService {
 		case "DOC": return "서류검토";
 		case "INTV_WAIT": return "인터뷰대기";
 		case "INTV": return "인터뷰확정";
+		case "INTV_SUB": return "인터뷰 결과 제출";
+		case "INTV_CHK": return "인터뷰 결과 확인중";
 		case "JOIN_WAIT": return "투입대기";
 		case "JOIN": return "투입확정";
 		case "DROP": return "탈락";

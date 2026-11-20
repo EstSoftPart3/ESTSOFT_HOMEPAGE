@@ -56,6 +56,7 @@
 	.rc-app b { min-width: 46px; }
 	.rc-step { border: 0; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 700; background: #edf2ff; color: #364fc7; white-space: nowrap; }
 	.rc-step.DOC { background: #f1f3f5; color: #495057; } .rc-step.INTV, .rc-step.INTV_WAIT { background: #fff4e6; color: #d9480f; } .rc-step.JOIN_WAIT { background: #e6fcf5; color: #087f5b; }
+	.rc-step.INTV_SUB { background: #f3f0ff; color: #6741d9; } .rc-step.INTV_CHK { background: #fff3bf; color: #e67700; }
 	.rc-step.JOIN { background: #d3f9d8; color: #2b8a3e; } .rc-step.DROP { background: #ffe3e3; color: #c92a2a; text-decoration: line-through; }
 	.rc-stepper { display: inline-flex; border: 1px solid #dee2e6; border-radius: 999px; overflow: hidden; flex-wrap: wrap; }
 	.rc-stepper button { border: 0; border-left: 1px solid #fff; background: #fff; padding: 2px 9px; font-size: 11.5px; color: #868e96; }
@@ -93,7 +94,7 @@
 	.rc-notebtn { border: 1px dashed #b197fc; background: #fff; color: #6741d9; border-radius: 999px; padding: 0 9px; font-size: 11.5px; font-weight: 700; max-width: 100%; white-space: normal; text-align: left; }
 	.rc-notebtn.has { border-style: solid; background: #f3f0ff; } .rc-notebtn:hover, .rc-notebtn:focus { background: #e5dbff; }
 	.ist { font-style: normal; font-size: 10px; font-weight: 800; border-radius: 4px; padding: 0 4px; background: #fff4e6; color: #d9480f; }
-	.ist.ok { background: #d3f9d8; color: #2b8a3e; } .ist.wait { background: #fff3bf; color: #e67700; } .ist.x { background: #e9ecef; color: #868e96; }
+	.ist.ok { background: #d3f9d8; color: #2b8a3e; } .ist.sub { background: #f3f0ff; color: #6741d9; } .ist.wait { background: #fff3bf; color: #e67700; } .ist.x { background: #e9ecef; color: #868e96; }
 	.rc-cal .ev.intv.x { border-left-color: #adb5bd; border-color: #dee2e6; color: #868e96; text-decoration: line-through; } .rc-cal .ev.intv.x .ist { text-decoration: none; }
 	.rc-cal-legend { display: flex; gap: 6px; align-items: center; font-size: 11px; flex-wrap: wrap; }
 	.rc-cal-legend .ev { display: inline-block; border-radius: 4px; padding: 0 5px; }
@@ -194,7 +195,8 @@
 <script>
 var PATH = location.pathname, D = null, VIEW = 'cal', ST_CHK = { OPEN: true, APPLY: true, FILLED: true, CLOSED: false, MISS: false }, PP_CHK = { WAIT: true, FUTURE: true, SOON: true };
 var STATUS = { OPEN: '모집중', APPLY: '지원 진행', FILLED: '충원 완료', CLOSED: '마감' };
-var STEPS = [['DOC', '서류검토'], ['INTV_WAIT', '인터뷰대기'], ['INTV', '인터뷰확정'], ['JOIN_WAIT', '투입대기'], ['JOIN', '투입확정']];
+// 결과 제출(INTV_SUB)은 본인이 링크로 기록을 내면, 확인중(INTV_CHK)은 관리자가 그 기록을 열어 보거나 직접 기록하면 자동으로(서버 autoStep)
+var STEPS = [['DOC', '서류검토'], ['INTV_WAIT', '인터뷰대기'], ['INTV', '인터뷰확정'], ['INTV_SUB', '인터뷰 결과 제출'], ['INTV_CHK', '인터뷰 결과 확인중'], ['JOIN_WAIT', '투입대기'], ['JOIN', '투입확정']];
 var STEP_NM = { DROP: '탈락' }; STEPS.forEach(function(s) { STEP_NM[s[0]] = s[1]; });
 var WAY = { FACE: '대면', VIDEO: '화상', PHONE: '전화' };
 var MISS = [['CLIENT_NM', '고객사'], ['PRJ_NM', '사업명'], ['GRADE_TXT', '등급·인원'], ['START_DT', '투입 시작'], ['WORK_AREA', '근무지'], ['SALE_PARTNER_SQ', '매출처'], ['PRICE_TXT', '단가']];
@@ -260,7 +262,7 @@ function personState(staffSq) {
 	var last = rows[0], s = staffOf(staffSq), from = last && last.END_DT ? last.END_DT : s && s.JOIN_DT;
 	return { k: 'WAIT', label: '대기' + (from ? ' ' + Math.max(0, days(from, t)) + '일' : ''), row: last };
 }
-function activeAppsOfStaff(staffSq) { return D.applies.filter(function(a) { return String(a.STAFF_SQ) === String(staffSq) && ['DOC', 'INTV_WAIT', 'INTV', 'JOIN_WAIT'].indexOf(a.STEP_CD) >= 0; }); }
+function activeAppsOfStaff(staffSq) { return D.applies.filter(function(a) { return String(a.STAFF_SQ) === String(staffSq) && ['DOC', 'INTV_WAIT', 'INTV', 'INTV_SUB', 'INTV_CHK', 'JOIN_WAIT'].indexOf(a.STEP_CD) >= 0; }); }
 function recruitOf(sq) { return D.recruits.filter(function(r) { return String(r.RECRUIT_SQ) === String(sq); })[0]; }
 
 // ── 대기자 패널 ──
@@ -605,6 +607,8 @@ function viewCal($m, list) {
 function intvState(a) {
 	if (a.STEP_CD === 'DROP') return ['x', '탈락'];
 	if (a.STEP_CD === 'JOIN_WAIT' || a.STEP_CD === 'JOIN') return ['ok', '통과'];
+	if (a.STEP_CD === 'INTV_SUB') return ['sub', '결과 제출'];
+	if (a.STEP_CD === 'INTV_CHK') return ['wait', '결과 확인중'];
 	return a.INTV_DT.substring(0, 16) > nowYmdHm() ? ['plan', '예정'] : ['wait', '결과 대기'];
 }
 function nowYmdHm() { var d = new Date(); return today() + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }

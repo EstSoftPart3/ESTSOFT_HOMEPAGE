@@ -985,7 +985,7 @@
 		var $t = $('<table class="table table-sm cal-table mb-0">').append('<thead><tr><th>성명</th><th>구분</th><th>직급·소속</th><th>거주지역</th><th>희망지역</th><th>프로필 버전</th><th>지원 중 모집</th><th>입사일</th><th>대기 기간</th><th>프로젝트 이력</th><th><span class="sr-only">작업</span></th></tr></thead>');
 		var $b = $('<tbody>').appendTo($t);
 		if (!list.length) boEmpty($b, '대기 중인 직원이 없습니다.');
-		var STEP = { DOC: '서류검토', INTV_WAIT: '인터뷰대기', INTV: '인터뷰확정', JOIN_WAIT: '투입대기' };
+		var STEP = { DOC: '서류검토', INTV_WAIT: '인터뷰대기', INTV: '인터뷰확정', INTV_SUB: '인터뷰 결과 제출', INTV_CHK: '인터뷰 결과 확인중', JOIN_WAIT: '투입대기' };
 		// 프로필 버전 칩(누르면 그 버전 워드), 지원 중 모집(누르면 모집 관리) — 모집 관리(RecruitService)가 채운다
 		function verCell(sq) {
 			var ps = (data.profiles || []).filter(function(p) { return String(p.STAFF_SQ) === String(sq); });

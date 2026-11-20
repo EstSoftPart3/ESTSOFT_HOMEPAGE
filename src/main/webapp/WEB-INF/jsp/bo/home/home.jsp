@@ -459,7 +459,7 @@
 				});
 				(d.applies || []).forEach(function(a) {
 					var r = rc[a.RECRUIT_SQ] || {};
-					if (a.STEP_CD === 'INTV' && a.INTV_DT) calAdd('RC_INTV', a.INTV_DT, a.STAFF_NM + ' · ' + (r.CLIENT_NM || ''), '/admin/recruit/openRecruitList.do?open=' + a.RECRUIT_SQ, a.INTV_DT.substr(11, 5), [['장소', a.INTV_PLACE], ['사업', r.PRJ_NM]], '/admin/recruit/openRecruitList.do?open=' + a.RECRUIT_SQ);
+					if (['INTV', 'INTV_SUB', 'INTV_CHK'].indexOf(a.STEP_CD) >= 0 && a.INTV_DT) calAdd('RC_INTV', a.INTV_DT, a.STAFF_NM + ' · ' + (r.CLIENT_NM || ''), '/admin/recruit/openRecruitList.do?open=' + a.RECRUIT_SQ, a.INTV_DT.substr(11, 5), [['장소', a.INTV_PLACE], ['사업', r.PRJ_NM]], '/admin/recruit/openRecruitList.do?open=' + a.RECRUIT_SQ);
 				});
 			});
 		}
