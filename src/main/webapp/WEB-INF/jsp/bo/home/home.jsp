@@ -73,7 +73,9 @@
 	#hmCalendar .fc-toolbar { margin-bottom: 6px; } #hmCalendar .fc-toolbar h2 { font-size: 16px; }
 	#hmCalendar .fc-event { cursor: pointer; font-size: 11px; line-height: 1.3; padding: 0 2px; }
 	#hmCalendar .fc-day-grid .fc-row { min-height: 0 !important; }
-	#hmCalendar .fc-day-grid .fc-content-skeleton { padding-bottom: 1px; }
+	/* 일정이 꽉 차도 빈 곳을 눌러 할 일을 등록할 수 있게 칸 아래에 빈 줄을 남긴다(주·일의 종일 줄은 넉넉히) */
+	#hmCalendar .fc-day-grid .fc-content-skeleton { padding-bottom: 14px; }
+	#hmCalendar .fc-agenda-view .fc-day-grid .fc-content-skeleton { padding-bottom: 20px; }
 	#hmCalendar .fc-day-number { font-size: 11px; padding: 1px 4px !important; }
 	/* 업무 화면 상세 팝업을 홈 위에 그대로 띄우는 투명 틀(include_top 의 ?popup=1) */
 	.hm-pop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; border: 0; z-index: 1060; background: transparent; }
