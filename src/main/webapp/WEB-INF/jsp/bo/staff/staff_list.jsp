@@ -60,9 +60,30 @@
 	.sc-vol input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 3px solid #0b6e8a; box-shadow: 0 1px 4px rgba(0,0,0,.25); }
 	.sc-vol input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 3px solid #0b6e8a; }
 	.sc-vol input[type=range]:focus { outline: none; } .sc-vol input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(22,160,196,.3); }
-	.sc-vol output { min-width: 120px; white-space: nowrap; text-align: center; font-weight: 700; font-size: 13px; color: #0b6e8a; background: #e8f6fa; border-radius: 999px; padding: 2px 10px; }
+	.sc-sk.sc-gen { grid-template-columns: 96px minmax(0, 1fr); }
+	.sc-num { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 13px; font-weight: 700; color: #0b6e8a; background: #e8f6fa; border-radius: 999px; padding: 2px 10px; }
+	.sc-num input { width: 52px; height: 24px; border: 1px solid #b9d9e3; border-radius: 6px; text-align: right; font-weight: 700; color: #0b6e8a; padding: 0 4px; }
 	.sc-gen .sc-chip:disabled { opacity: .45; cursor: not-allowed; }
+	/* 산업·역할 고르기: 고른 자리 줄 → 1단계 칩 → 펼친 2단계 */
+	.sc-slots { display: flex; flex-wrap: wrap; gap: 6px; min-height: 26px; padding: 6px 8px; border: 1px dashed #c5d3de; border-radius: 8px; background: #fafcfd; margin-bottom: 6px; }
+	.sc-slot { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 4px 2px 10px; background: #e8f6fa; color: #0b6e8a; }
+	.sc-slot[data-kind=ROLE] { background: #f1ecfa; color: #5b3b99; } .sc-slot em { font-style: normal; font-weight: 400; opacity: .75; }
+	.sc-slot.sm { padding: 1px 8px; font-size: 11px; }
+	.sc-slot-x, .sc-del { background: none; border: 0; padding: 0 5px; color: inherit; opacity: .7; font-size: 14px; line-height: 1; }
+	.sc-slot-x:hover, .sc-del:hover { opacity: 1; color: #c0392b; }
+	.sc-tree { margin-bottom: 4px; } .sc-tree-top, .sc-tree-sub { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+	.sc-tree-k { width: 34px; font-size: 12px; color: #6b7785; }
+	.sc-tree-sub { margin: 4px 0 6px 38px; padding: 6px 8px; background: #f4f7fa; border-radius: 8px; }
+	.sc-del-wrap { display: inline-flex; align-items: center; }
+	.sc-tree .sc-add { width: 200px; height: 26px; font-size: 12px; border-radius: 999px; }
+	.sc-gen-tbl { font-size: 12.5px; } .sc-gen-tbl td { vertical-align: middle; white-space: nowrap; }
+	.sc-gen-tbl tr.sc-gen-pin td { background: #fffaf0; } .sc-gen-tbl tr.sc-gen-hole td { color: #8a96a3; background: #f7f8fa; font-style: italic; }
+	.sc-pin-off { opacity: .25; filter: grayscale(1); } .sc-pin-off:hover, .sc-pin-off:focus { opacity: .7; }
+	.sc-ym { width: 128px; height: 26px; font-size: 12px; border: 1px solid #d5dde5; border-radius: 6px; padding: 0 4px; }
+	.sc-per.sc-changed .sc-ym { background: #fff3c4; border-color: #f0c96b; }
+	.sc-gen-empty { padding: 18px; text-align: center; color: #6b7785; background: #f7f9fb; border-radius: 10px; font-size: 13px; }
 	#driveStatus { font-size: 12px; }
+	.dm-tbl td { vertical-align: middle; } .dm-tbl select { max-width: 340px; font-size: 12px; } .dm-tbl tr.dm-miss td { color: #8a96a3; }
 	.st-grid .hr-cell, .st-skill .hr-cell { overflow-wrap: anywhere; }
 	.st-skill { padding: 3px 0; border-bottom: 1px solid rgba(17,17,17,.06); }
 	.st-skill .hr-card-label { flex-basis: 96px; }
@@ -200,6 +221,35 @@
 		</div>
 	</div>
 
+	<div class="modal fade" id="dmModal" tabindex="-1" role="dialog" aria-labelledby="dmTitle" aria-hidden="true">
+		<div class="modal-dialog modal-xl" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="dmTitle">📂 드라이브에서 증명사진·이력카드 일괄 찾기</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
+				</div>
+				<div class="modal-body">
+					<p class="small text-muted mb-2">지금 목록에 보이는 직원마다 <b>사람 폴더(하위 폴더 한 단계)</b>와 <b>공유 드라이브 전체</b>에서 이름이 들어간 사진·워드를 찾습니다. 찾기만 해서는 아무것도 바뀌지 않습니다.
+						고른 것만 「선택 반영」 때 <b>증명사진은 서류 탭에 연결</b>, <b>이력카드 워드는 지금 수행이력에 없는 프로젝트만 추가</b>합니다(있는 줄은 그대로).</p>
+					<div class="d-flex align-items-center mb-2" style="gap:8px">
+						<button type="button" class="btn btn-sm btn-outline-primary" id="dmFind">찾기 시작</button>
+						<span class="small text-muted" id="dmSum"></span>
+						<label class="small mb-0 ml-auto"><input type="checkbox" id="dmOnlyHit" checked> 찾은 직원만 보기</label>
+					</div>
+					<div class="table-responsive" style="max-height:60vh;">
+						<table class="table table-sm cal-table mb-0 dm-tbl" data-nomore data-no-card>
+							<thead><tr><th style="width:34px;"><span class="sr-only">반영</span></th><th>직원</th><th>사람 폴더</th><th>증명사진</th><th>이력카드 워드</th><th>결과</th></tr></thead>
+							<tbody id="dmBody"></tbody>
+						</table>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-sm btn-primary" id="dmApply" disabled>선택 반영</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
 	<div class="modal fade" id="scanModal" tabindex="-1" role="dialog" aria-labelledby="scanTitle" aria-hidden="true">
 		<div class="modal-dialog modal-lg" role="document">
 			<div class="modal-content">
@@ -282,14 +332,22 @@
 					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
 				</div>
 				<div class="modal-body">
-					<p class="small text-muted mb-2">최신 <b>순정</b> 버전에 있는 프로젝트만 골라 순서를 바꿉니다. 없는 프로젝트·기간은 만들지 않고, 순정 버전은 그대로 둡니다.</p>
+					<p class="small text-muted mb-2">최신 <b>순정</b> 버전의 실제 프로젝트로만 짭니다. 없는 프로젝트는 만들지 않고, 기간은 실제 참여 기간 안에서만 줄일 수 있습니다. 순정 버전은 그대로 둡니다.</p>
 					<div class="sc-sk sc-gen">
 						<span class="k">필수 기술</span><div id="scGenSkills"></div>
-						<span class="k"><label for="scGenMonths" class="mb-0">기간</label></span><div id="scGenYears" class="sc-vol"><input type="range" id="scGenMonths" min="1" step="1"><output for="scGenMonths"></output></div>
-						<span class="k"><label for="scGenMaxR" class="mb-0">최대 개수</label></span><div id="scGenMax" class="sc-vol"><input type="range" id="scGenMaxR" min="1" step="1"><output for="scGenMaxR"></output></div>
+						<span class="k"><label for="scGenMonths" class="mb-0">기간</label></span>
+						<div id="scGenYears" class="sc-vol"><input type="range" id="scGenMonths" min="1" max="1200" step="1" aria-label="기간(개월)">
+							<span class="sc-num"><input type="number" id="scGenY" min="0" max="100" aria-label="기간 년">년 <input type="number" id="scGenM" min="0" max="11" aria-label="기간 개월">개월 안</span></div>
+						<span class="k"><label for="scGenMaxR" class="mb-0">프로젝트 횟수</label></span>
+						<div id="scGenMax" class="sc-vol"><input type="range" id="scGenMaxR" min="1" max="100" step="1" aria-label="프로젝트 횟수">
+							<span class="sc-num"><input type="number" id="scGenN" min="1" max="100" aria-label="프로젝트 횟수 숫자">개</span></div>
 						<span class="k">정렬</span><div id="scGenSort" data-one></div>
-						<span class="k">산업</span><div id="scGenInd"></div>
-						<span class="k">역할</span><div id="scGenRole"></div>
+						<span class="k">산업·역할</span>
+						<div id="scGenPick">
+							<div class="sc-slots" id="scGenSlots" aria-live="polite"></div>
+							<div class="sc-tree" data-kind="IND"></div>
+							<div class="sc-tree" data-kind="ROLE"></div>
+						</div>
 						<span class="k">증명사진</span><div id="scGenPhoto" data-one></div>
 					</div>
 					<div class="hr-section mt-3" id="scGenSum">미리보기</div>
@@ -981,6 +1039,7 @@
 		$('#scImpFile').on('change', readImport);
 		$('#scImpApply').on('click', applyImport);
 		genInit();
+		dmInit();
 	}
 
 	function syncOngoing() {
@@ -1098,21 +1157,25 @@
 		} });
 	}
 
-	// ── ✨ 프로필 자동생성 (서버가 최신 순정 버전에서 고르고 정렬만 한다) ──
-	var scGen = null;
+	// ── ✨ 프로필 자동생성 (서버가 실제 프로젝트로 고른 자리·고정 줄·횟수대로 짠다) ──
+	// scGen: { sq, slots: [{t: IND|ROLE, v: '금융 > 은행'}] 고른 순서(같은 값 여러 번 가능), pins: {KEY: {pos, start, end}} 사람이 옮기거나 기간을 고친 줄,
+	//          codes: {IND: [...], ROLE: [...]}, open: {IND: 펼친 1단계}, edit: 목록 편집 중 }
+	var scGen = null, GEN_KIND = { IND: '산업', ROLE: '역할' };
 	function genConf() {
 		function one(id) { return $('#' + id + ' .sc-chip.on').attr('data-v'); }
-		function many(id) { return $('#' + id + ' .sc-chip.on').map(function() { return $(this).attr('data-v'); }).get(); }
-		return { skills: many('scGenSkills'), months: volVal('scGenMonths'), max: volVal('scGenMaxR'), sort: one('scGenSort'), inds: many('scGenInd'), roles: many('scGenRole'), photo: one('scGenPhoto') === 'Y' };
+		var pins = Object.keys(scGen.pins).map(function(k) { var p = scGen.pins[k]; return { key: k, pos: p.pos, start: p.start, end: p.end }; });
+		return { skills: $('#scGenSkills .sc-chip.on').map(function() { return $(this).attr('data-v'); }).get(), months: +$('#scGenMonths').val(), max: +$('#scGenMaxR').val(),
+			sort: one('scGenSort'), slots: scGen.slots, pins: pins, photo: one('scGenPhoto') === 'Y' };
 	}
-	// 볼륨 스위치처럼 끌어 정하는 칸. 끝까지 올리면 0(전체)
-	function volVal(id) { var $r = $('#' + id); return +$r.val() >= +$r.attr('max') ? 0 : +$r.val(); }
-	function volPaint(id, fmt) {
-		var $r = $('#' + id), v = +$r.val(), max = +$r.attr('max'), min = +$r.attr('min');
-		$r.css('--p', ((v - min) / Math.max(1, max - min) * 100) + '%').next('output').text(v >= max ? '전체' : fmt(v));
+	// 볼륨 스위치처럼 끄는 막대(--p 만큼 채움)와 옆 숫자 칸을 맞춘다
+	function volPaint() {
+		$('#scGenMonths, #scGenMaxR').each(function() { var $r = $(this), min = +$r.attr('min'), max = +$r.attr('max'); $r.css('--p', ((+$r.val() - min) / (max - min) * 100) + '%'); });
+		var m = +$('#scGenMonths').val();
+		$('#scGenY').val(Math.floor(m / 12));
+		$('#scGenM').val(m % 12);
+		$('#scGenN').val($('#scGenMaxR').val());
 	}
-	function ymText(m) { return (m >= 12 ? Math.floor(m / 12) + '년' : '') + (m % 12 ? (m >= 12 ? ' ' : '') + (m % 12) + '개월' : '') + ' 안'; }
-	function prjText(n) { return '프로젝트 ' + n + '개'; }
+	function clampNum(v, lo, hi) { v = Math.round(+v || 0); return Math.max(lo, Math.min(hi, v)); }
 	function genChips(id, list, on) {
 		$('#' + id).empty().append(list.map(function(x) { var v = String(x[0]); return $('<button type="button" class="sc-chip gray">').attr('data-v', v).toggleClass('on', on.indexOf(v) >= 0).attr('aria-pressed', on.indexOf(v) >= 0).text(x[1]); }));
 	}
@@ -1121,45 +1184,169 @@
 		// 칩: 이 사람 수행이력에서 많이 쓴 기술(숫자는 프로젝트 수) 먼저, 그다음 회사에서 자주 쓰는 기술
 		scEnv.slice(0, 4).forEach(function(e) { scCount(d.items, e[0]).forEach(function(t) { if (!seen[t[0]]) { seen[t[0]] = 1; list.push([t[0], t[0] + ' ' + t[1]]); } }); });
 		scEnv.slice(0, 4).forEach(function(e) { (d.chips[e[0]] || []).slice(0, 12).forEach(function(v) { if (!seen[v]) { seen[v] = 1; list.push([v, v]); } }); });
-		scGen = { sq: sq };
+		scGen = { sq: sq, slots: [], pins: {}, codes: d.codes || { IND: [], ROLE: [] }, open: {}, edit: false };
 		genChips('scGenSkills', list, []);
-		// 기간 끝은 가장 오래된 프로젝트 시작월부터 지금까지(1년 단위로 올림), 최대 프로젝트 끝은 프로젝트 수. 처음엔 둘 다 끝(전체)
+		// 처음 기간은 가장 오래된 프로젝트 시작월부터 지금까지(1년 단위로 올림, 100년까지), 횟수는 프로젝트 수(1~100)
 		var now = new Date(), oldest = d.items.map(function(it) { return String(it.START_YM || ''); }).filter(function(v) { return /^\d{4}-\d{2}/.test(v); }).sort()[0];
 		var span = oldest ? (now.getFullYear() - +oldest.slice(0, 4)) * 12 + now.getMonth() + 1 - +oldest.slice(5, 7) + 1 : 120;
-		$('#scGenMonths').attr('max', Math.max(12, Math.ceil(span / 12) * 12)).val(Math.max(12, Math.ceil(span / 12) * 12));
-		$('#scGenMaxR').attr('max', Math.max(2, d.items.length)).val(Math.max(2, d.items.length));
-		volPaint('scGenMonths', ymText); volPaint('scGenMaxR', prjText);
+		$('#scGenMonths').val(clampNum(Math.ceil(span / 12) * 12, 12, 1200));
+		$('#scGenMaxR').val(clampNum(d.items.length, 1, 100));
+		volPaint();
 		genChips('scGenSort', [['match', '기술 일치순'], ['recent', '최신순']], ['match']);
-		genChips('scGenInd', scCount(d.items, 'IND_NM').map(function(t) { return [t[0], t[0] + ' ' + t[1]]; }), []);
-		genChips('scGenRole', scCount(d.items, 'ROLE_NM').map(function(t) { return [t[0], t[0] + ' ' + t[1]]; }), []);
-		if (!$('#scGenInd').children().length) $('#scGenInd').html('<span class="small text-muted">수행이력에 산업이 없습니다</span>');
-		if (!$('#scGenRole').children().length) $('#scGenRole').html('<span class="small text-muted">수행이력에 역할이 없습니다</span>');
+		genTrees();
+		genSlots();
 		var photo = docFiles(find(sq) || {}, 'DOC_PHOTO').length > 0;
 		genChips('scGenPhoto', [['', '넣지 않음'], ['Y', '워드에 넣기']], ['']);
 		$('#scGenPhoto [data-v=Y]').prop('disabled', !photo).attr('title', photo ? '서류 탭 증명사진을 워드 첫 장에 넣어요' : '서류 탭에 증명사진 파일이 없어요');
 		$('#scGenModal').modal('show');
+		if (!d.items.length) {
+			// 고를 프로젝트가 없으면 계산하지 않고 어디서 채우는지 알려 준다
+			$('#scGenSum').text('미리보기 · 0건');
+			$('#scGenView').html('<div class="sc-gen-empty"><b>이 직원은 수행이력이 없습니다.</b><br>수행이력 탭에서 프로젝트를 넣거나, 목록 위 「드라이브에서 일괄 찾기」로 드라이브의 이력카드 워드를 가져오면 여기서 고를 수 있어요.</div>');
+			$('#scGenSave, #scGenWord').prop('disabled', true);
+			return;
+		}
 		genPreview();
+	}
+	// 산업·역할 1단계 칩 → 누르면 그 2단계가 펼쳐지고, 2단계(또는 「1단계 전체」)를 누를 때마다 자리가 하나씩 쌓인다
+	function genTrees() {
+		$('#scGenPick .sc-tree').each(function() {
+			var kind = $(this).attr('data-kind'), list = scGen.codes[kind] || [], open = scGen.open[kind], $t = $(this).empty();
+			var $top = $('<div class="sc-tree-top">').append($('<span class="sc-tree-k">').text(GEN_KIND[kind])).appendTo($t);
+			list.filter(function(n) { return n.indexOf('>') < 0; }).forEach(function(n) {
+				var $c = $('<button type="button" class="sc-chip gray sc-l1">').attr({ 'data-kind': kind, 'data-v': n, 'aria-expanded': open === n }).toggleClass('on', open === n).text(n + ' ▸');
+				$top.append(scGen.edit ? $('<span class="sc-del-wrap">').append($c).append(genDelBtn(kind, n)) : $c);
+			});
+			$top.append($('<input type="text" class="form-control form-control-sm sc-add">').attr({ 'data-kind': kind, placeholder: '＋ 새 ' + GEN_KIND[kind] + ' (예: ' + (kind === 'IND' ? '금융 > 은행' : '개발 > 백엔드') + ')', 'aria-label': '새 ' + GEN_KIND[kind] + ' 추가' }));
+			$top.append($('<button type="button" class="btn btn-link btn-sm sc-edit">').attr('data-kind', kind).text(scGen.edit ? '편집 끝' : '목록 편집'));
+			if (!open) return;
+			var $sub = $('<div class="sc-tree-sub">').appendTo($t);
+			$sub.append($('<button type="button" class="sc-chip sc-pick">').attr({ 'data-kind': kind, 'data-v': open }).text('＋ ' + open + ' 전체'));
+			list.filter(function(n) { return n.indexOf(open + ' >') === 0; }).forEach(function(n) {
+				var $c = $('<button type="button" class="sc-chip sc-pick">').attr({ 'data-kind': kind, 'data-v': n }).text('＋ ' + n.split(' > ')[1]);
+				$sub.append(scGen.edit ? $('<span class="sc-del-wrap">').append($c).append(genDelBtn(kind, n)) : $c);
+			});
+		});
+	}
+	function genDelBtn(kind, n) {
+		return $('<button type="button" class="sc-del">').attr({ 'data-kind': kind, 'data-v': n, 'aria-label': n + ' 목록에서 삭제', title: '목록에서 삭제(공통코드)' }).html('&times;');
+	}
+	function genCode(kind, nm, act) {
+		hrPost('/admin/staff/prjCodeData.do', { KIND: kind, NM: nm, ACT: act }, function(res) {
+			scGen.codes = res.result;
+			career.d.codes = res.result;
+			if (act === 'DEL' && scGen.open[kind] === nm) delete scGen.open[kind];
+			if (act === 'ADD') scGen.open[kind] = nm.split('>')[0].trim();
+			genTrees();
+			toast(nm + (act === 'DEL' ? ' 삭제' : ' 추가') + ' · 공통코드에도 반영');
+		});
+	}
+	function genSlots() {
+		var $s = $('#scGenSlots').empty();
+		if (!scGen.slots.length) { $s.append('<span class="small text-muted">고른 자리 없음 · 아래에서 고르면 그 산업·역할 프로젝트가 고른 순서대로 앞에 놓여요(두 번 고르면 두 줄)</span>'); return; }
+		scGen.slots.forEach(function(s, i) {
+			$s.append($('<span class="sc-slot">').attr('data-kind', s.t).append($('<em>').text((i + 1) + ' ' + GEN_KIND[s.t])).append(document.createTextNode(' ' + s.v))
+				.append($('<button type="button" class="sc-slot-x">').attr({ 'data-i': i, 'aria-label': (i + 1) + '번 자리 ' + s.v + ' 빼기' }).html('&times;')));
+		});
 	}
 	function genPreview() {
 		var conf = genConf();
 		hrPost('/admin/staff/careerGenData.do', { STAFF_SQ: scGen.sq, GEN: JSON.stringify(conf) }, function(res) {
-			var items = res.result || [], hit = items.filter(function(it) { return it.MATCH > 0; }).length;
-			$('#scGenSum').text('미리보기 · ' + items.length + '건' + (conf.skills.length ? ' · 고른 기술이 들어간 프로젝트 ' + hit + '건' : ''));
-			scTable($('#scGenView').empty(), items, { pick: conf.skills, empty: '조건에 맞는 프로젝트가 없습니다. 기간을 늘리거나 산업·역할 선택을 줄여 보세요.' });
-			$('#scGenSave, #scGenWord').prop('disabled', !items.length);
+			var items = res.result || [], real = items.filter(function(it) { return it.EMPTY !== 'Y'; }), hit = real.filter(function(it) { return it.MATCH > 0; }).length;
+			scGen.rows = items;
+			$('#scGenSum').text('미리보기 · ' + real.length + '건' + (items.length > real.length ? ' · 못 채운 자리 ' + (items.length - real.length) : '') + (conf.skills.length ? ' · 고른 기술이 들어간 프로젝트 ' + hit + '건' : ''));
+			genTable(items, conf.skills);
+			$('#scGenSave, #scGenWord').prop('disabled', !real.length);
 		});
 	}
+	// 미리보기 표: ▲▼ 로 옮기거나 기간을 고치면 그 줄은 📌 고정(다음 계산에서도 그 자리·기간), 📌 를 다시 누르면 풀린다
+	function genTable(items, skills) {
+		var now = new Date(), thisYm = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2);
+		var $tb = $('<tbody>');
+		items.forEach(function(it, i) {
+			var $tr = $('<tr>').attr('data-i', i).appendTo($tb);
+			if (it.EMPTY === 'Y') {
+				$tr.addClass('sc-gen-hole').append($('<td>').text(i + 1)).append('<td></td>').append($('<td colspan="7">').text(it.SLOT + ' — 맞는 실제 프로젝트가 없어 비워 둔 자리(저장·워드에는 빠져요)'));
+				return;
+			}
+			var pin = !!scGen.pins[it.KEY];
+			$tr.toggleClass('sc-gen-pin', pin).append($('<td class="text-nowrap">').append($('<span>').text(i + 1 + ' '))
+				.append($('<button type="button" class="st-act sc-mv">').attr({ 'data-d': -1, 'aria-label': it.PRJ_NM + ' 위로', title: '위로(고정됨)' }).prop('disabled', i === 0).text('▲'))
+				.append($('<button type="button" class="st-act sc-mv">').attr({ 'data-d': 1, 'aria-label': it.PRJ_NM + ' 아래로', title: '아래로(고정됨)' }).prop('disabled', i === items.length - 1).text('▼')));
+			$tr.append($('<td>').append($('<button type="button" class="st-act sc-pin">').attr({ 'aria-pressed': pin, 'aria-label': it.PRJ_NM + (pin ? ' 고정 풀기' : ' 고정'), title: pin ? '고정 풀기' : '이 자리·기간 고정' }).toggleClass('sc-pin-off', !pin).text('📌')));
+			$tr.append($('<td>').append(it.SLOT ? $('<span class="sc-slot sm">').text(it.SLOT) : ''));
+			var max = it.ORIG_END || thisYm;
+			$tr.append($('<td class="text-nowrap sc-per">')
+				.append($('<input type="month" class="sc-ym" data-f="start">').attr({ min: it.ORIG_START, max: max, 'aria-label': it.PRJ_NM + ' 시작월(실제 기간 안)' }).val(it.START_YM))
+				.append(' ~ ')
+				.append($('<input type="month" class="sc-ym" data-f="end">').attr({ min: it.ORIG_START, max: max, 'aria-label': it.PRJ_NM + ' 종료월(비우면 진행중)' }).val(it.END_YM || ''))
+				.toggleClass('sc-changed', it.START_YM !== it.ORIG_START || (it.END_YM || '') !== (it.ORIG_END || '')));
+			$tr.append($('<td>').text(it.PRJ_NM)).append($('<td>').text(it.CLIENT_NM || '')).append($('<td>').text(it.IND_NM || '')).append($('<td>').text(it.ROLE_NM || ''))
+				.append($('<td class="text-center">').text(skills.length ? it.MATCH : ''));
+		});
+		if (!items.length) $tb.append('<tr><td colspan="9" class="text-center text-muted py-3">조건에 맞는 프로젝트가 없습니다. 기간을 늘리거나 고른 산업·역할을 줄여 보세요.</td></tr>');
+		$('#scGenView').empty().append($('<div class="table-responsive">').append($('<table class="table table-sm sc-gen-tbl" data-nomore data-no-card>')
+			.append('<thead><tr><th>순서</th><th>고정</th><th>자리</th><th>참여기간</th><th>프로젝트명</th><th>고객사</th><th>산업</th><th>역할</th><th>기술 일치</th></tr></thead>').append($tb)));
+	}
+	// 줄을 지금 자리·기간으로 고정한다
+	function genPinRow(i, extra) {
+		var it = scGen.rows[i];
+		scGen.pins[it.KEY] = $.extend({ pos: i, start: it.START_YM, end: it.END_YM || '' }, extra || {});
+	}
 	function genInit() {
-		$('#scGenModal').on('click', '.sc-chip', function() {
+		$('#scGenModal').on('click', '.sc-chip:not(.sc-l1):not(.sc-pick)', function() {
 			var $c = $(this), $box = $c.parent(), one = $box.is('[data-one]');
 			if (one) $box.children().removeClass('on').attr('aria-pressed', false);
 			$c.toggleClass('on', one || !$c.hasClass('on')).attr('aria-pressed', $c.hasClass('on'));
 			if ($box.is('#scGenPhoto')) return; // 사진은 워드에만 쓰여 미리보기 표와 상관없다
 			genPreview();
 		});
-		// 끄는 동안은 숫자만 바꾸고, 놓으면 미리보기
-		$('#scGenMonths').on('input', function() { volPaint('scGenMonths', ymText); }).on('change', genPreview);
-		$('#scGenMaxR').on('input', function() { volPaint('scGenMaxR', prjText); }).on('change', genPreview);
+		$('#scGenModal').on('click', '.sc-l1', function() {
+			var k = $(this).attr('data-kind'), v = $(this).attr('data-v');
+			scGen.open[k] = scGen.open[k] === v ? null : v;
+			genTrees();
+		}).on('click', '.sc-pick', function() {
+			scGen.slots.push({ t: $(this).attr('data-kind'), v: $(this).attr('data-v') });
+			genSlots();
+			genPreview();
+		}).on('click', '.sc-slot-x', function() {
+			scGen.slots.splice(+$(this).attr('data-i'), 1);
+			genSlots();
+			genPreview();
+		}).on('click', '.sc-edit', function() {
+			scGen.edit = !scGen.edit;
+			genTrees();
+		}).on('click', '.sc-del', function() {
+			var k = $(this).attr('data-kind'), v = $(this).attr('data-v');
+			bootbox.confirm(GEN_KIND[k] + ' 「' + v + '」' + (v.indexOf('>') < 0 ? ' 과 그 아래 항목' : '') + '을 목록에서 뺄까요? 공통코드에서도 빠집니다(이미 고른 자리·수행이력 값은 그대로).', function(ok) { if (ok) genCode(k, v, 'DEL'); });
+		}).on('keydown', '.sc-add', function(e) {
+			if (e.key !== 'Enter' || e.originalEvent.isComposing || !$.trim(this.value)) return;
+			e.preventDefault();
+			genCode($(this).attr('data-kind'), $.trim(this.value), 'ADD');
+		});
+		// 미리보기 표: 옮기기·고정·기간
+		$('#scGenView').on('click', '.sc-mv', function() {
+			var i = +$(this).closest('tr').attr('data-i'), j = i + +$(this).attr('data-d'), a = scGen.rows[i], b = scGen.rows[j];
+			genPinRow(i, { pos: j });
+			if (b && b.EMPTY !== 'Y' && scGen.pins[b.KEY]) scGen.pins[b.KEY].pos = i; // 자리를 바꾼 상대가 고정 줄이면 그 자리도 바꾼다
+			genPreview();
+		}).on('click', '.sc-pin', function() {
+			var i = +$(this).closest('tr').attr('data-i'), it = scGen.rows[i];
+			if (scGen.pins[it.KEY]) delete scGen.pins[it.KEY]; else genPinRow(i);
+			genPreview();
+		}).on('change', '.sc-ym', function() {
+			var $tr = $(this).closest('tr'), i = +$tr.attr('data-i');
+			genPinRow(i, { start: $tr.find('[data-f=start]').val(), end: $tr.find('[data-f=end]').val() });
+			genPreview(); // 서버가 실제 기간 밖이면 실제 값으로 되돌린다
+		});
+		// 막대를 끄는 동안은 숫자 칸만, 놓으면 미리보기. 숫자 칸을 고쳐도 막대가 따라간다
+		$('#scGenMonths, #scGenMaxR').on('input', volPaint).on('change', genPreview);
+		$('#scGenY, #scGenM').on('change', function() {
+			$('#scGenMonths').val(clampNum(clampNum($('#scGenY').val(), 0, 100) * 12 + clampNum($('#scGenM').val(), 0, 11), 1, 1200));
+			volPaint();
+			genPreview();
+		});
+		$('#scGenN').on('change', function() { $('#scGenMaxR').val(clampNum(this.value, 1, 100)); volPaint(); genPreview(); });
 		$('#scGenSave').on('click', function() {
 			hrPost('/admin/staff/saveCareerGenData.do', { STAFF_SQ: scGen.sq, GEN: JSON.stringify(genConf()) }, function(res) { $('#scGenModal').modal('hide'); toast('가필 v' + res.result + ' 로 저장했습니다 (순정은 그대로)'); loadCareer(scGen.sq); });
 		});
@@ -1445,6 +1632,96 @@
 			var d = res.drive || {}, $s = $('#driveStatus').empty().append('<i class="fab fa-google-drive"></i> ');
 			// 서류는 회사 공용 드라이브 연결로 올리고 읽는다(연결은 시스템 관리자가 왼쪽 계정 아래에서)
 			$s.append(document.createTextNode(d.connected ? '공용 드라이브: ' + (d.account || '연결됨') : '공용 드라이브 미연결 · 시스템 관리자에게 연결 요청'));
+			if (d.connected) $s.append(' ').append($('<button type="button" class="btn btn-sm btn-outline-primary py-0 ml-1" id="btnDriveMatch">').text('📂 드라이브에서 일괄 찾기').on('click', openDm));
+		});
+	}
+
+	// ── 드라이브 일괄 찾기: 직원마다 한 번씩 찾고(바꾸는 것 없음), 고른 것만 반영 ──
+	var dm = null; // { list: [직원], found: {STAFF_SQ: 찾은 결과} }
+	function openDm() {
+		dm = { list: filtered(), found: {} };
+		$('#dmBody').empty();
+		$('#dmSum').text('지금 목록 ' + dm.list.length + '명 · 「찾기 시작」을 누르면 한 명씩 찾아요(한 명에 몇 초)');
+		$('#dmFind').prop('disabled', false);
+		$('#dmApply').prop('disabled', true);
+		$('#dmModal').modal('show');
+	}
+	function dmName(f) {
+		return f.FILE_NM + (f.PATH && f.PATH !== f.FILE_NM ? '  (' + f.PATH.replace(/\/?[^/]*$/, '').replace(/ · $/, '') + ')' : '');
+	}
+	function dmRow(r, m) {
+		var same = dm.list.filter(function(x) { return x.STAFF_NM === r.STAFF_NM; }).length > 1;
+		var $tr = $('<tr>').attr('data-sq', r.STAFF_SQ);
+		var $photo = $('<select class="form-control form-control-sm dm-photo">').attr('aria-label', r.STAFF_NM + ' 증명사진').append('<option value="">연결 안 함</option>');
+		(m.photos || []).forEach(function(f) { $photo.append($('<option>').val(f.FILE_ID).text(dmName(f))); });
+		if (m.linkedPhoto) $photo.prop('disabled', true).find('option:first').text('이미 연결됨 (' + m.linkedPhoto + ')');
+		else if ((m.photos || []).length) $photo.val(m.photos[0].FILE_ID);
+		var $word = $('<select class="form-control form-control-sm dm-word">').attr('aria-label', r.STAFF_NM + ' 이력카드 워드').append('<option value="">가져오지 않음</option>');
+		var firstNew = null;
+		(m.words || []).forEach(function(f) {
+			var tail = f.ERR ? ' — ' + f.ERR : f.ROWS != null ? ' — 프로젝트 ' + f.ROWS + '건(새 ' + f.NEW + ')' : '';
+			$word.append($('<option>').val(f.FILE_ID).text(dmName(f) + tail).prop('disabled', !!f.ERR));
+			if (firstNew === null && f.NEW > 0) firstNew = f.FILE_ID;
+		});
+		if (firstNew) $word.val(firstNew);
+		var hit = !!($photo.val() || $word.val());
+		$tr.toggleClass('dm-miss', !(m.photos || []).length && !(m.words || []).length)
+			.append($('<td>').append($('<input type="checkbox" class="dm-chk">').attr('aria-label', r.STAFF_NM + ' 반영').prop('checked', hit && !same)))
+			.append($('<td class="text-nowrap">').text(r.STAFF_NM + ' ').append(same ? $('<span class="badge badge-warning">').text('동명이인 확인') : '').append($('<div class="small text-muted">').text(STATUS[r.STATUS_CD] || '')))
+			.append($('<td class="small">').append(m.folder ? $('<a target="_blank" rel="noopener">').attr('href', 'https://drive.google.com/drive/folders/' + m.folder).text('열기') : $('<span class="text-muted">').text('못 찾음')))
+			.append($('<td>').append($photo)).append($('<td>').append($word)).append($('<td class="small dm-res">'));
+		return $tr;
+	}
+	function dmFilter() { $('#dmBody tr.dm-miss').toggle(!$('#dmOnlyHit').prop('checked')); }
+	// 한 명씩 차례로 부른다(드라이브 호출이 많아 한 번에 다 하면 시간 초과가 난다)
+	function dmEach(list, step, done) {
+		var i = 0;
+		(function next() {
+			if (i >= list.length) { if (window.boLoadText) window.boLoadText(''); done(); return; }
+			var r = list[i++];
+			if (window.boLoadText) window.boLoadText(i + '/' + list.length + ' · ' + r.STAFF_NM);
+			step(r, function() { next(); });
+		})();
+	}
+	function dmInit() {
+		$('#dmOnlyHit').on('change', dmFilter);
+		$('#dmFind').on('click', function() {
+			$(this).prop('disabled', true);
+			var hits = 0;
+			dmEach(dm.list, function(r, next) {
+				$.post('/admin/staff/driveMatchData.do', { STAFF_SQ: r.STAFF_SQ }).done(function(res) {
+					if (res.error) { $('#dmBody').append($('<tr class="dm-miss">').append($('<td>')).append($('<td>').text(r.STAFF_NM)).append($('<td colspan="4" class="small text-danger">').text(res.error))); return; }
+					dm.found[r.STAFF_SQ] = res.result;
+					var $tr = dmRow(r, res.result).appendTo('#dmBody');
+					if (!$tr.hasClass('dm-miss')) hits++;
+				}).always(function() { $('#dmSum').text('찾는 중 · ' + Object.keys(dm.found).length + '/' + dm.list.length + '명 · 찾은 직원 ' + hits); dmFilter(); next(); });
+			}, function() {
+				$('#dmSum').text(dm.list.length + '명 중 ' + hits + '명에게서 사진·워드를 찾았어요. 고른 것만 「선택 반영」');
+				$('#dmApply').prop('disabled', !hits);
+				dmFilter();
+			});
+		});
+		$('#dmApply').on('click', function() {
+			var picks = $('#dmBody tr').filter(function() { return $(this).find('.dm-chk').prop('checked') && ($(this).find('.dm-photo').val() || $(this).find('.dm-word').val()); });
+			if (!picks.length) { bootbox.alert('반영할 직원을 골라 주세요.'); return; }
+			bootbox.confirm(picks.length + '명에게 반영할까요? 증명사진은 서류 탭에 연결되고, 워드는 수행이력에 없는 프로젝트만 더해집니다.', function(ok) {
+				if (!ok) return;
+				$('#dmApply').prop('disabled', true);
+				var list = picks.map(function() { return find($(this).attr('data-sq')); }).get(), done = 0;
+				dmEach(list, function(r, next) {
+					var $tr = $('#dmBody tr[data-sq="' + r.STAFF_SQ + '"]'), photo = $tr.find('.dm-photo:enabled').val() || '', word = $tr.find('.dm-word').val() || '';
+					$.post('/admin/staff/driveMatchApplyData.do', { STAFF_SQ: r.STAFF_SQ, PHOTO_ID: photo, WORD_ID: word }).done(function(res) {
+						if (res.error) { $tr.find('.dm-res').addClass('text-danger').text(res.error); return; }
+						var o = res.result || {};
+						done++;
+						$tr.find('.dm-chk').prop({ checked: false, disabled: true });
+						$tr.find('.dm-res').addClass('text-success').text([o.photo ? '사진 연결' : '', word ? '프로젝트 +' + (o.added || 0) : ''].filter(Boolean).join(' · ') || '바뀐 것 없음');
+					}).fail(function() { $tr.find('.dm-res').addClass('text-danger').text('전송 실패'); }).always(next);
+				}, function() {
+					toast(done + '명 반영 완료');
+					load();
+				});
+			});
 		});
 	}
 

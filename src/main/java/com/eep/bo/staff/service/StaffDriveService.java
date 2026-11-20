@@ -86,6 +86,23 @@ public class StaffDriveService {
 		if (hasText(saved)) {
 			return saved;
 		}
+		String id = findPersonFolder(staff, token);
+		if (id == null) {
+			String name = str(staff.get("STAFF_NM"));
+			// 대기(교육생) 카드는 입사 전이라 '(0000.00.00) 이름'
+			String folderName = "WAIT".equals(str(staff.get("STATUS_CD"))) ? traineeName(name) : personName(staff);
+			id = drive.createFolder(folderName, groupId(groupFolderName(str(staff.get("STATUS_CD")), str(staff.get("ORG_NM"))), token), token);
+		}
+		saveFolder(staff.get("STAFF_SQ"), id);
+		return id;
+	}
+
+	/** 사람 폴더를 찾기만 한다(저장된 것 → 구분 폴더에서 '(입사일) 성명'). 없으면 null */
+	private String findPersonFolder(Map<String, Object> staff, String token) {
+		String saved = str(staff.get("DRIVE_FOLDER_ID"));
+		if (hasText(saved)) {
+			return saved;
+		}
 		String name = str(staff.get("STAFF_NM")), left = conf.get("STAFF", "LEFT");
 		boolean isLeft = "LEFT".equals(str(staff.get("STATUS_CD")));
 		List<Map<String, Object>> groups = new ArrayList<>();
@@ -100,12 +117,6 @@ public class StaffDriveService {
 			q.append(")");
 			id = pickPersonFolder(drive.search(q.toString(), token), name, str(staff.get("JOIN_DT")));
 		}
-		if (id == null) {
-			// 대기(교육생) 카드는 입사 전이라 '(0000.00.00) 이름'
-			String folderName = "WAIT".equals(str(staff.get("STATUS_CD"))) ? traineeName(name) : personName(staff);
-			id = drive.createFolder(folderName, groupId(groupFolderName(str(staff.get("STATUS_CD")), str(staff.get("ORG_NM"))), token), token);
-		}
-		saveFolder(staff.get("STAFF_SQ"), id);
 		return id;
 	}
 
@@ -333,6 +344,64 @@ public class StaffDriveService {
 		Map<String, Object> out = new HashMap<>();
 		out.put("files", files);
 		out.put("folderLink", "https://drive.google.com/drive/folders/" + person);
+		return out;
+	}
+
+	static final String DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+	private static final Pattern PHOTO_NAME = Pattern.compile("사진|프로필|photo|profile", Pattern.CASE_INSENSITIVE);
+	private static final Pattern CAREER_NAME = Pattern.compile("이력|경력|프로필|skill|인벤토리|inventory", Pattern.CASE_INSENSITIVE);
+	/** 이 시스템이 만든 워드(이력카드(시스템)·지원 프로필 _수행이력_v1)는 가져올 원본이 아니다 */
+	private static final Pattern SYSTEM_WORD = Pattern.compile("\\(시스템\\)|_수행이력_v?\\d");
+
+	/**
+	 * 드라이브 일괄 매핑 미리보기(아무것도 바꾸지 않는다, 폴더도 만들지 않는다).
+	 * 사람 폴더와 그 하위 폴더 한 단계, 그리고 공유 드라이브 전체에서 이름(앞뒤가 한글이 아닌 성명)이 들어간 파일을 본다.
+	 * @return folder(사람 폴더 ID 또는 null), photos·words 후보 {FILE_ID, FILE_NM, PATH, MIME_TYPE, WEB_LINK}, linkedPhoto(이미 연결된 증명사진 수)
+	 */
+	public Map<String, Object> match(Object staffSq) {
+		Map<String, Object> staff = staff(staffSq);
+		String token = token(), name = str(staff.get("STAFF_NM"));
+		Pattern who = Pattern.compile("(?<![가-힣])" + Pattern.quote(name) + "(?![가-힣])");
+		String folder = findPersonFolder(staff, token);
+		List<Map<String, Object>> files = new ArrayList<>();
+		java.util.Set<String> seen = new java.util.HashSet<>();
+		if (folder != null) {
+			for (Map<String, Object> f : drive.children(folder, token)) {
+				if (GoogleDriveApi.FOLDER.equals(f.get("mimeType"))) {
+					for (Map<String, Object> d : drive.children(str(f.get("id")), token)) if (seen.add(str(d.get("id")))) addScanned(files, d, f.get("name") + "/");
+				} else if (seen.add(str(f.get("id")))) addScanned(files, f, "");
+			}
+		}
+		for (Map<String, Object> f : drive.search("name contains '" + quoteQ(name) + "' and trashed = false and (mimeType contains 'image/' or mimeType = '" + DOCX + "')", token)) {
+			if (who.matcher(str(f.get("name"))).find() && seen.add(str(f.get("id")))) addScanned(files, f, "드라이브 검색 · ");
+		}
+		List<Map<String, Object>> photos = new ArrayList<>(), words = new ArrayList<>();
+		for (Map<String, Object> f : files) {
+			String n = str(f.get("FILE_NM")), mime = str(f.get("MIME_TYPE"));
+			boolean inFolder = !str(f.get("PATH")).startsWith("드라이브 검색");
+			if (mime.startsWith("image/") && ("DOC_PHOTO".equals(f.get("GUESS")) || PHOTO_NAME.matcher(n).find())) photos.add(f);
+			// 사람 폴더 안 워드는 이름이 무엇이든 후보, 드라이브 검색은 이력·경력 같은 이름일 때만
+			if (DOCX.equals(mime) && !SYSTEM_WORD.matcher(n).find() && (inFolder || CAREER_NAME.matcher(n).find())) words.add(f);
+		}
+		words.sort((a, b) -> Boolean.compare(!CAREER_NAME.matcher(str(a.get("FILE_NM"))).find(), !CAREER_NAME.matcher(str(b.get("FILE_NM"))).find()));
+		int linked = 0;
+		for (Map<String, Object> d : docs(staffSq)) if ("DOC_PHOTO".equals(d.get("DOC_CD"))) linked++;
+		Map<String, Object> out = new HashMap<>();
+		out.put("folder", folder);
+		out.put("photos", photos);
+		out.put("words", words);
+		out.put("linkedPhoto", linked);
+		return out;
+	}
+
+	/** 드라이브 워드 파일 내용(.docx 만). {name, data} */
+	public Map<String, Object> wordFile(String fileId) {
+		String token = token();
+		Map<String, Object> file = drive.file(fileId, token);
+		if (!DOCX.equals(file.get("mimeType"))) throw new IllegalArgumentException("워드(.docx) 파일이 아닙니다: " + str(file.get("name")));
+		Map<String, Object> out = new HashMap<>();
+		out.put("name", file.get("name"));
+		out.put("data", drive.download(file, token));
 		return out;
 	}
 

@@ -166,6 +166,7 @@ public class StaffCareerService {
 		out.put("edit", edit);
 		out.put("logs", jdbc.queryForList("SELECT ACT_CD, PRJ_NM, DETAIL, REG_EMPLY_ID, DATE_FORMAT(REG_DT, '%m-%d %H:%i') AS REG_DT FROM TB_EEP_HR_STAFF_PRJ_LOG_H WHERE STAFF_SQ = ? ORDER BY LOG_SQ DESC LIMIT 30", staffSq));
 		out.put("chips", chips(staffSq));
+		out.put("codes", prjCodes()); // 자동생성 산업·역할 2단계 목록
 		return out;
 	}
 
@@ -295,23 +296,20 @@ public class StaffCareerService {
 	// ── 프로필 자동생성(가필) ──
 
 	/**
-	 * 최신 순정 버전(없으면 지금 내용)에서 실제 있는 프로젝트만 골라 순서·기술 표시만 바꾼다. 없는 프로젝트·기간은 만들지 않는다.
-	 * conf: skills[] 필수 기술, months(0 전체) 최근 N개월 안에 끝났거나 진행중(옛 설정 years 도 읽음), max(0 전체), sort match|recent,
-	 * inds[]·roles[] 산업·역할 중 하나라도 맞는 것만(비면 전체), photo 워드에 증명사진. 옛 설정의 deploy·ext 포함 범위, show front|only 도 그대로 읽는다
+	 * 최신 순정 버전(없으면 지금 내용)의 실제 프로젝트로만 프로필을 짠다. 없는 프로젝트는 만들지 않고, 기간은 실제 참여 기간 안에서만 좁힌다.
+	 * conf: skills[] 필수 기술, months 최근 N개월 안에 끝났거나 진행중(1~1200, 옛 설정 0·years 도 읽음), max 프로젝트 횟수(1~100, 옛 0 은 전체), sort match|recent,
+	 * slots[{t: IND|ROLE, v: '금융 > 은행'}] 고른 순서대로 한 줄씩 그 산업·역할 프로젝트를 앞에 놓는다(같은 값 두 번이면 두 줄, 못 채우면 EMPTY 자리),
+	 * pins[{key, pos, start, end}] 사람이 옮기거나 기간을 고친 줄(다음 계산에서도 그 자리·기간 유지), photo 워드에 증명사진.
+	 * 옛 설정의 inds[]·roles[] 거르기, deploy·ext 포함 범위, show front|only 도 그대로 읽는다.
+	 * 돌려주는 줄: 프로젝트 칸 + MATCH(기술 일치 수), SLOT(채운 자리 이름), PIN(Y), KEY, ORIG_START·ORIG_END(실제 기간), EMPTY(Y 면 못 채운 자리 — 저장·워드에는 빠진다)
 	 */
 	public List<Map<String, Object>> generate(Object staffSq, Map<String, Object> conf) {
 		List<String> skills = strs(conf.get("skills")), inds = strs(conf.get("inds")), roles = strs(conf.get("roles"));
-		int months = conf.containsKey("months") ? num(conf.get("months")) : num(conf.get("years")) * 12, max = num(conf.get("max"));
+		int months = conf.containsKey("months") ? num(conf.get("months")) : num(conf.get("years")) * 12, max = Math.min(100, num(conf.get("max")));
 		boolean deploy = !Boolean.FALSE.equals(conf.get("deploy")), ext = !Boolean.FALSE.equals(conf.get("ext")), only = "only".equals(conf.get("show"));
-		String cutYm = months > 0 ? LocalDate.now().minusMonths(months).toString().substring(0, 7) : "";
-		List<Map<String, Object>> out = new ArrayList<>();
+		String cutYm = months > 0 ? LocalDate.now().minusMonths(Math.min(1200, months)).toString().substring(0, 7) : "";
+		List<Map<String, Object>> all = new ArrayList<>(), pool = new ArrayList<>();
 		for (Map<String, Object> it : versionItems(staffSq, "")) {
-			boolean isDeploy = "DEPLOY".equals(it.get("SRC"));
-			if (isDeploy ? !deploy : !ext) continue;
-			String end = s(it.get("END_YM"));
-			if (!cutYm.isEmpty() && !end.isEmpty() && end.compareTo(cutYm) < 0) continue;
-			if (!inds.isEmpty() && Collections.disjoint(inds, tokens(s(it.get("IND_NM"))))) continue;
-			if (!roles.isEmpty() && Collections.disjoint(roles, tokens(s(it.get("ROLE_NM"))))) continue;
 			Map<String, Object> m = new LinkedHashMap<>(it);
 			int hit = 0;
 			for (String c : TECH) {
@@ -324,19 +322,220 @@ public class StaffCareerService {
 				}
 			}
 			m.put("MATCH", hit);
-			out.add(m);
+			m.put("KEY", key(it));
+			m.put("ORIG_START", s(it.get("START_YM")));
+			m.put("ORIG_END", s(it.get("END_YM")));
+			all.add(m);
+			boolean isDeploy = "DEPLOY".equals(it.get("SRC"));
+			String end = s(it.get("END_YM"));
+			if (isDeploy ? !deploy : !ext) continue;
+			if (!cutYm.isEmpty() && !end.isEmpty() && end.compareTo(cutYm) < 0) continue;
+			if (!inds.isEmpty() && Collections.disjoint(inds, tokens(s(it.get("IND_NM"))))) continue;
+			if (!roles.isEmpty() && Collections.disjoint(roles, tokens(s(it.get("ROLE_NM"))))) continue;
+			pool.add(m);
 		}
 		// 정렬은 안정 정렬이라 같은 일치 수 안에서는 원래 순서(진행중 먼저·최근순)를 지킨다
-		if ("match".equals(conf.get("sort"))) out.sort((a, b) -> num(b.get("MATCH")) - num(a.get("MATCH")));
-		return max > 0 && out.size() > max ? new ArrayList<>(out.subList(0, max)) : out;
+		if ("match".equals(conf.get("sort"))) pool.sort((a, b) -> num(b.get("MATCH")) - num(a.get("MATCH")));
+		return arrange(all, pool, conf, max);
+	}
+
+	/** 줄 배치: 고정 줄은 그 자리에, 고른 자리는 순서대로 가장 잘 맞는 프로젝트로, 나머지는 pool 순서대로 max 줄까지(0 이면 전부). all·pool 의 줄은 KEY·ORIG_START·ORIG_END 를 가진다 */
+	static List<Map<String, Object>> arrange(List<Map<String, Object>> all, List<Map<String, Object>> pool, Map<String, Object> conf, int max) {
+		// 고정 줄: 기간 안에 없어도 사람이 고정했으면 남긴다. 기간은 실제 기간 안으로만 자른다
+		Map<Integer, Map<String, Object>> pinned = new java.util.TreeMap<>();
+		Set<String> used = new java.util.HashSet<>();
+		if (conf.get("pins") instanceof List) {
+			for (Object o : (List<?>) conf.get("pins")) {
+				if (!(o instanceof Map)) continue;
+				Map<?, ?> p = (Map<?, ?>) o;
+				Map<String, Object> it = null;
+				for (Map<String, Object> m : all) if (m.get("KEY").equals(s(p.get("key"))) && !used.contains(m.get("KEY"))) it = m;
+				if (it == null) continue;
+				used.add(s(it.get("KEY")));
+				it.put("PIN", "Y");
+				narrow(it, s(p.get("start")), s(p.get("end")));
+				int pos = Math.max(0, num(p.get("pos")));
+				while (pinned.containsKey(pos)) pos++;
+				pinned.put(pos, it);
+			}
+		}
+		// 고른 자리: 고른 순서대로 아직 안 쓴 프로젝트 중 가장 잘 맞는 것(전체 값·2단계 이름 > 1단계 이름)
+		List<Map<String, Object>> picked = new ArrayList<>();
+		if (conf.get("slots") instanceof List) {
+			for (Object o : (List<?>) conf.get("slots")) {
+				if (!(o instanceof Map)) continue;
+				Map<?, ?> sl = (Map<?, ?>) o;
+				String col = "ROLE".equals(sl.get("t")) ? "ROLE_NM" : "IND_NM", tag = s(sl.get("v"));
+				Map<String, Object> best = null;
+				int bestScore = 0;
+				for (Map<String, Object> m : pool) {
+					if (used.contains(m.get("KEY"))) continue;
+					int sc = tagScore(tokens(s(m.get(col))), tag);
+					if (sc > bestScore) { best = m; bestScore = sc; }
+				}
+				if (best == null) {
+					Map<String, Object> e = new LinkedHashMap<>();
+					e.put("EMPTY", "Y");
+					e.put("SLOT", tag);
+					picked.add(e);
+					continue;
+				}
+				used.add(s(best.get("KEY")));
+				best.put("SLOT", tag);
+				picked.add(best);
+			}
+		}
+		// 나머지는 정렬 순서대로, 실제 줄 수가 프로젝트 횟수가 될 때까지
+		int limit = max > 0 ? max : Integer.MAX_VALUE;
+		int real = pinned.size();
+		List<Map<String, Object>> body = new ArrayList<>();
+		for (Map<String, Object> m : picked) {
+			if (!"Y".equals(m.get("EMPTY"))) { if (real >= limit) continue; real++; }
+			body.add(m);
+		}
+		for (Map<String, Object> m : pool) {
+			if (real >= limit) break;
+			if (used.contains(m.get("KEY"))) continue;
+			used.add(s(m.get("KEY")));
+			body.add(m);
+			real++;
+		}
+		for (Map.Entry<Integer, Map<String, Object>> e : pinned.entrySet()) body.add(Math.min(e.getKey(), body.size()), e.getValue());
+		return body;
+	}
+
+	/** 고른 산업·역할(예: '금융 > 은행')과 프로젝트 값의 맞는 정도. 3 전체 값, 2 2단계 이름(은행), 1 1단계 이름(금융), 0 안 맞음 */
+	static int tagScore(List<String> values, String tag) {
+		String[] p = tag.split("\\s*>\\s*");
+		int best = 0;
+		for (String v : values) {
+			String n = v.replaceAll("\\s*>\\s*", " > ").trim();
+			if (n.equals(tag)) return 3;
+			if (p.length > 1 && (n.equals(p[1]) || n.endsWith("> " + p[1]))) best = Math.max(best, 2);
+			if (n.equals(p[0]) || n.startsWith(p[0] + " >")) best = Math.max(best, p.length > 1 ? 1 : 3);
+		}
+		return best;
+	}
+
+	/** 사람이 고친 기간을 실제 참여 기간 안으로만 받는다(진행중이면 끝은 이번 달까지). 형식이 틀리면 실제 기간 그대로 */
+	static void narrow(Map<String, Object> it, String start, String end) {
+		String os = s(it.get("ORIG_START")), oe = s(it.get("ORIG_END")), now = LocalDate.now().toString().substring(0, 7), hi = oe.isEmpty() ? now : oe;
+		String ns = start.matches(YM) && start.compareTo(os) >= 0 && start.compareTo(hi) <= 0 ? start : os;
+		String ne = end.isEmpty() ? oe : end.matches(YM) && end.compareTo(ns) >= 0 && end.compareTo(hi) <= 0 ? end : oe;
+		it.put("START_YM", ns);
+		it.put("END_YM", ne);
+	}
+
+	/** 못 채운 자리(EMPTY)는 빼고 실제 프로젝트만 */
+	private static List<Map<String, Object>> real(List<Map<String, Object>> items) {
+		List<Map<String, Object>> out = new ArrayList<>();
+		for (Map<String, Object> m : items) if (!"Y".equals(m.get("EMPTY"))) out.add(m);
+		return out;
+	}
+
+	// ── 산업·역할 2단계 목록(공통코드 HR_PRJ_IND·HR_PRJ_ROLE, 이름이 '1단계' 또는 '1단계 > 2단계') ──
+	// 그룹이 아직 없으면 기본 목록을 보여 주고, 화면에서 처음 추가·삭제할 때 그룹과 기본 목록을 만든다
+
+	static final Map<String, String[]> PRJ_CODE_DEFAULT = new LinkedHashMap<>();
+	static {
+		PRJ_CODE_DEFAULT.put("IND", new String[] { "금융", "금융 > 은행", "금융 > 증권", "금융 > 보험", "금융 > 카드", "금융 > 캐피탈", "공공", "공공 > 중앙부처", "공공 > 지자체", "공공 > 공기업",
+				"공공 > 교육", "제조", "제조 > 전자", "제조 > 자동차", "제조 > 화학", "유통", "유통 > 이커머스", "유통 > 물류", "통신", "통신 > 통신사", "통신 > 방송", "의료", "의료 > 병원", "의료 > 제약",
+				"서비스", "서비스 > 포털", "서비스 > 게임", "서비스 > 여행" });
+		PRJ_CODE_DEFAULT.put("ROLE", new String[] { "관리", "관리 > PM", "관리 > PL", "분석·설계", "분석·설계 > 분석", "분석·설계 > 설계", "분석·설계 > 아키텍트", "개발", "개발 > 백엔드",
+				"개발 > 프론트엔드", "개발 > 모바일", "개발 > DB", "운영", "운영 > 운영", "운영 > 유지보수", "품질", "품질 > 테스트", "품질 > QA" });
+	}
+
+	private static String codeGroup(String kind) {
+		if (!PRJ_CODE_DEFAULT.containsKey(kind)) throw new IllegalArgumentException("산업·역할 구분이 올바르지 않습니다.");
+		return "IND".equals(kind) ? "HR_PRJ_IND" : "HR_PRJ_ROLE";
+	}
+
+	/** {IND: [...], ROLE: [...]} 이름 목록(1단계 뒤에 그 2단계가 오게) */
+	public Map<String, List<String>> prjCodes() {
+		Map<String, List<String>> out = new LinkedHashMap<>();
+		for (String kind : PRJ_CODE_DEFAULT.keySet()) {
+			List<Map<String, Object>> g = jdbc.queryForList("SELECT COMN_CD_SQ FROM TB_EEP_COMN_CD_M WHERE COMN_CD = ? AND DEL_YN = 'N'", codeGroup(kind));
+			List<String> names = g.isEmpty() ? new ArrayList<>(Arrays.asList(PRJ_CODE_DEFAULT.get(kind)))
+					: jdbc.queryForList("SELECT COMN_DTL_CD_NM FROM TB_EEP_COMN_DTL_CD_S WHERE COMN_CD_SQ = ? AND DEL_YN = 'N' AND USE_YN = 'Y' ORDER BY COMN_DTL_CD_ORD, COMN_DTL_CD_SQ", String.class, g.get(0).get("COMN_CD_SQ"));
+			out.put(kind, tree(names));
+		}
+		return out;
+	}
+
+	/** 1단계 순서대로, 각 1단계 바로 뒤에 그 2단계들 */
+	private static List<String> tree(List<String> names) {
+		List<String> out = new ArrayList<>();
+		for (String n : names) if (!n.contains(">") && !out.contains(n)) {
+			out.add(n);
+			for (String c : names) if (c.startsWith(n + " >") && !out.contains(c)) out.add(c);
+		}
+		return out;
+	}
+
+	/** '금융>은행' 같은 입력을 '금융 > 은행' 으로. 2단계까지, 쉼표 불가(여러 값 칸의 구분자), 50자 */
+	static String codeName(String raw) {
+		String[] p = s(raw).split(">");
+		if (p.length > 2) throw new IllegalArgumentException("2단계까지만 넣을 수 있습니다. 예) 금융 > 은행");
+		List<String> parts = new ArrayList<>();
+		for (String x : p) {
+			String t = x.trim().replaceAll("\\s+", " ");
+			if (t.isEmpty() || t.contains(",")) throw new IllegalArgumentException("이름이 비었거나 쉼표가 들어 있습니다.");
+			parts.add(t);
+		}
+		String n = String.join(" > ", parts);
+		if (n.length() > 50) throw new IllegalArgumentException("50자까지 넣을 수 있습니다.");
+		return n;
+	}
+
+	/** 추가(2단계면 1단계도 없으면 같이). 그룹이 없으면 기본 목록과 함께 만든다 */
+	public Map<String, List<String>> addPrjCode(String kind, String raw) {
+		String n = codeName(raw);
+		tx.execute(st -> {
+			int g = ensureCodeGroup(kind);
+			List<String> add = new ArrayList<>();
+			if (n.contains(">")) add.add(n.substring(0, n.indexOf(" >")));
+			add.add(n);
+			for (String a : add) insertCode(g, a);
+			return null;
+		});
+		return prjCodes();
+	}
+
+	/** 삭제(1단계면 그 2단계도). 공통코드는 지우지 않고 DEL_YN 만 바꾼다 */
+	public Map<String, List<String>> deletePrjCode(String kind, String raw) {
+		String n = codeName(raw);
+		tx.execute(st -> {
+			int g = ensureCodeGroup(kind);
+			jdbc.update("UPDATE TB_EEP_COMN_DTL_CD_S SET DEL_YN = 'Y', UPDT_DT = NOW() WHERE COMN_CD_SQ = ? AND DEL_YN = 'N' AND (COMN_DTL_CD_NM = ? OR COMN_DTL_CD_NM LIKE ?)",
+					g, n, n.contains(">") ? n : n + " >%");
+			return null;
+		});
+		return prjCodes();
+	}
+
+	private int ensureCodeGroup(String kind) {
+		String grp = codeGroup(kind);
+		List<Integer> g = jdbc.queryForList("SELECT COMN_CD_SQ FROM TB_EEP_COMN_CD_M WHERE COMN_CD = ? AND DEL_YN = 'N'", Integer.class, grp);
+		if (!g.isEmpty()) return g.get(0);
+		jdbc.update("INSERT INTO TB_EEP_COMN_CD_M (COMN_CD, COMN_CD_NM, NOTE, REG_DT, USE_YN, DEL_YN) VALUES (?, ?, ?, NOW(), 'Y', 'N')", grp,
+				"IND".equals(kind) ? "수행이력 산업(2단계)" : "수행이력 역할(2단계)", "직원관리 자동생성");
+		int sq = jdbc.queryForObject("SELECT COMN_CD_SQ FROM TB_EEP_COMN_CD_M WHERE COMN_CD = ? AND DEL_YN = 'N'", Integer.class, grp);
+		for (String n : PRJ_CODE_DEFAULT.get(kind)) insertCode(sq, n);
+		return sq;
+	}
+
+	private void insertCode(int group, String name) {
+		if (jdbc.queryForObject("SELECT COUNT(*) FROM TB_EEP_COMN_DTL_CD_S WHERE COMN_CD_SQ = ? AND COMN_DTL_CD_NM = ? AND DEL_YN = 'N'", Integer.class, group, name) > 0) return;
+		jdbc.update("INSERT INTO TB_EEP_COMN_DTL_CD_S (COMN_CD_SQ, COMN_DTL_CD, COMN_DTL_CD_NM, COMN_DTL_CD_ORD, REG_DT, USE_YN, DEL_YN)"
+				+ " SELECT ?, ?, ?, IFNULL(MAX(COMN_DTL_CD_ORD), 0) + 1, NOW(), 'Y', 'N' FROM TB_EEP_COMN_DTL_CD_S WHERE COMN_CD_SQ = ?", group, name, name, group);
 	}
 
 	/** 자동생성 결과를 가필 버전으로 남긴다(순정은 그대로). @return 새 버전 번호 */
 	public int saveGenerated(Object staffSq, String confJson, String loginId) {
 		Map<String, Object> conf = parseMap(confJson);
 		return tx.execute(st -> {
-			List<Map<String, Object>> items = generate(staffSq, conf);
-			if (items.isEmpty()) throw new IllegalArgumentException("조건에 맞는 프로젝트가 없습니다. 기간을 늘리거나 산업·역할 선택을 줄여 주세요.");
+			List<Map<String, Object>> items = real(generate(staffSq, conf));
+			if (items.isEmpty()) throw new IllegalArgumentException("조건에 맞는 프로젝트가 없습니다. 기간을 늘리거나 고른 산업·역할을 줄여 주세요.");
 			Map<String, Object> base = latest(staffSq);
 			Object baseNo = base == null ? null : base.get("VER_NO");
 			String d = diff(base == null ? items(staffSq) : parse((String) base.get("SNAPSHOT")), items);
@@ -351,7 +550,7 @@ public class StaffCareerService {
 
 	/** 자동생성 결과로 바로 워드 */
 	public byte[] generatedWord(Object staffSq, String confJson, Object[] photo) {
-		List<Map<String, Object>> items = generate(staffSq, parseMap(confJson));
+		List<Map<String, Object>> items = real(generate(staffSq, parseMap(confJson)));
 		if (items.isEmpty()) throw new IllegalArgumentException("조건에 맞는 프로젝트가 없습니다.");
 		return word(staffSq, items, photo);
 	}

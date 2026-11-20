@@ -80,6 +80,54 @@ public class StaffPrjCheck {
 		}
 		check(StaffCareerWord.parse(new ByteArrayInputStream(withPhoto)).size() == items.size(), "사진 넣어도 프로젝트 줄 수 같음");
 
+		// 자동생성 자리 맞추기: 전체 값 > 2단계 이름 > 1단계 이름
+		check(StaffCareerService.tagScore(Arrays.asList("금융 > 은행"), "금융 > 은행") == 3 && StaffCareerService.tagScore(Arrays.asList("금융>은행"), "금융 > 은행") == 3, "자리: 전체 값");
+		check(StaffCareerService.tagScore(Arrays.asList("은행"), "금융 > 은행") == 2 && StaffCareerService.tagScore(Arrays.asList("금융"), "금융 > 은행") == 1, "자리: 2단계·1단계 이름");
+		check(StaffCareerService.tagScore(Arrays.asList("금융 > 증권"), "금융 > 은행") == 1 && StaffCareerService.tagScore(Arrays.asList("공공"), "금융 > 은행") == 0, "자리: 다른 2단계는 1단계만큼, 다른 산업은 0");
+		check(StaffCareerService.tagScore(Arrays.asList("금융 > 은행"), "금융") == 3, "자리: 1단계만 고르면 그 아래 다 맞음");
+		// 기간 조정은 실제 기간 안에서만
+		Map<String, Object> per = new HashMap<>();
+		per.put("ORIG_START", "2020-01");
+		per.put("ORIG_END", "2022-12");
+		StaffCareerService.narrow(per, "2021-03", "2022-06");
+		check("2021-03".equals(per.get("START_YM")) && "2022-06".equals(per.get("END_YM")), "기간: 안쪽으로 좁힘");
+		StaffCareerService.narrow(per, "2019-01", "2024-01");
+		check("2020-01".equals(per.get("START_YM")) && "2022-12".equals(per.get("END_YM")), "기간: 밖으로는 못 늘림");
+		StaffCareerService.narrow(per, "2022-05", "2021-01");
+		check("2022-05".equals(per.get("START_YM")) && "2022-12".equals(per.get("END_YM")), "기간: 끝이 시작보다 빠르면 실제 끝");
+		// 배치: 금융 > 은행 두 자리 → 은행 프로젝트 두 줄, 세 번째 자리는 못 채움, 고정 줄은 그 자리
+		List<Map<String, Object>> all = new ArrayList<>();
+		String[][] ps = { { "A", "공공" }, { "B", "금융 > 은행" }, { "C", "금융" }, { "D", "은행" }, { "E", "제조" } };
+		for (String[] x : ps) {
+			Map<String, Object> m = new HashMap<>();
+			m.put("PRJ_NM", x[0]);
+			m.put("IND_NM", x[1]);
+			m.put("KEY", x[0]);
+			m.put("ORIG_START", "2020-01");
+			m.put("ORIG_END", "2020-12");
+			all.add(m);
+		}
+		Map<String, Object> conf = new HashMap<>();
+		List<Map<String, Object>> slots = new ArrayList<>();
+		for (int i = 0; i < 3; i++) slots.add(kv("t", "IND", "v", "금융 > 은행"));
+		conf.put("slots", slots);
+		conf.put("pins", Arrays.asList(kv("key", "E", "pos", 0, "start", "2020-03", "end", "2020-06")));
+		List<Map<String, Object>> ar = StaffCareerService.arrange(all, new ArrayList<>(all), conf, 4);
+		check("EBDC".equals(names(ar)), "배치(고정 E 맨 앞, 은행 B·D, 세 번째 자리는 1단계 금융 C): " + names(ar));
+		check("2020-03".equals(ar.get(0).get("START_YM")) && "Y".equals(ar.get(0).get("PIN")), "고정 줄 기간");
+		slots.add(kv("t", "IND", "v", "의료 > 병원"));
+		ar = StaffCareerService.arrange(all, new ArrayList<>(all), conf, 10);
+		check("EBDC_A".equals(names(ar)), "못 채운 자리는 빈칸, 나머지는 순서대로: " + names(ar));
+		check("금융 > 은행".equals(StaffCareerService.codeName(" 금융>은행 ")), "코드 이름 다듬기");
+		for (String bad : new String[] { "a > b > c", "금융, 은행", " > 은행" }) {
+			try {
+				StaffCareerService.codeName(bad);
+				check(false, "막아야 할 코드 이름: " + bad);
+			} catch (IllegalArgumentException e) {
+				// 기대한 대로
+			}
+		}
+
 		Map<String, Object> edu = item("EDU", "대학교(4년제)", " 가나대 ");
 		edu.put("C5", "졸업");
 		BoStaffService.checkItem(edu);
@@ -106,6 +154,19 @@ public class StaffPrjCheck {
 		m.put("START_YM", "2024-01");
 		m.put("END_YM", "2024-03");
 		return m;
+	}
+
+	private static Map<String, Object> kv(Object... kv) {
+		Map<String, Object> m = new HashMap<>();
+		for (int i = 0; i < kv.length; i += 2) m.put((String) kv[i], kv[i + 1]);
+		return m;
+	}
+
+	/** 줄 이름 이어 붙이기(못 채운 자리는 _) */
+	private static String names(List<Map<String, Object>> rows) {
+		StringBuilder b = new StringBuilder();
+		for (Map<String, Object> m : rows) b.append("Y".equals(m.get("EMPTY")) ? "_" : m.get("PRJ_NM"));
+		return b.toString();
 	}
 
 	private static Map<String, Object> with(String k, String v) {

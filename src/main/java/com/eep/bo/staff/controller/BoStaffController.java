@@ -1,6 +1,8 @@
 package com.eep.bo.staff.controller;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -274,6 +276,58 @@ public class BoStaffController {
 		return json("result", "OK");
 	}
 
+	// ── 드라이브 일괄 매핑(증명사진 → 서류 탭, 이력카드 워드 → 수행이력). 화면이 직원마다 한 번씩 부른다 ──
+
+	/** 미리보기: 후보 파일과, 첫 워드 후보를 읽었을 때 새로 들어갈 프로젝트 수(바꾸는 것 없음) */
+	@RequestMapping(value = "/admin/staff/driveMatchData.do", method = RequestMethod.POST)
+	@SuppressWarnings("unchecked")
+	public ModelAndView driveMatchData(@RequestParam("STAFF_SQ") int staffSq) {
+		return drive(() -> {
+			Map<String, Object> m = StaffDriveService.match(staffSq);
+			List<Map<String, Object>> words = (List<Map<String, Object>>) m.get("words");
+			for (Map<String, Object> w : words) {
+				try {
+					int[] n = wordCounts(staffSq, (String) w.get("FILE_ID"));
+					w.put("ROWS", n[0]);
+					w.put("NEW", n[1]);
+				} catch (IOException | RuntimeException e) {
+					w.put("ERR", "이력카드 양식이 아님");
+				}
+				if (words.indexOf(w) >= 2) break; // 앞의 3개만 읽는다(직원마다 드라이브 호출을 줄인다)
+			}
+			return m;
+		});
+	}
+
+	/** 적용: 증명사진을 서류 탭에 연결하고, 워드에서 지금 수행이력에 없는 프로젝트만 더한다(있는 줄은 건드리지 않음) */
+	@RequestMapping(value = "/admin/staff/driveMatchApplyData.do", method = RequestMethod.POST)
+	public ModelAndView driveMatchApplyData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam(value = "PHOTO_ID", required = false) String photoId,
+			@RequestParam(value = "WORD_ID", required = false) String wordId, HttpSession session) {
+		return drive(() -> {
+			Map<String, Object> out = new HashMap<>();
+			if (photoId != null && !photoId.isEmpty()) {
+				StaffDriveService.link(staffSq, "DOC_PHOTO", photoId, loginId(session));
+				out.put("photo", 1);
+			}
+			if (wordId != null && !wordId.isEmpty()) {
+				Map<String, Object> f = StaffDriveService.wordFile(wordId);
+				List<Map<String, Object>> fresh = new ArrayList<>();
+				for (Map<String, Object> r : career.importPreview(staffSq, StaffCareerWord.parse(new java.io.ByteArrayInputStream((byte[]) f.get("data"))))) if ("NEW".equals(r.get("STATE"))) fresh.add(r);
+				out.put("added", fresh.isEmpty() ? 0 : career.importApply(staffSq, fresh, "드라이브 " + f.get("name"), loginId(session)));
+			}
+			return out;
+		});
+	}
+
+	/** {워드의 프로젝트 수, 그중 지금 수행이력에 없는 수} */
+	private int[] wordCounts(int staffSq, String fileId) throws IOException {
+		Map<String, Object> f = StaffDriveService.wordFile(fileId);
+		List<Map<String, Object>> rows = career.importPreview(staffSq, StaffCareerWord.parse(new java.io.ByteArrayInputStream((byte[]) f.get("data"))));
+		int fresh = 0;
+		for (Map<String, Object> r : rows) if ("NEW".equals(r.get("STATE"))) fresh++;
+		return new int[] { rows.size(), fresh };
+	}
+
 	/** 워드를 읽어 지금 내용과 비교만 한다(저장하지 않음) */
 	@RequestMapping(value = "/admin/staff/importCareerPreviewData.do", method = RequestMethod.POST)
 	public ModelAndView importCareerPreviewData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("file") MultipartFile file) throws IOException {
@@ -297,6 +351,12 @@ public class BoStaffController {
 	@RequestMapping(value = "/admin/staff/careerGenData.do", method = RequestMethod.POST)
 	public ModelAndView careerGenData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("GEN") String gen) {
 		return json("result", career.generate(staffSq, StaffCareerService.parseMap(gen)));
+	}
+
+	/** 자동생성 산업·역할 2단계 목록 추가·삭제(공통코드 HR_PRJ_IND·HR_PRJ_ROLE). 직원관리 권한이면 누구나. KIND=IND|ROLE */
+	@RequestMapping(value = "/admin/staff/prjCodeData.do", method = RequestMethod.POST)
+	public ModelAndView prjCodeData(@RequestParam("KIND") String kind, @RequestParam("NM") String nm, @RequestParam("ACT") String act) {
+		return json("result", "DEL".equals(act) ? career.deletePrjCode(kind, nm) : career.addPrjCode(kind, nm));
 	}
 
 	/** 자동생성 결과를 가필 버전으로 저장(순정은 그대로) */
