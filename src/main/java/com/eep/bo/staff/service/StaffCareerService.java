@@ -309,7 +309,8 @@ public class StaffCareerService {
 		boolean deploy = !Boolean.FALSE.equals(conf.get("deploy")), ext = !Boolean.FALSE.equals(conf.get("ext")), only = "only".equals(conf.get("show"));
 		String cutYm = months > 0 ? LocalDate.now().minusMonths(Math.min(1200, months)).toString().substring(0, 7) : "";
 		List<Map<String, Object>> all = new ArrayList<>(), pool = new ArrayList<>();
-		for (Map<String, Object> it : versionItems(staffSq, "")) {
+		// sample: 면접 교육용 샘플 — 이 직원 이력 대신 다른 직원들의 실제 프로젝트에서 고른다(저장은 SAMPLE 버전, 워드에 샘플 표시)
+		for (Map<String, Object> it : Boolean.TRUE.equals(conf.get("sample")) ? samplePool(staffSq) : versionItems(staffSq, "")) {
 			Map<String, Object> m = new LinkedHashMap<>(it);
 			int hit = 0;
 			for (String c : TECH) {
@@ -337,6 +338,44 @@ public class StaffCareerService {
 		// 정렬은 안정 정렬이라 같은 일치 수 안에서는 원래 순서(진행중 먼저·최근순)를 지킨다
 		if ("match".equals(conf.get("sort"))) pool.sort((a, b) -> num(b.get("MATCH")) - num(a.get("MATCH")));
 		return arrange(all, pool, conf, max);
+	}
+
+	// 샘플 재료: 다른 직원들의 지금 수행이력(사내 투입 포함)에서 프로젝트 칸만, 같은 프로젝트·시작월은 한 번. 5분 동안 재사용
+	private volatile List<Map<String, Object>> samplePool;
+	private volatile long sampleAt;
+
+	private List<Map<String, Object>> samplePool(Object staffSq) {
+		if (samplePool == null || System.currentTimeMillis() - sampleAt > 5 * 60 * 1000) {
+			List<Map<String, Object>> out = new ArrayList<>();
+			Set<String> seen = new java.util.HashSet<>();
+			for (Object sq : jdbc.queryForList("SELECT STAFF_SQ FROM TB_EEP_HR_STAFF_PRJ_R UNION SELECT STAFF_SQ FROM TB_EEP_DEPLOY_R WHERE START_DT IS NOT NULL", Object.class)) {
+				for (Map<String, Object> it : items(sq)) {
+					if (!seen.add(key(it))) continue;
+					Map<String, Object> m = new LinkedHashMap<>();
+					for (String c : COLS) m.put(c, it.get(c));
+					m.put("FROM_SQ", s(sq)); // 본인 줄은 빼려고만 쓰고 화면에 내보내지 않는다
+					out.add(m);
+				}
+			}
+			out.sort((a, b) -> s(b.get("START_YM")).compareTo(s(a.get("START_YM")))); // 최근 시작 먼저
+			samplePool = out;
+			sampleAt = System.currentTimeMillis();
+		}
+		List<Map<String, Object>> out = new ArrayList<>();
+		for (Map<String, Object> m : samplePool) {
+			if (s(staffSq).equals(m.get("FROM_SQ"))) continue;
+			Map<String, Object> c = new LinkedHashMap<>(m);
+			c.remove("FROM_SQ");
+			out.add(c);
+		}
+		return out;
+	}
+
+	/** 그 워드가 면접 교육용 샘플인지: 자동생성 설정(gen)의 sample, 또는 고른 버전이 SAMPLE */
+	public boolean isSample(Object staffSq, String verNo, String gen) {
+		if (gen != null && !gen.isEmpty()) return Boolean.TRUE.equals(parseMap(gen).get("sample"));
+		if (verNo == null || verNo.isEmpty() || "EDIT".equals(verNo)) return false;
+		return jdbc.queryForObject("SELECT COUNT(*) FROM TB_EEP_HR_STAFF_PRJ_VER_H WHERE STAFF_SQ = ? AND VER_NO = ? AND VER_KIND = 'SAMPLE'", Integer.class, staffSq, verNo) > 0;
 	}
 
 	/** 줄 배치: 고정 줄은 그 자리에, 고른 자리는 순서대로 가장 잘 맞는 프로젝트로, 나머지는 pool 순서대로 max 줄까지(0 이면 전부). all·pool 의 줄은 KEY·ORIG_START·ORIG_END 를 가진다 */
@@ -536,6 +575,15 @@ public class StaffCareerService {
 		return tx.execute(st -> {
 			List<Map<String, Object>> items = real(generate(staffSq, conf));
 			if (items.isEmpty()) throw new IllegalArgumentException("조건에 맞는 프로젝트가 없습니다. 기간을 늘리거나 고른 산업·역할을 줄여 주세요.");
+			if (Boolean.TRUE.equals(conf.get("sample"))) {
+				// 샘플은 순정·가필과 따로(기준 버전 없음). 되돌리기·지원 프로필·드라이브 저장에는 쓰이지 않는다
+				int no = nextNo(staffSq);
+				String summary = "면접 교육용 샘플 · 다른 직원 이력에서 " + items.size() + "건 (실제 경력 아님)";
+				jdbc.update("INSERT INTO TB_EEP_HR_STAFF_PRJ_VER_H (STAFF_SQ, VER_NO, VER_KIND, GEN_CONF, SNAPSHOT, SUMMARY, PRJ_CNT, REG_EMPLY_ID, REG_DT) VALUES (?, ?, 'SAMPLE', ?, ?, ?, ?, ?, NOW())",
+						staffSq, no, confJson, json(snapshot(items)), summary, items.size(), loginId);
+				log(staffSq, "VERSION", null, "v" + no + " 샘플 저장 · " + summary, loginId);
+				return no;
+			}
 			Map<String, Object> base = latest(staffSq);
 			Object baseNo = base == null ? null : base.get("VER_NO");
 			String d = diff(base == null ? items(staffSq) : parse((String) base.get("SNAPSHOT")), items);
@@ -550,9 +598,10 @@ public class StaffCareerService {
 
 	/** 자동생성 결과로 바로 워드 */
 	public byte[] generatedWord(Object staffSq, String confJson, Object[] photo) {
-		List<Map<String, Object>> items = real(generate(staffSq, parseMap(confJson)));
+		Map<String, Object> conf = parseMap(confJson);
+		List<Map<String, Object>> items = real(generate(staffSq, conf));
 		if (items.isEmpty()) throw new IllegalArgumentException("조건에 맞는 프로젝트가 없습니다.");
-		return word(staffSq, items, photo);
+		return word(staffSq, items, photo, Boolean.TRUE.equals(conf.get("sample")));
 	}
 
 	/** 워드에 증명사진을 넣는지: 자동생성 설정(gen) 또는 그 가필 버전을 만들 때 고른 설정의 photo */
@@ -561,7 +610,7 @@ public class StaffCareerService {
 		Map<String, Object> v = null;
 		if ("EDIT".equals(verNo)) v = latest(staffSq, "EDIT");
 		else if (verNo != null && !verNo.isEmpty()) {
-			List<Map<String, Object>> l = jdbc.queryForList("SELECT GEN_CONF FROM TB_EEP_HR_STAFF_PRJ_VER_H WHERE STAFF_SQ = ? AND VER_NO = ? AND VER_KIND = 'EDIT'", staffSq, verNo);
+			List<Map<String, Object>> l = jdbc.queryForList("SELECT GEN_CONF FROM TB_EEP_HR_STAFF_PRJ_VER_H WHERE STAFF_SQ = ? AND VER_NO = ? AND VER_KIND IN ('EDIT', 'SAMPLE')", staffSq, verNo);
 			v = l.isEmpty() ? null : l.get(0);
 		}
 		return v != null && v.get("GEN_CONF") != null && Boolean.TRUE.equals(parseMap((String) v.get("GEN_CONF")).get("photo"));
@@ -569,8 +618,8 @@ public class StaffCareerService {
 
 	/** 작업 중 내용을 그 순정 버전으로 바꾼다. 사내 투입에서 온 줄의 이름·기간은 투입현황을 따르므로 직접 입력한 줄과 보탠 개발환경만 되돌린다 */
 	public void restore(Object staffSq, String verNo, String loginId) {
-		if (jdbc.queryForObject("SELECT COUNT(*) FROM TB_EEP_HR_STAFF_PRJ_VER_H WHERE STAFF_SQ = ? AND VER_NO = ? AND VER_KIND = 'EDIT'", Integer.class, staffSq, verNo) > 0) {
-			throw new IllegalArgumentException("가필 버전은 제출용이라 작업 중 내용으로 되돌릴 수 없습니다. 순정 버전을 골라 주세요.");
+		if (jdbc.queryForObject("SELECT COUNT(*) FROM TB_EEP_HR_STAFF_PRJ_VER_H WHERE STAFF_SQ = ? AND VER_NO = ? AND VER_KIND IN ('EDIT', 'SAMPLE')", Integer.class, staffSq, verNo) > 0) {
+			throw new IllegalArgumentException("가필·샘플 버전은 작업 중 내용으로 되돌릴 수 없습니다. 순정 버전을 골라 주세요.");
 		}
 		List<Map<String, Object>> snap = versionItems(staffSq, verNo == null || verNo.isEmpty() ? "0" : verNo);
 		tx.execute(st -> {
@@ -636,16 +685,19 @@ public class StaffCareerService {
 	// ── 워드 만들기 ──
 
 	/** 회사 양식 워드. verNo 가 비면 최신 버전(버전이 없으면 지금 내용). 주민번호는 가리고 전화·메일은 원본 양식처럼 넣지 않는다 */
+	/** 지원 프로필(모집)·드라이브 저장용. 면접 교육용 샘플 버전은 밖으로 나가지 않게 막는다 */
 	public byte[] word(Object staffSq, String verNo) {
+		if (isSample(staffSq, verNo, null)) throw new IllegalArgumentException("면접 교육용 샘플 버전은 지원 프로필·드라이브 저장에 쓸 수 없습니다.");
 		return word(staffSq, verNo, null);
 	}
 
+	/** 직원관리에서 내려받기. 샘플 버전이면 워드에 샘플 표시 */
 	public byte[] word(Object staffSq, String verNo, Object[] photo) {
-		return word(staffSq, versionItems(staffSq, verNo), photo);
+		return word(staffSq, versionItems(staffSq, verNo), photo, isSample(staffSq, verNo, null));
 	}
 
-	/** @param photo {확장자 jpeg|png, 바이트} 또는 null */
-	private byte[] word(Object staffSq, List<Map<String, Object>> items, Object[] photo) {
+	/** @param photo {확장자 jpeg|png, 바이트} 또는 null, sample 이면 제목 아래 「면접 교육용 샘플 · 실제 경력 아님」 */
+	private byte[] word(Object staffSq, List<Map<String, Object>> items, Object[] photo, boolean sample) {
 		Map<String, Object> q = new HashMap<>();
 		q.put("STAFF_SQ", staffSq);
 		Map<String, Object> st = staffMapper.selectStaffOne(q);
@@ -653,6 +705,7 @@ public class StaffCareerService {
 		List<Map<String, Object>> extra = staffMapper.selectStaffItemList(q);
 		Map<String, String> info = new HashMap<>();
 		info.put("성명", s(st.get("STAFF_NM")));
+		if (sample) info.put(StaffCareerWord.SAMPLE, "Y");
 		info.put("주민번호", RrnCipher.maskStored((String) st.get("RRN_ENC")));
 		info.put("소속회사", "이에스티소프트");
 		info.put("부서", s(st.get("DEPT_NM")));

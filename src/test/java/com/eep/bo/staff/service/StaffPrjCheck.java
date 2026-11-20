@@ -79,6 +79,15 @@ public class StaffPrjCheck {
 			check(!d.getTables().get(0).getRow(0).getCell(4).getText().contains("PHOTO"), "사진 표시 글자가 남지 않음");
 		}
 		check(StaffCareerWord.parse(new ByteArrayInputStream(withPhoto)).size() == items.size(), "사진 넣어도 프로젝트 줄 수 같음");
+		// 면접 교육용 샘플: 두 쪽 모두 「실제 경력이 아니며」 표시, 프로젝트 줄은 그대로 읽힘
+		Map<String, String> sampleInfo = new HashMap<>(info);
+		sampleInfo.put(StaffCareerWord.SAMPLE, "Y");
+		byte[] sampleDoc = StaffCareerWord.build(sampleInfo, Collections.<String[]> emptyList(), Collections.<String[]> emptyList(), Collections.<String[]> emptyList(), items);
+		try (org.apache.poi.xwpf.usermodel.XWPFDocument d = new org.apache.poi.xwpf.usermodel.XWPFDocument(new ByteArrayInputStream(sampleDoc))) {
+			long notes = d.getParagraphs().stream().filter(p -> p.getText().contains("실제 경력이 아니며")).count();
+			check(notes == 2, "샘플 표시 두 곳: " + notes);
+		}
+		check(StaffCareerWord.parse(new ByteArrayInputStream(sampleDoc)).size() == items.size(), "샘플도 프로젝트 줄 수 같음");
 
 		// 자동생성 자리 맞추기: 전체 값 > 2단계 이름 > 1단계 이름
 		check(StaffCareerService.tagScore(Arrays.asList("금융 > 은행"), "금융 > 은행") == 3 && StaffCareerService.tagScore(Arrays.asList("금융>은행"), "금융 > 은행") == 3, "자리: 전체 값");

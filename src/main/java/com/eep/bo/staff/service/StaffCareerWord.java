@@ -99,12 +99,22 @@ public final class StaffCareerWord {
 		return build(info, schools, careers, trainings, items, null);
 	}
 
+	/** info 에 이 키가 Y 면 면접 교육용 샘플: 두 쪽 제목 아래에 빨간 「실제 경력 아님」 줄 */
+	public static final String SAMPLE = "_SAMPLE";
+
+	private static String sampleNote() {
+		return "<w:p><w:pPr><w:jc w:val=\"center\"/><w:spacing w:after=\"120\"/></w:pPr><w:r><w:rPr>" + font() + "<w:b/><w:color w:val=\"C00000\"/><w:sz w:val=\"20\"/></w:rPr>"
+				+ "<w:t>※ 면접 교육용 샘플 이력입니다. 실제 경력이 아니며 제출용으로 쓸 수 없습니다.</w:t></w:r></w:p>";
+	}
+
 	/** @param photo {확장자 jpeg|png, 바이트} 이면 첫 표 오른쪽에 증명사진 칸(4줄 합침)을 둔다 */
 	public static byte[] build(Map<String, String> info, List<String[]> schools, List<String[]> careers, List<String[]> trainings, List<Map<String, Object>> items, Object[] photo) {
 		StringBuilder b = new StringBuilder();
 		b.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\""
 				+ " xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\"><w:body>");
-		b.append(title("개 인 이 력 카 드"));
+		boolean sample = "Y".equals(info.get(SAMPLE));
+		b.append(title(sample ? "개 인 이 력 카 드 (샘플)" : "개 인 이 력 카 드"));
+		if (sample) b.append(sampleNote());
 		String[][] top = { { h("성 명"), c(info.get("성명")), h("주민번호"), c(info.get("주민번호")) }, { h("소속회사"), c(info.get("소속회사")), h("직 위"), c(info.get("직위")) },
 				{ h("부 서"), c(info.get("부서")), h("기술등급"), c(info.get("기술등급")) }, { h("병 역"), c(info.get("병역")), h("주 소"), c(info.get("주소")) } };
 		if (photo == null) b.append(table(new int[] { 1400, 3400, 1400, 3400 }, row(top[0]), row(top[1]), row(top[2]), row(top[3])));
@@ -123,7 +133,8 @@ public final class StaffCareerWord {
 		b.append(table(new int[] { 3800, 1600, 1600, 2600 }, rows(row(h("교육명"), h("시작일"), h("종료일"), h("기관")), trainings, 4, 2)));
 		// 여기까지 세로 쪽, 다음부터 가로 쪽
 		b.append("<w:p><w:pPr><w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/><w:pgMar w:top=\"1134\" w:right=\"1134\" w:bottom=\"1134\" w:left=\"1134\" w:header=\"720\" w:footer=\"720\" w:gutter=\"0\"/></w:sectPr></w:pPr></w:p>");
-		b.append(title("SKILL INVENTORY"));
+		b.append(title(sample ? "SKILL INVENTORY (샘플)" : "SKILL INVENTORY"));
+		if (sample) b.append(sampleNote());
 		int[] ws = { 2300, 1100, 1300, 1100, 700, 700, 900, 700, 700, 1300, 1000, 1200, 1300, 600 };
 		List<String> rs = new ArrayList<>();
 		rs.add(row(hv("프로젝트명 (업무명)", true), hv("참여기간", true), hv("고객사", true), hv("근무회사", true), hs("개발분야", 2), hv("역할", true), hs("개발환경", 7)));

@@ -81,6 +81,7 @@
 	.sc-pin-off { opacity: .25; filter: grayscale(1); } .sc-pin-off:hover, .sc-pin-off:focus { opacity: .7; }
 	.sc-ym { width: 128px; height: 26px; font-size: 12px; border: 1px solid #d5dde5; border-radius: 6px; padding: 0 4px; }
 	.sc-per.sc-changed .sc-ym { background: #fff3c4; border-color: #f0c96b; }
+	.sc-sample-band { display: inline-block; background: #fff3c4; color: #8a5a00; border: 1px solid #f0c96b; border-radius: 999px; padding: 0 8px; font-weight: 700; font-size: 11.5px; }
 	.sc-gen-empty { padding: 18px; text-align: center; color: #6b7785; background: #f7f9fb; border-radius: 10px; font-size: 13px; }
 	#driveStatus { font-size: 12px; }
 	.dm-tbl td { vertical-align: middle; } .dm-tbl select { max-width: 340px; font-size: 12px; } .dm-tbl tr.dm-miss td { color: #8a96a3; }
@@ -332,7 +333,7 @@
 					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
 				</div>
 				<div class="modal-body">
-					<p class="small text-muted mb-2">최신 <b>순정</b> 버전의 실제 프로젝트로만 짭니다. 없는 프로젝트는 만들지 않고, 기간은 실제 참여 기간 안에서만 줄일 수 있습니다. 순정 버전은 그대로 둡니다.</p>
+					<p class="small text-muted mb-2" id="scGenIntro"></p>
 					<div class="sc-sk sc-gen">
 						<span class="k">필수 기술</span><div id="scGenSkills"></div>
 						<span class="k"><label for="scGenMonths" class="mb-0">기간</label></span>
@@ -1113,10 +1114,10 @@
 			var list = res.result || [];
 			list.forEach(function(v, i) {
 				function b(text, fn) { return $('<button type="button" class="btn btn-sm btn-outline-secondary mr-1">').text(text).attr('aria-label', 'v' + v.VER_NO + ' ' + text).on('click', fn); }
-				var edit = v.VER_KIND === 'EDIT';
+				var edit = v.VER_KIND === 'EDIT', sample = v.VER_KIND === 'SAMPLE';
 				$b.append($('<tr>').append($('<td>').append($('<b>').text('v' + v.VER_NO)).append(i === 0 ? ' <span class="sc-pill in">최신</span>' : ''),
-					$('<td class="text-nowrap">').append($('<span class="sc-pill">').toggleClass('warn', edit).text(edit ? '가필' : '순정')).append(edit && v.BASE_VER ? $('<small class="text-muted">').text(' v' + v.BASE_VER + ' 기준') : ''), $('<td class="text-nowrap">').text(v.REG_DT), $('<td>').text(v.REG_EMPLY_ID || ''), $('<td>').text(v.PRJ_CNT + '건'), $('<td>').text(v.SUMMARY || ''),
-					$('<td class="text-nowrap text-right">').append(b('보기', function() { viewVersion(sq, v.VER_NO, edit ? v.BASE_VER : null); })).append(b('워드', function() { careerWord(sq, v.VER_NO); })).append(edit ? '' : b('이 버전으로', function() { restoreVersion(sq, v.VER_NO); }))));
+					$('<td class="text-nowrap">').append($('<span class="sc-pill">').toggleClass('warn', edit).toggleClass('sc-sample-band', sample).text(sample ? '샘플' : edit ? '가필' : '순정')).append(edit && v.BASE_VER ? $('<small class="text-muted">').text(' v' + v.BASE_VER + ' 기준') : ''), $('<td class="text-nowrap">').text(v.REG_DT), $('<td>').text(v.REG_EMPLY_ID || ''), $('<td>').text(v.PRJ_CNT + '건'), $('<td>').text(v.SUMMARY || ''),
+					$('<td class="text-nowrap text-right">').append(b('보기', function() { viewVersion(sq, v.VER_NO, edit ? v.BASE_VER : null); })).append(b('워드', function() { careerWord(sq, v.VER_NO); })).append(edit || sample ? '' : b('이 버전으로', function() { restoreVersion(sq, v.VER_NO); }))));
 			});
 			if (!list.length) boEmpty($b, '저장한 버전이 없습니다. 수행이력 탭에서 「새 버전으로 저장」 을 누르면 생깁니다.');
 			$('#scVerModal').modal('show');
@@ -1165,7 +1166,7 @@
 		function one(id) { return $('#' + id + ' .sc-chip.on').attr('data-v'); }
 		var pins = Object.keys(scGen.pins).map(function(k) { var p = scGen.pins[k]; return { key: k, pos: p.pos, start: p.start, end: p.end }; });
 		return { skills: $('#scGenSkills .sc-chip.on').map(function() { return $(this).attr('data-v'); }).get(), months: +$('#scGenMonths').val(), max: +$('#scGenMaxR').val(),
-			sort: one('scGenSort'), slots: scGen.slots, pins: pins, photo: one('scGenPhoto') === 'Y' };
+			sort: one('scGenSort'), slots: scGen.slots, pins: pins, photo: one('scGenPhoto') === 'Y', sample: !!scGen.sample };
 	}
 	// 볼륨 스위치처럼 끄는 막대(--p 만큼 채움)와 옆 숫자 칸을 맞춘다
 	function volPaint() {
@@ -1198,14 +1199,17 @@
 		var photo = docFiles(find(sq) || {}, 'DOC_PHOTO').length > 0;
 		genChips('scGenPhoto', [['Y', '보이기'], ['', '가리기']], [photo ? 'Y' : '']);
 		$('#scGenPhoto [data-v=Y]').prop('disabled', !photo).attr('title', photo ? '서류 탭 증명사진을 워드 첫 장에 보여요' : '서류 탭에 증명사진 파일이 없어요');
+		// 수행이력이 없으면 면접 교육용 샘플: 다른 직원들의 실제 프로젝트로 짜고, 샘플 버전으로만 저장·워드에 샘플 표시
+		scGen.sample = !d.items.length;
+		$('#scGenTitle').text(scGen.sample ? '📚 면접 교육용 샘플 이력' : '✨ 프로필 자동생성');
+		$('#scGenIntro').html(scGen.sample
+			? '<span class="sc-sample-band">샘플</span> 이 직원은 수행이력이 없어 <b>다른 직원들의 실제 프로젝트</b>로 면접 교육용 샘플을 짭니다. 출처 직원 이름은 넣지 않고, <b>샘플 버전</b>으로만 저장되며 워드 두 쪽에 「실제 경력 아님」이 찍힙니다. 지원 프로필·드라이브 저장에는 쓸 수 없습니다.'
+			: '최신 <b>순정</b> 버전의 실제 프로젝트로만 짭니다. 없는 프로젝트는 만들지 않고, 기간은 실제 참여 기간 안에서만 줄일 수 있습니다. 순정 버전은 그대로 둡니다.');
+		$('#scGenSave').text(scGen.sample ? '샘플 버전으로 저장' : '가필 버전으로 저장');
+		$('#scGenWord').html(scGen.sample ? '📄 샘플 워드 받기' : '📄 워드로 바로 받기');
+		if (scGen.sample) $('#scGenMaxR').val(5);
+		volPaint();
 		$('#scGenModal').modal('show');
-		if (!d.items.length) {
-			// 고를 프로젝트가 없으면 계산하지 않고 어디서 채우는지 알려 준다
-			$('#scGenSum').text('미리보기 · 0건');
-			$('#scGenView').html('<div class="sc-gen-empty"><b>이 직원은 수행이력이 없습니다.</b><br>수행이력 탭에서 프로젝트를 넣거나, 목록 위 「드라이브에서 일괄 찾기」로 드라이브의 이력카드 워드를 가져오면 여기서 고를 수 있어요.</div>');
-			$('#scGenSave, #scGenWord').prop('disabled', true);
-			return;
-		}
 		genPreview();
 	}
 	// 산업·역할 1단계 칩 → 누르면 그 2단계가 펼쳐지고, 2단계(또는 「1단계 전체」)를 누를 때마다 자리가 하나씩 쌓인다
@@ -1348,7 +1352,7 @@
 		});
 		$('#scGenN').on('change', function() { $('#scGenMaxR').val(clampNum(this.value, 1, 100)); volPaint(); genPreview(); });
 		$('#scGenSave').on('click', function() {
-			hrPost('/admin/staff/saveCareerGenData.do', { STAFF_SQ: scGen.sq, GEN: JSON.stringify(genConf()) }, function(res) { $('#scGenModal').modal('hide'); toast('가필 v' + res.result + ' 로 저장했습니다 (순정은 그대로)'); loadCareer(scGen.sq); });
+			hrPost('/admin/staff/saveCareerGenData.do', { STAFF_SQ: scGen.sq, GEN: JSON.stringify(genConf()) }, function(res) { $('#scGenModal').modal('hide'); toast((scGen.sample ? '면접 교육용 샘플 v' : '가필 v') + res.result + ' 로 저장했습니다' + (scGen.sample ? ' (버전 창에서 다시 볼 수 있어요)' : ' (순정은 그대로)')); loadCareer(scGen.sq); });
 		});
 		$('#scGenWord').on('click', function() { location.href = '/admin/staff/careerWord.do?STAFF_SQ=' + scGen.sq + '&GEN=' + encodeURIComponent(JSON.stringify(genConf())); });
 	}

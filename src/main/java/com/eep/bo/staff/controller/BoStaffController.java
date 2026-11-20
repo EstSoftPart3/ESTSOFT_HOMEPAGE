@@ -381,13 +381,15 @@ public class BoStaffController {
 		}
 		System.out.println("STAFF_CAREER_WORD by=" + loginId(session) + " staff=" + staffSq + " ver=" + verNo);
 		response.setContentType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-		response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + java.net.URLEncoder.encode(career.wordName(staffSq), "UTF-8").replace("+", "%20"));
+		String name = career.isSample(staffSq, verNo, gen) ? career.wordName(staffSq).replace(".docx", "_면접교육샘플.docx") : career.wordName(staffSq);
+		response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + java.net.URLEncoder.encode(name, "UTF-8").replace("+", "%20"));
 		response.setContentLength(data.length);
 		response.getOutputStream().write(data);
 	}
 
 	@RequestMapping(value = "/admin/staff/careerWordDriveData.do", method = RequestMethod.POST)
 	public ModelAndView careerWordDriveData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam(value = "VER_NO", required = false) String verNo) {
+		if (career.isSample(staffSq, verNo, null)) throw new IllegalArgumentException("면접 교육용 샘플 버전은 사람 폴더에 올리지 않습니다. 워드로만 받아 주세요.");
 		return drive(() -> StaffDriveService.uploadCareerWord(staffSq, career.word(staffSq, verNo, photoFor(staffSq, verNo, null))));
 	}
 
