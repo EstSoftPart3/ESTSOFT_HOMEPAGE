@@ -1009,41 +1009,11 @@ function linkBtn(a) {
 }
 // 본인 제출 뒤 관리자가 아직 안 열어 봤으면 새 제출(●)
 function selfNew(a) { var n = noteOf(a); return !!a.LINK_SUBMIT_DT && n.by === 'SELF' && (!n.seenAt || n.seenAt < (n.selfAt || a.LINK_SUBMIT_DT)); }
-// 본인이 제출한 기록은 보기 전용으로 먼저 연다(✎ 고치기로 입력 창)
-function noteView(a) {
-	var r = recruitOf(a.RECRUIT_SQ) || {}, n = noteOf(a), fromDetail = $('#rcDetail').length > 0, wasNew = selfNew(a), next = false;
-	var canCheck = ['DOC', 'INTV_WAIT', 'INTV', 'INTV_SUB'].indexOf(a.STEP_CD) >= 0;
-	var $k = $('<div class="rc-kv rc-note-kv">');
-	$k.append($('<div class="d-flex flex-wrap align-items-center" style="grid-column:1/-1;gap:6px">').append($('<span class="rc-self">').text('본인 제출 ' + (n.selfAt || a.LINK_SUBMIT_DT || '')))
-		.append(n.adminAt ? $('<span class="rc-self adm ml-1">').text('관리자 수정 ' + n.adminAt) : '').append($('<span class="rc-step ml-1">').addClass(a.STEP_CD).text(STEP_NM[a.STEP_CD] || '')).append($('<span class="rc-note ml-2">').text(a.INTV_DT ? '인터뷰 ' + a.INTV_DT + ' ' + (WAY[a.INTV_WAY] || '') + (a.INTV_PLACE ? ' · ' + a.INTV_PLACE : '') : '')));
-	NOTE_CATS.forEach(function(c) {
-		var v = c[3] ? (n[c[0]] || []) : (n[c[0]] ? [n[c[0]]] : []);
-		$k.append($('<label>').text(c[2])).append($('<span class="d-flex flex-wrap" style="gap:4px">').append(v.length ? v.map(function(x) { return $('<span class="rc-vchip">').text(x); }) : $('<span class="text-muted small">').text('고르지 않음')));
-	});
-	var qa = (n.qa || []).filter(function(x) { return x.q || x.a; }), $qa = $('<div class="rc-qview">');
-	qa.forEach(function(x, i) { $qa.append($('<div>').append($('<b class="n">').text('Q' + (i + 1))).append($('<div>').append($('<div class="q">').text(x.q || '(질문 없음)')).append($('<div class="a">').text(x.a || '(답변 없음)')))); });
-	$k.append('<label>기억나는 질문</label>').append(qa.length ? $qa : $('<span class="text-muted small">').text('없음'));
-	$k.append('<label>메모</label>').append(n.memo ? $('<div class="rc-memo">').text(n.memo) : $('<span class="text-muted small">').text('없음'));
-	if (wasNew) hrPost('/admin/recruit/noteSeenData.do', { APPLY_SQ: a.APPLY_SQ }, function() {});
-	var dlg = bootbox.dialog({ title: '📝 ' + a.STAFF_NM + ' · ' + (r.CLIENT_NM || '') + ' 인터뷰 기록', message: $k, size: 'large', onEscape: true, buttons: {
-		relink: { label: '🔗 링크 다시 만들기', className: 'btn-sm btn-outline-info mr-1', callback: function() {
-			bootbox.confirm('새 링크를 만들까요? 지금 링크는 바로 막혀요.', function(ok) { if (ok) { next = true; dlg.modal('hide'); newLink(a); } });
-			return false;
-		} },
-		open: { label: '모집 상세 열기', className: 'btn-sm btn-outline-primary mr-auto' + (fromDetail ? ' d-none' : ''), callback: function() { next = true; dlg.one('hidden.bs.modal', function() { detail(a.RECRUIT_SQ); }); } },
-		edit: { label: '✎ 고치기', className: 'btn-sm btn-outline-secondary', callback: function() { next = true; dlg.one('hidden.bs.modal', function() { noteDialog(a, true); }); } },
-		// 담당자가 보고서를 확인하면 「인터뷰 결과 확인중」(서버 noteCheck)
-		check: { label: '✓ 확인 · 결과 확인중으로', className: 'btn-sm btn-success' + (canCheck ? '' : ' d-none'), callback: function() {
-			hrPost('/admin/recruit/noteCheckData.do', { APPLY_SQ: a.APPLY_SQ }, function() { next = true; dlg.modal('hide'); hrToast(a.STAFF_NM + ' · 인터뷰 결과 확인중으로 바꿨어요.'); reload(); });
-			return false;
-		} },
-		close: { label: '닫기', className: 'btn-sm ' + (canCheck ? 'btn-outline-secondary' : 'btn-primary') } } });
-	// 새 제출을 열어 봤으면 닫을 때 다시 불러와 ● 를 끈다(다음 창을 여는 중이면 그 창 저장 때 다시 불러온다)
-	if (wasNew) dlg.one('hidden.bs.modal', function() { if (!next) reload(); });
-}
-function noteDialog(a, edit) {
-	if (!edit && noteOf(a).by === 'SELF') return noteView(a);
+// 인터뷰 기록 창 하나로 등록·수정·질문 추가/삭제·기록 지우기. 본인이 링크로 낸 기록도 여기서 바로 고친다
+function noteDialog(a) {
 	var r = recruitOf(a.RECRUIT_SQ) || {}, n = $.extend({}, noteOf(a)), fromDetail = $('#rcDetail').length > 0, editing = false; // 달력에서 열면 「모집 상세 열기」를 보인다
+	var wasNew = selfNew(a), done = false, canCheck = ['DOC', 'INTV_WAIT', 'INTV', 'INTV_SUB'].indexOf(a.STEP_CD) >= 0;
+	if (wasNew) hrPost('/admin/recruit/noteSeenData.do', { APPLY_SQ: a.APPLY_SQ }, function() {}); // 새 제출 ● 끄기
 	NOTE_CATS.forEach(function(c) { if (c[3]) n[c[0]] = $.isArray(n[c[0]]) ? n[c[0]] : []; else n[c[0]] = n[c[0]] || ''; });
 	var skills = String(r.SKILLS || '').split(/[,/·]+/).map(function(x) { return $.trim(x); }).filter(Boolean);
 	var $k = $('<div class="rc-kv rc-note-kv">');
@@ -1052,13 +1022,18 @@ function noteDialog(a, edit) {
 	var live = linkLive(a), $state = $('<div class="d-flex flex-wrap align-items-center" style="grid-column:1/-1;gap:6px">');
 	if (a.LINK_SUBMIT_DT) $state.append($('<span class="rc-self">').text('본인 제출 ' + md(a.LINK_SUBMIT_DT) + ' ' + a.LINK_SUBMIT_DT.substring(11)));
 	else $state.append($('<span class="rc-self wait">').text('제출 전' + (live ? ' · 링크 보냄 ' + md(a.LINK_EXP_DT) + ' 만료' : '')));
+	if (n.adminAt) $state.append($('<span class="rc-self adm">').text('관리자 수정 ' + n.adminAt));
+	$state.append($('<span class="rc-step">').addClass(a.STEP_CD).text(STEP_NM[a.STEP_CD] || ''));
 	$state.append($('<button type="button" class="rc-linkbtn">🔗 제출 링크 복사</button>').attr('title', '본인이 계정 없이 이 기록을 남기는 링크').on('click', function() {
 		if (linkLive(a)) copyText(linkUrl(a.LINK_TOKEN), '링크를 복사했어요 · ' + md(a.LINK_EXP_DT) + ' 까지 열려요');
 		else hrPost('/admin/recruit/linkData.do', { APPLY_SQ: a.APPLY_SQ }, function(res) {
 			a.LINK_TOKEN = res.result.TOKEN; a.LINK_EXP_DT = res.result.LINK_EXP_DT;
 			copyText(linkUrl(a.LINK_TOKEN), '링크를 복사했어요 · ' + md(a.LINK_EXP_DT) + ' 까지 열려요');
-			if (!a.LINK_SUBMIT_DT) $state.find('.rc-self').text('제출 전 · 링크 보냄 ' + md(a.LINK_EXP_DT) + ' 만료');
+			if (!a.LINK_SUBMIT_DT) $state.find('.rc-self.wait').text('제출 전 · 링크 보냄 ' + md(a.LINK_EXP_DT) + ' 만료');
 		});
+	}));
+	if (linkLive(a) || a.LINK_SUBMIT_DT) $state.append($('<button type="button" class="btn btn-sm btn-link p-0">링크 다시 만들기</button>').attr('title', '지금 링크를 막고 새 링크를 복사').on('click', function() {
+		bootbox.confirm('새 링크를 만들까요? 지금 링크는 바로 막혀요.', function(ok) { if (ok) { done = true; dlg.modal('hide'); newLink(a); } });
 	}));
 	$k.append($state);
 	$k.append($('<div class="rc-note" style="grid-column:1/-1">').text('통화로 들은 내용을 칩으로 골라요. 없는 예시는 「＋」로 바로 추가하면 다음부터 고를 수 있어요. ').append($edit));
@@ -1114,21 +1089,35 @@ function noteDialog(a, edit) {
 	$k.append($('<label>').text('기억나는 질문').append($('<small class="d-block text-muted font-weight-normal">').text('질문 · 답변'))).append($('<div>').append($qa).append($addQ));
 	var $memo = $('<textarea rows="2" class="form-control form-control-sm" maxlength="1000" placeholder="그 밖에 들은 것 (선택)">').val(n.memo || '');
 	$k.append('<label>메모</label>').append($memo);
+	function collect() {
+		n.qa = $qa.find('.rc-qa-row').map(function() { return { q: $.trim($(this).find('.q').val()), a: $.trim($(this).find('.a').val()) }; }).get().filter(function(x) { return x.q || x.a; });
+		n.memo = $.trim($memo.val());
+		delete n.r; delete n.comm; delete n.att; delete n.chk; delete n.ask; // 첫 버전(평가형) 칸은 새로 저장할 때 정리
+		return n;
+	}
+	var before = JSON.stringify(collect());
 	var dlg = bootbox.dialog({ title: '📝 ' + a.STAFF_NM + ' · ' + (r.CLIENT_NM || '') + ' 인터뷰 기록' + (a.INTV_DT ? ' (' + a.INTV_DT + ')' : ''), message: $k, size: 'large', onEscape: true, buttons: {
-		open: { label: '모집 상세 열기', className: 'btn-sm btn-outline-primary mr-auto' + (fromDetail ? ' d-none' : ''), callback: function() { dlg.one('hidden.bs.modal', function() { detail(a.RECRUIT_SQ); }); } },
+		del: { label: '🗑 기록 지우기', className: 'btn-sm btn-outline-danger mr-1' + (a.INTV_NOTE ? '' : ' d-none'), callback: function() {
+			bootbox.confirm('이 인터뷰 기록을 지울까요? 본인이 제출한 내용도 함께 지워져요(링크는 그대로).', function(ok) {
+				if (ok) hrPost('/admin/recruit/noteData.do', { APPLY_SQ: a.APPLY_SQ, INTV_NOTE: '', SUMMARY: '' }, function() { done = true; dlg.modal('hide'); hrToast('인터뷰 기록을 지웠어요.'); reload(); });
+			});
+			return false;
+		} },
+		open: { label: '모집 상세 열기', className: 'btn-sm btn-outline-primary mr-auto' + (fromDetail ? ' d-none' : ''), callback: function() { done = true; dlg.one('hidden.bs.modal', function() { detail(a.RECRUIT_SQ); }); } },
 		cancel: { label: '닫기', className: 'btn-sm btn-outline-secondary' },
-		ok: { label: '기록 저장', className: 'btn-sm btn-primary', callback: function() {
-			n.qa = $qa.find('.rc-qa-row').map(function() { return { q: $.trim($(this).find('.q').val()), a: $.trim($(this).find('.a').val()) }; }).get().filter(function(x) { return x.q || x.a; });
-			n.memo = $.trim($memo.val());
-			if (n.by === 'SELF') n.adminAt = n.seenAt = nowYmdHm(); // 본인 제출을 관리자가 고친 시각(본 것으로도)
-			delete n.r; delete n.comm; delete n.att; delete n.chk; delete n.ask; // 첫 버전(평가형) 칸은 새로 저장할 때 정리
+		// 저장하면 인터뷰 결과 확인중(서버 note → autoStep). 본인 제출을 고쳤으면 관리자 수정 시각을 남긴다
+		ok: { label: canCheck && a.LINK_SUBMIT_DT ? '✓ 확인 · 저장(결과 확인중으로)' : canCheck ? '저장(결과 확인중으로)' : '기록 저장', className: 'btn-sm ' + (canCheck && a.LINK_SUBMIT_DT ? 'btn-success' : 'btn-primary'), callback: function() {
+			collect();
+			if (n.by === 'SELF') { if (JSON.stringify(n) !== before) n.adminAt = nowYmdHm(); n.seenAt = nowYmdHm(); }
 			hrPost('/admin/recruit/noteData.do', { APPLY_SQ: a.APPLY_SQ, INTV_NOTE: JSON.stringify(n), SUMMARY: noteSummary(n) }, function() {
+				done = true;
 				dlg.modal('hide');
 				hrToast('인터뷰 기록을 저장했어요.');
 				reload();
 			});
 			return false;
 		} } } });
+	if (wasNew) dlg.one('hidden.bs.modal', function() { if (!done) reload(); }); // 닫을 때 다시 불러와 ● 를 끈다
 }
 
 // ── 인터뷰 일정 ──

@@ -586,8 +586,9 @@ public class RecruitService {
 	public void note(Object applySq, String note, String summary, String loginId) {
 		Map<String, Object> a = apply(applySq);
 		require(s(note).length() <= 30000, "인터뷰 기록이 너무 깁니다."); // 질문·답변 여러 개(모의 인터뷰 자료)
-		jdbc.update("UPDATE TB_EEP_RECRUIT_APPLY_R SET INTV_NOTE = ?, UPDT_EMPLY_ID = ?, UPDT_DT = NOW() WHERE APPLY_SQ = ?", s(note).trim().isEmpty() ? null : note, loginId, applySq);
-		log(a.get("RECRUIT_SQ"), applySq, "NOTE", a.get("STAFF_NM") + " 인터뷰 기록" + (s(summary).trim().isEmpty() ? "" : " · " + cut(summary.trim(), 300)), loginId);
+		boolean clear = s(note).trim().isEmpty(); // 기록 지우기: 본인 제출 시각도 비운다(링크는 그대로)
+		jdbc.update("UPDATE TB_EEP_RECRUIT_APPLY_R SET INTV_NOTE = ?, LINK_SUBMIT_DT = " + (clear ? "NULL" : "LINK_SUBMIT_DT") + ", UPDT_EMPLY_ID = ?, UPDT_DT = NOW() WHERE APPLY_SQ = ?", clear ? null : note, loginId, applySq);
+		log(a.get("RECRUIT_SQ"), applySq, "NOTE", a.get("STAFF_NM") + " 인터뷰 기록" + (clear ? " 지움" : s(summary).trim().isEmpty() ? "" : " · " + cut(summary.trim(), 300)), loginId);
 		if (!s(note).trim().isEmpty()) autoStep(a, Arrays.asList("DOC", "INTV_WAIT", "INTV", "INTV_SUB"), "INTV_CHK", loginId); // 관리자가 통화로 기록하면 확인중
 	}
 
@@ -672,14 +673,6 @@ public class RecruitService {
 		Map<String, Object> n = parseNote(raw);
 		n.put("seenAt", LocalDateTime.now(SEOUL).format(DT));
 		jdbc.update("UPDATE TB_EEP_RECRUIT_APPLY_R SET INTV_NOTE = ? WHERE APPLY_SQ = ?", json(n), applySq);
-	}
-
-	/** 담당자가 보고서(본인 제출 기록)를 「✓ 확인」 → 인터뷰 결과 확인중 */
-	public void noteCheck(Object applySq, String loginId) {
-		Map<String, Object> a = apply(applySq);
-		require(Arrays.asList("DOC", "INTV_WAIT", "INTV", "INTV_SUB").contains(s(a.get("STEP_CD"))), "이미 확인중이거나 다음 단계예요.");
-		noteSeen(applySq);
-		autoStep(a, Arrays.asList("DOC", "INTV_WAIT", "INTV", "INTV_SUB"), "INTV_CHK", loginId);
 	}
 
 	@SuppressWarnings("unchecked")

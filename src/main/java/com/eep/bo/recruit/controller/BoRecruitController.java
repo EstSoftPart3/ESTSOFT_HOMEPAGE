@@ -187,11 +187,6 @@ public class BoRecruitController {
 		return run(() -> { guardApply(applySq, session); recruit.noteSeen(applySq); return "OK"; });
 	}
 
-	@RequestMapping(value = "/admin/recruit/noteCheckData.do", method = RequestMethod.POST)
-	public ModelAndView noteCheckData(@RequestParam("APPLY_SQ") int applySq, HttpSession session) {
-		return run(() -> { guardApply(applySq, session); recruit.noteCheck(applySq, loginId(session)); return "OK"; });
-	}
-
 	// ── 공개(로그인 없음): /admin·/eep 밖이라 로그인 인터셉터를 타지 않는다. 토큰이 곧 권한 ──
 
 	@RequestMapping(value = "/intv.do", method = RequestMethod.GET)
