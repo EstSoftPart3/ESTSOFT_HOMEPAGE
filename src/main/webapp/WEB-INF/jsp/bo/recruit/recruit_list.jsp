@@ -74,7 +74,12 @@
 	.rc-cal th { text-align: center; background: #f6f8fa; padding: 4px; } .rc-cal td { vertical-align: top; height: 82px; border: 1px solid #eef1f4; padding: 3px; }
 	.rc-cal td.out { background: #fafbfc; color: #adb5bd; } .rc-cal td.today { background: #eef9fc; }
 	.rc-cal .ev { display: block; border-radius: 4px; padding: 0 4px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
-	.rc-cal .ev.due { background: #ffe3e3; color: #c92a2a; } .rc-cal .ev.intv { background: #fff4e6; color: #d9480f; } .rc-cal .ev.start { background: #d3f9d8; color: #2b8a3e; } .rc-cal .ev.reg { background: #e7f5ff; color: #1864ab; }
+	.rc-cal .ev.intv, .rc-cal-legend .ev.intv { background: #fff; color: #c2410c; border: 1px solid #ffc9a8; border-left: 4px solid #e8590c; border-radius: 3px; }
+	.rc-cal .ev.intv b, .rc-cal-legend .ev.intv b { font-weight: 800; } .rc-cal .ev.intv small { color: #868e96; }
+	.rc-cal-legend { display: flex; gap: 6px; align-items: center; font-size: 11px; flex-wrap: wrap; }
+	.rc-cal-legend .ev { display: inline-block; border-radius: 4px; padding: 0 5px; }
+	.rc-cal-legend .ev.reg { background: #e7f5ff; color: #1864ab; } .rc-cal-legend .ev.due { background: #ffe3e3; color: #c92a2a; } .rc-cal-legend .ev.start { background: #d3f9d8; color: #2b8a3e; } .rc-cal-legend .ev-ap { color: #495057; }
+	.rc-cal .ev.due { background: #ffe3e3; color: #c92a2a; } .rc-cal .ev.start { background: #d3f9d8; color: #2b8a3e; } .rc-cal .ev.reg { background: #e7f5ff; color: #1864ab; }
 	.rc-tl { display: grid; grid-template-columns: 160px 1fr; gap: 5px 8px; align-items: center; font-size: 12px; min-width: 640px; }
 	.rc-tl .mon { display: grid; font-weight: 700; color: #868e96; } .rc-tl .trk { position: relative; height: 16px; background: #f1f3f5; border-radius: 4px; }
 	.rc-tl .bar { position: absolute; top: 0; bottom: 0; background: #ffd8a8; border-radius: 4px; cursor: pointer; } .rc-tl .bar.open { border-right: 2px dashed #d9480f; }
@@ -509,8 +514,15 @@ function viewBoard($m, list) {
 function viewCal($m, list) {
 	var base = calMonth || today().substring(0, 7), y = +base.substring(0, 4), mo = +base.substring(5, 7);
 	var first = new Date(y, mo - 1, 1), start = new Date(first); start.setDate(1 - ((first.getDay() + 6) % 7));
-	var ev = {};
-	function add(d, cls, text, sq) { if (!d) return; d = d.substring(0, 10); (ev[d] = ev[d] || []).push({ cls: cls, text: text, sq: sq }); }
+	// 날짜마다 인터뷰(시간순, 위)와 모집 일정(같은 모집의 등록·마감·투입은 한 줄로 합침)
+	var ev = {}, KIND = { reg: '● 등록', due: '⏰ 마감', start: '▶ 투입' };
+	function day(d) { d = d.substring(0, 10); return ev[d] = ev[d] || { intv: [], rec: {}, order: [] }; }
+	function add(d, cls, sq) {
+		if (!d) return;
+		var x = day(d);
+		if (!x.rec[sq]) { x.rec[sq] = []; x.order.push(sq); }
+		x.rec[sq].push(cls);
+	}
 	// 모집 일정 아래 지원자 한 줄(이름 단계, 탈락 제외)
 	function apLine(sq) {
 		var ap = appsOf(sq).filter(function(a) { return a.STEP_CD !== 'DROP'; });
@@ -519,16 +531,17 @@ function viewCal($m, list) {
 		return $('<span class="ev-ap">').text(txt).attr('title', txt).on('click', function(e) { e.stopPropagation(); detail(sq); });
 	}
 	list.forEach(function(r) {
-		add(r.REG_D, 'reg', '● ' + (r.CLIENT_NM || '모집') + ' 등록', r.RECRUIT_SQ);
-		add(r.CLOSE_DT, 'due', '⏰ ' + (r.CLIENT_NM || '') + ' 마감', r.RECRUIT_SQ);
-		add(r.START_DT, 'start', '▶ ' + (r.CLIENT_NM || '') + ' 투입', r.RECRUIT_SQ);
-		appsOf(r.RECRUIT_SQ).forEach(function(a) { if (a.INTV_DT && a.STEP_CD !== 'DROP') add(a.INTV_DT, 'intv', '🎤 ' + (r.CLIENT_NM || '') + ' · ' + a.STAFF_NM + ' ' + a.INTV_DT.substring(11, 16), r.RECRUIT_SQ); });
+		add(r.REG_D, 'reg', r.RECRUIT_SQ);
+		add(r.CLOSE_DT, 'due', r.RECRUIT_SQ);
+		add(r.START_DT, 'start', r.RECRUIT_SQ);
+		appsOf(r.RECRUIT_SQ).forEach(function(a) { if (a.INTV_DT && a.STEP_CD !== 'DROP') day(a.INTV_DT).intv.push({ a: a, r: r }); });
 	});
 	var $nav = $('<div class="d-flex align-items-center mb-2" style="gap:6px">')
 		.append($('<button type="button" class="btn btn-sm btn-outline-secondary" aria-label="이전 달">‹</button>').on('click', function() { var d = new Date(y, mo - 2, 1); calMonth = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2); render(); }))
 		.append($('<b>').text(y + '년 ' + mo + '월'))
 		.append($('<button type="button" class="btn btn-sm btn-outline-secondary" aria-label="다음 달">›</button>').on('click', function() { var d = new Date(y, mo, 1); calMonth = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2); render(); }))
-		.append($('<button type="button" class="btn btn-sm btn-link">이번 달</button>').on('click', function() { calMonth = null; render(); }));
+		.append($('<button type="button" class="btn btn-sm btn-link">이번 달</button>').on('click', function() { calMonth = null; render(); }))
+		.append('<span class="rc-cal-legend ml-auto"><span class="ev intv"><b>14:00</b> 🎤 인터뷰</span><span class="ev reg">● 등록</span><span class="ev due">⏰ 마감</span><span class="ev start">▶ 투입</span><span class="ev-ap">👤 지원자</span></span>');
 	var $t = $('<table class="rc-cal">').append('<thead><tr><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th>토</th><th>일</th></tr></thead>'), $b = $('<tbody>').appendTo($t), t = today();
 	for (var w = 0; w < 6; w++) {
 		var $tr = $('<tr>');
@@ -539,10 +552,20 @@ function viewCal($m, list) {
 			var $td = $('<td>').toggleClass('out', d.getMonth() !== mo - 1).toggleClass('today', key === t).attr('title', label + ' · 빈 곳을 누르면 이 날짜로 모집 등록')
 				.append($('<div>').text(d.getDate()).append($('<button type="button" class="rc-day-add">+</button>').attr('aria-label', label + ' 모집 등록')));
 			(function(key) { $td.on('click', function(e) { if (!$(e.target).closest('.ev, .ev-ap').length) pasteDialog(key); }); })(key);
-			(ev[key] || []).forEach(function(e) {
-				$td.append($('<span class="ev">').addClass(e.cls).text(e.text).attr('title', e.text).on('click', function() { detail(e.sq); }));
-				if (e.cls !== 'intv') $td.append(apLine(e.sq));
-			});
+			var x = ev[key];
+			if (x) {
+				x.intv.sort(function(p, q) { return p.a.INTV_DT.localeCompare(q.a.INTV_DT); }).forEach(function(v) {
+					var tip = '🎤 인터뷰 ' + v.a.INTV_DT.substring(11, 16) + ' · ' + v.a.STAFF_NM + ' · ' + (v.r.CLIENT_NM || '') + ' ' + (v.r.PRJ_NM || '') + (v.a.INTV_PLACE ? ' · ' + v.a.INTV_PLACE : '');
+					$td.append($('<span class="ev intv">').attr('title', tip).append($('<b>').text(v.a.INTV_DT.substring(11, 16))).append(document.createTextNode(' 🎤 ' + v.a.STAFF_NM + ' 인터뷰 ')).append($('<small>').text(v.r.CLIENT_NM || ''))
+						.on('click', function() { detail(v.r.RECRUIT_SQ); }));
+				});
+				x.order.forEach(function(sq) {
+					var r = recruitOf(sq), kinds = x.rec[sq], txt = kinds.map(function(k) { return KIND[k]; }).join(' · ') + ' ' + (r.CLIENT_NM || '모집');
+					var main = ['start', 'due', 'reg'].filter(function(k) { return kinds.indexOf(k) >= 0; })[0]; // 색은 투입 > 마감 > 등록
+					$td.append($('<span class="ev">').addClass(main).text(txt).attr('title', txt + ' ' + (r.PRJ_NM || '')).on('click', function() { detail(sq); }));
+					$td.append(apLine(sq));
+				});
+			}
 			$tr.append($td);
 		}
 		$b.append($tr);
