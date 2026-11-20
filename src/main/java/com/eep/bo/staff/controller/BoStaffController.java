@@ -353,10 +353,13 @@ public class BoStaffController {
 		return json("result", career.generate(staffSq, StaffCareerService.parseMap(gen)));
 	}
 
-	/** 자동생성 산업·역할 2단계 목록 추가·삭제(공통코드 HR_PRJ_IND·HR_PRJ_ROLE). 직원관리 권한이면 누구나. KIND=IND|ROLE */
+	/** 자동생성 고르기 목록 추가·수정·삭제(공통코드 HR_PRJ_*). 직원관리 권한이면 누구나. KIND=IND|ROLE|LANG|FW|DBMS|TOOL, ACT=ADD|EDIT|DEL, NEW=바꿀 이름, SEED=그룹이 없을 때 처음 채울 칩(JSON 배열) */
 	@RequestMapping(value = "/admin/staff/prjCodeData.do", method = RequestMethod.POST)
-	public ModelAndView prjCodeData(@RequestParam("KIND") String kind, @RequestParam("NM") String nm, @RequestParam("ACT") String act) {
-		return json("result", "DEL".equals(act) ? career.deletePrjCode(kind, nm) : career.addPrjCode(kind, nm));
+	public ModelAndView prjCodeData(@RequestParam("KIND") String kind, @RequestParam("NM") String nm, @RequestParam("ACT") String act,
+			@RequestParam(value = "NEW", required = false) String newNm, @RequestParam(value = "SEED", required = false) String seed) {
+		List<String> first = new ArrayList<>();
+		if (seed != null && !seed.isEmpty()) for (Object o : StaffCareerService.parseList(seed)) first.add(String.valueOf(o));
+		return json("result", career.savePrjCode(kind, act, nm, newNm, first));
 	}
 
 	/** 자동생성 결과를 가필 버전으로 저장(순정은 그대로) */

@@ -472,9 +472,19 @@ public class StaffCareerService {
 		return out;
 	}
 
-	// ── 산업·역할 2단계 목록(공통코드 HR_PRJ_IND·HR_PRJ_ROLE, 이름이 '1단계' 또는 '1단계 > 2단계') ──
-	// 그룹이 아직 없으면 기본 목록을 보여 주고, 화면에서 처음 추가·삭제할 때 그룹과 기본 목록을 만든다
+	// ── 자동생성 고르기 목록(공통코드). 산업·역할은 2단계('1단계' 또는 '1단계 > 2단계'), 기술 4칸은 한 단계 ──
+	// 그룹이 아직 없으면 산업·역할은 기본 목록, 기술은 null(화면이 수행이력에서 모은 칩을 씀). 화면에서 처음 고칠 때 그룹을 만든다(기술은 화면이 보낸 지금 칩으로 채움)
 
+	/** 구분 → 공통코드 그룹, 이름 */
+	static final Map<String, String[]> PRJ_CODE_GROUP = new LinkedHashMap<>();
+	static {
+		PRJ_CODE_GROUP.put("IND", new String[] { "HR_PRJ_IND", "수행이력 산업(2단계)" });
+		PRJ_CODE_GROUP.put("ROLE", new String[] { "HR_PRJ_ROLE", "수행이력 역할(2단계)" });
+		PRJ_CODE_GROUP.put("LANG", new String[] { "HR_PRJ_LANG", "수행이력 기술 언어" });
+		PRJ_CODE_GROUP.put("FW", new String[] { "HR_PRJ_FW", "수행이력 기술 프레임워크" });
+		PRJ_CODE_GROUP.put("DBMS", new String[] { "HR_PRJ_DBMS", "수행이력 기술 DBMS" });
+		PRJ_CODE_GROUP.put("TOOL", new String[] { "HR_PRJ_TOOL", "수행이력 기술 TOOL" });
+	}
 	static final Map<String, String[]> PRJ_CODE_DEFAULT = new LinkedHashMap<>();
 	static {
 		PRJ_CODE_DEFAULT.put("IND", new String[] { "금융", "금융 > 은행", "금융 > 증권", "금융 > 보험", "금융 > 카드", "금융 > 캐피탈", "공공", "공공 > 중앙부처", "공공 > 지자체", "공공 > 공기업",
@@ -485,18 +495,25 @@ public class StaffCareerService {
 	}
 
 	private static String codeGroup(String kind) {
-		if (!PRJ_CODE_DEFAULT.containsKey(kind)) throw new IllegalArgumentException("산업·역할 구분이 올바르지 않습니다.");
-		return "IND".equals(kind) ? "HR_PRJ_IND" : "HR_PRJ_ROLE";
+		if (!PRJ_CODE_GROUP.containsKey(kind)) throw new IllegalArgumentException("목록 구분이 올바르지 않습니다.");
+		return PRJ_CODE_GROUP.get(kind)[0];
 	}
 
-	/** {IND: [...], ROLE: [...]} 이름 목록(1단계 뒤에 그 2단계가 오게) */
+	private static boolean twoLevel(String kind) {
+		return PRJ_CODE_DEFAULT.containsKey(kind);
+	}
+
+	/** {IND: [...], ROLE: [...], LANG·FW·DBMS·TOOL: [...] 또는 null} 이름 목록(산업·역할은 1단계 뒤에 그 2단계가 오게) */
 	public Map<String, List<String>> prjCodes() {
 		Map<String, List<String>> out = new LinkedHashMap<>();
-		for (String kind : PRJ_CODE_DEFAULT.keySet()) {
+		for (String kind : PRJ_CODE_GROUP.keySet()) {
 			List<Map<String, Object>> g = jdbc.queryForList("SELECT COMN_CD_SQ FROM TB_EEP_COMN_CD_M WHERE COMN_CD = ? AND DEL_YN = 'N'", codeGroup(kind));
-			List<String> names = g.isEmpty() ? new ArrayList<>(Arrays.asList(PRJ_CODE_DEFAULT.get(kind)))
-					: jdbc.queryForList("SELECT COMN_DTL_CD_NM FROM TB_EEP_COMN_DTL_CD_S WHERE COMN_CD_SQ = ? AND DEL_YN = 'N' AND USE_YN = 'Y' ORDER BY COMN_DTL_CD_ORD, COMN_DTL_CD_SQ", String.class, g.get(0).get("COMN_CD_SQ"));
-			out.put(kind, tree(names));
+			if (g.isEmpty()) {
+				out.put(kind, twoLevel(kind) ? tree(Arrays.asList(PRJ_CODE_DEFAULT.get(kind))) : null);
+				continue;
+			}
+			List<String> names = jdbc.queryForList("SELECT COMN_DTL_CD_NM FROM TB_EEP_COMN_DTL_CD_S WHERE COMN_CD_SQ = ? AND DEL_YN = 'N' AND USE_YN = 'Y' ORDER BY COMN_DTL_CD_ORD, COMN_DTL_CD_SQ", String.class, g.get(0).get("COMN_CD_SQ"));
+			out.put(kind, twoLevel(kind) ? tree(names) : names);
 		}
 		return out;
 	}
@@ -526,40 +543,64 @@ public class StaffCareerService {
 		return n;
 	}
 
-	/** 추가(2단계면 1단계도 없으면 같이). 그룹이 없으면 기본 목록과 함께 만든다 */
-	public Map<String, List<String>> addPrjCode(String kind, String raw) {
-		String n = codeName(raw);
+	/** 기술 이름: 앞뒤 공백 정리, 쉼표 불가(여러 값 칸의 구분자), 50자 */
+	static String techName(String raw) {
+		String n = s(raw).trim().replaceAll("\\s+", " ");
+		if (n.isEmpty() || n.contains(",")) throw new IllegalArgumentException("이름이 비었거나 쉼표가 들어 있습니다.");
+		if (n.length() > 50) throw new IllegalArgumentException("50자까지 넣을 수 있습니다.");
+		return n;
+	}
+
+	private static String nameOf(String kind, String raw) {
+		return twoLevel(kind) ? codeName(raw) : techName(raw);
+	}
+
+	/**
+	 * 목록 고치기. act ADD(2단계면 1단계도 같이) · DEL(1단계면 그 2단계도, 공통코드는 DEL_YN 만) · EDIT(이름 바꾸기, 1단계면 그 2단계 앞부분도).
+	 * seed: 그룹이 없을 때 기술 칸을 처음 채울 지금 칩들(산업·역할은 기본 목록을 쓴다). 수행이력에 이미 들어간 값은 바꾸지 않는다
+	 */
+	public Map<String, List<String>> savePrjCode(String kind, String act, String raw, String rawNew, List<String> seed) {
+		String n = nameOf(kind, raw), nn = "EDIT".equals(act) ? nameOf(kind, rawNew) : null;
 		tx.execute(st -> {
-			int g = ensureCodeGroup(kind);
-			List<String> add = new ArrayList<>();
-			if (n.contains(">")) add.add(n.substring(0, n.indexOf(" >")));
-			add.add(n);
-			for (String a : add) insertCode(g, a);
+			int g = ensureCodeGroup(kind, seed);
+			if ("DEL".equals(act)) {
+				jdbc.update("UPDATE TB_EEP_COMN_DTL_CD_S SET DEL_YN = 'Y', UPDT_DT = NOW() WHERE COMN_CD_SQ = ? AND DEL_YN = 'N' AND (COMN_DTL_CD_NM = ? OR COMN_DTL_CD_NM LIKE ?)",
+						g, n, twoLevel(kind) && !n.contains(">") ? n + " >%" : n);
+			} else if ("EDIT".equals(act)) {
+				if (n.equals(nn)) return null;
+				if (jdbc.queryForObject("SELECT COUNT(*) FROM TB_EEP_COMN_DTL_CD_S WHERE COMN_CD_SQ = ? AND COMN_DTL_CD_NM = ? AND DEL_YN = 'N'", Integer.class, g, nn) > 0) {
+					throw new IllegalArgumentException("「" + nn + "」 은 이미 목록에 있습니다.");
+				}
+				if (twoLevel(kind) && n.contains(">") != nn.contains(">")) throw new IllegalArgumentException("1단계는 1단계로, 2단계는 2단계로만 바꿀 수 있습니다.");
+				jdbc.update("UPDATE TB_EEP_COMN_DTL_CD_S SET COMN_DTL_CD = ?, COMN_DTL_CD_NM = ?, UPDT_DT = NOW() WHERE COMN_CD_SQ = ? AND DEL_YN = 'N' AND COMN_DTL_CD_NM = ?", nn, nn, g, n);
+				if (twoLevel(kind) && !n.contains(">")) {
+					jdbc.update("UPDATE TB_EEP_COMN_DTL_CD_S SET COMN_DTL_CD = CONCAT(?, SUBSTRING(COMN_DTL_CD_NM, ?)), COMN_DTL_CD_NM = CONCAT(?, SUBSTRING(COMN_DTL_CD_NM, ?)), UPDT_DT = NOW()"
+							+ " WHERE COMN_CD_SQ = ? AND DEL_YN = 'N' AND COMN_DTL_CD_NM LIKE ?", nn, n.length() + 1, nn, n.length() + 1, g, n + " >%");
+				}
+				if (twoLevel(kind) && nn.contains(">")) insertCode(g, nn.substring(0, nn.indexOf(" >"))); // 다른 1단계 아래로 옮겼으면 그 1단계도
+			} else {
+				if (twoLevel(kind) && n.contains(">")) insertCode(g, n.substring(0, n.indexOf(" >")));
+				insertCode(g, n);
+			}
 			return null;
 		});
 		return prjCodes();
 	}
 
-	/** 삭제(1단계면 그 2단계도). 공통코드는 지우지 않고 DEL_YN 만 바꾼다 */
-	public Map<String, List<String>> deletePrjCode(String kind, String raw) {
-		String n = codeName(raw);
-		tx.execute(st -> {
-			int g = ensureCodeGroup(kind);
-			jdbc.update("UPDATE TB_EEP_COMN_DTL_CD_S SET DEL_YN = 'Y', UPDT_DT = NOW() WHERE COMN_CD_SQ = ? AND DEL_YN = 'N' AND (COMN_DTL_CD_NM = ? OR COMN_DTL_CD_NM LIKE ?)",
-					g, n, n.contains(">") ? n : n + " >%");
-			return null;
-		});
-		return prjCodes();
-	}
-
-	private int ensureCodeGroup(String kind) {
+	private int ensureCodeGroup(String kind, List<String> seed) {
 		String grp = codeGroup(kind);
 		List<Integer> g = jdbc.queryForList("SELECT COMN_CD_SQ FROM TB_EEP_COMN_CD_M WHERE COMN_CD = ? AND DEL_YN = 'N'", Integer.class, grp);
 		if (!g.isEmpty()) return g.get(0);
-		jdbc.update("INSERT INTO TB_EEP_COMN_CD_M (COMN_CD, COMN_CD_NM, NOTE, REG_DT, USE_YN, DEL_YN) VALUES (?, ?, ?, NOW(), 'Y', 'N')", grp,
-				"IND".equals(kind) ? "수행이력 산업(2단계)" : "수행이력 역할(2단계)", "직원관리 자동생성");
+		jdbc.update("INSERT INTO TB_EEP_COMN_CD_M (COMN_CD, COMN_CD_NM, NOTE, REG_DT, USE_YN, DEL_YN) VALUES (?, ?, ?, NOW(), 'Y', 'N')", grp, PRJ_CODE_GROUP.get(kind)[1], "직원관리 자동생성");
 		int sq = jdbc.queryForObject("SELECT COMN_CD_SQ FROM TB_EEP_COMN_CD_M WHERE COMN_CD = ? AND DEL_YN = 'N'", Integer.class, grp);
-		for (String n : PRJ_CODE_DEFAULT.get(kind)) insertCode(sq, n);
+		List<String> first = twoLevel(kind) ? Arrays.asList(PRJ_CODE_DEFAULT.get(kind)) : seed == null ? Collections.<String> emptyList() : seed;
+		for (String n : first) {
+			try {
+				insertCode(sq, nameOf(kind, n));
+			} catch (IllegalArgumentException e) {
+				// 쉼표·50자 넘는 옛 값은 목록에 넣지 않는다
+			}
+		}
 		return sq;
 	}
 
@@ -804,6 +845,14 @@ public class StaffCareerService {
 			return JSON.readValue(json == null || json.isEmpty() ? "{}" : json, new TypeReference<Map<String, Object>>() { });
 		} catch (java.io.IOException e) {
 			throw new IllegalArgumentException("자동생성 설정을 읽지 못했습니다.");
+		}
+	}
+
+	public static List<Object> parseList(String json) {
+		try {
+			return JSON.readValue(json, new TypeReference<List<Object>>() { });
+		} catch (java.io.IOException e) {
+			throw new IllegalArgumentException("목록을 읽지 못했습니다.");
 		}
 	}
 

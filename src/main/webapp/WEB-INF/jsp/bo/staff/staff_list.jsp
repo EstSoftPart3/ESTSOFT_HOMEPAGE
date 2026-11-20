@@ -74,7 +74,13 @@
 	.sc-tree { margin-bottom: 4px; } .sc-tree-top, .sc-tree-sub { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 	.sc-tree-k { width: 34px; font-size: 12px; color: #6b7785; }
 	.sc-tree-sub { margin: 4px 0 6px 38px; padding: 6px 8px; background: #f4f7fa; border-radius: 8px; }
-	.sc-del-wrap { display: inline-flex; align-items: center; }
+	.sc-del-wrap { display: inline-flex; align-items: center; } .sc-del-btns { display: inline-flex; }
+	.sc-ed { background: none; border: 0; padding: 0 3px; color: #6b7785; font-size: 12px; line-height: 1; } .sc-ed:hover { color: #0b6e8a; }
+	/* 필수 기술 네 줄: 줄 이름(고른 수) · 칩(이 직원 쓴 것 먼저, 숫자는 프로젝트 수) · 추가 칸 */
+	.sc-sk-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 4px 0; border-bottom: 1px dashed #e6ebf0; }
+	.sc-sk-row .sc-tree-k { width: 72px; flex: none; } .sc-sk-row .sc-tree-k b { color: #0b6e8a; }
+	.sc-sk-row .sc-chip em { font-style: normal; opacity: .7; font-size: 11px; }
+	.sc-sk-row .sc-sk-add { width: 130px; height: 26px; font-size: 12px; border-radius: 999px; }
 	.sc-tree .sc-add { width: 200px; height: 26px; font-size: 12px; border-radius: 999px; }
 	.sc-gen-tbl { font-size: 12.5px; } .sc-gen-tbl td { vertical-align: middle; white-space: nowrap; }
 	.sc-gen-tbl tr.sc-gen-pin td { background: #fffaf0; } .sc-gen-tbl tr.sc-gen-hole td { color: #8a96a3; background: #f7f8fa; font-style: italic; }
@@ -1161,11 +1167,11 @@
 	// ── ✨ 프로필 자동생성 (서버가 실제 프로젝트로 고른 자리·고정 줄·횟수대로 짠다) ──
 	// scGen: { sq, slots: [{t: IND|ROLE, v: '금융 > 은행'}] 고른 순서(같은 값 여러 번 가능), pins: {KEY: {pos, start, end}} 사람이 옮기거나 기간을 고친 줄,
 	//          codes: {IND: [...], ROLE: [...]}, open: {IND: 펼친 1단계}, edit: 목록 편집 중 }
-	var scGen = null, GEN_KIND = { IND: '산업', ROLE: '역할' };
+	var scGen = null, GEN_KIND = { IND: '산업', ROLE: '역할', LANG: '언어', FW: '프레임워크', DBMS: 'DBMS', TOOL: 'TOOL' };
 	function genConf() {
 		function one(id) { return $('#' + id + ' .sc-chip.on').attr('data-v'); }
 		var pins = Object.keys(scGen.pins).map(function(k) { var p = scGen.pins[k]; return { key: k, pos: p.pos, start: p.start, end: p.end }; });
-		return { skills: $('#scGenSkills .sc-chip.on').map(function() { return $(this).attr('data-v'); }).get(), months: +$('#scGenMonths').val(), max: +$('#scGenMaxR').val(),
+		return { skills: scGen.skills.slice(), months: +$('#scGenMonths').val(), max: +$('#scGenMaxR').val(),
 			sort: one('scGenSort'), slots: scGen.slots, pins: pins, photo: one('scGenPhoto') === 'Y', sample: !!scGen.sample };
 	}
 	// 볼륨 스위치처럼 끄는 막대(--p 만큼 채움)와 옆 숫자 칸을 맞춘다
@@ -1181,12 +1187,9 @@
 		$('#' + id).empty().append(list.map(function(x) { var v = String(x[0]); return $('<button type="button" class="sc-chip gray">').attr('data-v', v).toggleClass('on', on.indexOf(v) >= 0).attr('aria-pressed', on.indexOf(v) >= 0).text(x[1]); }));
 	}
 	function openGen(sq) {
-		var d = career.d, list = [], seen = {};
-		// 칩: 이 사람 수행이력에서 많이 쓴 기술(숫자는 프로젝트 수) 먼저, 그다음 회사에서 자주 쓰는 기술
-		scEnv.slice(0, 4).forEach(function(e) { scCount(d.items, e[0]).forEach(function(t) { if (!seen[t[0]]) { seen[t[0]] = 1; list.push([t[0], t[0] + ' ' + t[1]]); } }); });
-		scEnv.slice(0, 4).forEach(function(e) { (d.chips[e[0]] || []).slice(0, 12).forEach(function(v) { if (!seen[v]) { seen[v] = 1; list.push([v, v]); } }); });
-		scGen = { sq: sq, slots: [], pins: {}, codes: d.codes || { IND: [], ROLE: [] }, open: {}, edit: false };
-		genChips('scGenSkills', list, []);
+		var d = career.d;
+		scGen = { sq: sq, slots: [], pins: {}, codes: d.codes || { IND: [], ROLE: [] }, open: {}, edit: false, skills: [], skEdit: false };
+		genSkills();
 		// 처음 기간은 가장 오래된 프로젝트 시작월부터 지금까지(1년 단위로 올림, 100년까지), 횟수는 프로젝트 수(1~100)
 		var now = new Date(), oldest = d.items.map(function(it) { return String(it.START_YM || ''); }).filter(function(v) { return /^\d{4}-\d{2}/.test(v); }).sort()[0];
 		var span = oldest ? (now.getFullYear() - +oldest.slice(0, 4)) * 12 + now.getMonth() + 1 - +oldest.slice(5, 7) + 1 : 120;
@@ -1233,16 +1236,61 @@
 		});
 	}
 	function genDelBtn(kind, n) {
-		return $('<button type="button" class="sc-del">').attr({ 'data-kind': kind, 'data-v': n, 'aria-label': n + ' 목록에서 삭제', title: '목록에서 삭제(공통코드)' }).html('&times;');
+		return $('<span class="sc-del-btns">')
+			.append($('<button type="button" class="sc-ed">').attr({ 'data-kind': kind, 'data-v': n, 'aria-label': n + ' 이름 수정', title: '이름 수정(공통코드)' }).text('✎'))
+			.append($('<button type="button" class="sc-del">').attr({ 'data-kind': kind, 'data-v': n, 'aria-label': n + ' 목록에서 삭제', title: '목록에서 삭제(공통코드)' }).html('&times;'));
 	}
-	function genCode(kind, nm, act) {
-		hrPost('/admin/staff/prjCodeData.do', { KIND: kind, NM: nm, ACT: act }, function(res) {
+	// 필수 기술: 언어·프레임워크·DBMS·TOOL 네 줄. [구분, 수행이력 칸, 이름]
+	var GEN_TECH = [['LANG', 'LANG_NM', '언어'], ['FW', 'FRAMEWORK_NM', '프레임워크'], ['DBMS', 'DBMS_NM', 'DBMS'], ['TOOL', 'TOOL_NM', 'TOOL']];
+	// 한 줄의 칩 [이름, 이 직원 프로젝트 수]: 이 직원이 쓴 것 먼저, 그다음 목록(공통코드, 없으면 회사에서 자주 쓰는 값), 고른 값은 목록에서 빠져도 남긴다
+	function genTechList(t) {
+		var cnt = {}, names = [];
+		scCount(career.d.items, t[1]).forEach(function(x) { cnt[x[0]] = x[1]; names.push(x[0]); });
+		(scGen.codes[t[0]] || (career.d.chips[t[1]] || []).slice(0, 20)).forEach(function(n) { if (names.indexOf(n) < 0) names.push(n); });
+		return names.map(function(n) { return [n, cnt[n] || 0]; });
+	}
+	function genSkills() {
+		var $s = $('#scGenSkills').empty();
+		GEN_TECH.forEach(function(t) {
+			var list = genTechList(t), on = list.filter(function(x) { return scGen.skills.indexOf(x[0]) >= 0; }).length;
+			var $row = $('<div class="sc-sk-row">').appendTo($s).append($('<span class="sc-tree-k">').text(t[2]).append(on ? $('<b>').text(' ' + on) : ''));
+			list.forEach(function(x) {
+				var sel = scGen.skills.indexOf(x[0]) >= 0;
+				var $c = $('<button type="button" class="sc-chip gray sc-sk-chip">').attr({ 'data-v': x[0], 'aria-pressed': sel }).toggleClass('on', sel).text(x[0]).append(x[1] ? $('<em>').text(' ' + x[1]) : '');
+				$row.append(scGen.skEdit ? $('<span class="sc-del-wrap">').append($c).append(genDelBtn(t[0], x[0])) : $c);
+			});
+			$row.append($('<input type="text" class="form-control form-control-sm sc-add sc-sk-add">').attr({ 'data-kind': t[0], placeholder: '＋ ' + t[2] + ' 추가', 'aria-label': t[2] + ' 기술 추가' }));
+		});
+		$s.append($('<button type="button" class="btn btn-link btn-sm sc-sk-edit p-0">').text(scGen.skEdit ? '편집 끝' : '기술 목록 편집 (✎ 이름 수정 · × 삭제)'));
+	}
+	function genTech(kind) { return GEN_TECH.filter(function(t) { return t[0] === kind; })[0]; }
+	// 목록 고치기(공통코드). 기술 칸 그룹이 아직 없으면 지금 보이는 칩으로 처음 채운다
+	function genCode(kind, nm, act, newNm) {
+		var t = genTech(kind), data = { KIND: kind, NM: nm, ACT: act, NEW: newNm || '' };
+		if (t && !scGen.codes[kind]) data.SEED = JSON.stringify(genTechList(t).map(function(x) { return x[0]; }));
+		hrPost('/admin/staff/prjCodeData.do', data, function(res) {
 			scGen.codes = res.result;
 			career.d.codes = res.result;
-			if (act === 'DEL' && scGen.open[kind] === nm) delete scGen.open[kind];
-			if (act === 'ADD') scGen.open[kind] = nm.split('>')[0].trim();
-			genTrees();
-			toast(nm + (act === 'DEL' ? ' 삭제' : ' 추가') + ' · 공통코드에도 반영');
+			var name = act === 'EDIT' ? newNm : nm;
+			if (t) {
+				// 고른 기술도 같이: 추가하면 바로 고르고, 이름을 바꾸면 바꾼 이름으로, 지우면 고른 것에서 뺀다
+				var i = scGen.skills.indexOf(nm);
+				if (act === 'ADD' && scGen.skills.indexOf(nm) < 0) scGen.skills.push(nm);
+				if (act === 'EDIT' && i >= 0) scGen.skills[i] = newNm;
+				if (act === 'DEL' && i >= 0) scGen.skills.splice(i, 1);
+				genSkills();
+				if (act !== 'EDIT' || i >= 0) genPreview();
+			} else {
+				if (act === 'DEL' && scGen.open[kind] === nm) delete scGen.open[kind];
+				if (act === 'ADD') scGen.open[kind] = nm.split('>')[0].trim();
+				if (act === 'EDIT') {
+					if (scGen.open[kind] === nm) scGen.open[kind] = newNm;
+					scGen.slots.forEach(function(s) { if (s.t === kind && (s.v === nm || s.v.indexOf(nm + ' >') === 0)) s.v = newNm + s.v.substring(nm.length); }); // 고른 자리 이름도
+					genSlots();
+				}
+				genTrees();
+			}
+			toast(name + ({ ADD: ' 추가', EDIT: ' 로 이름 수정', DEL: ' 삭제' })[act] + ' · 공통코드에도 반영');
 		});
 	}
 	function genSlots() {
@@ -1298,7 +1346,7 @@
 		scGen.pins[it.KEY] = $.extend({ pos: i, start: it.START_YM, end: it.END_YM || '' }, extra || {});
 	}
 	function genInit() {
-		$('#scGenModal').on('click', '.sc-chip:not(.sc-l1):not(.sc-pick)', function() {
+		$('#scGenModal').on('click', '.sc-chip:not(.sc-l1):not(.sc-pick):not(.sc-sk-chip)', function() {
 			var $c = $(this), $box = $c.parent(), one = $box.is('[data-one]');
 			if (one) $box.children().removeClass('on').attr('aria-pressed', false);
 			$c.toggleClass('on', one || !$c.hasClass('on')).attr('aria-pressed', $c.hasClass('on'));
@@ -1321,8 +1369,21 @@
 			scGen.edit = !scGen.edit;
 			genTrees();
 		}).on('click', '.sc-del', function() {
+			var k = $(this).attr('data-kind'), v = $(this).attr('data-v'), tree = !genTech(k) && v.indexOf('>') < 0;
+			bootbox.confirm(GEN_KIND[k] + ' 「' + v + '」' + (tree ? ' 과 그 아래 항목' : '') + '을 목록에서 뺄까요? 공통코드에서도 빠집니다(이미 입력된 수행이력 값은 그대로).', function(ok) { if (ok) genCode(k, v, 'DEL'); });
+		}).on('click', '.sc-ed', function() {
 			var k = $(this).attr('data-kind'), v = $(this).attr('data-v');
-			bootbox.confirm(GEN_KIND[k] + ' 「' + v + '」' + (v.indexOf('>') < 0 ? ' 과 그 아래 항목' : '') + '을 목록에서 뺄까요? 공통코드에서도 빠집니다(이미 고른 자리·수행이력 값은 그대로).', function(ok) { if (ok) genCode(k, v, 'DEL'); });
+			bootbox.prompt({ title: GEN_KIND[k] + ' 이름 수정' + (!genTech(k) ? ' (2단계는 「1단계 > 2단계」)' : ''), value: v, callback: function(nv) {
+				if (nv !== null && $.trim(nv) && $.trim(nv) !== v) genCode(k, v, 'EDIT', $.trim(nv));
+			} });
+		}).on('click', '.sc-sk-chip', function() {
+			var v = $(this).attr('data-v'), i = scGen.skills.indexOf(v);
+			if (i >= 0) scGen.skills.splice(i, 1); else scGen.skills.push(v);
+			genSkills();
+			genPreview();
+		}).on('click', '.sc-sk-edit', function() {
+			scGen.skEdit = !scGen.skEdit;
+			genSkills();
 		}).on('keydown', '.sc-add', function(e) {
 			if (e.key !== 'Enter' || e.originalEvent.isComposing || !$.trim(this.value)) return;
 			e.preventDefault();
