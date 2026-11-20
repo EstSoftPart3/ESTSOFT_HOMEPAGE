@@ -37,6 +37,10 @@
 	.rc-stepper { display: inline-flex; border: 1px solid #dee2e6; border-radius: 999px; overflow: hidden; flex-wrap: wrap; }
 	.rc-stepper button { border: 0; border-left: 1px solid #fff; background: #fff; padding: 2px 9px; font-size: 11.5px; color: #868e96; }
 	.rc-stepper button:first-child { border-left: 0; } .rc-stepper button.past { background: #d3f9d8; color: #2b8a3e; font-weight: 700; } .rc-stepper button.now { background: #0b6e8a; color: #fff; font-weight: 800; }
+	.rc-who { border: 0; background: none; padding: 0; color: inherit; text-align: left; cursor: pointer; }
+	.rc-who:hover b, .rc-who:focus b { color: #0b6e8a; text-decoration: underline; }
+	.rc-pop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; border: 0; z-index: 1060; background: transparent; }
+	.rc-pop-wait { position: fixed; inset: 0; z-index: 1059; background: rgba(0,0,0,.25); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; }
 	.rc-menu { position: absolute; z-index: 1060; background: #fff; border: 1px solid #ccd3d9; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.15); padding: 4px; min-width: 150px; }
 	.rc-menu button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 4px 10px; border-radius: 6px; font-size: 12.5px; }
 	.rc-menu button:hover, .rc-menu button:focus { background: #f1f4f6; } .rc-menu button.cur { font-weight: 800; color: #0b6e8a; }
@@ -110,10 +114,12 @@
 				<input type="search" id="ppFind" class="form-control form-control-sm" placeholder="🔍 전체 직원에서 찾기 (투입 중 포함)" aria-label="전체 직원에서 찾기" autocomplete="off">
 				<div class="rc-find-list" id="ppFindList" hidden></div>
 			</div>
+			<div class="tbl-scroll"><!-- 없으면 ui-table.js 가 .rc-side 를 스크롤 상자로 보고 그 앞(가로 flex)에 위 스크롤바를 끼워 넣어 가운데 빈 영역이 생긴다 -->
 			<table class="table table-sm" id="ppTable">
 				<thead><tr><th scope="col">성명</th><th scope="col">상태</th><th scope="col">프로필</th><th scope="col">지원 중</th></tr></thead>
 				<tbody id="ppBody"></tbody>
 			</table>
+			</div>
 			<div class="rc-note">사람을 잡아 왼쪽 모집에 놓으면 지원 창이 떠요. 프로필(수행이력 버전)이 없는 사람은 끌리지 않아요.</div>
 		</div>
 	</div>
@@ -230,7 +236,7 @@ function people() {
 function personRow(s, st) {
 	var has = profilesOf(s.STAFF_SQ).length > 0, apps = activeAppsOfStaff(s.STAFF_SQ);
 	var $tr = $('<tr>').attr({ draggable: has, 'data-staff': s.STAFF_SQ }).toggleClass('off', !has);
-	$tr.append($('<td>').append($('<b>').text((has ? '⠿ ' : '🚫 ') + s.STAFF_NM)).append($('<div class="sub">').text([s.POSITION_NM, s.DEPT_NM, s.WISH_LOC ? s.WISH_LOC + ' 희망' : ''].filter(Boolean).join(' · '))));
+	$tr.append($('<td>').append(nameEl(s, has)).append($('<div class="sub">').text([s.POSITION_NM, s.DEPT_NM, s.WISH_LOC ? s.WISH_LOC + ' 희망' : ''].filter(Boolean).join(' · '))));
 	$tr.append($('<td>').append($('<span class="rc-pill">').addClass(st.k === 'SOON' ? 'warn' : st.k === 'FUTURE' ? 'FILLED' : '').text(st.label)).append(st.row && st.k !== 'WAIT' ? $('<div class="sub">').text(st.row.CLIENT_NM || '') : ''));
 	$tr.append($('<td>').append(verChips(s.STAFF_SQ)));
 	$tr.append($('<td>').append(apps.map(function(a) {
@@ -240,7 +246,27 @@ function personRow(s, st) {
 	dragSource($tr, s.STAFF_SQ, has);
 	return $tr;
 }
+// 이름을 누르면 인사카드를 이 화면 위에 띄운다(홈 일정 팝업과 같은 ?embed=1&popup=1 틀). 닫으면 다시 불러와 프로필을 새로 그린다
+function nameEl(s, has) {
+	var $b = $('<b>').text((has ? '⠿ ' : '🚫 ') + s.STAFF_NM);
+	if (!D.canStaff) return $b;
+	return $('<button type="button" class="rc-who">').attr('title', has ? '인사카드 열기' : '인사카드 › 수행이력에서 프로필 등록').append($b)
+		.on('click', function(e) { e.stopPropagation(); staffPop(s.STAFF_SQ, !has); });
+}
+function staffPop(sq, career) {
+	var $wait = $('<div class="rc-pop-wait" role="status">인사카드 불러오는 중…</div>').appendTo('body');
+	var $f = $('<iframe class="rc-pop" title="인사카드">').attr('src', '/admin/staff/openStaffList.do?STAFF_SQ=' + sq + (career ? '&TAB=CAREER' : '') + '&embed=1&popup=1').appendTo('body');
+	function done() { $(window).off('message.rcpop'); $f.remove(); $wait.remove(); }
+	$(window).off('message.rcpop').on('message.rcpop', function(m) {
+		var d = m.originalEvent.data;
+		if (!d || !d.boPopup || m.originalEvent.source !== $f[0].contentWindow) return;
+		if (d.boPopup === 'open') { $wait.remove(); $f[0].focus(); }
+		else if (d.boPopup === 'close') { done(); load(); }
+		else if (d.boPopup === 'empty') { done(); bootbox.alert('인사카드를 열 수 없어요(퇴사자이거나 직원관리 권한이 없음).'); }
+	});
+}
 function dragSource($el, staffSq, ok) {
+	if (!ok && D.canStaff) { $el.on('click', function() { staffPop(staffSq, true); }); return; }
 	if (!ok) { $el.on('click', function() { bootbox.alert('저장된 수행이력 프로필이 없어 지원할 수 없어요. 인사카드 › 수행이력에서 「새 버전으로 저장」을 먼저 해 주세요.'); }); return; }
 	$el.attr('draggable', true).on('dragstart', function(e) { e.originalEvent.dataTransfer.setData('text/plain', 'staff:' + staffSq); e.originalEvent.dataTransfer.effectAllowed = 'copy'; });
 }
@@ -265,7 +291,7 @@ function findBox() {
 		if (!q || !D) return;
 		D.staff.filter(function(s) { return String(s.STAFF_NM).indexOf(q) >= 0; }).slice(0, 30).forEach(function(s) {
 			var st = personState(s.STAFF_SQ), has = profilesOf(s.STAFF_SQ).length > 0;
-			var $it = $('<div class="it">').append($('<b>').text((has ? '⠿ ' : '🚫 ') + s.STAFF_NM)).append($('<span class="rc-pill">').toggleClass('FILLED', st.k === 'ACTIVE').text(st.label))
+			var $it = $('<div class="it">').append(nameEl(s, has)).append($('<span class="rc-pill">').toggleClass('FILLED', st.k === 'ACTIVE').text(st.label))
 				.append($('<span class="rc-note">').text(st.row && st.k !== 'WAIT' ? (st.row.CLIENT_NM || '') + (st.row.END_DT ? ' · ~' + st.row.END_DT : '') : '')).append($('<div style="width:100%">').append(verChips(s.STAFF_SQ)));
 			dragSource($it, s.STAFF_SQ, has);
 			$list.append($it);
@@ -498,6 +524,9 @@ function reload() { var open = $('#rcDetail').data('sq'); load(function() { if (
 // ── 모집 상세 ──
 function detail(sq) {
 	hrPost('/admin/recruit/detailData.do', { RECRUIT_SQ: sq }, function(res) {
+		// 다시 열 때(저장 뒤 reload)는 애니메이션 없이 바꿔 끼운다: fade 를 빼면 동기로 닫혀 hidden 이 새 팝업보다 먼저 끝나 modal-open 이 지워지지 않는다
+		var $old = $('#rcDetailModal'), swap = $old.hasClass('show'), top = $old.scrollTop();
+		if (swap) $old.removeClass('fade').modal('hide');
 		bootbox.hideAll();
 		var r = res.result.recruit, miss = missing(r), apps = appsOf(sq);
 		var $f = $('<div id="rcDetail">').data('sq', sq);
@@ -544,7 +573,7 @@ function detail(sq) {
 		var $log = $('<details class="rc-sec">').append($('<summary class="small font-weight-bold">').text('변경 이력 ' + res.result.logs.length));
 		res.result.logs.forEach(function(l) { $log.append($('<div class="small">').text(l.REG_DT + ' · ' + (l.EMPLY_ID || '') + ' · ' + l.SUMMARY)); });
 		$f.append($log);
-		bootbox.dialog({ title: (r.CLIENT_NM || '(고객사 미입력)') + ' · ' + (r.PRJ_NM || ''), message: $f, size: 'large', onEscape: true, backdrop: true, buttons: {
+		var $dlg = bootbox.dialog({ title: (r.CLIENT_NM || '(고객사 미입력)') + ' · ' + (r.PRJ_NM || ''), message: $f, size: 'large', onEscape: true, backdrop: true, animate: !swap, buttons: {
 			del: { label: '모집 삭제', className: 'btn-sm btn-outline-danger mr-auto', callback: function() {
 				bootbox.confirm('이 모집을 지울까요? 드라이브 폴더는 그대로 남아요.', function(ok) { if (ok) hrPost('/admin/recruit/deleteData.do', { RECRUIT_SQ: sq }, function() { bootbox.hideAll(); load(); }); });
 				return false;
@@ -555,6 +584,7 @@ function detail(sq) {
 				hrPost('/admin/recruit/saveData.do', data, function(res2) { notes(res2.result.notes); hrToast('저장했습니다.'); reload(); });
 				return false;
 			} } } }).attr('id', 'rcDetailModal');
+		if (swap) $dlg.scrollTop(top);
 	});
 }
 function applyRow(a) {

@@ -61,6 +61,7 @@ public class BoRecruitController {
 			out.put("partners", deployMapper.selectPartnerList());
 			out.put("codes", deployMapper.selectCodes());
 			out.put("superUser", systemService.access(id).superUser);
+			out.put("canStaff", systemService.access(id).allows("/admin/staff/staffListData.do")); // 대기자 이름 → 인사카드 팝업
 			return out;
 		});
 	}

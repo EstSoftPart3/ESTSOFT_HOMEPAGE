@@ -21,7 +21,7 @@
 <script src="/resources/bo/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script src="/resources/bo/plugins/bootbox/bootbox.all.min.js"></script>
 <script src="/resources/bo/plugins/bootbox/bootbox.locales.js"></script>
-<script src="/resources/common/bootbox-close.js?v=20261117"></script>
+<script src="/resources/common/bootbox-close.js?v=20261120"></script>
 <script>
 // ?popup=1(include_top): 팝업이 뜨면 'open', 모두 닫히면 'close', 8초 안에 아무 팝업도 안 뜨면 'empty' 를 부모(홈)에 알린다
 if (document.documentElement.classList.contains('in-pop')) (function() {

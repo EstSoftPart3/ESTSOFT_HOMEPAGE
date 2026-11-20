@@ -2,6 +2,8 @@
 // 일부러 안 닫히게 하려면 그 창에 onEscape: false 를 준다. bootbox.alert/confirm/prompt 도 dialog 를 거친다.
 (function () {
 	if (!window.bootbox) return;
+	// 팝업 위 팝업을 닫으면 Bootstrap 4 가 body.modal-open 을 지워 아래 팝업이 스크롤되지 않는다
+	$(document).on('hidden.bs.modal', function () { if ($('.modal.show').length) $('body').addClass('modal-open'); });
 	$(document).on('input change', '.bootbox :input', function () { $(this).closest('.bootbox').data('dirty', true); });
 	var dialog = bootbox.dialog;
 	bootbox.dialog = function (o) {

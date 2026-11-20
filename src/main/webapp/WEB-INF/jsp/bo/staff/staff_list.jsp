@@ -483,6 +483,7 @@
 		// 다른 메뉴의 인사카드 링크(?STAFF_SQ=번호)로 오면 그 사람 카드를 바로 연다
 		var linked = /[?&]STAFF_SQ=(\d+)/.exec(location.search);
 		load(function() {
+			if (/[?&]TAB=CAREER/.test(location.search)) cardTab = TAB.CAREER; // 모집 관리에서 프로필 등록하러 올 때
 			if (linked && rows.some(function(r) { return String(r.STAFF_SQ) === linked[1]; })) openCard(Number(linked[1]));
 		});
 		$('#keyword').on('input', render);
