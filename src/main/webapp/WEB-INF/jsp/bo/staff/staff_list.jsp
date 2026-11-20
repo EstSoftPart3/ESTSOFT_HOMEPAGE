@@ -90,6 +90,15 @@
 	.sc-sample-band { display: inline-block; background: #fff3c4; color: #8a5a00; border: 1px solid #f0c96b; border-radius: 999px; padding: 0 8px; font-weight: 700; font-size: 11.5px; }
 	.sc-gen-empty { padding: 18px; text-align: center; color: #6b7785; background: #f7f9fb; border-radius: 10px; font-size: 13px; }
 	#driveStatus { font-size: 12px; }
+	/* 인사카드·자동생성·버전 창: 머리·버튼 줄을 얇게, 인사카드는 인적사항 한 줄 고정 */
+	#cardModal .modal-header, #scGenModal .modal-header, #scVerModal .modal-header { padding: 8px 16px; }
+	#cardModal .modal-title, #scGenModal .modal-title, #scVerModal .modal-title { font-size: 15px; }
+	#cardModal .modal-footer, #scGenModal .modal-footer { padding: 5px 12px; }
+	#cardModal .modal-footer .btn, #scGenModal .modal-footer .btn { height: 28px; padding: 0 12px; font-size: 12.5px; line-height: 26px; }
+	.st-info { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 6px 16px; background: #f4f7fa; border-bottom: 1px solid #e3e8ee; font-size: 12.5px; color: #222; }
+	.sc-ver-set { min-width: 260px; } .sc-ver-chips { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 2px; } .sc-ver-chips:empty { display: none; }
+	.sc-ver-chip { font-size: 11px; background: #eef3f7; border-radius: 999px; padding: 1px 8px; white-space: nowrap; } .sc-ver-chip em { font-style: normal; color: #6b7785; }
+	.st-info:empty { display: none; } .st-info small { color: #6b7785; margin-right: 5px; }
 	.dm-tbl td { vertical-align: middle; } .dm-tbl select { max-width: 340px; font-size: 12px; } .dm-tbl tr.dm-miss td { color: #8a96a3; }
 	.st-grid .hr-cell, .st-skill .hr-cell { overflow-wrap: anywhere; }
 	.st-skill { padding: 3px 0; border-bottom: 1px solid rgba(17,17,17,.06); }
@@ -202,6 +211,7 @@
 					<h5 class="modal-title" id="cardTitle">인사카드</h5>
 					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
 				</div>
+				<div class="st-info" id="cardInfo" aria-label="인적사항"></div>
 				<div class="modal-body" id="cardBody"></div>
 				<div class="modal-footer">
 					<button type="button" class="btn btn-sm btn-outline-danger mr-auto" onclick="deleteCard();">삭제</button>
@@ -324,7 +334,7 @@
 				</div>
 				<div class="modal-body">
 					<p class="small text-muted mb-2"><b>순정</b>은 사내 기록·가져온 원본 그대로, <b>가필</b>은 ✨ 프로필 자동생성으로 만든 제출용입니다(<b>보기</b>에서 기준 순정과 달라진 칸이 노랗게 보이고, 되돌리기는 순정만). 「새 버전으로 저장」을 누를 때만 순정 버전이 생깁니다. <b>보기</b>는 그 버전의 수행이력을 읽기 전용으로 보여 주고, <b>이 버전으로</b>는 작업 중 내용을 그 버전으로 바꿉니다(옛 버전은 지워지지 않습니다).</p>
-					<div class="table-responsive"><table class="table table-sm mb-0" data-nosort><thead><tr><th>버전</th><th>구분</th><th>저장한 때</th><th>저장한 사람</th><th>프로젝트</th><th>직전 버전과 달라진 점</th><th><span class="sr-only">관리</span></th></tr></thead><tbody id="scVerBody"></tbody></table></div>
+					<div class="table-responsive"><table class="table table-sm mb-0" data-nosort><thead><tr><th>버전</th><th>구분</th><th>저장한 때</th><th>저장한 사람</th><th>프로젝트</th><th>설정 · 내용</th><th>직전 버전과 달라진 점</th><th><span class="sr-only">관리</span></th></tr></thead><tbody id="scVerBody"></tbody></table></div>
 					<div id="scVerView" class="mt-3"></div>
 				</div>
 			</div>
@@ -364,7 +374,7 @@
 					<div id="scGenView"></div>
 				</div>
 				<div class="modal-footer">
-					<button type="button" class="btn btn-outline-secondary" id="scGenWord">📄 워드로 바로 받기</button>
+					<button type="button" class="btn btn-outline-secondary" id="scGenWord">📄 워드 다운로드</button>
 					<button type="button" class="btn btn-primary" id="scGenSave">가필 버전으로 저장</button>
 				</div>
 			</div>
@@ -729,6 +739,12 @@
 		$('#cardTitle').text((r.SECRET ? '🔒 ' : '') + r.STAFF_NM + ' 인사카드 (' + STATUS[r.STATUS_CD] + ')');
 		$('#btnStatus').text(r.STATUS_CD === 'WORK' ? '퇴사로 옮기기' : '재직으로 되돌리기');
 		$('#btnWait').text(r.STATUS_CD === 'WAIT' ? '퇴사로 옮기기' : '대기로 옮기기');
+		// 탭을 넘겨도 늘 보이는 간단한 인적사항(값 칸은 Ctrl+C 로 복사)
+		var $info = $('#cardInfo').empty();
+		[['소속', 'ORG_NM'], ['부서', 'DEPT_NM'], ['직급', 'POSITION_NM'], ['등급', 'GRADE_NM'], ['입사', 'JOIN_DT'], ['전화', 'PHONE'], ['회사 메일', 'COMPANY_EMAIL']].forEach(function(f) {
+			if (!r[f[1]]) return;
+			$info.append(copyable($('<span>').append($('<small>').text(f[0])).append(document.createTextNode(r[f[1]] + (f[1] === 'JOIN_DT' && tenure(r) ? ' (' + tenure(r) + ')' : ''))), r, f[1]));
+		});
 		var $b = $('#cardBody').empty();
 		var $tabs = $('<ul class="nav nav-tabs mb-3" role="tablist">').appendTo($b), $p = $('<div role="tabpanel">').appendTo($b);
 		CARD_TABS.forEach(function(t, i) {
@@ -979,8 +995,8 @@
 				.append($save)
 				.append(btn('btn-outline-secondary', '🕘 버전', function() { openVersions(sq); }))
 				.append(btn('btn-outline-primary', '✨ 프로필 자동생성', function() { openGen(sq); }))
-				.append(btn('btn-outline-secondary', '📄 워드 받기', function() { chooseWord(sq); }))
-				.append(btn('btn-outline-secondary', '<i class="fab fa-google-drive"></i> 워드 올리기', function() { careerWordDrive(sq); }))
+				.append(btn('btn-outline-secondary', '📄 워드 다운로드', function() { chooseWord(sq); }))
+				.append(btn('btn-outline-secondary', '<i class="fab fa-google-drive"></i> 드라이브 백업', function() { careerWordDrive(sq); }))
 				.append(btn('btn-outline-secondary', '⤒ 워드 가져오기', function() { openImport(); }))));
 		if (d.dirty) $c.append($('<div class="st-dirty" role="status">').append($('<b>').text('작업 중')).append($('<span>').text(d.dirty + ' · 아직 버전으로 저장하지 않았습니다' + (d.ver ? ' (최신 v' + d.ver.VER_NO + ' · ' + d.ver.REG_DT + ')' : ''))));
 		if (career.pick) $c.append($('<div class="st-bulk">').append($('<span>').text('「' + career.pick + '」 를 쓴 프로젝트만 보는 중'))
@@ -1022,14 +1038,34 @@
 		hrPost('/admin/staff/saveCareerVersionData.do', { STAFF_SQ: sq }, function(res) { toast('v' + res.result + ' 로 저장했습니다'); loadCareer(sq); });
 	}
 
-	function careerWord(sq, verNo) {
-		if (!verNo && career && career.d && career.d.dirty && career.d.ver) toast('최신 버전(v' + career.d.ver.VER_NO + ') 기준입니다. 작업 중 내용은 새 버전으로 저장한 뒤 받으세요');
-		location.href = '/admin/staff/careerWord.do?STAFF_SQ=' + sq + (verNo ? '&VER_NO=' + verNo : '');
+	// 📄 워드 다운로드: 버전(목록 없이 부르면 고른 버전)과 증명사진 보이기/가리기를 한 창에서 고른다
+	function careerWord(sq, verNo, verOpts) {
+		var hasPhoto = docFiles(find(sq) || {}, 'DOC_PHOTO').length > 0;
+		var $m = $('<div>');
+		if (verOpts) {
+			var $sel = $('<select class="form-control form-control-sm mb-3" id="wdVer" aria-label="수행이력 버전">').appendTo($('<div>').append('<label class="small mb-1" for="wdVer">수행이력</label>').appendTo($m));
+			verOpts.forEach(function(o) { $sel.append($('<option>').val(o.value).text(o.text)); });
+		}
+		var $ph = $('<div>').append('<div class="small mb-1">증명사진</div>').appendTo($m);
+		[['Y', '보이기'], ['N', '가리기']].forEach(function(x) {
+			$ph.append($('<label class="mr-3 mb-0">').append($('<input type="radio" name="wdPhoto">').val(x[0]).prop({ checked: hasPhoto ? x[0] === 'Y' : x[0] === 'N', disabled: x[0] === 'Y' && !hasPhoto })).append(' ' + x[1]));
+		});
+		if (!hasPhoto) $ph.append('<div class="small text-muted mt-1">서류 탭에 증명사진 파일이 없어 가리기만 됩니다.</div>');
+		bootbox.dialog({ title: '📄 워드 다운로드', message: $m, buttons: {
+			cancel: { label: '취소', className: 'btn-outline-secondary btn-sm' },
+			ok: { label: '다운로드', className: 'btn-primary btn-sm', callback: function() {
+				var v = verOpts ? $m.find('#wdVer').val() : verNo, photo = $m.find('[name=wdPhoto]:checked').val() || 'N';
+				if (v === 'PICK') { openVersions(sq); return; }
+				v = v === 'ORIG' ? '' : v;
+				if (!v && career && career.d && career.d.dirty && career.d.ver) toast('최신 버전(v' + career.d.ver.VER_NO + ') 기준입니다. 작업 중 내용은 새 버전으로 저장한 뒤 받으세요');
+				location.href = '/admin/staff/careerWord.do?STAFF_SQ=' + sq + (v ? '&VER_NO=' + v : '') + '&PHOTO=' + photo;
+			} }
+		} });
 	}
 
 	function careerWordDrive(sq) {
-		toast('드라이브에 올리는 중…');
-		hrPost('/admin/staff/careerWordDriveData.do', { STAFF_SQ: sq }, function() { toast('드라이브 폴더에 이력카드 워드를 올렸습니다 (이전에 올린 것은 바꿈)'); });
+		toast('드라이브에 백업하는 중…');
+		hrPost('/admin/staff/careerWordDriveData.do', { STAFF_SQ: sq }, function() { toast('사람 폴더에 이력카드 워드를 백업했습니다 (이전 백업은 바꿈)'); });
 	}
 
 	// ── 칩으로 넣는 입력 창 ──
@@ -1116,6 +1152,23 @@
 	}
 
 	// ── 버전 창 ──
+	// 버전 설정 칸: 가필·샘플은 자동생성 때 고른 것(필수 기술·기간·횟수·산업·역할 자리·사진·🎲), 아래 작은 글은 그 버전 내용(기간·역할·많이 쓴 기술)
+	function verSetting(v) {
+		var $w = $('<div>'), $chips = $('<div class="sc-ver-chips">').appendTo($w), c = {};
+		try { c = v.GEN_CONF ? JSON.parse(v.GEN_CONF) : {}; } catch (e) { c = {}; }
+		function chip(k, t) { $chips.append($('<span class="sc-ver-chip">').append($('<em>').text(k)).append(document.createTextNode(' ' + t))); }
+		if (v.GEN_CONF) {
+			var m = +c.months || (+c.years || 0) * 12;
+			if ((c.skills || []).length) chip('필수 기술', c.skills.join(', '));
+			chip('기간', m ? (m >= 12 ? Math.floor(m / 12) + '년' : '') + (m % 12 ? ' ' + (m % 12) + '개월' : '') : '전체');
+			chip('횟수', +c.max ? c.max + '개' : '전체');
+			(c.slots || []).forEach(function(s, i) { chip((i + 1) + ' ' + (GEN_KIND[s.t] || s.t), s.v); });
+			chip('증명사진', c.photo ? '보이기' : '가리기');
+			if (c.seed) chip('🎲', '다시 뽑은 결과');
+		}
+		$w.append($('<div class="small text-muted">').text([v.SPAN, (v.ROLES || []).join('·'), (v.TECHS || []).join(', ')].filter(Boolean).join(' · ')));
+		return $w;
+	}
 	function openVersions(sq) {
 		$('#scVerView').empty();
 		var $b = $('#scVerBody').empty();
@@ -1125,8 +1178,8 @@
 				function b(text, fn) { return $('<button type="button" class="btn btn-sm btn-outline-secondary mr-1">').text(text).attr('aria-label', 'v' + v.VER_NO + ' ' + text).on('click', fn); }
 				var edit = v.VER_KIND === 'EDIT', sample = v.VER_KIND === 'SAMPLE';
 				$b.append($('<tr>').append($('<td>').append($('<b>').text('v' + v.VER_NO)).append(i === 0 ? ' <span class="sc-pill in">최신</span>' : ''),
-					$('<td class="text-nowrap">').append($('<span class="sc-pill">').toggleClass('warn', edit).toggleClass('sc-sample-band', sample).text(sample ? '샘플' : edit ? '가필' : '순정')).append(edit && v.BASE_VER ? $('<small class="text-muted">').text(' v' + v.BASE_VER + ' 기준') : ''), $('<td class="text-nowrap">').text(v.REG_DT), $('<td>').text(v.REG_EMPLY_ID || ''), $('<td>').text(v.PRJ_CNT + '건'), $('<td>').text(v.SUMMARY || ''),
-					$('<td class="text-nowrap text-right">').append(b('보기', function() { viewVersion(sq, v.VER_NO, edit ? v.BASE_VER : null); })).append(b('워드', function() { careerWord(sq, v.VER_NO); })).append(edit || sample ? '' : b('이 버전으로', function() { restoreVersion(sq, v.VER_NO); }))));
+					$('<td class="text-nowrap">').append($('<span class="sc-pill">').toggleClass('warn', edit).toggleClass('sc-sample-band', sample).text(sample ? '샘플' : edit ? '가필' : '순정')).append(edit && v.BASE_VER ? $('<small class="text-muted">').text(' v' + v.BASE_VER + ' 기준') : ''), $('<td class="text-nowrap">').text(v.REG_DT), $('<td>').text(v.REG_EMPLY_ID || ''), $('<td>').text(v.PRJ_CNT + '건'), $('<td class="sc-ver-set">').append(verSetting(v)), $('<td>').text(v.SUMMARY || ''),
+					$('<td class="text-nowrap text-right">').append(b('보기', function() { viewVersion(sq, v.VER_NO, edit ? v.BASE_VER : null); })).append(b('워드 다운로드', function() { careerWord(sq, v.VER_NO); })).append(edit || sample ? '' : b('이 버전으로', function() { restoreVersion(sq, v.VER_NO); }))));
 			});
 			if (!list.length) boEmpty($b, '저장한 버전이 없습니다. 수행이력 탭에서 「새 버전으로 저장」 을 누르면 생깁니다.');
 			$('#scVerModal').modal('show');
@@ -1156,15 +1209,12 @@
 		return out;
 	}
 
-	// 📄 워드 받기: 순정 최신 / 가필 최신 / 버전 창에서 고르기
+	// 📄 워드 다운로드: 순정 최신 / 가필 최신 / 버전 창에서 고르기 + 증명사진
 	function chooseWord(sq) {
 		var d = career.d, opts = [{ text: '순정 최신' + (d.ver ? ' (v' + d.ver.VER_NO + ')' : ' (버전 없음 · 지금 내용)'), value: 'ORIG' }];
 		if (d.edit) opts.push({ text: '가필 최신 (v' + d.edit.VER_NO + ')', value: 'EDIT' });
-		opts.push({ text: '고른 버전 (버전 창에서 「워드」)', value: 'PICK' });
-		bootbox.prompt({ title: '어느 수행이력으로 워드를 만들까요?', inputType: 'select', inputOptions: opts, value: 'ORIG', callback: function(v) {
-			if (v === 'PICK') openVersions(sq);
-			else if (v) careerWord(sq, v === 'EDIT' ? 'EDIT' : '');
-		} });
+		opts.push({ text: '고른 버전 (버전 창에서 「워드 다운로드」)', value: 'PICK' });
+		careerWord(sq, null, opts);
 	}
 
 	// ── ✨ 프로필 자동생성 (서버가 실제 프로젝트로 고른 자리·고정 줄·횟수대로 짠다) ──
@@ -1212,7 +1262,7 @@
 			? '<span class="sc-sample-band">샘플</span> 이 직원은 수행이력이 없어 <b>다른 직원들의 실제 프로젝트</b>로 면접 교육용 샘플을 짭니다. 출처 직원 이름은 넣지 않고, <b>샘플 버전</b>으로만 저장되며 워드 두 쪽에 「실제 경력 아님」이 찍힙니다. 지원 프로필·드라이브 저장에는 쓸 수 없습니다.'
 			: '최신 <b>순정</b> 버전의 실제 프로젝트로만 짭니다. 없는 프로젝트는 만들지 않고, 기간은 실제 참여 기간 안에서만 줄일 수 있습니다. 순정 버전은 그대로 둡니다.');
 		$('#scGenSave').text(scGen.sample ? '샘플 버전으로 저장' : '가필 버전으로 저장');
-		$('#scGenWord').html(scGen.sample ? '📄 샘플 워드 받기' : '📄 워드로 바로 받기');
+		$('#scGenWord').html(scGen.sample ? '📄 샘플 워드 다운로드' : '📄 워드 다운로드');
 		if (scGen.sample) $('#scGenMaxR').val(5);
 		volPaint();
 		$('#scGenModal').modal('show');

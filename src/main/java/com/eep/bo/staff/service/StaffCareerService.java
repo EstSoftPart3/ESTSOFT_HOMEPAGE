@@ -273,8 +273,33 @@ public class StaffCareerService {
 		});
 	}
 
+	/** 버전 목록. 가필·샘플은 만들 때 설정(GEN_CONF), 모든 버전은 내용 요약(SPAN 기간, ROLES 역할, TECHS 많이 쓴 기술 5개)을 같이 준다 */
 	public List<Map<String, Object>> versions(Object staffSq) {
-		return jdbc.queryForList("SELECT VER_NO, VER_KIND, BASE_VER, SUMMARY, PRJ_CNT, REG_EMPLY_ID, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%i') AS REG_DT FROM TB_EEP_HR_STAFF_PRJ_VER_H WHERE STAFF_SQ = ? ORDER BY VER_NO DESC", staffSq);
+		List<Map<String, Object>> list = jdbc.queryForList("SELECT VER_NO, VER_KIND, BASE_VER, SUMMARY, PRJ_CNT, GEN_CONF, SNAPSHOT, REG_EMPLY_ID, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%i') AS REG_DT FROM TB_EEP_HR_STAFF_PRJ_VER_H WHERE STAFF_SQ = ? ORDER BY VER_NO DESC", staffSq);
+		for (Map<String, Object> v : list) {
+			List<Map<String, Object>> items = parse((String) v.remove("SNAPSHOT"));
+			String from = "", to = "";
+			boolean ongoing = false;
+			Map<String, Integer> roles = new LinkedHashMap<>(), techs = new LinkedHashMap<>();
+			for (Map<String, Object> it : items) {
+				String s = s(it.get("START_YM")), e = s(it.get("END_YM"));
+				if (!s.isEmpty() && (from.isEmpty() || s.compareTo(from) < 0)) from = s;
+				if (e.isEmpty()) ongoing = true;
+				else if (e.compareTo(to) > 0) to = e;
+				for (String r : tokens(s(it.get("ROLE_NM")))) roles.merge(r, 1, Integer::sum);
+				for (String c : TECH_COLS) for (String t : tokens(s(it.get(c)))) techs.merge(t, 1, Integer::sum);
+			}
+			v.put("SPAN", from.isEmpty() ? "" : from.replace('-', '.') + " ~ " + (ongoing ? "현재" : to.replace('-', '.')));
+			v.put("ROLES", top(roles, 3));
+			v.put("TECHS", top(techs, 5));
+		}
+		return list;
+	}
+
+	private static List<String> top(Map<String, Integer> count, int n) {
+		List<String> keys = new ArrayList<>(count.keySet());
+		keys.sort((a, b) -> count.get(b) - count.get(a));
+		return keys.size() > n ? new ArrayList<>(keys.subList(0, n)) : keys;
 	}
 
 	/** 그 버전의 수행이력. verNo 가 비면 최신 순정 버전(버전이 없으면 지금 내용), EDIT 면 최신 가필 버전 */

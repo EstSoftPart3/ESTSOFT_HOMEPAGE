@@ -371,10 +371,11 @@ public class BoStaffController {
 	/** 회사 양식 워드 내려받기. VER_NO 가 없으면 최신 순정 버전, EDIT 면 최신 가필 버전, GEN(자동생성 설정)이 있으면 그 결과로 바로 */
 	@RequestMapping(value = "/admin/staff/careerWord.do", method = RequestMethod.GET)
 	public void careerWord(@RequestParam("STAFF_SQ") int staffSq, @RequestParam(value = "VER_NO", required = false) String verNo, @RequestParam(value = "GEN", required = false) String gen,
-			HttpServletResponse response, HttpSession session) throws IOException {
+			@RequestParam(value = "PHOTO", required = false) String photoYn, HttpServletResponse response, HttpSession session) throws IOException {
 		byte[] data;
 		try {
-			Object[] photo = photoFor(staffSq, verNo, gen);
+			// PHOTO=Y|N 은 다운로드 창에서 고른 증명사진 보이기·가리기(없으면 그 버전·설정을 따름)
+			Object[] photo = "N".equals(photoYn) ? null : "Y".equals(photoYn) ? photoFetch(staffSq) : photoFor(staffSq, verNo, gen);
 			data = gen != null && !gen.isEmpty() ? career.generatedWord(staffSq, gen, photo) : career.word(staffSq, verNo, photo);
 		} catch (IllegalArgumentException e) {
 			response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -398,7 +399,10 @@ public class BoStaffController {
 
 	/** 자동생성에서 「증명사진 넣기」를 골랐으면 서류 탭 증명사진을 드라이브에서 받는다. 드라이브 오류는 알림 글로 바꾼다 */
 	private Object[] photoFor(int staffSq, String verNo, String gen) {
-		if (!career.wantsPhoto(staffSq, verNo, gen)) return null;
+		return career.wantsPhoto(staffSq, verNo, gen) ? photoFetch(staffSq) : null;
+	}
+
+	private Object[] photoFetch(int staffSq) {
 		try {
 			return StaffDriveService.photo(staffSq);
 		} catch (IllegalArgumentException e) {
