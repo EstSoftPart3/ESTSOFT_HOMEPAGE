@@ -17,6 +17,8 @@
 	.rc-pf .form-control { height: 30px; font-size: 12.5px; flex: 1 1 120px; width: auto; }
 	.rc-yr { font-weight: 700; } .rc-loc { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 11.5px; color: #495057; overflow-wrap: anywhere; }
 	#ppTable { table-layout: fixed; width: 100%; } #ppTable td { overflow-wrap: anywhere; } #ppTable tr[draggable=true]:hover td { background: #eef9fc; }
+	.rc-rel { margin-top: 3px; font-size: 11px; color: #5f3dc4; } .rc-rel b { letter-spacing: 1px; }
+	.rc-tk.on { background: #5f3dc4; color: #fff; }
 	.rc-prof-ok { display: inline-block; background: #d3f9d8; color: #2b8a3e; border-radius: 6px; padding: 0 6px; font-size: 11px; font-weight: 800; margin-right: 3px; }
 	.rc-x { border: 1px solid #ced4da; background: #fff; border-radius: 999px; padding: 0 9px; font-size: 11.5px; font-weight: 700; color: #495057; }
 	.rc-x.drop { border-color: #ffa8a8; color: #c92a2a; } .rc-x:hover, .rc-x:focus { background: #f1f3f5; }
@@ -129,7 +131,8 @@
 	<div class="rc-main" id="rcMain"><div class="text-muted p-3">불러오는 중…</div></div>
 	<div id="rcSideHome" hidden>
 		<div class="rc-side" id="rcSide">
-			<h3>대기자 <span id="ppCnt" class="text-muted"></span></h3>
+			<h3>대기자 <span id="ppCnt" class="text-muted"></span>
+				<span id="ppSort" class="ml-auto" role="group" aria-label="대기자 정렬" hidden><button type="button" class="rc-wayb" data-sort="rel" title="이 모집의 요구 기술·등급·근무지와 맞는 순">관련도순</button><button type="button" class="rc-wayb" data-sort="name">이름순</button></span></h3>
 			<div id="ppChips" class="rc-chips d-flex flex-wrap align-items-center mb-2" style="gap:4px" role="group" aria-label="대기자 구분"></div>
 			<div class="rc-pf" role="group" aria-label="대기자 거르기">
 				<input type="search" id="pfLoc" class="form-control form-control-sm" placeholder="📍 지역 (예: 강남 판교)" aria-label="지역으로 거르기 (띄어 쓰면 하나라도 맞는 사람)" autocomplete="off">
@@ -168,6 +171,7 @@ var FIELDS = [['CLIENT_NM', '고객사'], ['PRJ_NM', '사업명'], ['GRADE_TXT',
 // 상세 칸 묶음: 이 칸 앞에 섹션 제목을 넣는다
 var SECTION_AT = { CLIENT_NM: '사업 정보', START_DT: '기간·근무지', PRICE_TXT: '조건', SALE_PARTNER_SQ: '거래처·마감' };
 var calMonth = null;
+var CUR_SQ = null, PP_SORT = 'rel'; // 대기자 패널이 붙은 모집(관련도 기준), 정렬
 
 function today() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 function days(a, b) { return Math.round((new Date(b) - new Date(a)) / 86400000); }
@@ -182,6 +186,7 @@ $(function() {
 	$('#addBtn').on('click', function() { pasteDialog(); });
 	$('#pfLoc, #pfTech').on('input', people);
 	$('#pfYear').on('change', people);
+	$('#ppSort').on('click', 'button', function() { PP_SORT = $(this).data('sort'); people(); });
 	findBox();
 	hrDriveGear('RECRUIT');
 	// 투입현황 대기 현황의 「지원 중 모집」 링크(?open=모집번호)는 그 모집 상세를 연다
@@ -254,16 +259,41 @@ function people() {
 		if (loc.length && !loc.some(function(w) { return where.indexOf(w) >= 0; })) return;
 		if (yr[0] !== '' && (y === null || y < +yr[0] || y >= +yr[1])) return;
 		if (tk && !(s.TECHS || []).some(techOk)) return;
-		rows.push({ s: s, st: st });
+		rows.push({ s: s, st: st, rel: relOf(s, st) });
 	});
 	boChips('#ppChips', [{ k: 'WAIT', name: '대기', n: cnt.WAIT }, { k: 'FUTURE', name: '투입 예정', n: cnt.FUTURE }, { k: 'SOON', name: '철수 임박', n: cnt.SOON }], PP_CHK, people);
 	var $dl = $('#pfTechList');
 	if ($dl.children().length !== Object.keys(techs).length) $dl.empty().append(Object.keys(techs).sort().map(function(t) { return $('<option>').val(t); }));
 	var $b = $('#ppBody').empty();
-	rows.sort(function(a, b) { return ['WAIT', 'SOON', 'FUTURE'].indexOf(a.st.k) - ['WAIT', 'SOON', 'FUTURE'].indexOf(b.st.k) || String(a.s.STAFF_NM).localeCompare(b.s.STAFF_NM); });
-	rows.forEach(function(x) { $b.append(personRow(x.s, x.st)); });
+	var byRel = PP_SORT === 'rel' && !!CUR_SQ;
+	$('#ppSort button').each(function() { $(this).attr('aria-pressed', $(this).data('sort') === PP_SORT); });
+	$('#ppSort').prop('hidden', !CUR_SQ);
+	rows.sort(function(a, b) { return (byRel ? b.rel.score - a.rel.score : 0) || ['WAIT', 'SOON', 'FUTURE'].indexOf(a.st.k) - ['WAIT', 'SOON', 'FUTURE'].indexOf(b.st.k) || String(a.s.STAFF_NM).localeCompare(b.s.STAFF_NM); });
+	rows.forEach(function(x) { $b.append(personRow(x.s, x.st, x.rel)); });
 	if (!rows.length) boEmpty($b, '고른 조건에 해당하는 사람이 없습니다.');
 	$('#ppCnt').text(rows.length);
+}
+// 관련도: 지금 열린 모집(CUR_SQ)과 얼마나 맞는지. 요구 기술 하나에 3, 등급 2, 근무지 2(「전지역·상관없음」은 1), 프로필 2, 대기 1·투입 예정 -1
+function lv(t) { var o = {}; String(t || '').replace(/[초중고특]/g, function(c) { o[c] = 1; }); return o; }
+function relOf(s, st) {
+	var r = CUR_SQ && recruitOf(CUR_SQ), out = { score: 0, max: 1, why: [], tech: {} };
+	if (!r) return out;
+	var mine = (s.TECHS || []).map(techKey), need = String(r.SKILLS || '').split(/[,/·]/).map(function(x) { return $.trim(x); }).filter(Boolean);
+	// Spring·SpringBoot·Spring Framework, React·ReactJS 는 같은 기술로(Java 와 JavaScript 는 다름)
+	function same(a, b) { var x = function(k) { return k.replace(/(boot|framework|mvc|js)$/, ''); }; return !!a && x(a) === x(b); }
+	var hit = need.filter(function(n) { var k = techKey(n); return mine.some(function(m) { return same(m, k); }); });
+	(s.TECHS || []).forEach(function(t) { var k = techKey(t); if (hit.some(function(n) { return same(k, techKey(n)); })) out.tech[k] = 1; });
+	out.score += hit.length * 3; out.max = need.length * 3 + 2 + 2 + 2 + 1;
+	if (hit.length) out.why.push('기술 ' + hit.join('·'));
+	var need2 = lv(r.GRADE_TXT), me2 = lv(s.GRADE_NM);
+	if (Object.keys(me2).some(function(k) { return need2[k]; })) { out.score += 2; out.why.push('등급 ' + s.GRADE_NM); }
+	var wish = String(s.WISH_LOC || '').replace(/\s/g, ''), area = String(r.WORK_AREA || '').split(/[\s,/·()]+/).map(function(w) { return w.replace(/(역|상주|근무|인근|부근)$/, ''); }).filter(function(w) { return w.length >= 2; });
+	var place = area.filter(function(w) { return wish.indexOf(w) >= 0; })[0];
+	if (place) { out.score += 2; out.why.push('지역 ' + place); }
+	else if (/전지역|전체가능|상관없|어디든/.test(wish)) { out.score += 1; out.why.push('지역 무관'); }
+	if (profilesOf(s.STAFF_SQ).length) out.score += 2;
+	out.score += st.k === 'WAIT' ? 1 : st.k === 'FUTURE' ? -1 : 0;
+	return out;
 }
 // JAVA·Java·Spring Boot·SpringBoot 처럼 표기만 다른 기술을 같게 본다(서버 StaffCareerService.techKey 와 같은 규칙)
 function techKey(t) { return String(t || '').toLowerCase().replace(/[\s\-_.]/g, ''); }
@@ -278,19 +308,25 @@ function career(s) {
 	}
 	return { y: null, label: t };
 }
-function personRow(s, st) {
+function personRow(s, st, rel) {
 	var has = profilesOf(s.STAFF_SQ).length > 0, apps = activeAppsOfStaff(s.STAFF_SQ), c = career(s), techs = s.TECHS || [];
+	rel = rel || { score: 0, max: 1, why: [], tech: {} };
 	var ps = profilesOf(s.STAFF_SQ);
 	var $tr = $('<tr>').attr({ draggable: has, 'data-staff': s.STAFF_SQ }).toggleClass('noprof', !has);
 	// 마우스를 올리면 잘린 정보까지 한 번에 보인다
 	$tr.attr('title', [s.STAFF_NM + ' (' + [s.POSITION_NM, s.DEPT_NM, s.GRADE_NM].filter(Boolean).join(' · ') + ')', '연차: ' + (c.label || '-'), '지역: ' + (s.WISH_LOC || '-'), '주요기술: ' + (techs.join(', ') || '-'),
 		'상태: ' + st.label + (st.row && st.k !== 'WAIT' ? ' · ' + (st.row.CLIENT_NM || '') : ''), '프로필: ' + (has ? ps.map(function(p) { return (p.VER_KIND === 'EDIT' ? '가필 v' : '순정 v') + p.VER_NO; }).join(', ') : '없음'),
-		has ? '모집 상세에서 줄을 누르거나 왼쪽에 끌어 놓으면 지원' : '프로필이 없어 지원할 수 없어요'].join('\n'));
-	$tr.append($('<td>').append(nameEl(s, has)).append($('<div class="sub">').text([s.POSITION_NM, s.DEPT_NM].filter(Boolean).join(' · ')))
-		.append($('<div class="mt-1">').append(has ? $('<span class="rc-prof-ok">✓ 프로필</span>').add(verChips(s.STAFF_SQ)) : verChips(s.STAFF_SQ))));
+		CUR_SQ ? '관련도: ' + (rel.why.join(' · ') || '맞는 항목 없음') : '', has ? '모집 상세에서 줄을 누르거나 왼쪽에 끌어 놓으면 지원' : '프로필이 없어 지원할 수 없어요'].filter(Boolean).join('\n'));
+	var $nm = $('<td>').append(nameEl(s, has)).append($('<div class="sub">').text([s.POSITION_NM, s.DEPT_NM].filter(Boolean).join(' · ')))
+		.append($('<div class="mt-1">').append(has ? $('<span class="rc-prof-ok">✓ 프로필</span>').add(verChips(s.STAFF_SQ)) : verChips(s.STAFF_SQ)));
+	if (CUR_SQ) {
+		var dots = Math.max(0, Math.min(4, Math.round(4 * rel.score / rel.max)));
+		$nm.append($('<div class="rc-rel">').append($('<b>').text('관련 ' + '●●●●'.substring(0, dots) + '○○○○'.substring(dots))).append(rel.why.length ? $('<span>').text(' ' + rel.why.join(' · ')) : ''));
+	}
+	$tr.append($nm);
 	$tr.append($('<td>').append($('<span class="rc-yr">').text(c.label || '-')).append(s.GRADE_NM ? $('<div class="sub">').text(s.GRADE_NM) : ''));
 	$tr.append($('<td>').append(s.WISH_LOC ? $('<span class="rc-loc">').text(s.WISH_LOC) : $('<span class="sub">-</span>')));
-	$tr.append($('<td>').append(techs.map(function(t) { return $('<span class="rc-tk">').text(t); })));
+	$tr.append($('<td>').append(techs.map(function(t) { return $('<span class="rc-tk">').toggleClass('on', !!rel.tech[techKey(t)]).text(t); })));
 	var $st = $('<td>').append($('<span class="rc-pill">').addClass(st.k === 'SOON' ? 'warn' : st.k === 'FUTURE' ? 'FILLED' : '').text(st.label)).append(st.row && st.k !== 'WAIT' ? $('<div class="sub">').text(st.row.CLIENT_NM || '') : '');
 	apps.forEach(function(a) {
 		var r = recruitOf(a.RECRUIT_SQ);
@@ -654,6 +690,8 @@ function detail(sq) {
 		res.result.logs.forEach(function(l) { $log.append($('<div class="small">').text(l.REG_DT + ' · ' + (l.EMPLY_ID || '') + ' · ' + l.SUMMARY)); });
 		$f.append($log);
 		dropTarget($f, sq); // 왼쪽 모집 정보 어디에 놓아도 지원
+		CUR_SQ = sq;
+		people(); // 이 모집 기준 관련도순으로 다시 그림
 		var $dlg = bootbox.dialog({ title: (r.CLIENT_NM || '(고객사 미입력)') + ' · ' + (r.PRJ_NM || ''), message: $('<div class="rc-dwrap">').append($f).append($('#rcSide')), size: 'extra-large', className: 'rc-detail', onEscape: true, backdrop: true, animate: !swap, buttons: {
 			del: { label: '모집 삭제', className: 'btn-sm btn-outline-danger mr-auto', callback: function() {
 				bootbox.confirm('이 모집을 지울까요? 드라이브 폴더는 그대로 남아요.', function(ok) { if (ok) hrPost('/admin/recruit/deleteData.do', { RECRUIT_SQ: sq }, function() { bootbox.hideAll(); load(); }); });
@@ -664,7 +702,7 @@ function detail(sq) {
 				var data = $.extend({ RECRUIT_SQ: sq }, formData($form));
 				hrPost('/admin/recruit/saveData.do', data, function(res2) { notes(res2.result.notes); hrToast('저장했습니다.'); reload(); });
 				return false;
-			} } } }).attr('id', 'rcDetailModal').on('hide.bs.modal', function(e) { if (e.target === this) $('#rcSide').appendTo('#rcSideHome'); });
+			} } } }).attr('id', 'rcDetailModal').on('hide.bs.modal', function(e) { if (e.target === this) { $('#rcSide').appendTo('#rcSideHome'); CUR_SQ = null; } });
 		if (swap) $dlg.scrollTop(top);
 	});
 }
