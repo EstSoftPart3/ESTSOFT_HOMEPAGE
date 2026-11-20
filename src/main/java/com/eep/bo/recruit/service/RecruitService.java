@@ -55,6 +55,21 @@ public class RecruitService {
 			"SKILLS", "PREFER", "SALE_PARTNER_SQ", "SALE_PARTNER_TXT", "MGR_NM", "CLOSE_DT", "MEMO");
 	private static final List<String> DATE_COLS = Arrays.asList("START_DT", "END_DT", "CLOSE_DT");
 	private static final String CONF_MENU = "RECRUIT.MENU_DONE";
+
+	/** 인터뷰 기록 칩 목록(공통코드 RC_INTV_*). 키 → { 그룹 이름, 기본 예시... }. 그룹이 없을 때만 기본 예시를 넣고, 그 뒤는 화면의 ＋/✎ 로 고친다 */
+	static final Map<String, String[]> INTV_CODES = new LinkedHashMap<>();
+	static {
+		INTV_CODES.put("MOOD", new String[] { "인터뷰 분위기", "편안함", "평범함", "평범하고 살짝 무거움", "무거움·압박", "형식적·짧음" });
+		INTV_CODES.put("WHO", new String[] { "인터뷰 면접관", "PM", "PL·기술 담당", "고객사 현업", "인사·구매", "우리 회사 동행" });
+		INTV_CODES.put("DUR", new String[] { "인터뷰 소요 시간", "10분 이내", "20분", "30분", "1시간", "1시간 넘게" });
+		INTV_CODES.put("FLOW", new String[] { "인터뷰 진행 흐름", "자기소개", "이력서 기반 질문", "최근 프로젝트 설명", "기술 상세 질문", "실무 상황 질문", "코딩·화면 테스트", "질문 거의 없음" });
+		INTV_CODES.put("ASKD", new String[] { "인터뷰 많이 받은 질문", "기술 경험 깊이", "장애·이슈 대응", "업무 도메인", "협업·소통", "투입 가능일", "근무지·출퇴근", "단가·조건", "이직·공백 사유", "장기 근무 가능 여부" });
+		INTV_CODES.put("TECH", new String[] { "인터뷰 질문받은 기술" });
+		INTV_CODES.put("FEEL", new String[] { "인터뷰 본인 느낌", "잘 본 것 같음", "무난함", "일부 답변 아쉬움", "잘 모르겠음" });
+		INTV_CODES.put("CLI", new String[] { "인터뷰 고객 반응", "호의적", "보통", "무덤덤", "부정적" });
+		INTV_CODES.put("ETC", new String[] { "인터뷰 특이사항", "바로 투입 원함", "투입일 조율 언급", "재택·근무 형태 언급", "2차 인터뷰 예정", "다른 후보 있음", "단가 언급", "장비·보안 안내 받음" });
+		INTV_CODES.put("NOTICE", new String[] { "인터뷰 결과 안내", "당일", "1~2일 내", "이번 주", "언급 없음" });
+	}
 	private static final ObjectMapper JSON = new ObjectMapper();
 	private static final DateTimeFormatter DT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 	private static final java.time.ZoneId SEOUL = java.time.ZoneId.of("Asia/Seoul");
@@ -108,6 +123,50 @@ public class RecruitService {
 		} catch (RuntimeException e) {
 			log.error("모집 테이블 준비 실패: {}", e.getClass().getSimpleName());
 		}
+		try {
+			for (String k : INTV_CODES.keySet()) intvGroup(k); // 인터뷰 기록 공통코드(2026-11-20 사용자 승인)
+		} catch (RuntimeException e) {
+			log.error("인터뷰 기록 코드 준비 실패: {}", e.getClass().getSimpleName());
+		}
+	}
+
+	/** RC_INTV_<키> 그룹 번호. 없으면 만들고 기본 예시를 넣는다 */
+	private int intvGroup(String kind) {
+		String[] def = INTV_CODES.get(kind);
+		require(def != null, "알 수 없는 항목입니다.");
+		String grp = "RC_INTV_" + kind;
+		List<Integer> g = jdbc.queryForList("SELECT COMN_CD_SQ FROM TB_EEP_COMN_CD_M WHERE COMN_CD = ? AND DEL_YN = 'N'", Integer.class, grp);
+		if (!g.isEmpty()) return g.get(0);
+		jdbc.update("INSERT INTO TB_EEP_COMN_CD_M (COMN_CD, COMN_CD_NM, NOTE, REG_DT, USE_YN, DEL_YN) VALUES (?, ?, '모집 관리 인터뷰 기록', NOW(), 'Y', 'N')", grp, def[0]);
+		int sq = jdbc.queryForObject("SELECT COMN_CD_SQ FROM TB_EEP_COMN_CD_M WHERE COMN_CD = ? AND DEL_YN = 'N'", Integer.class, grp);
+		for (int i = 1; i < def.length; i++) jdbc.update("INSERT INTO TB_EEP_COMN_DTL_CD_S (COMN_CD_SQ, COMN_DTL_CD, COMN_DTL_CD_NM, COMN_DTL_CD_ORD, REG_DT, USE_YN, DEL_YN) VALUES (?, ?, ?, ?, NOW(), 'Y', 'N')", sq, def[i], def[i], i);
+		return sq;
+	}
+
+	/** 인터뷰 기록 칩: 키 → 이름 목록(순서대로) */
+	public Map<String, List<String>> intvCodes() {
+		Map<String, List<String>> out = new LinkedHashMap<>();
+		for (String k : INTV_CODES.keySet()) out.put(k, new ArrayList<>());
+		for (Map<String, Object> r : jdbc.queryForList("SELECT SUBSTRING(C.COMN_CD, 9) AS K, D.COMN_DTL_CD_NM AS NM FROM TB_EEP_COMN_CD_M C JOIN TB_EEP_COMN_DTL_CD_S D ON D.COMN_CD_SQ = C.COMN_CD_SQ"
+				+ " WHERE C.COMN_CD LIKE 'RC\\_INTV\\_%' AND C.DEL_YN = 'N' AND D.DEL_YN = 'N' AND D.USE_YN = 'Y' ORDER BY D.COMN_DTL_CD_ORD IS NULL, D.COMN_DTL_CD_ORD, D.COMN_DTL_CD_SQ")) {
+			List<String> l = out.get(s(r.get("K")));
+			if (l != null) l.add(s(r.get("NM")));
+		}
+		return out;
+	}
+
+	/** 인터뷰 기록 칩 추가(ADD)·빼기(DEL, 공통코드는 DEL_YN). 이미 남긴 기록은 그대로 */
+	public Map<String, List<String>> saveIntvCode(String kind, String act, String raw) {
+		String n = s(raw).trim().replaceAll("\\s+", " ");
+		require(!n.isEmpty() && n.length() <= 50, "이름은 1~50자로 넣어 주세요.");
+		int g = intvGroup(kind);
+		if ("DEL".equals(act)) {
+			jdbc.update("UPDATE TB_EEP_COMN_DTL_CD_S SET DEL_YN = 'Y', UPDT_DT = NOW() WHERE COMN_CD_SQ = ? AND DEL_YN = 'N' AND COMN_DTL_CD_NM = ?", g, n);
+		} else if (jdbc.queryForObject("SELECT COUNT(*) FROM TB_EEP_COMN_DTL_CD_S WHERE COMN_CD_SQ = ? AND COMN_DTL_CD_NM = ? AND DEL_YN = 'N'", Integer.class, g, n) == 0) {
+			jdbc.update("INSERT INTO TB_EEP_COMN_DTL_CD_S (COMN_CD_SQ, COMN_DTL_CD, COMN_DTL_CD_NM, COMN_DTL_CD_ORD, REG_DT, USE_YN, DEL_YN)"
+					+ " SELECT ?, ?, ?, IFNULL(MAX(COMN_DTL_CD_ORD), 0) + 1, NOW(), 'Y', 'N' FROM TB_EEP_COMN_DTL_CD_S WHERE COMN_CD_SQ = ?", g, n, n, g);
+		}
+		return intvCodes();
 	}
 
 	/** 메뉴는 한 번만 넣는다(관리자가 지우면 다시 생기지 않게 설정 값으로 표시). 투입현황(H00004) 바로 아래, 투입현황 권한을 가진 역할에 같이 준다 */
@@ -520,7 +579,7 @@ public class RecruitService {
 	/** 인터뷰 기록 저장(화면이 칩으로 만든 JSON). summary 는 이력용 한 줄 */
 	public void note(Object applySq, String note, String summary, String loginId) {
 		Map<String, Object> a = apply(applySq);
-		require(s(note).length() <= 4000, "인터뷰 기록이 너무 깁니다.");
+		require(s(note).length() <= 30000, "인터뷰 기록이 너무 깁니다."); // 질문·답변 여러 개(모의 인터뷰 자료)
 		jdbc.update("UPDATE TB_EEP_RECRUIT_APPLY_R SET INTV_NOTE = ?, UPDT_EMPLY_ID = ?, UPDT_DT = NOW() WHERE APPLY_SQ = ?", s(note).trim().isEmpty() ? null : note, loginId, applySq);
 		log(a.get("RECRUIT_SQ"), applySq, "NOTE", a.get("STAFF_NM") + " 인터뷰 기록" + (s(summary).trim().isEmpty() ? "" : " · " + cut(summary.trim(), 300)), loginId);
 	}

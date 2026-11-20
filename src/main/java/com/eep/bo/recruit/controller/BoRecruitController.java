@@ -61,6 +61,7 @@ public class BoRecruitController {
 			out.put("partners", deployMapper.selectPartnerList());
 			out.put("codes", deployMapper.selectCodes());
 			out.put("superUser", systemService.access(id).superUser);
+			out.put("intvCodes", recruit.intvCodes());
 			out.put("canStaff", systemService.access(id).allows("/admin/staff/staffListData.do")); // 대기자 이름 → 인사카드 팝업
 			return out;
 		});
@@ -162,6 +163,11 @@ public class BoRecruitController {
 			}
 			return out;
 		});
+	}
+
+	@RequestMapping(value = "/admin/recruit/intvCodeData.do", method = RequestMethod.POST)
+	public ModelAndView intvCodeData(@RequestParam("KIND") String kind, @RequestParam("ACT") String act, @RequestParam("NM") String nm) {
+		return run(() -> recruit.saveIntvCode(kind, act, nm));
 	}
 
 	@RequestMapping(value = "/admin/recruit/noteData.do", method = RequestMethod.POST)

@@ -76,6 +76,12 @@
 	.rc-cal .ev { display: block; border-radius: 4px; padding: 0 4px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 	.rc-cal .ev.intv, .rc-cal-legend .ev.intv { background: #fff; color: #c2410c; border: 1px solid #ffc9a8; border-left: 4px solid #e8590c; border-radius: 3px; }
 	.rc-cal .ev.intv b, .rc-cal-legend .ev.intv b { font-weight: 800; } .rc-cal .ev.intv small { color: #868e96; }
+	.rc-note-kv { grid-template-columns: 100px 1fr; gap: 8px 10px; } .rc-note-kv > label { align-self: start; padding-top: 3px; }
+	.rc-note-kv.editing .rc-wayb:not(.rc-add-code) { border-color: #fa5252; color: #c92a2a; } .rc-note-kv.editing .rc-wayb:not(.rc-add-code)::after { content: ' ✕'; }
+	.rc-add-code { border-style: dashed; color: #0b6e8a; }
+	.rc-qa-row { display: grid; grid-template-columns: 1fr 1.4fr 20px; gap: 4px; margin-bottom: 4px; align-items: start; }
+	.rc-qa-row textarea { font-size: 12.5px; }
+	@media (max-width: 767px) { .rc-qa-row { grid-template-columns: 1fr 20px; } .rc-qa-row .a { grid-column: 1; } }
 	.rc-notebtn { border: 1px dashed #b197fc; background: #fff; color: #6741d9; border-radius: 999px; padding: 0 9px; font-size: 11.5px; font-weight: 700; max-width: 100%; white-space: normal; text-align: left; }
 	.rc-notebtn.has { border-style: solid; background: #f3f0ff; } .rc-notebtn:hover, .rc-notebtn:focus { background: #e5dbff; }
 	.ist { font-style: normal; font-size: 10px; font-weight: 800; border-radius: 4px; padding: 0 4px; background: #fff4e6; color: #d9480f; }
@@ -591,8 +597,6 @@ function viewCal($m, list) {
 function intvState(a) {
 	if (a.STEP_CD === 'DROP') return ['x', '탈락'];
 	if (a.STEP_CD === 'JOIN_WAIT' || a.STEP_CD === 'JOIN') return ['ok', '통과'];
-	var res = noteOf(a).r; // 기록한 결과가 있으면 그것을
-	if (res === '합격') return ['ok', '합격']; if (res === '불합격') return ['x', '불합격']; if (res === '보류') return ['wait', '보류'];
 	return a.INTV_DT.substring(0, 16) > nowYmdHm() ? ['plan', '예정'] : ['wait', '결과 대기'];
 }
 function nowYmdHm() { var d = new Date(); return today() + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
@@ -955,46 +959,87 @@ function applyDialog(recruitSq, staffSq) {
 		} } } });
 }
 
-// ── 인터뷰 기록: 칩을 눌러 고르고(한 묶음에 하나, 「여러 개」 묶음은 여럿) 메모만 글로 ──
-var NOTE_CATS = [['r', '결과', ['합격', '보류', '불합격', '결과 대기']], ['tech', '기술 역량', ['상', '중', '하']], ['comm', '의사소통', ['상', '중', '하']],
-	['att', '태도·인상', ['좋음', '보통', '아쉬움']], ['cli', '고객사 반응', ['긍정', '보통', '부정']],
-	['chk', '확인할 것', ['단가 협의', '일정 조율', '재택 문의', '추가 인터뷰', '경력 확인', '투입일 협의'], true], ['ask', '질문받은 기술', null, true]];
+// ── 인터뷰 기록: 인터뷰를 본 사람과 통화하며 들은 내용. 칩은 공통코드(RC_INTV_*)라 ＋로 바로 추가, ✎ 로 빼기 ──
+// [키, 이름, 여러 개?]. 질문·답변(여러 쌍, 모의 인터뷰 자료)과 메모만 글로 쓴다
+var NOTE_CATS = [['mood', 'MOOD', '분위기'], ['who', 'WHO', '면접관', true], ['dur', 'DUR', '소요 시간'], ['flow', 'FLOW', '진행 흐름', true], ['askd', 'ASKD', '많이 받은 질문', true],
+	['tech', 'TECH', '질문받은 기술', true], ['feel', 'FEEL', '본인 느낌'], ['cli', 'CLI', '고객 반응', null, '본인이 느낀'], ['etc', 'ETC', '특이사항', true], ['notice', 'NOTICE', '결과 안내']];
 function noteOf(a) { try { return JSON.parse(a.INTV_NOTE || '{}') || {}; } catch (e) { return {}; } }
 function noteSummary(n) {
-	return [n.r, n.tech && '기술 ' + n.tech, n.comm && '소통 ' + n.comm, n.att && '태도 ' + n.att, n.cli && '고객 ' + n.cli].concat(n.chk || []).filter(Boolean).join(' · ') + (n.memo ? ' · 💬' : '');
+	var qa = (n.qa || []).filter(function(x) { return x.q; }).length;
+	var s = [n.mood, n.dur, n.feel && '느낌 ' + n.feel, n.cli && '고객 ' + n.cli].concat(n.etc || []).concat([n.notice && '안내 ' + n.notice]).filter(Boolean);
+	if (!s.length && n.r) s = [n.r, n.cli && '고객 ' + n.cli].filter(Boolean); // 2026-11-20 첫 버전(평가형) 기록
+	return s.join(' · ') + (qa ? ' · ❓' + qa : '') + (n.memo ? ' · 💬' : '');
 }
 function noteDialog(a) {
-	var r = recruitOf(a.RECRUIT_SQ) || {}, n = $.extend({ chk: [], ask: [] }, noteOf(a)), fromDetail = $('#rcDetail').length > 0; // 달력에서 열면 「모집 상세 열기」를 보인다
-	var skills = String(r.SKILLS || '').split(/[,/·]+/).map(function(x) { return $.trim(x); }).filter(Boolean).concat(['경력·프로젝트', '업무 이해도']);
-	var $k = $('<div class="rc-kv">');
+	var r = recruitOf(a.RECRUIT_SQ) || {}, n = $.extend({}, noteOf(a)), fromDetail = $('#rcDetail').length > 0, editing = false; // 달력에서 열면 「모집 상세 열기」를 보인다
+	NOTE_CATS.forEach(function(c) { if (c[3]) n[c[0]] = $.isArray(n[c[0]]) ? n[c[0]] : []; else n[c[0]] = n[c[0]] || ''; });
+	var skills = String(r.SKILLS || '').split(/[,/·]+/).map(function(x) { return $.trim(x); }).filter(Boolean);
+	var $k = $('<div class="rc-kv rc-note-kv">');
+	var $edit = $('<button type="button" class="btn btn-sm btn-link p-0">✎ 예시 빼기</button>').on('click', function() { editing = !editing; $k.toggleClass('editing', editing); $(this).text(editing ? '✓ 다 뺐어요' : '✎ 예시 빼기'); });
+	$k.append($('<div class="rc-note" style="grid-column:1/-1">').text('통화로 들은 내용을 칩으로 골라요. 없는 예시는 「＋」로 바로 추가하면 다음부터 고를 수 있어요. ').append($edit));
 	NOTE_CATS.forEach(function(c) {
-		var opts = c[2] || skills, $g = $('<span class="d-flex flex-wrap" style="gap:4px" role="group">').attr('aria-label', c[1]);
-		function paint() { $g.find('button').each(function() { var v = $(this).data('v'); $(this).attr('aria-pressed', c[3] ? n[c[0]].indexOf(v) >= 0 : n[c[0]] === v); }); }
-		opts.forEach(function(v) {
-			$g.append($('<button type="button" class="rc-wayb">').data('v', v).text(v).on('click', function() {
-				if (c[3]) { var i = n[c[0]].indexOf(v); if (i >= 0) n[c[0]].splice(i, 1); else n[c[0]].push(v); }
-				else n[c[0]] = n[c[0]] === v ? '' : v; // 다시 누르면 고른 것 풀기
-				paint();
+		var key = c[0], $g = $('<span class="d-flex flex-wrap" style="gap:4px" role="group">').attr('aria-label', c[2]);
+		function opts() { var l = (D.intvCodes && D.intvCodes[c[1]]) || []; return (key === 'tech' ? skills.filter(function(x) { return l.indexOf(x) < 0; }) : []).concat(l); }
+		function on(v) { return c[3] ? n[key].indexOf(v) >= 0 : n[key] === v; }
+		function paint() {
+			$g.empty();
+			var list = opts();
+			// 지난 기록에 있었는데 목록에서 빠진 값도 고른 채로 보인다
+			(c[3] ? n[key] : n[key] ? [n[key]] : []).forEach(function(v) { if (list.indexOf(v) < 0) list.push(v); });
+			list.forEach(function(v) {
+				$g.append($('<button type="button" class="rc-wayb">').attr('aria-pressed', on(v)).text(v).on('click', function() {
+					if (editing) {
+						if ((D.intvCodes[c[1]] || []).indexOf(v) < 0) return; // 모집 요구 기술처럼 코드가 아닌 칩은 못 뺀다
+						return bootbox.confirm('「' + v + '」 예시를 ' + c[2] + ' 목록에서 뺄까요? 이미 남긴 기록은 그대로예요.', function(ok) {
+							if (ok) hrPost('/admin/recruit/intvCodeData.do', { KIND: c[1], ACT: 'DEL', NM: v }, function(res) { D.intvCodes = res.result; paint(); });
+						});
+					}
+					if (c[3]) { var i = n[key].indexOf(v); if (i >= 0) n[key].splice(i, 1); else n[key].push(v); }
+					else n[key] = n[key] === v ? '' : v; // 다시 누르면 풀기
+					paint();
+				}));
+			});
+			$g.append($('<button type="button" class="rc-wayb rc-add-code" title="예시 추가">＋</button>').on('click', function() {
+				bootbox.prompt({ title: c[2] + ' 예시 추가', placeholder: '예) ' + (opts()[0] || ''), callback: function(v) {
+					v = $.trim(v || '');
+					if (!v) return;
+					hrPost('/admin/recruit/intvCodeData.do', { KIND: c[1], ACT: 'ADD', NM: v }, function(res) {
+						D.intvCodes = res.result;
+						if (c[3]) { if (n[key].indexOf(v) < 0) n[key].push(v); } else n[key] = v; // 추가한 것은 바로 고른 상태로
+						paint();
+					});
+				} });
 			}));
-		});
+		}
 		paint();
-		$k.append($('<label>').text(c[1] + (c[3] ? ' (여러 개)' : ''))).append($g);
+		$k.append($('<label>').text(c[2]).append(c[3] ? $('<small class="d-block text-muted font-weight-normal">').text('여러 개') : c[4] ? $('<small class="d-block text-muted font-weight-normal">').text(c[4]) : '')).append($g);
 	});
-	var $memo = $('<input class="form-control form-control-sm" maxlength="500" placeholder="필요할 때만 (예: 다음 주 2차 인터뷰 요청)">').val(n.memo || '');
+	// 기억나는 질문과 답변(여러 쌍) — 나중에 모의 인터뷰 자료로 쓴다
+	var $qa = $('<div class="rc-qa">');
+	function qaRow(x) {
+		var $row = $('<div class="rc-qa-row">')
+			.append($('<textarea rows="1" class="form-control form-control-sm q" maxlength="500" placeholder="질문 (예: Spring 트랜잭션 전파는 어떻게 썼나요?)">').val(x.q || ''))
+			.append($('<textarea rows="2" class="form-control form-control-sm a" maxlength="2000" placeholder="뭐라고 답했는지 (기억나는 만큼)">').val(x.a || ''))
+			.append($('<button type="button" class="btn btn-sm btn-link text-danger p-0" aria-label="이 질문 지우기">✕</button>').on('click', function() { $row.remove(); }));
+		$qa.append($row);
+		return $row;
+	}
+	(n.qa && n.qa.length ? n.qa : [{}]).forEach(qaRow);
+	var $addQ = $('<button type="button" class="btn btn-sm btn-outline-primary mt-1">＋ 질문 추가</button>').on('click', function() { qaRow({}).find('.q').focus(); });
+	$k.append($('<label>').text('기억나는 질문').append($('<small class="d-block text-muted font-weight-normal">').text('질문 · 답변'))).append($('<div>').append($qa).append($addQ));
+	var $memo = $('<textarea rows="2" class="form-control form-control-sm" maxlength="1000" placeholder="그 밖에 들은 것 (선택)">').val(n.memo || '');
 	$k.append('<label>메모</label>').append($memo);
 	var dlg = bootbox.dialog({ title: '📝 ' + a.STAFF_NM + ' · ' + (r.CLIENT_NM || '') + ' 인터뷰 기록' + (a.INTV_DT ? ' (' + a.INTV_DT + ')' : ''), message: $k, size: 'large', onEscape: true, buttons: {
 		open: { label: '모집 상세 열기', className: 'btn-sm btn-outline-primary mr-auto' + (fromDetail ? ' d-none' : ''), callback: function() { dlg.one('hidden.bs.modal', function() { detail(a.RECRUIT_SQ); }); } },
 		cancel: { label: '닫기', className: 'btn-sm btn-outline-secondary' },
 		ok: { label: '기록 저장', className: 'btn-sm btn-primary', callback: function() {
+			n.qa = $qa.find('.rc-qa-row').map(function() { return { q: $.trim($(this).find('.q').val()), a: $.trim($(this).find('.a').val()) }; }).get().filter(function(x) { return x.q || x.a; });
 			n.memo = $.trim($memo.val());
+			delete n.r; delete n.comm; delete n.att; delete n.chk; delete n.ask; // 첫 버전(평가형) 칸은 새로 저장할 때 정리
 			hrPost('/admin/recruit/noteData.do', { APPLY_SQ: a.APPLY_SQ, INTV_NOTE: JSON.stringify(n), SUMMARY: noteSummary(n) }, function() {
 				dlg.modal('hide');
 				hrToast('인터뷰 기록을 저장했어요.');
-				// 결과에 맞춰 단계도 바꿀지 묻는다(합격 → 투입대기, 불합격 → 탈락)
-				var to = n.r === '합격' && ['DOC', 'INTV_WAIT', 'INTV'].indexOf(a.STEP_CD) >= 0 ? 'JOIN_WAIT' : n.r === '불합격' && a.STEP_CD !== 'DROP' && a.STEP_CD !== 'JOIN' ? 'DROP' : null;
-				if (!to) return reload();
-				bootbox.confirm({ message: a.STAFF_NM + ' 님을 「' + STEP_NM[to] + '」 단계로 바꿀까요?', buttons: { confirm: { label: STEP_NM[to] + '(으)로', className: 'btn-sm ' + (to === 'DROP' ? 'btn-danger' : 'btn-primary') }, cancel: { label: '그대로', className: 'btn-sm btn-outline-secondary' } },
-					callback: function(yes) { if (yes) changeStep(a, to); else reload(); } });
+				reload();
 			});
 			return false;
 		} } } });
