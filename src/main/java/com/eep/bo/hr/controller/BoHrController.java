@@ -1,5 +1,6 @@
 package com.eep.bo.hr.controller;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -77,8 +78,9 @@ public class BoHrController {
 	@RequestMapping(value = "/admin/hr/uploadInterviewResumeData.do", method = RequestMethod.POST)
 	public ModelAndView uploadInterviewResumeData(@RequestParam("INTV_SQ") int intvSq, @RequestParam(value = "KIND", required = false) String kind, @RequestParam("file") MultipartFile file) {
 		try {
-			Upload u = Upload.of(file, "pdf");
-			BoHrService.IntvResumeSave(intvSq, "PORTFOLIO".equals(kind), u.name, u.data);
+			String k = docKind(kind);
+			Upload u = Upload.of(file, "PROFILE".equals(k) ? "docx" : "pdf"); // 프로필은 수행이력을 읽는 워드(SKILL INVENTORY 표)
+			BoHrService.IntvResumeSave(intvSq, k, u.name, u.data);
 			return Upload.noted(json("result", "OK"), u);
 		} catch (IllegalArgumentException e) {
 			return json("error", e.getMessage());
@@ -92,10 +94,16 @@ public class BoHrController {
 	public void interviewResumeFile(@RequestParam("INTV_SQ") int intvSq, @RequestParam(value = "KIND", required = false) String kind, javax.servlet.http.HttpServletResponse response) throws java.io.IOException {
 		byte[] pdf;
 		String fail = null;
-		boolean portfolio = "PORTFOLIO".equals(kind);
+		String k;
 		try {
-			pdf = BoHrService.IntvResumeFile(intvSq, portfolio);
-			if (pdf == null) fail = portfolio ? "포트폴리오를 찾지 못했습니다. 상세 창에서 다시 등록해 주세요." : "이력서를 찾지 못했습니다. 드라이브의 면접일자·이름 폴더에 PDF 가 있는지 확인해 주세요.";
+			k = docKind(kind);
+		} catch (IllegalArgumentException e) {
+			k = "RESUME";
+		}
+		boolean portfolio = "PORTFOLIO".equals(k), profile = "PROFILE".equals(k);
+		try {
+			pdf = BoHrService.IntvResumeFile(intvSq, k);
+			if (pdf == null) fail = portfolio ? "포트폴리오를 찾지 못했습니다. 상세 창에서 다시 등록해 주세요." : profile ? "프로필을 찾지 못했습니다. 상세 창에서 다시 등록해 주세요." : "이력서를 찾지 못했습니다. 드라이브의 면접일자·이름 폴더에 PDF 가 있는지 확인해 주세요.";
 		} catch (IllegalArgumentException e) {
 			pdf = null;
 			fail = e.getMessage();
@@ -110,10 +118,42 @@ public class BoHrController {
 			response.getWriter().write(fail);
 			return;
 		}
-		response.setContentType("application/pdf");
-		response.setHeader("Content-Disposition", "inline; filename=\"" + (portfolio ? "portfolio" : "resume") + ".pdf\"");
+		if (profile) { // 워드는 브라우저가 못 보여 주므로 내려받기
+			response.setContentType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+			response.setHeader("Content-Disposition", "attachment; filename=\"profile.docx\"");
+		} else {
+			response.setContentType("application/pdf");
+			response.setHeader("Content-Disposition", "inline; filename=\"" + (portfolio ? "portfolio" : "resume") + ".pdf\"");
+		}
 		response.setContentLength(pdf.length);
 		response.getOutputStream().write(pdf);
+	}
+
+	private static String docKind(String kind) {
+		if (kind == null || kind.isEmpty()) return "RESUME";
+		if (!Arrays.asList("RESUME", "PORTFOLIO", "PROFILE").contains(kind)) throw new IllegalArgumentException("알 수 없는 서류입니다.");
+		return kind;
+	}
+
+	// 면접결과 기록(칩). 주소는 면접관리 권한 패턴(/admin/hr/*nterview*)에 맞춘다
+	@RequestMapping(value = "/admin/hr/saveInterviewNoteData.do", method = RequestMethod.POST)
+	public ModelAndView saveInterviewNoteData(@RequestParam("INTV_SQ") int intvSq, @RequestParam(value = "INTV_NOTE", required = false) String note, HttpSession session) {
+		try {
+			BoHrService.IntvNoteSave(intvSq, note, loginId(session));
+			return json("result", "OK");
+		} catch (IllegalArgumentException e) {
+			return json("error", e.getMessage());
+		}
+	}
+
+	// 면접결과 칩 예시 추가·빼기. 돌려준 코드 전체로 화면이 칩을 다시 그린다
+	@RequestMapping(value = "/admin/hr/interviewCodeData.do", method = RequestMethod.POST)
+	public ModelAndView interviewCodeData(@RequestParam("KIND") String kind, @RequestParam("ACT") String act, @RequestParam("NM") String nm) {
+		try {
+			return json("result", BoHrService.IntvCodeSave(kind, act, nm));
+		} catch (IllegalArgumentException e) {
+			return json("error", e.getMessage());
+		}
 	}
 
 	@RequestMapping(value = "/admin/hr/deleteInterviewData.do", method = RequestMethod.POST)

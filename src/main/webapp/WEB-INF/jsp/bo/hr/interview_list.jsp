@@ -33,6 +33,14 @@
 	#calView.is-file-over { outline: 2px dashed #28a745; outline-offset: -4px; }
 	.ic-drop { position: absolute; z-index: 5; pointer-events: none; border: 2px dashed #28a745; background: rgba(40,167,69,.12); border-radius: 4px; color: #1e7e34; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 	#editForm .ic-auto { background: #e8f5e9; }
+	/* 면접결과 기록(칩): 모집관리 인터뷰 기록과 같은 모양 */
+	.in-kv { display: grid; grid-template-columns: 110px 1fr; gap: 8px 10px; align-items: start; }
+	.in-kv > label { margin: 0; padding-top: 3px; font-size: 13px; font-weight: 700; }
+	.in-help { grid-column: 1 / -1; font-size: 11.5px; color: #868e96; }
+	.in-chip { border: 1px solid #ced4da; background: #fff; border-radius: 999px; padding: 2px 12px; font-size: 12.5px; }
+	.in-chip[aria-pressed=true] { background: #0b6e8a; border-color: #0b6e8a; color: #fff; font-weight: 700; }
+	.in-kv.editing .in-chip:not(.in-add) { border-color: #fa5252; color: #c92a2a; } .in-kv.editing .in-chip:not(.in-add)::after { content: ' ✕'; }
+	@media (max-width: 575px) { .in-kv { grid-template-columns: 1fr; } .in-kv > label { padding-top: 6px; } }
 	/* 대시보드: 전체 칸(기존) 아래에 신입·경력 단계 막대와 지원방법별 표 */
 	.dash-sec { font-size: 12px; font-weight: 700; color: #333; margin: 12px 0 6px; padding-top: 10px; border-top: 1px solid #eef2f5; }
 	.dash-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
@@ -133,7 +141,9 @@
 					<div class="ml-auto d-flex align-items-center" style="gap:6px;">
 						<button type="button" class="btn btn-sm ic-doc" id="btnDocRESUME" data-kind="RESUME"></button>
 						<button type="button" class="btn btn-sm ic-doc" id="btnDocPORTFOLIO" data-kind="PORTFOLIO"></button>
-						<input type="file" id="docFile" class="d-none" accept="application/pdf,.pdf" aria-label="PDF 파일 선택">
+						<button type="button" class="btn btn-sm ic-doc" id="btnDocPROFILE" data-kind="PROFILE"></button>
+						<button type="button" class="btn btn-sm btn-outline-success bg-white" id="btnNote" onclick="noteDialog(editing);">📝 면접결과</button>
+						<input type="file" id="docFile" class="d-none" accept="application/pdf,.pdf" aria-label="파일 선택">
 					</div>
 					<button type="button" class="close" style="margin-left:.5rem;" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
 				</div>
@@ -594,6 +604,7 @@
 		$('#btnTrainee').toggle(!row.TRN_SQ && row.HIRE_CD !== 'EXP');
 		$('#btnWait').toggle(row.HIRE_CD === 'EXP' && !row.WAIT_STAFF_SQ);
 		$('#waitDone').toggle(!!row.WAIT_STAFF_SQ);
+		paintNoteBtn();
 		if (!$('#editMemo').length) $('<div class="mt-2" id="editMemoBox"><div class="hr-section">메모</div><div id="editMemo"></div></div>').insertAfter('#editFields');
 		$('#editMemoBox').show();
 		hrMemoFeed($('#editMemo'), MEMO_API, row.INTV_SQ, load);
@@ -603,28 +614,29 @@
 	// 캘린더에서 새 면접자: 누른(놓은) 날짜·시간과 이력서에서 읽은 값을 채운 상세 창. 저장을 눌러야 등록된다
 	// 새 면접자 창에서 고른 파일 { RESUME, PORTFOLIO }. 저장에 성공하면 그 면접자의 드라이브 폴더에 올린다
 	var pending = {};
-	var DOCS = { RESUME: ['이력서', 'RESUME_YN'], PORTFOLIO: ['포트폴리오', 'PORTFOLIO_YN'] };
+	// [이름, 목록 YN 칸, 확장자]. 프로필은 대기자로 등록할 때 수행이력을 읽는 워드(SKILL INVENTORY 표)
+	var DOCS = { RESUME: ['이력서', 'RESUME_YN', 'pdf'], PORTFOLIO: ['포트폴리오', 'PORTFOLIO_YN', 'pdf'], PROFILE: ['프로필', 'PROFILE_YN', 'docx'] };
 
 	function paintDocs() {
 		$.each(DOCS, function(kind, d) {
 			var has = editing[d[1]] === 'Y', picked = pending[kind];
 			$('#btnDoc' + kind).toggleClass('btn-primary', has).toggleClass('btn-outline-primary bg-white', !has).attr('title', picked ? picked.name : '')
-				.html(has ? '<i class="far fa-file-pdf"></i> ' + d[0] + ' 보기' : '<i class="fas fa-upload"></i> ' + d[0] + (picked ? ' 선택됨' : ' 등록'));
+				.html(has ? '<i class="far ' + (d[2] === 'docx' ? 'fa-file-word' : 'fa-file-pdf') + '"></i> ' + d[0] + ' 보기' : '<i class="fas fa-upload"></i> ' + d[0] + (picked ? ' 선택됨' : ' 등록'));
 		});
 	}
 
 	$(document).on('click', '.ic-doc', function() {
 		var kind = $(this).data('kind');
 		if (editing[DOCS[kind][1]] === 'Y') {
-			window.open('/admin/hr/interviewResumeFile.do?INTV_SQ=' + editing.INTV_SQ + (kind === 'PORTFOLIO' ? '&KIND=PORTFOLIO' : ''), '_blank', 'noopener');
+			window.open('/admin/hr/interviewResumeFile.do?INTV_SQ=' + editing.INTV_SQ + '&KIND=' + kind, '_blank', 'noopener');
 			return;
 		}
-		$('#docFile').data('kind', kind).val('').click();
+		$('#docFile').data('kind', kind).attr('accept', DOCS[kind][2] === 'docx' ? '.docx' : 'application/pdf,.pdf').val('').click();
 	});
 	$(document).on('change', '#docFile', function() {
-		var file = this.files[0], kind = $(this).data('kind');
+		var file = this.files[0], kind = $(this).data('kind'), ext = DOCS[kind][2];
 		if (!file) return;
-		if (!/\.pdf$/i.test(file.name)) { bootbox.alert('<b>PDF만 올릴 수 있습니다</b>'); return; }
+		if (!new RegExp('\\.' + ext + '$', 'i').test(file.name)) { bootbox.alert('<b>' + DOCS[kind][0] + '은(는) ' + ext.toUpperCase() + ' 파일만 올릴 수 있습니다</b>'); return; }
 		// 이미 저장된 면접자는 바로 올리고, 새 면접자는 저장할 때 올린다
 		if (editing.INTV_SQ) uploadDocs(editing.INTV_SQ, [[kind, file]], editing);
 		else { pending[kind] = file; paintDocs(); }
@@ -642,7 +654,7 @@
 		auto.forEach(function(k) { $('#editForm [name=' + k + '], #editForm [data-multi=' + k + ']').addClass('ic-auto'); });
 		toggleReferrer();
 		$('#editTitle').text('새 면접자' + (auto.length ? ' · 이력서에서 ' + auto.length + '칸 채움(초록 칸)' : ''));
-		$('#btnDelete, #btnTrainee, #btnWait, #waitDone, #editMemoBox').hide();
+		$('#btnDelete, #btnTrainee, #btnWait, #waitDone, #editMemoBox, #btnNote').hide();
 		$('#editModal').modal('show');
 	}
 
@@ -869,14 +881,126 @@
 	}
 
 	// 경력직: 교육생을 거치지 않고 직원관리 대기 탭에 소속 '경력직' 카드로 들어간다
+	// 면접결과 기록·이력서·프로필(워드 수행이력)로 대기 카드의 빈 칸을 서버가 채운다. 면접결과 보고 문구는 비고로 들어간다
 	function toWait() {
-		bootbox.confirm($('<div>').text(editing.APLY_NM).html() + ' 님을 직원관리 대기자(소속: 경력직)로 등록할까요?', function(ok) {
-			if (ok) hrPost('/admin/hr/waitFromInterviewData.do', { INTV_SQ: editing.INTV_SQ }, function() {
+		var row = editing, has = noteOf(row), docs = [row.PROFILE_YN === 'Y' && '프로필(수행이력)', row.RESUME_YN === 'Y' && '이력서', !$.isEmptyObject(has) && '면접결과'].filter(Boolean);
+		bootbox.confirm($('<div>').text(row.APLY_NM).html() + ' 님을 직원관리 대기자(소속: 경력직)로 등록할까요?'
+			+ '<br><small class="text-muted">' + (docs.length ? docs.join(' · ') + '에서 읽은 값으로 대기 카드의 빈 칸을 자동으로 채워요.' : '등록된 프로필·이력서·면접결과가 없어 이름·연락처만 들어가요.') + '</small>', function(ok) {
+			if (ok) hrPost('/admin/hr/waitFromInterviewData.do', { INTV_SQ: row.INTV_SQ, REPORT: $.isEmptyObject(has) ? '' : noteReport(row, has) }, function(res) {
 				$('#editModal').modal('hide');
 				load();
-				bootbox.alert('대기자로 등록했습니다. 직원관리의 대기 탭에서 확인해 주세요.');
+				bootbox.alert('대기자로 등록했습니다. 직원관리의 대기 탭에서 확인해 주세요.' + (res.driveNote ? '<br><small class="text-muted">' + $('<div>').text(res.driveNote).html() + '</small>' : ''));
 			});
 		});
+	}
+
+	// ── 면접결과 기록(칩) ── 모집관리 인터뷰 기록과 같은 방식: 칩을 눌러 고르고(여러 개 항목은 여러 번), 없는 예시는 ＋ 로 추가
+	// [키, 공통코드(HR_INTV_…, 없으면 글 칸), 이름, 여러 개]. 글 칸은 면접 칸 값으로 먼저 채운다(prefill)
+	var NOTE_EXP = [['sched', 'SCHED', '일정'], ['addr', null, '거주지'], ['station', null, '가까운 역'], ['area', 'AREA', '출근 가능 지역', true], ['areaNote', null, '출근지 메모'],
+		['domain', 'DOMAIN', '업무단', true], ['work', 'WORK', '업무 형태', true], ['pos', 'POS', '포지션', true], ['hs', null, '고등학교 · 졸업'], ['univ', null, '대학교 · 졸업'],
+		['score', 'SCORE', '점수'], ['fe', 'FE', '프론트', true], ['be', 'BE', '백엔드', true], ['db', 'DB', 'DB', true], ['fw', 'FW', '프레임워크', true], ['sp', 'SP', '특수', true],
+		['grade', 'GRADE', '지원등급'], ['years', null, '연차'], ['price', null, '희망 단가'], ['pers', 'PERS', '성격', true], ['comm', 'COMM', '소통'], ['pay', null, '급여'],
+		['auto', 'AUTO', '자동지원'], ['cert', 'CERT', '정보처리기사'], ['certDt', null, '취득년월'], ['verdict', 'VERDICT', '종합']];
+	var NOTE_NEW = [['sched', 'SCHED', '입사 가능'], ['school', null, '학교 · 전공'], ['major', 'MAJOR', '전공'], ['train', 'TRAIN', '교육 이수', true], ['tech', 'TECH', '기술 이해도'],
+		['fe', 'FE', '프론트', true], ['be', 'BE', '백엔드', true], ['atti', 'ATTI', '태도', true], ['comm', 'COMM', '소통'], ['will', 'WILL', '입사 의지'], ['area', 'AREA', '근무 가능 지역', true], ['verdict', 'VERDICT', '종합']];
+	function noteCats(row) { return row.HIRE_CD === 'EXP' ? NOTE_EXP : NOTE_NEW; }
+	function noteOf(row) { try { return JSON.parse(row.INTV_NOTE || '{}') || {}; } catch (e) { return {}; } }
+	function noteSummary(row, n) {
+		return [n.verdict && '종합 ' + n.verdict, n.score && '점수 ' + n.score, n.tech && '기술 ' + n.tech, n.grade, n.price, n.comm && '소통 ' + n.comm].filter(Boolean).join(' · ');
+	}
+	function paintNoteBtn() {
+		var n = noteOf(editing), s = noteSummary(editing, n);
+		$('#btnNote').show().toggleClass('btn-success', !$.isEmptyObject(n)).toggleClass('btn-outline-success bg-white', $.isEmptyObject(n)).attr('title', s || '면접결과를 칩으로 기록해요');
+	}
+	function nv(x) { return $.isArray(x) ? x.join(', ') : (x || ''); }
+	// 보고 문구. 경력직은 기존 메신저 양식([이름 면접결과] -일정 : …) 그대로, 신입은 같은 모양의 요약
+	function noteReport(row, n) {
+		var L = ['[' + row.APLY_NM + ' 면접결과]', ''];
+		if (row.HIRE_CD === 'EXP') {
+			L.push('-일정 : ' + nv(n.sched), '-거주지 : ' + nv(n.addr), '-출근지 : ' + [nv(n.station), nv(n.area)].filter(Boolean).join(' > ') + (n.areaNote ? ' (' + n.areaNote + ')' : ''),
+				'-업무단 : ' + [nv(n.domain), nv(n.work), nv(n.pos)].filter(Boolean).join(' / '), '-나온고등학교, 졸업년도 : ' + nv(n.hs), '-나온대학교 ,졸업년도 : ' + nv(n.univ), '',
+				'-점수 : ' + nv(n.score), '-주요 스킬셋 : ', '    - 프론트 : ' + nv(n.fe), '    - 백엔드 : ' + nv(n.be), '    - DB : ' + nv(n.db), '    - 프레임워크 : ' + nv(n.fw), '    - 특수 : ' + nv(n.sp),
+				'    - 지원등급/연차 : ' + [nv(n.grade), nv(n.years)].filter(Boolean).join(' / ') + (n.price ? ' , ' + n.price : ''), '',
+				'- 성격 : ' + nv(n.pers), '- 소통 : ' + nv(n.comm), '- 급여 : ' + nv(n.pay), '- 자동지원여부 : ' + nv(n.auto), '- 종합 : ' + nv(n.verdict), '',
+				'- 기타 :', '1. 정보처리기사 여부 / 취득년월 : ' + [nv(n.cert), nv(n.certDt)].filter(Boolean).join(' '));
+		} else {
+			NOTE_NEW.forEach(function(c) { L.push('-' + c[2] + ' : ' + nv(n[c[0]])); });
+		}
+		if (n.memo) L.push('', '- 메모 :', n.memo);
+		return L.join('\n');
+	}
+	function noteDialog(row) {
+		var cats = noteCats(row), n = $.extend({}, noteOf(row)), editingCodes = false;
+		var pre = { addr: row.ADDR, station: row.STATION, univ: row.EDU, school: row.EDU };
+		cats.forEach(function(c) { if (c[3]) n[c[0]] = $.isArray(n[c[0]]) ? n[c[0]] : []; else if (n[c[0]] == null) n[c[0]] = c[1] ? '' : (pre[c[0]] || ''); });
+		var $k = $('<div class="in-kv">');
+		var $edit = $('<button type="button" class="btn btn-sm btn-link p-0">✎ 예시 빼기</button>').on('click', function() { editingCodes = !editingCodes; $k.toggleClass('editing', editingCodes); $(this).text(editingCodes ? '✓ 다 뺐어요' : '✎ 예시 빼기'); });
+		$k.append($('<div class="in-help">').text((row.HIRE_CD === 'EXP' ? '경력직' : '신입') + ' 면접 결과를 칩으로 골라요(다시 누르면 풀림). 없는 예시는 「＋」로 추가하면 다음부터 고를 수 있어요. ').append($edit));
+		cats.forEach(function(c) {
+			var key = c[0], $g;
+			if (!c[1]) {
+				$g = $('<input type="text" class="form-control form-control-sm" maxlength="300">').val(n[key]).on('input', function() { n[key] = $.trim(this.value); });
+			} else {
+				$g = $('<span class="d-flex flex-wrap" style="gap:4px" role="group">').attr('aria-label', c[2]);
+				var paint = function() {
+					var list = (HR_CODES['HR_INTV_' + c[1]] || []).map(function(x) { return x.NM; });
+					(c[3] ? n[key] : n[key] ? [n[key]] : []).forEach(function(x) { if (list.indexOf(x) < 0) list.push(x); }); // 목록에서 빠진 지난 값도 고른 채로
+					$g.empty();
+					list.forEach(function(x) {
+						var on = c[3] ? n[key].indexOf(x) >= 0 : n[key] === x;
+						$g.append($('<button type="button" class="in-chip">').attr('aria-pressed', on).text(x).on('click', function() {
+							if (editingCodes) return bootbox.confirm('「' + x + '」 예시를 ' + c[2] + ' 목록에서 뺄까요? 이미 남긴 기록은 그대로예요.', function(ok) {
+								if (ok) hrPost('/admin/hr/interviewCodeData.do', { KIND: c[1], ACT: 'DEL', NM: x }, function(res) { hrSetCodes(res.result); paint(); });
+							});
+							if (c[3]) { var i = n[key].indexOf(x); if (i >= 0) n[key].splice(i, 1); else n[key].push(x); } else n[key] = on ? '' : x;
+							paint();
+						}));
+					});
+					$g.append($('<button type="button" class="in-chip in-add" title="예시 추가">＋</button>').on('click', function() {
+						bootbox.prompt({ title: c[2] + ' 예시 추가', callback: function(x) {
+							x = $.trim(x || '');
+							if (x) hrPost('/admin/hr/interviewCodeData.do', { KIND: c[1], ACT: 'ADD', NM: x }, function(res) {
+								hrSetCodes(res.result);
+								if (c[3]) { if (n[key].indexOf(x) < 0) n[key].push(x); } else n[key] = x;
+								paint();
+							});
+						} });
+					}));
+				};
+				paint();
+			}
+			$k.append($('<label>').text(c[2]).append(c[3] ? $('<small class="d-block text-muted font-weight-normal">').text('여러 개') : '')).append($g);
+		});
+		var $memo = $('<textarea rows="3" class="form-control form-control-sm" maxlength="3000" placeholder="그 밖에 (예: 약간 말투가 딱딱함, 단가 높음)">').val(n.memo || '');
+		$k.append('<label>메모</label>').append($memo);
+		function collect() {
+			n.memo = $.trim($memo.val());
+			var out = {};
+			$.each(n, function(k, x) { if ($.isArray(x) ? x.length : x) out[k] = x; }); // 빈 칸은 저장하지 않는다
+			return out;
+		}
+		var dlg = bootbox.dialog({ title: '📝 ' + $('<div>').text(row.APLY_NM).html() + ' 면접결과 (' + (row.HIRE_CD === 'EXP' ? '경력' : '신입') + ')', message: $k, size: 'large', onEscape: true, buttons: {
+			copy: { label: '보고 내용 복사', className: 'btn-sm btn-outline-primary mr-auto', callback: function() {
+				var $t = $('<textarea aria-hidden="true" style="position:fixed;top:0;left:-9999px;">').val(noteReport(row, collect())).appendTo(dlg.find('.modal-body'));
+				$t[0].select();
+				var ok = false;
+				try { ok = document.execCommand('copy'); } catch (e) {}
+				$t.remove();
+				hrToast(ok ? '보고 내용을 복사했어요.' : '복사하지 못했어요.');
+				return false;
+			} },
+			cancel: { label: '닫기', className: 'btn-sm btn-outline-secondary' },
+			ok: { label: '기록 저장', className: 'btn-sm btn-primary', callback: function() {
+				var out = collect(), json = $.isEmptyObject(out) ? '' : JSON.stringify(out);
+				hrPost('/admin/hr/saveInterviewNoteData.do', { INTV_SQ: row.INTV_SQ, INTV_NOTE: json }, function() {
+					row.INTV_NOTE = json;
+					if (editing === row) paintNoteBtn();
+					dlg.modal('hide');
+					hrToast('면접결과를 저장했어요.');
+					load();
+				});
+				return false;
+			} } } });
 	}
 
 	</script>

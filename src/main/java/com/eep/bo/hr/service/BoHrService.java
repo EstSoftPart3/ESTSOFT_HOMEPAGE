@@ -16,8 +16,10 @@ public interface BoHrService {
 	void IntvSave(Map<String, Object> param);									//면접자 등록·수정
 	void IntvDelete(Map<String, Object> param);									//면접자 삭제
 	Map<String, Object> ReadResume(byte[] pdf, String fileName);				//이력서 PDF 에서 면접자 칸 값 읽기(저장 안 함)
-	void IntvResumeSave(Object intvSq, boolean portfolio, String fileName, byte[] pdf);	//면접자 이력서(또는 포트폴리오)를 드라이브에 올리고 위치를 기억
-	byte[] IntvResumeFile(Object intvSq, boolean portfolio);					//면접자 이력서(또는 포트폴리오) PDF. 없으면 null
+	void IntvResumeSave(Object intvSq, String kind, String fileName, byte[] data);	//면접자 서류(RESUME·PORTFOLIO PDF, PROFILE DOCX)를 드라이브에 올리고 위치를 기억
+	byte[] IntvResumeFile(Object intvSq, String kind);							//면접자 서류 파일. 없으면 null
+	void IntvNoteSave(Object intvSq, String note, String loginId);				//면접결과 기록(칩으로 고른 값 JSON)
+	List<Map<String, Object>> IntvCodeSave(String kind, String act, String name);	//면접결과 칩 예시 추가(ADD)·빼기(DEL). 바뀐 화면용 코드 전체를 돌려준다
 	boolean TraineeFromIntv(Map<String, Object> param);							//면접자를 교육생으로 등록. 이미 등록돼 있으면 false
 	boolean WaitFromIntv(Map<String, Object> param);							//경력직 면접자를 직원관리 대기자로 등록. 신입이거나 이미 등록돼 있으면 false
 

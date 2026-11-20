@@ -23,6 +23,7 @@
 			<!-- 이력서 보기 버튼: 올렸거나 배치가 드라이브에서 찾아 기록한 파일이 있을 때만. 없으면 화면이 등록 버튼을 보인다 -->
 			, IF(I.RESUME_FILE_ID IS NOT NULL, 'Y', 'N') AS RESUME_YN
 			, IF(I.PORTFOLIO_FILE_ID IS NOT NULL, 'Y', 'N') AS PORTFOLIO_YN
+			, IF(I.PROFILE_FILE_ID IS NOT NULL, 'Y', 'N') AS PROFILE_YN, I.INTV_NOTE
 			, DATE_FORMAT(I.INTV_DT, '%Y-%m-%d') AS INTV_DT
 			, I.INTV_TM, I.APLY_TARGET, I.APLY_ROUTE, I.REFERRER, I.LANG_NOTE, I.PHONE, I.ATTEND_ST, I.EDU, I.AGE, I.ADDR, I.STATION
 			, I.CAREER, I.LANG, I.LOCAL_YN, I.HOBBY, I.SPECIALTY, I.SALARY
@@ -66,7 +67,7 @@
 	</update>
 
 	<select id="selectIntvResume" parameterType="hashMap" resultType="hashMap">
-		SELECT DATE_FORMAT(INTV_DT, '%Y-%m-%d') AS INTV_DT, APLY_NM, RESUME_FILE_ID, PORTFOLIO_FILE_ID FROM TB_EEP_HR_INTV_M WHERE INTV_SQ = #{INTV_SQ}
+		SELECT DATE_FORMAT(INTV_DT, '%Y-%m-%d') AS INTV_DT, APLY_NM, RESUME_FILE_ID, PORTFOLIO_FILE_ID, PROFILE_FILE_ID FROM TB_EEP_HR_INTV_M WHERE INTV_SQ = #{INTV_SQ}
 	</select>
 
 	<update id="updateIntvResume" parameterType="hashMap">

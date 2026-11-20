@@ -60,11 +60,16 @@ public class BoHrServiceImpl implements BoHrService {
 	@Autowired
 	private com.eep.bo.batch.service.BoBatchService batchService;
 
+	@Autowired
+	private com.eep.bo.staff.service.StaffCareerService careerService;
+
 	private TransactionTemplate tx;
+	private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
 	@Autowired
 	public void setDataSource(@Qualifier("dataSource") DataSource ds) { // dataSourceSpied 와 2개라 이름을 지정해야 기동된다
 		tx = new TransactionTemplate(new DataSourceTransactionManager(ds));
+		jdbc = new org.springframework.jdbc.core.JdbcTemplate(ds);
 	}
 
 	@Override
@@ -110,13 +115,18 @@ public class BoHrServiceImpl implements BoHrService {
 	}
 
 	@Override
-	public void IntvResumeSave(Object intvSq, boolean portfolio, String fileName, byte[] pdf) {
+	public void IntvResumeSave(Object intvSq, String kind, String fileName, byte[] pdf) {
 		Map<String, Object> row = intvResume(intvSq);
 		if (!hasText(row.get("INTV_DT"))) {
 			throw new IllegalArgumentException("면접일자가 없어 파일을 올릴 폴더를 정할 수 없습니다.");
 		}
 		row.put("INTV_SQ", intvSq);
-		if (portfolio) {
+		if ("PROFILE".equals(kind)) { // 워드라 이력서 찾기(PDF)와 섞이지 않는다
+			String id = batchService.saveResume((String) row.get("INTV_DT"), (String) row.get("APLY_NM"), fileName.startsWith("프로필") ? fileName : "프로필_" + fileName, pdf);
+			jdbc.update("UPDATE TB_EEP_HR_INTV_M SET PROFILE_FILE_ID = ? WHERE INTV_SQ = ?", id, intvSq);
+			return;
+		}
+		if ("PORTFOLIO".equals(kind)) {
 			// 같은 이름 폴더에 두므로 이력서 찾기(GoogleDriveApi.resumePdf)가 건너뛰게 이름 앞에 표시한다
 			String name = fileName.startsWith(GoogleDriveApi.PORTFOLIO_PREFIX) ? fileName : GoogleDriveApi.PORTFOLIO_PREFIX + "_" + fileName;
 			row.put("PORTFOLIO_FILE_ID", batchService.saveResume((String) row.get("INTV_DT"), (String) row.get("APLY_NM"), name, pdf));
@@ -128,11 +138,12 @@ public class BoHrServiceImpl implements BoHrService {
 	}
 
 	@Override
-	public byte[] IntvResumeFile(Object intvSq, boolean portfolio) {
+	public byte[] IntvResumeFile(Object intvSq, String kind) {
 		Map<String, Object> row = intvResume(intvSq);
-		if (portfolio) {
-			// 포트폴리오는 올린 파일만 본다(폴더에서 찾지 않는다)
-			return hasText(row.get("PORTFOLIO_FILE_ID")) ? batchService.resumeFile((String) row.get("PORTFOLIO_FILE_ID"), null, null) : null;
+		if ("PORTFOLIO".equals(kind) || "PROFILE".equals(kind)) {
+			// 포트폴리오·프로필은 올린 파일만 본다(폴더에서 찾지 않는다)
+			String id = (String) row.get(kind + "_FILE_ID");
+			return hasText(id) ? batchService.resumeFile(id, null, null) : null;
 		}
 		return batchService.resumeFile((String) row.get("RESUME_FILE_ID"), (String) row.get("INTV_DT"), (String) row.get("APLY_NM"));
 	}
@@ -182,8 +193,184 @@ public class BoHrServiceImpl implements BoHrService {
 	public boolean WaitFromIntv(Map<String, Object> param) {
 		if (staffMapper.insertWaitFromIntv(param) == 0) return false;
 		// 교육생과 같은 '1. 대기자 관리/(0000.00.00) 이름' 폴더. 직원으로 등록할 때 그 폴더를 이어 쓴다
-		param.put("DRIVE_NOTE", staffDrive.traineeCreated(hrMapper.selectPersonName(param)));
+		String drive = staffDrive.traineeCreated(hrMapper.selectPersonName(param));
+		String filled = fillWaitCard(param);
+		param.put("DRIVE_NOTE", String.join(" ", Arrays.asList(drive == null ? "" : drive, filled)).trim());
 		return true;
+	}
+
+	// ── 면접결과 기록(칩) ──
+	// 키 → [공통코드 그룹 이름, 기본 예시...]. 공통코드 HR_INTV_<키> 로 만들고, 그 뒤로는 화면의 ＋·✎ 나 공통코드관리에서 고친다(2026-11-20 사용자 승인)
+	static final Map<String, String[]> NOTE_CODES = new java.util.LinkedHashMap<>();
+	static {
+		NOTE_CODES.put("SCHED", new String[] { "면접결과 일정", "즉시 가능", "상시 가능", "2주 내", "1개월 내", "협의 필요" });
+		NOTE_CODES.put("AREA", new String[] { "면접결과 출근 가능 지역", "홍대", "여의도", "중구·종로", "잠실", "강남", "마곡", "판교", "구로·가산", "상암", "전 지역" });
+		NOTE_CODES.put("DOMAIN", new String[] { "면접결과 업무단", "이커머스", "그룹웨어", "금융", "공공", "제조", "물류", "통신", "의료", "교육" });
+		NOTE_CODES.put("WORK", new String[] { "면접결과 업무 형태", "개발", "운영", "상관없음" });
+		NOTE_CODES.put("POS", new String[] { "면접결과 포지션", "풀스택", "백엔드", "프론트엔드", "퍼블리셔", "DBA", "PM·PL" });
+		NOTE_CODES.put("SCORE", new String[] { "면접결과 점수", "상", "중상", "중", "중하", "하" });
+		NOTE_CODES.put("FE", new String[] { "면접결과 프론트", "JSP", "jQuery", "JavaScript", "Vue.js", "React", "Thymeleaf", "WebSquare", "Nexacro" });
+		NOTE_CODES.put("BE", new String[] { "면접결과 백엔드", "Java", "Spring", "Spring Boot", "전자정부 F/W", "Node.js", "Python", "C#" });
+		NOTE_CODES.put("DB", new String[] { "면접결과 DB", "Oracle", "MySQL", "MariaDB", "PostgreSQL", "MSSQL", "Tibero" });
+		NOTE_CODES.put("FW", new String[] { "면접결과 프레임워크", "Spring", "Spring Boot", "전자정부 F/W", "MyBatis", "JPA" });
+		NOTE_CODES.put("SP", new String[] { "면접결과 특수", "Linux", "Jenkins", "Git", "SVN", "AWS", "Docker", "Jennifer" });
+		NOTE_CODES.put("GRADE", new String[] { "면접결과 지원등급", "초급", "중급", "고급", "특급" });
+		NOTE_CODES.put("PERS", new String[] { "면접결과 성격", "밝음", "차분함", "성실해 보임", "자신감 있음", "말투 불친절", "자기주장 강함", "소극적" });
+		NOTE_CODES.put("COMM", new String[] { "면접결과 소통", "원활", "보통", "아쉬움" });
+		NOTE_CODES.put("AUTO", new String[] { "면접결과 자동지원", "예", "아니오" });
+		NOTE_CODES.put("CERT", new String[] { "면접결과 정보처리기사", "정보처리기사", "정보처리산업기사", "없음" });
+		NOTE_CODES.put("VERDICT", new String[] { "면접결과 종합", "추천", "보통", "보류", "비추천" });
+		NOTE_CODES.put("MAJOR", new String[] { "면접결과 전공", "전공", "유사 전공", "비전공" });
+		NOTE_CODES.put("TRAIN", new String[] { "면접결과 교육 이수", "국비교육", "부트캠프", "학원", "독학", "없음" });
+		NOTE_CODES.put("TECH", new String[] { "면접결과 기술 이해도", "상", "중상", "중", "중하", "하" });
+		NOTE_CODES.put("ATTI", new String[] { "면접결과 태도", "성실함", "적극적", "밝음", "차분함", "소극적", "산만함" });
+		NOTE_CODES.put("WILL", new String[] { "면접결과 입사 의지", "높음", "보통", "낮음" });
+	}
+	private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
+	private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(BoHrServiceImpl.class);
+
+	/** 면접 표에 프로필·면접결과 칸을 넣고 칩 공통코드를 만든다(2026-11-20 사용자 승인). 이미 있으면 그대로 */
+	@javax.annotation.PostConstruct
+	public void ensureSchema() {
+		try {
+			jdbc.execute("ALTER TABLE TB_EEP_HR_INTV_M ADD COLUMN IF NOT EXISTS PROFILE_FILE_ID VARCHAR(100) NULL COMMENT '프로필 워드 드라이브 파일 ID'");
+			jdbc.execute("ALTER TABLE TB_EEP_HR_INTV_M ADD COLUMN IF NOT EXISTS INTV_NOTE TEXT NULL COMMENT '면접결과 기록 JSON'");
+			for (String k : NOTE_CODES.keySet()) noteGroup(k);
+		} catch (RuntimeException e) {
+			log.error("면접결과 칸·코드 준비 실패: {}", e.getClass().getSimpleName());
+		}
+	}
+
+	/** HR_INTV_<키> 그룹 번호. 없으면 만들고 기본 예시를 넣는다. 칩은 이름을 그대로 값으로 쓴다 */
+	private int noteGroup(String kind) {
+		String[] def = NOTE_CODES.get(kind);
+		if (def == null) throw new IllegalArgumentException("알 수 없는 항목입니다.");
+		String grp = "HR_INTV_" + kind;
+		List<Integer> g = jdbc.queryForList("SELECT COMN_CD_SQ FROM TB_EEP_COMN_CD_M WHERE COMN_CD = ? AND DEL_YN = 'N'", Integer.class, grp);
+		if (!g.isEmpty()) return g.get(0);
+		jdbc.update("INSERT INTO TB_EEP_COMN_CD_M (COMN_CD, COMN_CD_NM, NOTE, REG_DT, USE_YN, DEL_YN) VALUES (?, ?, '면접관리 면접결과 기록', NOW(), 'Y', 'N')", grp, def[0]);
+		int sq = jdbc.queryForObject("SELECT COMN_CD_SQ FROM TB_EEP_COMN_CD_M WHERE COMN_CD = ? AND DEL_YN = 'N'", Integer.class, grp);
+		for (int i = 1; i < def.length; i++) jdbc.update("INSERT INTO TB_EEP_COMN_DTL_CD_S (COMN_CD_SQ, COMN_DTL_CD, COMN_DTL_CD_NM, COMN_DTL_CD_ORD, REG_DT, USE_YN, DEL_YN) VALUES (?, ?, ?, ?, NOW(), 'Y', 'N')", sq, def[i], def[i], i);
+		return sq;
+	}
+
+	@Override
+	public List<Map<String, Object>> IntvCodeSave(String kind, String act, String raw) {
+		String n = raw == null ? "" : raw.trim().replaceAll("\\s+", " ");
+		if (n.isEmpty() || n.length() > 50) throw new IllegalArgumentException("이름은 1~50자로 넣어 주세요.");
+		int g = noteGroup(kind);
+		if ("DEL".equals(act)) {
+			jdbc.update("UPDATE TB_EEP_COMN_DTL_CD_S SET DEL_YN = 'Y', UPDT_DT = NOW() WHERE COMN_CD_SQ = ? AND DEL_YN = 'N' AND COMN_DTL_CD_NM = ?", g, n);
+		} else if (jdbc.queryForObject("SELECT COUNT(*) FROM TB_EEP_COMN_DTL_CD_S WHERE COMN_CD_SQ = ? AND COMN_DTL_CD_NM = ? AND DEL_YN = 'N'", Integer.class, g, n) == 0) {
+			jdbc.update("INSERT INTO TB_EEP_COMN_DTL_CD_S (COMN_CD_SQ, COMN_DTL_CD, COMN_DTL_CD_NM, COMN_DTL_CD_ORD, REG_DT, USE_YN, DEL_YN)"
+					+ " SELECT ?, ?, ?, IFNULL(MAX(COMN_DTL_CD_ORD), 0) + 1, NOW(), 'Y', 'N' FROM TB_EEP_COMN_DTL_CD_S WHERE COMN_CD_SQ = ?", g, n, n, g);
+		}
+		return CodeList();
+	}
+
+	@Override
+	public void IntvNoteSave(Object intvSq, String note, String loginId) {
+		String v = note == null || note.trim().isEmpty() || "{}".equals(note.trim()) ? null : note;
+		if (v != null) {
+			if (v.length() > 20000) throw new IllegalArgumentException("기록이 너무 깁니다. 메모를 줄여 주세요.");
+			readNote(v); // JSON 이 아니면 저장하지 않는다
+		}
+		if (jdbc.update("UPDATE TB_EEP_HR_INTV_M SET INTV_NOTE = ?, UPDT_EMPLY_ID = ?, UPDT_DT = NOW() WHERE INTV_SQ = ?", v, loginId, intvSq) == 0) {
+			throw new IllegalArgumentException("면접자를 찾을 수 없습니다.");
+		}
+	}
+
+	private static Map<String, Object> readNote(String v) {
+		try {
+			Map<String, Object> m = JSON.readValue(v, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() { });
+			return m == null ? new HashMap<>() : m;
+		} catch (java.io.IOException e) {
+			throw new IllegalArgumentException("기록 형식이 올바르지 않습니다.");
+		}
+	}
+
+	/**
+	 * 대기 카드를 면접 정보로 채운다(비어 있는 칸만). 우선순위: 면접결과 기록 → 면접 칸 → 이력서 PDF.
+	 * 프로필 워드가 있으면 SKILL INVENTORY 표를 수행이력으로 넣는다. 실패해도 등록은 그대로, 안내 문구만 돌려준다
+	 */
+	private String fillWaitCard(Map<String, Object> param) {
+		List<Object> staff = jdbc.queryForList("SELECT STAFF_SQ FROM TB_EEP_HR_STAFF_M WHERE INTV_SQ = ?", Object.class, param.get("INTV_SQ"));
+		if (staff.isEmpty()) return "";
+		Object staffSq = staff.get(0);
+		Map<String, Object> i = jdbc.queryForMap("SELECT DATE_FORMAT(INTV_DT, '%Y-%m-%d') AS INTV_DT, APLY_NM, ADDR, STATION, EDU, CAREER, HOBBY, SPECIALTY, LANG_NOTE, RESUME_FILE_ID, PROFILE_FILE_ID, INTV_NOTE FROM TB_EEP_HR_INTV_M WHERE INTV_SQ = ?", param.get("INTV_SQ"));
+		Map<String, Object> n = hasText(i.get("INTV_NOTE")) ? readNote((String) i.get("INTV_NOTE")) : new HashMap<>();
+		List<String> notes = new java.util.ArrayList<>();
+		Map<String, Object> cv = new HashMap<>();
+		try { // 이력서는 면접 칸이 빈 것을 채우는 데만 쓴다
+			byte[] pdf = batchService.resumeFile((String) i.get("RESUME_FILE_ID"), (String) i.get("INTV_DT"), (String) i.get("APLY_NM"));
+			if (pdf != null) try (PDDocument doc = PDDocument.load(pdf)) {
+				PDFTextStripper st = new PDFTextStripper();
+				st.setSortByPosition(true);
+				cv = ResumeParser.parse(st.getText(doc));
+			}
+		} catch (Exception e) {
+			notes.add("이력서는 읽지 못했습니다.");
+		}
+		String[][] cols = { // 직원 칸, 값, 칸 길이
+				{ "ADDR", first(n.get("addr"), i.get("ADDR"), cv.get("ADDR")), "500" },
+				{ "STATION", first(n.get("station"), i.get("STATION")), "200" },
+				{ "WISH_LOC", join(n.get("area")), "500" },
+				{ "WORK_DOMAIN", join(n.get("domain"), n.get("work"), n.get("pos")), "500" },
+				{ "HS_NM", first(n.get("hs")), "200" },
+				{ "UNIV_NM", first(n.get("univ")), "200" },
+				{ "FINAL_EDU", first(i.get("EDU"), cv.get("EDU")), "50" },
+				{ "SCORE", first(n.get("score")), "50" },
+				{ "GRADE_NM", first(n.get("grade")), "50" },
+				{ "REAL_CAREER", first(n.get("years")), "100" },
+				{ "WISH_PRICE", first(n.get("price")), "200" },
+				{ "SK_FE", join(n.get("fe")), "500" },
+				{ "SK_BE", join(n.get("be")), "500" },
+				{ "SK_DB", join(n.get("db")), "500" },
+				{ "SK_FW", join(n.get("fw")), "500" },
+				{ "EXPERTISE", join(n.get("sp")), "500" },
+				{ "AUTO_APLY_YN", first(n.get("auto")), "20" },
+				{ "CERT_DT", join(n.get("cert"), n.get("certDt")), "50" },
+				{ "PREV_CAREER", first(i.get("CAREER"), cv.get("CAREER")), "500" },
+				{ "HOBBY", first(i.get("HOBBY")), "200" },
+				{ "SPECIALTY", first(i.get("SPECIALTY")), "200" },
+				{ "LANG_SKILL", first(i.get("LANG_NOTE"), cv.get("LANG_NOTE")), "200" },
+				{ "MEMO", first(param.get("REPORT")), "20000" } };
+		int filled = 0;
+		for (String[] c : cols) {
+			if (c[1].isEmpty()) continue;
+			String v = c[1].length() > Integer.parseInt(c[2]) ? c[1].substring(0, Integer.parseInt(c[2])) : c[1];
+			filled += jdbc.update("UPDATE TB_EEP_HR_STAFF_M SET " + c[0] + " = ? WHERE STAFF_SQ = ? AND (" + c[0] + " IS NULL OR " + c[0] + " = '')", v, staffSq);
+		}
+		if (filled > 0) notes.add("면접 정보로 " + filled + "칸을 채웠습니다.");
+		if (hasText(i.get("PROFILE_FILE_ID"))) {
+			try {
+				byte[] docx = batchService.resumeFile((String) i.get("PROFILE_FILE_ID"), null, null);
+				List<Map<String, Object>> rows = com.eep.bo.staff.service.StaffCareerWord.parse(new java.io.ByteArrayInputStream(docx));
+				notes.add(rows.isEmpty() ? "프로필에서 수행이력 표를 찾지 못했습니다." : "프로필에서 수행이력 " + careerService.importApply(staffSq, rows, "면접 프로필", (String) param.get("UPDT_EMPLY_ID")) + "건을 넣었습니다.");
+			} catch (Exception e) {
+				notes.add("프로필 수행이력은 넣지 못했습니다. 직원관리 수행이력에서 워드를 직접 가져와 주세요.");
+			}
+		}
+		return String.join(" ", notes);
+	}
+
+	/** 처음으로 비어 있지 않은 값(목록이면 쉼표로 이은 것) */
+	private static String first(Object... vs) {
+		for (Object v : vs) {
+			String s = join(v);
+			if (!s.isEmpty()) return s;
+		}
+		return "";
+	}
+
+	/** 값·목록을 쉼표로 잇는다. 빈 것은 뺀다 */
+	private static String join(Object... vs) {
+		List<String> out = new java.util.ArrayList<>();
+		for (Object v : vs) {
+			if (v instanceof java.util.Collection) for (Object x : (java.util.Collection<?>) v) { if (hasText(x)) out.add(x.toString().trim()); }
+			else if (hasText(v)) out.add(v.toString().trim());
+		}
+		return String.join(", ", out);
 	}
 
 	/** 면접일이 바뀌면 드라이브의 이력서 이름 폴더도 새 날짜 폴더로 옮긴다. 실패해도 저장은 그대로, 안내만 한다 */

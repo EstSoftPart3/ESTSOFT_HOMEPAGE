@@ -438,7 +438,8 @@ public class BoBatchServiceImpl implements BoBatchService {
 		String[] drive = resumeDrive();
 		LocalDate date = LocalDate.parse(intvDt);
 		String folder = folders(drive, date.getYear() + "년도", date.getMonthValue() + "월", date.getDayOfMonth() + "일", name);
-		return (String) GoogleDriveApi.upload(fileName, "application/pdf", pdf, folder, drive[1]).get("id");
+		String mime = fileName.toLowerCase().endsWith(".docx") ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "application/pdf"; // 면접 프로필은 워드
+		return (String) GoogleDriveApi.upload(fileName, mime, pdf, folder, drive[1]).get("id");
 	}
 
 	/** 이력서 최상위 폴더 아래로 폴더를 차례로 찾고 없으면 만든다. fillResume·resumeFile 이 찾는 경로와 같다 */
