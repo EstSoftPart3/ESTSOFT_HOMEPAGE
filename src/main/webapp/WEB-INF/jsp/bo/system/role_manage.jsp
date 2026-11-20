@@ -3,6 +3,15 @@
 <%@ include file="/WEB-INF/jsp/bo/boinclude/include_top.jspf"%>
 <%@ include file="/WEB-INF/jsp/bo/calendar/calendar_style.jspf"%>
 <%@ include file="/WEB-INF/jsp/bo/system/system_style.jspf"%>
+<style>
+	/* 메뉴 권한은 그룹별 덩어리를 여러 칸으로 펼친다. 그래도 길면 탭 본문만 스크롤해 위 버튼 줄은 늘 보인다(문서 sticky 에 기대지 않음) */
+	.sys-cols { column-width: 240px; column-gap: 28px; }
+	.sys-col { break-inside: avoid; margin-bottom: 12px; }
+	#tabBody { max-height: calc(100vh - 230px); overflow: auto; }
+	/* 왼쪽 권한 목록도 두 줄씩 펼쳐 한눈에 */
+	#roles { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); padding: 10px; }
+	#roles .sys-role { padding: 6px 8px; }
+</style>
 
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-header"><h3 class="card-title bTitle"><b>권한 관리</b></h3></div>
@@ -77,7 +86,11 @@
 		$('#roleTitle').text(current.ROLE_NM + (current.ROLE_DESC ? ' · ' + current.ROLE_DESC : ''));
 		// 저장·수정·삭제는 이름 줄 오른쪽 한 곳(스크롤해도 붙어 있음). 저장은 메뉴 권한 탭에서만
 		var $tools = $('#roleTools').empty();
-		if (tab === 'menu' && !isSuper(current)) $('<button type="button" class="btn btn-sm btn-primary mr-1">저장</button>').on('click', saveMenus).appendTo($tools);
+		if (tab === 'menu' && !isSuper(current)) {
+			$('<button type="button" class="btn btn-sm btn-light">전체 선택</button>').on('click', function() { checkAll(true); }).appendTo($tools);
+			$('<button type="button" class="btn btn-sm btn-light mr-2">전체 해제</button>').on('click', function() { checkAll(false); }).appendTo($tools);
+			$('<button type="button" class="btn btn-sm btn-primary mr-1">저장</button>').on('click', saveMenus).appendTo($tools);
+		}
 		$('<button type="button" class="btn btn-sm btn-outline-secondary">수정</button>').on('click', function() { openRole(current); }).appendTo($tools);
 		if (current.SYSTEM_YN !== 'Y') $('<button type="button" class="btn btn-sm btn-outline-danger ml-1">삭제</button>').on('click', deleteRole).appendTo($tools);
 		var $tabs = $('#tabs').empty();
@@ -98,7 +111,8 @@
 	function renderMenus() {
 		var $b = $('#tabBody').empty(), locked = isSuper(current), have = menuCodes(current);
 		if (locked) $b.append('<div class="small text-muted mb-2">슈퍼관리자는 항상 모든 메뉴를 사용합니다.</div>');
-		var $tree = $('<div>').appendTo($b), syncs = [];
+		// 최상위 그룹마다 한 덩어리로, 폭에 맞춰 여러 칸으로 펼쳐 스크롤 없이 한눈에
+		var $cols = $('<div class="sys-cols">').appendTo($b), $tree, syncs = [];
 		function syncAll() { syncs.forEach(function(sync) { sync(); }); }
 		// 그룹·묶음 체크박스는 하위 화면 일괄 선택용이고 저장되는 것은 화면 메뉴뿐이다
 		function screen(m, level) {
@@ -124,8 +138,14 @@
 			if (!$children.length) $group.remove();
 			return $children;
 		}
-		groups().forEach(function(g) { if (g.MENU_URL) screen(g, 1).closest('label').addClass('group'); else branch(g, 1); }); // 최상위 화면 메뉴
+		groups().forEach(function(g) { $tree = $('<div class="sys-col">').appendTo($cols); if (g.MENU_URL) screen(g, 1).closest('label').addClass('group'); else branch(g, 1); }); // 최상위 화면 메뉴
+		$cols.children(':empty').remove();
 		syncAll();
+	}
+	// 전체 선택·해제(화면 메뉴만 저장되므로 그룹 상자는 syncAll 이 맞춘다)
+	function checkAll(on) {
+		$('#tabBody input[type=checkbox]').prop({ checked: on, indeterminate: false });
+		$('#tabBody .menu-box').first().trigger('change');
 	}
 
 	function saveMenus() {
