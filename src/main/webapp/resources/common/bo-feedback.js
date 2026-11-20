@@ -17,6 +17,9 @@
 		return m;
 	}
 	window.BO_FB = { status: function () { return names('FB_STATUS', STATUS); }, kind: function () { return names('FB_KIND', KIND); }, tone: TONE,
+		// 업데이트 내역 분류(TB_EEP_UPDATE_H.KIND_CD): [이름, 배지 색]
+		updKind: { NEW: ['새 기능', 'rent'], UI: ['화면 개선', ''], FIX: ['오류 수정', 'bad'], PROC: ['프로세스·운영', 'warn'] },
+		updPill: function (k) { var v = BO_FB.updKind[k] || BO_FB.updKind.UI; return pill(v[0], v[1]); },
 		// 진행 중인 건에 의견·코멘트를 남기면 진행이 풀리고 접수로 돌아가므로 한 번 더 묻는다
 		confirmIng: function (f, go) {
 			if (f.STATUS_CD !== 'ING') { go(); return; }
@@ -48,7 +51,7 @@
 			$b.append($('<div class="fb-three">').append([['수정한 것', u.CHANGED_TXT], ['테스트할 것', u.TESTS_TXT], ['주의할 것', u.CAUTIONS_TXT]].map(function (x) {
 				return $('<div>').append($('<b>').text(x[0])).append(lines(x[1]));
 			})));
-			bootbox.dialog({ title: esc(u.TITLE) + (u.FB_SQ ? ' <span class="fb-pill warn">💬 피드백 반영</span>' : ''), message: $b, size: 'xl', onEscape: true, backdrop: true, buttons: { ok: { label: '닫기', className: 'btn-sm btn-outline-secondary' } } });
+			bootbox.dialog({ title: BO_FB.updPill(u.KIND_CD).prop('outerHTML') + (u.MAJOR_YN === 'Y' ? ' ⭐' : '') + ' ' + esc(u.TITLE) + (u.FB_SQ ? ' <span class="fb-pill warn">💬 피드백 반영</span>' : ''), message: $b, size: 'xl', onEscape: true, backdrop: true, buttons: { ok: { label: '닫기', className: 'btn-sm btn-outline-secondary' } } });
 		});
 	};
 

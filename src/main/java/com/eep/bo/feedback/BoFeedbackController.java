@@ -262,8 +262,28 @@ public class BoFeedbackController {
 	}
 
 	@RequestMapping(value = "/admin/update/listData.do", method = RequestMethod.POST)
-	public ModelAndView updateListData() {
-		return run(() -> mapper.selectUpdates(new HashMap<>()));
+	public ModelAndView updateListData(HttpSession session) {
+		return run(() -> {
+			Map<String, Object> out = new HashMap<>();
+			out.put("list", mapper.selectUpdates(new HashMap<>()));
+			out.put("canAct", canAct(loginId(session)));
+			return out;
+		});
+	}
+
+	private static final List<String> UPD_KINDS = Arrays.asList("NEW", "UI", "FIX", "PROC");
+
+	/** 분류·주요 변경 고치기(슈퍼관리자·시스템 운영자). Claude 가 넣은 분류 초안이 틀렸을 때 */
+	@RequestMapping(value = "/admin/update/kindData.do", method = RequestMethod.POST)
+	public ModelAndView updateKindData(@RequestParam("UPD_SQ") int updSq, @RequestParam("KIND_CD") String kind, @RequestParam("MAJOR_YN") String major, HttpSession session) {
+		return run(() -> {
+			require(canAct(loginId(session)), "슈퍼관리자·시스템 운영자만 분류를 고칠 수 있습니다.");
+			require(UPD_KINDS.contains(kind) && ("Y".equals(major) || "N".equals(major)), "분류 값이 올바르지 않습니다.");
+			Map<String, Object> q = one("UPD_SQ", updSq);
+			q.put("KIND_CD", kind);
+			q.put("MAJOR_YN", major);
+			return mapper.updateUpdateKind(q);
+		});
 	}
 
 	@RequestMapping(value = "/admin/update/detailData.do", method = RequestMethod.POST)

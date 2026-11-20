@@ -14,7 +14,8 @@ public interface BoFeedbackMapper {
 	public Map<String, Object> selectLogSpec(Map<String, Object> param);		//LOG_SQ → 그때의 기획서
 	public int countUnseen(Map<String, Object> param);							//EMPLY_ID: 상태가 바뀌었는데 안 본 내 피드백
 	public int updateSeen(Map<String, Object> param);							//EMPLY_ID
-	public List<Map<String, Object>> selectUpdates(Map<String, Object> param);	//LIMIT(없으면 전체) → 기획서 HTML 제외
+	public List<Map<String, Object>> selectUpdates(Map<String, Object> param);	//LIMIT(없으면 전체), MAJOR(있으면 주요 변경만) → 기획서 HTML 제외, SUMMARY 는 수정한 것 첫 줄
+	public int updateUpdateKind(Map<String, Object> param);						//UPD_SQ, KIND_CD, MAJOR_YN (sql/update_kind.sql)
 	public Map<String, Object> selectUpdate(Map<String, Object> param);			//UPD_SQ → 피드백 요청자·진행자 포함
 	public Integer selectLatestUpdate();
 }

@@ -65,21 +65,27 @@
 	</update>
 
 	<select id="selectUpdates" parameterType="hashMap" resultType="hashMap">
-		SELECT U.UPD_SQ, U.TITLE, U.SCREENS, U.COMMIT_ID, U.FB_SQ, DATE_FORMAT(U.DEPLOY_DT, '%Y-%m-%d') AS DEPLOY_DT
+		SELECT U.UPD_SQ, U.TITLE, U.KIND_CD, U.MAJOR_YN, U.SCREENS, U.COMMIT_ID, U.FB_SQ, DATE_FORMAT(U.DEPLOY_DT, '%Y-%m-%d') AS DEPLOY_DT
+			, SUBSTRING_INDEX(TRIM(LEADING '- ' FROM IFNULL(U.CHANGED_TXT, '')), '\n', 1) AS SUMMARY
 			, <include refid="who"/>F.EMPLY_ID LIMIT 1) AS FB_EMPLY_NM
 		FROM TB_EEP_UPDATE_H U LEFT JOIN TB_EEP_FEEDBACK_M F ON F.FB_SQ = U.FB_SQ
+		<if test="MAJOR != null">WHERE U.MAJOR_YN = 'Y'</if>
 		ORDER BY U.UPD_SQ DESC
 		<if test="LIMIT != null">LIMIT ${LIMIT}</if>
 	</select>
 
 	<select id="selectUpdate" parameterType="hashMap" resultType="hashMap">
-		SELECT U.UPD_SQ, U.TITLE, U.SCREENS, U.CHANGED_TXT, U.TESTS_TXT, U.CAUTIONS_TXT, U.SPEC_HTML, U.COMMIT_ID, U.FB_SQ, DATE_FORMAT(U.DEPLOY_DT, '%Y-%m-%d') AS DEPLOY_DT
+		SELECT U.UPD_SQ, U.TITLE, U.KIND_CD, U.MAJOR_YN, U.SCREENS, U.CHANGED_TXT, U.TESTS_TXT, U.CAUTIONS_TXT, U.SPEC_HTML, U.COMMIT_ID, U.FB_SQ, DATE_FORMAT(U.DEPLOY_DT, '%Y-%m-%d') AS DEPLOY_DT
 			, F.CONTENT AS FB_CONTENT, F.SCREEN_NM AS FB_SCREEN, DATE_FORMAT(F.REG_DT, '%m-%d %H:%i') AS FB_REG_DT, DATE_FORMAT(F.ACT_DT, '%m-%d') AS FB_ACT_DT, F.DEV_NOTE
 			, <include refid="who"/>F.EMPLY_ID LIMIT 1) AS FB_EMPLY_NM
 			, <include refid="who"/>F.ACT_EMPLY_ID LIMIT 1) AS FB_ACT_NM
 		FROM TB_EEP_UPDATE_H U LEFT JOIN TB_EEP_FEEDBACK_M F ON F.FB_SQ = U.FB_SQ
 		WHERE U.UPD_SQ = #{UPD_SQ}
 	</select>
+
+	<update id="updateUpdateKind" parameterType="hashMap">
+		UPDATE TB_EEP_UPDATE_H SET KIND_CD = #{KIND_CD}, MAJOR_YN = #{MAJOR_YN} WHERE UPD_SQ = #{UPD_SQ}
+	</update>
 
 	<select id="selectLatestUpdate" resultType="java.lang.Integer">
 		SELECT MAX(UPD_SQ) FROM TB_EEP_UPDATE_H

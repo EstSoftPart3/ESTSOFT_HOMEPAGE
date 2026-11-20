@@ -83,6 +83,7 @@ public class BoHomeController {
 		MEMOS.forEach((k, url) -> { if (access.allows(url)) targets.add(k); });
 		Map<String, Object> lim = new HashMap<>();
 		lim.put("LIMIT", 5);
+		lim.put("MAJOR", "Y"); // 홈에는 주요 변경만
 		List<Map<String, Object>> updates = feedbackMapper.selectUpdates(lim);
 		if (cards.isEmpty() && targets.isEmpty() && updates.isEmpty()) {
 			// 볼 카드가 없으면 예전처럼 권한 있는 첫 메뉴로

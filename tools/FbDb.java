@@ -17,7 +17,9 @@ import java.util.Properties;
  *   comments FB_SQ              그 피드백의 코멘트(오래된 것부터): 일시 | 누가 | 내용
  *   ing                         진행(ING) 피드백: FB_SQ | 화면 | 요청자 | 내용 | 개발 반영 내용
  *   spec FB_SQ 파일              파일의 @@PLAN·@@EST·@@HTML 을 기획서로 넣고 변경 로그에 남긴다. 접수(NEW)면 검토 대기로, 검토 대기·보류·진행 중이면 기획서만 바꿈
- *   update 파일                  업데이트 내역 1건 등록(@@TITLE @@SCREENS @@COMMIT @@FB_SQ @@CHANGED @@TESTS @@CAUTIONS @@HTML).
+ *   update 파일                  업데이트 내역 1건 등록(@@TITLE @@KIND @@MAJOR @@SCREENS @@COMMIT @@FB_SQ @@CHANGED @@TESTS @@CAUTIONS @@HTML).
+ *                               @@KIND: NEW 새 기능 | UI 화면 개선 | FIX 오류 수정 | PROC 프로세스·운영 변경
+ *                               @@MAJOR: Y = 새 화면·큰 개편(목록 위 카드·홈에 보임), 없거나 N = 자잘한 변경(날짜별 묶음)
  *                               @@FB_SQ 가 있으면 그 피드백을 반영(DONE)으로 바꾸고 요청자 버튼에 숫자가 뜨게 한다
  * 파일은 UTF-8, '@@키' 줄 다음부터 다음 '@@' 줄 전까지가 값이다.
  */
@@ -77,10 +79,16 @@ public class FbDb {
 		require(f.get("TITLE") != null && !f.get("TITLE").isEmpty(), "@@TITLE 이 필요합니다.");
 		String fb = f.get("FB_SQ");
 		c.setAutoCommit(false);
-		try (PreparedStatement s = c.prepareStatement("INSERT INTO TB_EEP_UPDATE_H (TITLE, SCREENS, CHANGED_TXT, TESTS_TXT, CAUTIONS_TXT, SPEC_HTML, COMMIT_ID, FB_SQ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)) {
+		// 분류(sql/update_kind.sql): 없으면 제목에 고침·오류·수정이 있으면 FIX, 아니면 UI. 주요 변경은 @@MAJOR Y 일 때만
+		String kind = f.getOrDefault("KIND", "").toUpperCase(), major = f.getOrDefault("MAJOR", "N").toUpperCase();
+		if (kind.isEmpty()) kind = f.get("TITLE").matches(".*(고침|고쳤|오류|수정|안 되던|사라지던).*") ? "FIX" : "UI";
+		require(kind.matches("NEW|UI|FIX|PROC"), "@@KIND 는 NEW(새 기능)·UI(화면 개선)·FIX(오류 수정)·PROC(프로세스·운영) 중 하나입니다.");
+		require(major.matches("[YN]"), "@@MAJOR 는 Y 또는 N 입니다.");
+		try (PreparedStatement s = c.prepareStatement("INSERT INTO TB_EEP_UPDATE_H (TITLE, SCREENS, CHANGED_TXT, TESTS_TXT, CAUTIONS_TXT, SPEC_HTML, COMMIT_ID, FB_SQ, KIND_CD, MAJOR_YN) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)) {
 			s.setString(1, f.get("TITLE")); s.setString(2, f.get("SCREENS")); s.setString(3, f.get("CHANGED")); s.setString(4, f.get("TESTS"));
 			s.setString(5, f.get("CAUTIONS")); s.setString(6, f.get("HTML")); s.setString(7, f.get("COMMIT"));
 			if (fb == null || fb.isEmpty()) s.setNull(8, Types.INTEGER); else s.setInt(8, Integer.parseInt(fb));
+			s.setString(9, kind); s.setString(10, major);
 			s.executeUpdate();
 			ResultSet k = s.getGeneratedKeys();
 			k.next();
@@ -104,7 +112,7 @@ public class FbDb {
 				}
 			}
 			c.commit();
-			System.out.println("update " + upd + note);
+			System.out.println("update " + upd + " [" + kind + (major.equals("Y") ? " ⭐" : "") + "]" + note);
 		} catch (RuntimeException | SQLException e) {
 			c.rollback();
 			throw e;
