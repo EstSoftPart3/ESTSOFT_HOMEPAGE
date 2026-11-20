@@ -154,15 +154,19 @@
   	.table-hover tbody tr:hover { background-color: #f1f9fb; }
   	/* 팝업: 둥글고 그림자 */
   	.modal-content { border: 0; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.18); }
-  	.modal-header { border-bottom-color: #edf0f2; padding: .85rem 1.1rem; }
-  	.modal-header .modal-title { font-size: 16px; font-weight: 700; }
+  	.modal-header { border-bottom-color: #edf0f2; padding: .45rem .9rem; align-items: center; }
+  	.modal-header .modal-title { font-size: 15px; font-weight: 700; }
+  	.modal-header .close { padding: .25rem .5rem; margin: -.25rem -.5rem -.25rem auto; }
   	/* 저장·삭제 버튼은 편집 영역 우측 상단: 팝업 바닥글을 머리글 바로 아래로 올린다(오른쪽 아래 ↑·? 버튼에 가리지 않게) */
   	/* 질문·알림만 하는 짧은 확인창(bootbox alert·confirm·prompt)은 읽고 누르게 아래 그대로 둔다 */
   	.modal-footer { border-top-color: #edf0f2; background: #fafbfc; border-radius: 0 0 12px 12px; }
   	.modal:not(.bootbox-alert):not(.bootbox-confirm):not(.bootbox-prompt) .modal-content > form:not(.modal-content) { display: contents; }
   	.modal:not(.bootbox-alert):not(.bootbox-confirm):not(.bootbox-prompt) .modal-header { order: -2; }
-  	.modal:not(.bootbox-alert):not(.bootbox-confirm):not(.bootbox-prompt) .modal-footer { order: -1; border-top: 0; border-bottom: 1px solid #edf0f2; border-radius: 0; padding: .45rem .9rem; }
+  	.modal:not(.bootbox-alert):not(.bootbox-confirm):not(.bootbox-prompt) .modal-footer { order: -1; border-top: 0; border-bottom: 1px solid #edf0f2; border-radius: 0; padding: .3rem .9rem; }
   	.modal:not(.bootbox-alert):not(.bootbox-confirm):not(.bootbox-prompt) .modal-footer > .btn.mr-auto { margin-right: 0 !important; }
+  	/* 머리+저장 줄은 팝업을 내려도 위에 붙는다(고치다 바로 저장). 머리 높이는 include_bottom 이 --bo-mh 로 넘긴다 */
+  	.modal:not(.bootbox-alert):not(.bootbox-confirm):not(.bootbox-prompt) .modal-header { position: sticky; top: 0; z-index: 6; background: #fff; border-radius: 12px 12px 0 0; }
+  	.modal:not(.bootbox-alert):not(.bootbox-confirm):not(.bootbox-prompt) .modal-footer { position: sticky; top: var(--bo-mh, 44px); z-index: 5; }
   	/* 화면 직접 폼의 버튼 묶음(카드·패널 머리 오른쪽). 긴 폼은 머리를 sticky 로 붙여 스크롤해도 보인다 */
   	.bo-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; margin-left: auto; }
   	.bo-sticky { position: sticky; top: 0; z-index: 3; background: #fff; }
@@ -177,8 +181,7 @@
   		.modal:not(.bootbox-alert):not(.bootbox-confirm):not(.bootbox-prompt) { padding-left: 0 !important; padding-right: 0 !important; }
   		.modal:not(.bootbox-alert):not(.bootbox-confirm):not(.bootbox-prompt) .modal-dialog { margin: 0; max-width: 100%; width: 100%; min-height: 100%; }
   		.modal:not(.bootbox-alert):not(.bootbox-confirm):not(.bootbox-prompt) .modal-content { min-height: 100vh; border-radius: 0; box-shadow: none; }
-  		.modal:not(.bootbox-alert):not(.bootbox-confirm):not(.bootbox-prompt) .modal-header { position: sticky; top: 0; z-index: 6; background: #fff; }
-  		.modal:not(.bootbox-alert):not(.bootbox-confirm):not(.bootbox-prompt) .modal-footer { position: sticky; top: var(--bo-mh, 52px); z-index: 5; }
+  		.modal:not(.bootbox-alert):not(.bootbox-confirm):not(.bootbox-prompt) .modal-header { border-radius: 0; }
   	}
   	/* 바닥글: 작고 옅게 */
   	.main-footer { padding: .55rem 1rem; font-size: 12px; color: #8a949c; background: #fff; border-top-color: #e9ecef; }

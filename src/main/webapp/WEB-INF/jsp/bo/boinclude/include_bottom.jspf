@@ -107,9 +107,8 @@ $(document).ajaxComplete(function(e, xhr) {
 	var r = xhr.responseJSON;
 	if (r && typeof r.error === 'string' && !xhr.boNeedLinkDone) { xhr.boNeedLinkDone = true; boNeedLink(r.error); }
 });
-// 폰 전체 화면 팝업: 저장 줄(sticky)이 머리 바로 아래 붙게 머리 높이를 넘긴다(include_top 의 --bo-mh)
+// 팝업: 저장 줄(sticky)이 머리 바로 아래 붙게 머리 높이를 넘긴다(include_top 의 --bo-mh)
 $(document).on('shown.bs.modal', '.modal', function() {
-	if (!window.matchMedia('(max-width: 767px)').matches) return;
 	var h = $(this).find('.modal-header').outerHeight();
 	if (h) this.style.setProperty('--bo-mh', h + 'px');
 });
