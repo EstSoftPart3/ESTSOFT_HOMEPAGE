@@ -13,7 +13,7 @@
 							<div class="sys-roles" id="roles"></div>
 						</div>
 						<div class="cal-panel">
-							<div class="cal-panel-head"><button type="button" class="btn btn-sm btn-light m-back" onclick="sysToList();">← 목록</button><span id="roleTitle"></span><span id="roleTools"></span></div>
+							<div class="cal-panel-head bo-sticky"><button type="button" class="btn btn-sm btn-light m-back" onclick="sysToList();">← 목록</button><span id="roleTitle"></span><span id="roleTools" class="bo-actions"></span></div>
 							<div class="cate-tabs" id="tabs" role="tablist" aria-label="권한 설정"></div>
 							<div class="cal-panel-body" id="tabBody"></div>
 						</div>
@@ -75,7 +75,9 @@
 				.on('click', function() { pick(r); sysToDetail(); }).appendTo($r);
 		});
 		$('#roleTitle').text(current.ROLE_NM + (current.ROLE_DESC ? ' · ' + current.ROLE_DESC : ''));
+		// 저장·수정·삭제는 이름 줄 오른쪽 한 곳(스크롤해도 붙어 있음). 저장은 메뉴 권한 탭에서만
 		var $tools = $('#roleTools').empty();
+		if (tab === 'menu' && !isSuper(current)) $('<button type="button" class="btn btn-sm btn-primary mr-1">저장</button>').on('click', saveMenus).appendTo($tools);
 		$('<button type="button" class="btn btn-sm btn-outline-secondary">수정</button>').on('click', function() { openRole(current); }).appendTo($tools);
 		if (current.SYSTEM_YN !== 'Y') $('<button type="button" class="btn btn-sm btn-outline-danger ml-1">삭제</button>').on('click', deleteRole).appendTo($tools);
 		var $tabs = $('#tabs').empty();
@@ -124,9 +126,6 @@
 		}
 		groups().forEach(function(g) { if (g.MENU_URL) screen(g, 1).closest('label').addClass('group'); else branch(g, 1); }); // 최상위 화면 메뉴
 		syncAll();
-		if (!locked) {
-			$('<div class="bo-actions bo-sticky py-1 mb-2">').append($('<button type="button" class="btn btn-sm btn-primary">저장</button>').on('click', saveMenus)).prependTo($b);
-		}
 	}
 
 	function saveMenus() {
