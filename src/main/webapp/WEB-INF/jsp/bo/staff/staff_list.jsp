@@ -482,9 +482,14 @@
 
 	$(function() {
 		// 다른 메뉴의 인사카드 링크(?STAFF_SQ=번호)로 오면 그 사람 카드를 바로 연다
-		var linked = /[?&]STAFF_SQ=(\d+)/.exec(location.search);
+		var linked = /[?&]STAFF_SQ=(\d+)/.exec(location.search), toCareer = /[?&]TAB=CAREER/.test(location.search);
+		// 한 번 열고 나면 주소에서 지운다. 안 지우면 위 화면 탭이 이 주소를 기억해 직원관리에 올 때마다 같은 카드가 열린다
+		if (linked || toCareer) {
+			history.replaceState(null, '', location.pathname + location.hash);
+			try { window.dispatchEvent(new HashChangeEvent('hashchange')); } catch (e) {} // bo-tabs.js 가 hashchange 때 탭 주소를 다시 저장한다
+		}
 		load(function() {
-			if (/[?&]TAB=CAREER/.test(location.search)) cardTab = TAB.CAREER; // 모집 관리에서 프로필 등록하러 올 때
+			if (toCareer) cardTab = TAB.CAREER; // 모집 관리에서 프로필 등록하러 올 때
 			if (linked && rows.some(function(r) { return String(r.STAFF_SQ) === linked[1]; })) openCard(Number(linked[1]));
 		});
 		$('#keyword').on('input', render);
