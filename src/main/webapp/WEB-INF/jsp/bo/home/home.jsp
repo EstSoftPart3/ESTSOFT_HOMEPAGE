@@ -427,6 +427,8 @@
 			eventDrop: taskMoved, eventResize: taskMoved,
 			locales: window.FullCalendarLocales ? [FullCalendarLocales.ko] : [], locale: 'ko',
 			// 폰: list 플러그인이 없어 월 보기 고정, 주·일 버튼은 뺀다
+			// 변경 반영으로 다시 읽었으면 보던 날짜에서 연다
+			defaultDate: (function() { try { var d = sessionStorage.getItem('hmCalDate'); sessionStorage.removeItem('hmCalDate'); return d || undefined; } catch (x) { return undefined; } })(),
 			defaultView: !PHONE && ['dayGridMonth', 'timeGridWeek', 'timeGridDay'].indexOf(store('hmCalView')) >= 0 ? store('hmCalView') : 'dayGridMonth',
 			header: PHONE ? { left: 'prev,next', center: 'title', right: 'today' } : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
 			buttonText: { today: '오늘', month: '월', week: '주', day: '일' },
@@ -634,6 +636,15 @@
 		widgetsInit();
 		paintTodo();
 	});
+	// 홈 위 팝업이나 다른 탭에서 저장·삭제하면(include_bottom 이 boChangedAt 을 남김) 다시 읽는다.
+	// 팝업·확인창이 열려 있거나 홈이 가려져 있으면(탭 전환·창 최소화) 닫히거나 보일 때까지 기다리고, 보던 달력 날짜는 그대로
+	var stale = false;
+	window.addEventListener('storage', function(e) { if (e.key === 'boChangedAt') stale = true; });
+	setInterval(function() {
+		if (!stale || document.hidden || !window.innerWidth || $('.hm-pop, .modal.show').length) return;
+		try { if (calendar) sessionStorage.setItem('hmCalDate', moment(calendar.getDate()).format('YYYY-MM-DD')); } catch (x) {}
+		location.reload();
+	}, 1000);
 
 	// 최근 주요 업데이트 5건(모든 관리자, 자잘한 수정은 업데이트 내역 화면에서). 줄을 누르면 상세 팝업, 피드백 반영이면 요청자 표시
 	function updateCard() {

@@ -70,7 +70,7 @@
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_open.jspf"%>
 				<div class="card-header"><h3 class="card-title bTitle"><b>내 연동</b></h3></div>
 				<div class="card-body">
-					<div class="gl-top">회사 공용 구글 연결 하나를 모든 계정이 씁니다(연결·해제는 시스템 관리자). 아래 휴대폰 알림은 각자 연결합니다.<button type="button" class="gl-help" id="glHelp">연결이 안 되나요?</button></div>
+					<div class="gl-top">회사 공용 구글 연결 하나를 모든 계정이 씁니다. 연결·해제는 시스템 관리자만 합니다.<button type="button" class="gl-help" id="glHelp">연결이 안 되나요?</button></div>
 					<div id="glNeed" class="gl-need" hidden></div>
 					<c:if test="${superUser}">
 					<%-- 1단계 앱 키 → 2단계 연결. 앱 키가 있으면 한 줄로 접는다. 무엇을 읽을지(면접 캘린더·폴더)는 쓰는 화면에서 고른다 --%>

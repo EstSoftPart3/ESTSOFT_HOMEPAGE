@@ -32,6 +32,12 @@ if (document.documentElement.classList.contains('in-pop')) (function() {
 		.on('hidden.bs.modal', function() { setTimeout(function() { if (!$('.modal.show').length) tell('close'); }, 1000); });
 	setTimeout(function() { if (!shown) tell('empty'); }, 8000);
 })();
+// 바꾸는 호출(저장·삭제·상태 변경 등)이 성공하면 표시를 남긴다. 홈이 storage 이벤트로 받아 다시 읽는다(조회 호출은 이름이 명사라 빠진다)
+$(document).ajaxSuccess(function(e, xhr, o) {
+	var n = String(o.url || '').split('?')[0].split('/').pop();
+	if (/^(save|delete|insert|update|set|add|remove|apply|close|reopen|cancel|confirm|extend|dispose|rent|return|upload|mark|step|status|act|approve|reject|submit|restore|revert|issue|join|send|sort|link|unlink|wait|traineeFrom|import|move|create|use)/.test(n) && n.indexOf('List') < 0)
+		try { localStorage.setItem('boChangedAt', String(Date.now())); } catch (x) {}
+});
 </script>
 
 <!-- DataTables -->
