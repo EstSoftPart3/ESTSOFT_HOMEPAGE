@@ -326,18 +326,18 @@ public class BoMyController {
 
 	@RequestMapping(value = "/admin/my/tgData.do", method = RequestMethod.POST)
 	public ModelAndView tgData() {
-		return viewDo(() -> telegram.mine(me()));
+		return tgDo(() -> telegram.mine(me()));
 	}
 
 	@RequestMapping(value = "/admin/my/tgStartData.do", method = RequestMethod.POST)
 	public ModelAndView tgStartData() {
-		return viewDo(() -> telegram.start(me()));
+		return tgDo(() -> telegram.start(me()));
 	}
 
 	/** 「연결 확인」: 봇에 온 시작 메시지를 바로 읽는다 */
 	@RequestMapping(value = "/admin/my/tgCheckData.do", method = RequestMethod.POST)
 	public ModelAndView tgCheckData() {
-		return viewDo(() -> {
+		return tgDo(() -> {
 			try {
 				telegram.poll();
 			} catch (RuntimeException e) {
@@ -350,17 +350,17 @@ public class BoMyController {
 	@RequestMapping(value = "/admin/my/tgSaveConfData.do", method = RequestMethod.POST)
 	public ModelAndView tgSaveConfData(@RequestParam(value = "kinds", defaultValue = "") String kinds, @RequestParam(value = "before", defaultValue = "30") String before,
 			@RequestParam(value = "changeKinds", defaultValue = "") String changeKinds) {
-		return viewDo(() -> { telegram.saveConf(me(), kinds, before, changeKinds); return telegram.mine(me()); });
+		return tgDo(() -> { telegram.saveConf(me(), kinds, before, changeKinds); return telegram.mine(me()); });
 	}
 
 	@RequestMapping(value = "/admin/my/tgTestData.do", method = RequestMethod.POST)
 	public ModelAndView tgTestData() {
-		return viewDo(() -> { telegram.test(me()); return "OK"; });
+		return tgDo(() -> { telegram.test(me()); return "OK"; });
 	}
 
 	@RequestMapping(value = "/admin/my/tgUnlinkData.do", method = RequestMethod.POST)
 	public ModelAndView tgUnlinkData() {
-		return viewDo(() -> { telegram.unlink(me()); return telegram.mine(me()); });
+		return tgDo(() -> { telegram.unlink(me()); return telegram.mine(me()); });
 	}
 
 	@RequestMapping(value = "/admin/my/tgSaveBotData.do", method = RequestMethod.POST)
@@ -368,7 +368,13 @@ public class BoMyController {
 		if (!superUser()) return json("error", "시스템 관리자만 봇을 설정할 수 있습니다.");
 		String host = request.getHeader("Host");
 		String base = (host != null && host.startsWith("localhost") ? request.getScheme() : "https") + "://" + host;
-		return viewDo(() -> telegram.saveBot(token, base));
+		return tgDo(() -> telegram.saveBot(token, base));
+	}
+
+	/** 휴대폰 알림은 시스템 관리자만 연결·설정한다(사용자 결정 2026-11-23) */
+	private ModelAndView tgDo(java.util.function.Supplier<Object> f) {
+		if (!superUser()) return json("error", "휴대폰 알림은 시스템 관리자만 쓸 수 있습니다.");
+		return viewDo(f);
 	}
 
 	private static String me() {

@@ -393,11 +393,12 @@ public class TelegramService {
 		}
 	}
 
-	/** 연결된 사용자(사용 중인 관리자 계정만) */
+	/** 연결된 사용자(사용 중인 시스템 관리자 계정만. 권한이 빠지면 알림도 멈춤) */
 	private List<Map<String, Object>> users() {
 		List<Map<String, Object>> out = new ArrayList<>();
 		for (Map<String, Object> u : jdbc.queryForList("SELECT EMPLY_ID, CHAT_ID, KINDS, BEFORE_MIN, CHANGE_KINDS FROM TB_EEP_TG_LINK_R WHERE STATUS_CD = 'ON' AND CHAT_ID IS NOT NULL")) {
-			if (systemService.isActiveAdmin((String) u.get("EMPLY_ID"))) out.add(u);
+			String id = (String) u.get("EMPLY_ID");
+			if (systemService.isActiveAdmin(id) && systemService.access(id).superUser) out.add(u);
 		}
 		return out;
 	}

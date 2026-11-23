@@ -106,7 +106,8 @@
 						</div>
 					</div>
 					</c:if>
-					<%-- 휴대폰 알림(텔레그램): 봇은 시스템 관리자가 한 번, 연결·설정은 각자 --%>
+					<%-- 휴대폰 알림(텔레그램): 시스템 관리자만. 봇은 한 번, 연결·설정은 계정마다 --%>
+					<c:if test="${superUser}">
 					<div class="gl-step mt-3" id="tgBox">
 						<div class="gl-step-h"><span class="gl-logo TG">✈</span><div><b>휴대폰 알림 (텔레그램)</b><div class="gl-step-s" id="tgState">확인 중…</div></div>
 							<button type="button" class="gl-help ml-auto" id="tgHelp">연결 방법</button></div>
@@ -132,6 +133,7 @@
 							<div class="mt-2"><button type="button" class="btn btn-sm btn-primary" id="tgConfSave">설정 저장</button></div>
 						</div>
 					</div>
+					</c:if>
 				</div>
 <%@ include file="/WEB-INF/jsp/bo/boinclude/page_close.jspf"%>
 
@@ -221,6 +223,7 @@
 	// ── 휴대폰 알림(텔레그램) ──
 	var tg = null, tgWaitTimer = null, IS_PHONE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 	$(function() {
+		if (!$('#tgBox').length) return; // 시스템 관리자만
 		tgLoad();
 		$('#tgHelp').on('click', function() { guide('TG_LINK'); });
 		$('#tgBotHelp').on('click', function() { guide('TG_BOT'); });
