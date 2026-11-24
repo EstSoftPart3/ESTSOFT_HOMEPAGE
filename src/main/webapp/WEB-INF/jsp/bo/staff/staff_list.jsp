@@ -115,6 +115,13 @@
 	.st-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 14px; align-items: start; }
 	.st-card { border: 1px solid #e3e8ee; border-radius: 10px; padding: 14px 16px; background: #fff; min-width: 0; }
 	.st-card.wide { grid-column: 1 / -1; }
+	.ct-sum { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: flex-end; background: #f6f8fa; border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; font-size: 13px; }
+	.ct-type { display: inline-block; padding: 0 8px; border-radius: 9px; background: #eef2ff; color: #3730a3; font-size: 12px; }
+	tr.ct-live > td { background: #f2f8ff; }
+	.ct-nofile { color: #b45309; font-size: 12px; }
+	tr.ct-subrow > td { background: #fafbfc; padding: 4px 8px 10px 28px; }
+	.ct-sub table th { font-size: 11.5px; color: #6b7785; font-weight: normal; }
+	.ct-file { display: flex; align-items: center; border: 1px solid #e3e8ee; border-radius: 6px; padding: 4px 8px; margin-bottom: 4px; font-size: 13px; }
 	.st-card > .hr-section:first-child { margin: 0 0 10px; padding: 0; border: 0; font-size: 14px; }
 	.st-card .st-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 14px; }
 	.st-card .hr-card-row { flex-direction: column; gap: 0; margin: 0; }
@@ -764,7 +771,8 @@
 		var $cards = $('<div class="st-cards">').appendTo($p);
 		function card(wide) { return $('<div class="st-card">').toggleClass('wide', !!wide).appendTo($cards); }
 		SECTIONS.filter(function(s) { return CARD_TABS[cardTab][1].indexOf(s[0]) >= 0; }).forEach(function(s) {
-			var $c = card();
+			var $c = card(s[0] === '일자');
+			if (s[0] === '일자') { contractSection($c, r, s[1]); return; }
 			if (LISTS[s[0]]) { itemSection($c, r, LISTS[s[0]]); return; }
 			$c.append(sectionHead(r, s[0], s[1]));
 			var $g = $('<div class="st-grid">').appendTo($c);
@@ -773,7 +781,6 @@
 				if (f[2] === 'secret') $row.append(secretCell(r, f[0]));
 				else $row.append(editable($('<div>'), r, f[0], f[2]));
 			});
-			if (s[0] === '일자') $g.append($('<div class="hr-card-row">').append($('<div class="hr-card-label">').text('근속')).append($('<div class="hr-cell">').text(tenure(r) || '-')));
 		});
 		if ((cardTab === TAB.SALES || cardTab === TAB.CAREER) && (!career || career.sq !== r.STAFF_SQ)) loadCareer(r.STAFF_SQ);
 		if (cardTab === TAB.SALES) salesTab(card, r);
@@ -972,6 +979,201 @@
 			if (x.base) saveFields(r, x.base.map(function(f, i) { return [f, '', x.v[i]]; }), function() {});
 			else hrPost('/admin/staff/deleteStaffItemData.do', { STAFF_SQ: r.STAFF_SQ, ITEM_SQ: x.item.ITEM_SQ }, function() { loadItems(r.STAFF_SQ); });
 		});
+	}
+
+	// ── 계약 목록 (기초정보 탭 「일자」 자리). 계약 금액은 시작 때 값, 지금 값은 마지막 변경 줄. 진행 중 계약의 상여는 직원관리 상여 칩 그대로 ──
+	var ct = null, ctOpen = {}; // ct: { sq, list }, ctOpen: CONTRACT_SQ -> 변경 줄 펼침
+	var CT_REASONS = ['연봉 인상', '수습 종료', '직급 변경', '상여 변경', '형태 변경', '기타'];
+	function ctTypes() { return [['', '선택']].concat(hrAllCodes('HR_EMP_TYPE').map(function(c) { return [c.CD, c.NM]; })); }
+	function ctTypeNm(cd) { return hrCodeMap('HR_EMP_TYPE')[cd] || cd || '-'; }
+	function ctWon(v) { return v === null || v === undefined || v === '' ? '-' : Number(v).toLocaleString('ko-KR'); }
+	function ctToday() { return moment().format('YYYY-MM-DD'); }
+	function ctLive(c) { return !c.END_DT || c.END_DT >= ctToday(); }
+	function ctNow(c) { return c.CHANGES.length ? c.CHANGES[0] : c; } // 지금 적용 중인 금액
+	function ctMonths(from, to) { var a = moment(from, 'YYYY-MM-DD', true), b = to ? moment(to, 'YYYY-MM-DD', true) : moment(); return a.isValid() && b.isValid() && !b.isBefore(a) ? b.diff(a, 'months') : 0; }
+	function ctSpan(m) { return m ? (m >= 12 ? Math.floor(m / 12) + '년 ' : '') + (m % 12 ? (m % 12) + '개월' : '') : '1개월 미만'; }
+
+	function loadContracts(sq) {
+		hrPost('/admin/staff/contractData.do', { STAFF_SQ: sq }, function(res) {
+			ct = { sq: sq, list: res.list || [] };
+			if (String(opened) === String(sq) && cardTab === 0) paintCard();
+		});
+	}
+
+	function contractSection($p, r, dateFields) {
+		var loaded = ct && ct.sq === r.STAFF_SQ, list = loaded ? ct.list : [];
+		$p.append($('<div class="hr-section d-flex align-items-center">').text('계약').append($('<span class="small text-muted font-weight-normal ml-2">').text(loaded ? list.length + '건' : ''))
+			.append($('<button type="button" class="btn btn-sm btn-primary ml-auto">').attr('aria-label', '계약 추가').html('<i class="fas fa-plus"></i> 계약 추가').on('click', function() { openContract(r, null); })));
+		if (!loaded) { loadContracts(r.STAFF_SQ); $p.append('<div class="small text-muted">불러오는 중…</div>'); return; }
+		var months = list.reduce(function(s, c) { return s + ctMonths(c.START_DT, c.END_DT && c.END_DT < ctToday() ? c.END_DT : null); }, 0);
+		var starts = list.map(function(c) { return c.START_DT; }).sort(), live = list.some(ctLive), ends = list.map(function(c) { return c.END_DT || ''; }).sort();
+		function stat(k, v) { return $('<div>').append($('<small class="d-block text-muted">').text(k)).append($('<b>').text(v)); }
+		var $sum = $('<div class="ct-sum">').appendTo($p);
+		if (list.length) $sum.append(stat('처음 입사', starts[0])).append(stat('마지막 퇴사', live ? '재직 중' : ends[ends.length - 1])).append(stat('근속(계약 기간 합)', ctSpan(months)));
+		// 급여·상여·세무 자료가 쓰는 인사카드 입사·퇴사일은 그대로 두고 따로 고친다
+		$sum.append($('<div class="ml-auto text-right">').append($('<small class="d-block text-muted">').text('인사카드 입사·퇴사일 (급여·상여 기준)'))
+			.append($('<span>').text((r.JOIN_DT || '-') + ' ~ ' + (r.LEAVE_DT || '') + (tenure(r) ? ' (' + tenure(r) + ')' : '')))
+			.append($('<button type="button" class="st-act">').attr('aria-label', '입사·퇴사일 수정').html('<i class="fas fa-pen"></i>').on('click', function() { editSection(r, '입사·퇴사일', dateFields); })));
+		if (!list.length) { $p.append($('<div class="small text-muted">').text('등록된 계약이 없습니다. 「계약 추가」로 넣으세요.')); return; }
+		var $b = $('<tbody>');
+		list.forEach(function(c) {
+			var now = ctNow(c), open = !!ctOpen[c.CONTRACT_SQ], files = c.FILES.filter(function(f) { return !f.CHG_SQ; });
+			var $type = $('<td class="text-nowrap">').append($('<span class="ct-type">').text(ctTypeNm(c.EMP_TYPE_CD) + (c.PROB_END_DT ? ' (수습 ~' + c.PROB_END_DT.substr(5).replace('-', '/') + ')' : '')));
+			$type.append($('<button type="button" class="btn btn-link btn-sm p-0 ml-1 ct-fold">').attr('aria-expanded', open).text((open ? '▴' : '▾') + ' 변경 ' + c.CHANGES.length)
+				.on('click', function() { ctOpen[c.CONTRACT_SQ] = !open; paintCard(); }));
+			var $bonus = $('<td>');
+			if (ctLive(c) && BN) ctBonusChips($bonus, r); // 진행 중 계약 = 직원관리 상여 칩
+			if (c.BONUS_NOTE) $bonus.append($('<span class="small text-muted d-block">').text(c.BONUS_NOTE));
+			if (!$bonus.children().length) $bonus.text('-');
+			$b.append($('<tr>').toggleClass('ct-live', ctLive(c)).append($type)
+				.append($('<td class="text-nowrap">').text(c.START_DT + ' ~ ' + (c.END_DT || '진행 중')))
+				.append($('<td class="text-right">').text(ctWon(now.ANNUAL_AMT))).append($('<td class="text-right">').text(ctWon(now.MONTH_AMT)))
+				.append($bonus).append(ctFiles($('<td>'), r, files)).append($('<td>').text(c.MEMO || ''))
+				.append($('<td class="text-right text-nowrap">').append($('<button type="button" class="st-act">').attr('aria-label', '계약 ' + c.START_DT + ' 수정').html('<i class="fas fa-pen"></i>').on('click', function() { openContract(r, c); }))));
+			if (open) $b.append($('<tr class="ct-subrow">').append($('<td colspan="8">').append(ctChanges(r, c))));
+		});
+		$p.append($('<div class="table-responsive">').append($('<table class="table table-sm cal-table st-item mb-1">')
+			.append('<thead><tr><th>형태</th><th>기간</th><th class="text-right">연봉</th><th class="text-right">월 급여</th><th>상여</th><th>계약서</th><th>메모</th><th style="width:40px;"><span class="sr-only">관리</span></th></tr></thead>').append($b)));
+		$p.append('<div class="small text-muted">최근 계약이 맨 위 · 연봉·월 급여는 지금 적용 중인 값 · ▾ 변경 을 누르면 계약 안의 급여 변경 이력 · 계약서 없는 건은 ⚠</div>');
+	}
+
+	// 계약 안의 변경 줄 + 맨 아래 계약 시작 줄
+	function ctChanges(r, c) {
+		var $b = $('<tbody>'), rows = c.CHANGES.concat([null]);
+		rows.forEach(function(g, i) {
+			var prev = rows[i + 1] || (g ? c : null), cur = g || c;
+			function amt(k) { return prev && g && String(prev[k] || '') !== String(cur[k] || '') ? ctWon(prev[k]) + ' → ' : ''; }
+			var files = c.FILES.filter(function(f) { return g ? f.CHG_SQ === g.CHG_SQ : false; });
+			$b.append($('<tr>').append($('<td class="text-nowrap">').text(g ? g.APPLY_DT : c.START_DT))
+				.append($('<td class="text-right text-nowrap">').append(document.createTextNode(amt('MONTH_AMT'))).append($('<b>').text(ctWon(cur.MONTH_AMT))))
+				.append($('<td class="text-right text-nowrap">').append(document.createTextNode(amt('ANNUAL_AMT'))).append($('<b>').text(ctWon(cur.ANNUAL_AMT))))
+				.append($('<td>').text(cur.BONUS_NOTE || ''))
+				.append($('<td>').text(g ? g.REASON : '계약 시작' + (c.PROB_END_DT ? '(수습)' : '')))
+				.append(g ? ctFiles($('<td>'), r, files, true) : $('<td>').text('-')).append($('<td>').text(g ? g.MEMO || '' : ''))
+				.append($('<td class="text-right">').append(g ? $('<button type="button" class="st-act">').attr('aria-label', '변경 ' + g.APPLY_DT + ' 수정').html('<i class="fas fa-pen"></i>').on('click', function() { openChange(r, c, g); }) : '')));
+		});
+		return $('<div class="ct-sub">').append($('<table class="table table-sm mb-1">').append('<thead><tr><th>적용일</th><th class="text-right">월 급여</th><th class="text-right">연봉</th><th>상여</th><th>사유</th><th>첨부</th><th>메모</th><th></th></tr></thead>').append($b))
+			.append($('<button type="button" class="btn btn-sm btn-outline-primary">').html('<i class="fas fa-plus"></i> 급여 변경 추가').on('click', function() { openChange(r, c, null); }));
+	}
+
+	function ctFiles($td, r, files, quiet) {
+		if (!files.length) return $td.append(quiet ? '-' : '<span class="ct-nofile">⚠ 없음</span>');
+		files.forEach(function(f) {
+			$td.append($('<a class="d-block text-nowrap" target="_blank" rel="noopener">').attr('href', '/admin/staff/contractFile.do?VIEW=Y&STAFF_SQ=' + r.STAFF_SQ + '&FILE_SQ=' + f.FILE_SQ).text('📎 ' + f.FILE_NM));
+		});
+		return $td;
+	}
+
+	// 상여관리 조건 칩. 누르면 직원관리 상여 칩과 같은 값을 켜고 끈다(사람별 금액·추천인은 직원관리 목록에서)
+	function ctBonusChips($td, r) {
+		BN.items.filter(function(b) { return b.USE_YN === 'Y'; }).forEach(function(b) {
+			var on = BN.applies.some(function(x) { return x.BONUS_SQ === b.BONUS_SQ && x.STAFF_SQ === r.STAFF_SQ; });
+			$td.append($('<button type="button" class="dp-pill mr-1 mb-1">').toggleClass('ok', on).attr({ 'aria-pressed': on, 'aria-label': b.BONUS_NM + (on ? ' 켜짐' : ' 꺼짐') }).text((on ? '● ' : '○ ') + b.BONUS_NM)
+				.on('click', function() { hrPost('/admin/bonus/applyBonusData.do', { BONUS_SQ: b.BONUS_SQ, STAFF_SQ: r.STAFF_SQ, ON: on ? 'N' : 'Y' }, function() { loadBonus(); setTimeout(paintCard, 400); }); }));
+		});
+	}
+
+	// 계약·변경 팝업 공통: 칸 그리기, 첨부 목록·새 파일, 저장 뒤 파일 올리기
+	function ctDialog(title, fields, files, r, onSave, onDelete) {
+		var $f = $('<div class="form-row">');
+		fields.forEach(function(f) {
+			var $c = f.$ || hrControl(f.type, f.val).attr('name', f.name);
+			$('<div class="mb-2">').addClass(f.wide ? 'col-12' : 'col-md-6').append($('<label class="small mb-1">').text(f.label + (f.req ? ' *' : ''))).append($c).append(f.help ? $('<small class="text-muted">').text(f.help) : '').appendTo($f);
+		});
+		var $files = $('<div class="col-12 mb-2">').append('<label class="small mb-1">첨부 (계약서·연봉계약서)</label>');
+		(files || []).forEach(function(x) {
+			$files.append($('<div class="ct-file">').append($('<a target="_blank" rel="noopener">').attr('href', '/admin/staff/contractFile.do?VIEW=Y&STAFF_SQ=' + r.STAFF_SQ + '&FILE_SQ=' + x.FILE_SQ).text('📎 ' + x.FILE_NM))
+				.append($('<small class="text-muted ml-2">').text(Math.max(1, Math.round(x.FILE_SIZE / 1024)) + 'KB'))
+				.append($('<button type="button" class="btn btn-sm btn-outline-danger ml-auto">').text('빼기').on('click', function() {
+					var $row = $(this).closest('.ct-file');
+					bootbox.confirm(x.FILE_NM + ' 를 뺄까요? 되돌릴 수 없습니다.', function(ok) { if (ok) hrPost('/admin/staff/deleteContractFileData.do', { STAFF_SQ: r.STAFF_SQ, FILE_SQ: x.FILE_SQ }, function() { $row.remove(); loadContracts(r.STAFF_SQ); }); });
+				})));
+		});
+		var $in = $('<input type="file" multiple class="form-control-file" accept=".pdf,.jpg,.jpeg,.png,.hwp,.hwpx,.doc,.docx">');
+		$files.append($in).append('<small class="text-muted d-block">여러 개 가능 · PDF·이미지·hwp·docx · 15MB 까지 · 저장할 때 올라갑니다</small>').appendTo($f);
+		var buttons = {};
+		if (onDelete) buttons.del = { label: '삭제', className: 'btn-outline-danger btn-sm mr-auto', callback: function() { onDelete(); return true; } };
+		buttons.cancel = { label: '취소', className: 'btn-outline-secondary btn-sm' };
+		buttons.ok = { label: '저장', className: 'btn-primary btn-sm', callback: function() {
+			var vals = {};
+			$f.find('[name]').each(function() { vals[this.name] = $.trim($(this).val()); });
+			var miss = fields.filter(function(x) { return x.req && !vals[x.name]; })[0];
+			if (miss) { bootbox.alert(miss.label + ' 을(를) 넣으세요.'); return false; }
+			onSave(vals, $.makeArray($in[0].files), function() { dlg.modal('hide'); });
+			return false;
+		} };
+		var dlg = bootbox.dialog({ title: title, message: $f, size: 'large', buttons: buttons });
+	}
+
+	function ctUpload(r, contractSq, chgSq, files, done) {
+		var errors = [];
+		(function next(i) {
+			if (i >= files.length) { if (errors.length) bootbox.alert('못 올린 파일<br>' + errors.map(function(e) { return $('<div>').text(e).html(); }).join('<br>')); done(); return; }
+			var fd = new FormData();
+			fd.append('STAFF_SQ', r.STAFF_SQ); fd.append('CONTRACT_SQ', contractSq); if (chgSq) fd.append('CHG_SQ', chgSq); fd.append('file', files[i]);
+			$.ajax({ url: '/admin/staff/uploadContractFileData.do', type: 'POST', data: fd, processData: false, contentType: false })
+				.done(function(res) { if (res.error) errors.push(files[i].name + ' : ' + res.error); })
+				.fail(function() { errors.push(files[i].name + ' : 전송 실패'); })
+				.always(function() { next(i + 1); });
+		})(0);
+	}
+
+	function ctAmountPair(annual, month) {
+		// 연봉을 넣으면 월 급여를 연봉÷12 로 채운다(고칠 수 있음)
+		var $a = hrControl(null, annual).attr({ name: 'ANNUAL_AMT', inputmode: 'numeric' }), $m = hrControl(null, month).attr({ name: 'MONTH_AMT', inputmode: 'numeric' });
+		$a.on('change', function() { var n = Number(this.value.replace(/[^0-9]/g, '')); if (n) $m.val(Math.round(n / 12)); });
+		return [$a, $m];
+	}
+
+	function openContract(r, c) {
+		var am = ctAmountPair(c ? c.ANNUAL_AMT : '', c ? c.MONTH_AMT : '');
+		var fields = [
+			{ name: 'EMP_TYPE_CD', label: '형태', type: { list: ctTypes() }, val: c ? c.EMP_TYPE_CD : '', req: true },
+			{ name: 'START_DT', label: '시작일', type: 'date', val: c ? c.START_DT : '', req: true },
+			{ name: 'END_DT', label: '종료일', type: 'date', val: c ? c.END_DT || '' : '', help: '비우면 진행 중' },
+			{ name: 'PROB_END_DT', label: '수습 종료일', type: 'date', val: c ? c.PROB_END_DT || '' : '', help: '수습이 있을 때만' },
+			{ name: 'ANNUAL_AMT', label: '연봉' + (c && c.CHANGES.length ? ' (계약 시작 때)' : ''), $: am[0] },
+			{ name: 'MONTH_AMT', label: '월 급여' + (c && c.CHANGES.length ? ' (계약 시작 때)' : ''), $: am[1], help: '연봉을 넣으면 연봉÷12 로 채워짐' },
+			{ name: 'BONUS_NOTE', label: '상여 조건 메모', val: c ? c.BONUS_NOTE || '' : '', wide: true, help: '진행 중 계약의 상여 칩(취업축하금·근속 등)은 목록에서 바로 켜고 끕니다' },
+			{ name: 'MEMO', label: '메모', val: c ? c.MEMO || '' : '', wide: true }];
+		ctDialog(c ? '계약 수정' : '계약 추가', fields, c ? c.FILES.filter(function(f) { return !f.CHG_SQ; }) : [], r, function(vals, files, close) {
+			var others = (ct.list || []).filter(function(x) { return !c || x.CONTRACT_SQ !== c.CONTRACT_SQ; });
+			var hit = others.filter(function(x) { return vals.START_DT <= (x.END_DT || '9999-12-31') && x.START_DT <= (vals.END_DT || '9999-12-31'); })[0];
+			function go() {
+				hrPost('/admin/staff/saveContractData.do', $.extend(vals, { STAFF_SQ: r.STAFF_SQ, CONTRACT_SQ: c ? c.CONTRACT_SQ : '' }), function(res) {
+					ctUpload(r, res.CONTRACT_SQ, null, files, function() { close(); toast('저장했습니다'); loadContracts(r.STAFF_SQ); });
+				});
+			}
+			if (hit) bootbox.confirm('기간이 겹치는 계약이 있습니다(' + ctTypeNm(hit.EMP_TYPE_CD) + ' ' + hit.START_DT + ' ~ ' + (hit.END_DT || '진행 중') + '). 그래도 저장할까요?', function(ok) { if (ok) go(); });
+			else go();
+		}, c ? function() {
+			bootbox.confirm('이 계약과 안의 변경 줄·첨부를 모두 삭제할까요? 되돌릴 수 없습니다.', function(ok) {
+				if (ok) hrPost('/admin/staff/deleteContractData.do', { STAFF_SQ: r.STAFF_SQ, CONTRACT_SQ: c.CONTRACT_SQ }, function() { bootbox.hideAll(); toast('삭제했습니다'); loadContracts(r.STAFF_SQ); });
+			});
+		} : null);
+	}
+
+	function openChange(r, c, g) {
+		var base = g || ctNow(c), am = ctAmountPair(base.ANNUAL_AMT, base.MONTH_AMT);
+		var reasons = CT_REASONS.slice();
+		if (g && reasons.indexOf(g.REASON) < 0) reasons.push(g.REASON);
+		var fields = [
+			{ name: 'APPLY_DT', label: '적용일', type: 'date', val: g ? g.APPLY_DT : ctToday(), req: true },
+			{ name: 'REASON', label: '사유', type: { list: reasons.map(function(x) { return [x, x]; }) }, val: g ? g.REASON : '연봉 인상', req: true },
+			{ name: 'ANNUAL_AMT', label: '연봉 (바뀐 뒤)', $: am[0] },
+			{ name: 'MONTH_AMT', label: '월 급여 (바뀐 뒤)', $: am[1], help: '연봉을 넣으면 연봉÷12 로 채워짐' },
+			{ name: 'BONUS_NOTE', label: '상여 변경', val: g ? g.BONUS_NOTE || '' : '', wide: true, help: '바뀌는 것만 (그대로면 비움)' },
+			{ name: 'MEMO', label: '메모', val: g ? g.MEMO || '' : '', wide: true }];
+		ctDialog((g ? '급여 변경 수정' : '급여 변경 추가') + ' · ' + ctTypeNm(c.EMP_TYPE_CD) + ' ' + c.START_DT + ' 계약', fields, g ? c.FILES.filter(function(f) { return f.CHG_SQ === g.CHG_SQ; }) : [], r, function(vals, files, close) {
+			hrPost('/admin/staff/saveContractChgData.do', $.extend(vals, { STAFF_SQ: r.STAFF_SQ, CONTRACT_SQ: c.CONTRACT_SQ, CHG_SQ: g ? g.CHG_SQ : '' }), function(res) {
+				ctOpen[c.CONTRACT_SQ] = true;
+				ctUpload(r, c.CONTRACT_SQ, res.CHG_SQ, files, function() { close(); toast('저장했습니다'); loadContracts(r.STAFF_SQ); });
+			});
+		}, g ? function() {
+			bootbox.confirm(g.APPLY_DT + ' ' + g.REASON + ' 변경 줄과 첨부를 삭제할까요? 되돌릴 수 없습니다.', function(ok) {
+				if (ok) hrPost('/admin/staff/deleteContractChgData.do', { STAFF_SQ: r.STAFF_SQ, CONTRACT_SQ: c.CONTRACT_SQ, CHG_SQ: g.CHG_SQ }, function() { bootbox.hideAll(); toast('삭제했습니다'); loadContracts(r.STAFF_SQ); });
+			});
+		} : null);
 	}
 
 	// ── 수행이력 탭 (서버가 원본. 「새 버전으로 저장」을 눌러야 버전이 생긴다) ──

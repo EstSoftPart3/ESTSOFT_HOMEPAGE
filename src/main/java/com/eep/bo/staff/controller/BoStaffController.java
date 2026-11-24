@@ -28,6 +28,7 @@ import com.eep.bo.member.service.BoMemberService.Actor;
 import com.eep.bo.staff.service.BoStaffService;
 import com.eep.bo.staff.service.StaffCareerService;
 import com.eep.bo.staff.service.StaffCareerWord;
+import com.eep.bo.staff.service.StaffContractService;
 import com.eep.bo.staff.service.StaffDriveService;
 import com.eep.bo.system.service.BoSystemService;
 
@@ -46,6 +47,9 @@ public class BoStaffController {
 
 	@Autowired
 	private StaffCareerService career;
+
+	@Autowired
+	private StaffContractService contracts;
 
 	@Autowired
 	private BoMemberService memberService;
@@ -162,6 +166,7 @@ public class BoStaffController {
 	public ModelAndView deleteStaffData(@RequestParam Map<String, Object> param) {
 		BoStaffService.delete(param);
 		career.deleteAll(param.get("STAFF_SQ"));
+		contracts.deleteAll(param.get("STAFF_SQ"));
 		return json("result", "OK");
 	}
 
@@ -422,6 +427,64 @@ public class BoStaffController {
 	}
 
 	// ── 학력·교육·비상연락 추가 건 ──
+
+	// ── 계약 목록 (계약·급여 변경 줄·계약서 첨부) ──
+
+	@RequestMapping(value = "/admin/staff/contractData.do", method = RequestMethod.POST)
+	public ModelAndView contractData(@RequestParam("STAFF_SQ") int staffSq) {
+		return json("list", contracts.list(staffSq));
+	}
+
+	@RequestMapping(value = "/admin/staff/saveContractData.do", method = RequestMethod.POST)
+	public ModelAndView saveContractData(@RequestParam Map<String, Object> param, HttpSession session) {
+		return json("CONTRACT_SQ", contracts.saveContract(param, loginId(session)));
+	}
+
+	@RequestMapping(value = "/admin/staff/deleteContractData.do", method = RequestMethod.POST)
+	public ModelAndView deleteContractData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("CONTRACT_SQ") int contractSq) {
+		contracts.deleteContract(contractSq, staffSq);
+		return json("result", "OK");
+	}
+
+	@RequestMapping(value = "/admin/staff/saveContractChgData.do", method = RequestMethod.POST)
+	public ModelAndView saveContractChgData(@RequestParam Map<String, Object> param, HttpSession session) {
+		return json("CHG_SQ", contracts.saveChange(param, loginId(session)));
+	}
+
+	@RequestMapping(value = "/admin/staff/deleteContractChgData.do", method = RequestMethod.POST)
+	public ModelAndView deleteContractChgData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("CONTRACT_SQ") int contractSq, @RequestParam("CHG_SQ") int chgSq) {
+		contracts.deleteChange(chgSq, contractSq, staffSq);
+		return json("result", "OK");
+	}
+
+	@RequestMapping(value = "/admin/staff/uploadContractFileData.do", method = RequestMethod.POST)
+	public ModelAndView uploadContractFileData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("CONTRACT_SQ") int contractSq,
+			@RequestParam(value = "CHG_SQ", required = false) Integer chgSq, @RequestParam("file") MultipartFile file, HttpSession session) throws IOException {
+		Upload u = Upload.of(file, "pdf", "jpg", "jpeg", "png", "hwp", "hwpx", "doc", "docx");
+		return Upload.noted(json("FILE_SQ", contracts.addFile(contractSq, chgSq, staffSq, u, loginId(session))), u);
+	}
+
+	@RequestMapping(value = "/admin/staff/deleteContractFileData.do", method = RequestMethod.POST)
+	public ModelAndView deleteContractFileData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("FILE_SQ") int fileSq) {
+		contracts.deleteFile(fileSq, staffSq);
+		return json("result", "OK");
+	}
+
+	/** 계약서 보기(VIEW=Y 면 PDF·이미지는 브라우저 안에서 연다)·내려받기 */
+	@RequestMapping(value = "/admin/staff/contractFile.do", method = RequestMethod.GET)
+	public void contractFile(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("FILE_SQ") int fileSq, @RequestParam(value = "VIEW", required = false) String view,
+			HttpServletResponse response, HttpSession session) throws IOException {
+		Map<String, Object> f = contracts.file(fileSq, staffSq);
+		byte[] data = (byte[]) f.get("FILE_DATA");
+		String type = (String) f.get("FILE_TYPE"), name = (String) f.get("FILE_NM");
+		boolean inline = "Y".equals(view) && type != null && (type.equals("application/pdf") || type.startsWith("image/"));
+		System.out.println("STAFF_CONTRACT_FILE by=" + loginId(session) + " staff=" + staffSq + " file=" + fileSq);
+		response.setContentType(inline ? type : "application/octet-stream");
+		response.setHeader("X-Content-Type-Options", "nosniff");
+		response.setHeader("Content-Disposition", (inline ? "inline" : "attachment") + "; filename*=UTF-8''" + java.net.URLEncoder.encode(name, "UTF-8").replace("+", "%20"));
+		response.setContentLength(data.length);
+		response.getOutputStream().write(data);
+	}
 
 	@RequestMapping(value = "/admin/staff/staffItemData.do", method = RequestMethod.POST)
 	public ModelAndView staffItemData(@RequestParam Map<String, Object> param) {
