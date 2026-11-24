@@ -377,6 +377,11 @@
 		});
 	}
 
+	// 등록할 줄: 새로 + 확인 필요 중 날짜·금액을 직접 채운 줄(이미 있음·마감 달은 등록 때 서버가 다시 걸러 건너뜀)
+	function xlOk(x) {
+		return x.STATUS === 'NEW' || (x.STATUS === 'ERR' && /^\d{4}-\d{2}-\d{2}$/.test(x.USE_DT || '') && Number(x.AMT) !== 0);
+	}
+
 	// 시트·카드 칸으로 거른다(한 시트에 카드가 여러 장 섞인 해가 있음)
 	function xlPicked() {
 		var sh = $('#xlSheet').val(), cd = $('#xlCard').val();
@@ -393,7 +398,7 @@
 		}
 		var $b = $('#xlBody').empty().append($('<div class="cd-bar">').append(sel('xlSheet', '시트', sheets, sh), sel('xlCard', '엑셀의 카드 칸', cardsTxt, cd)));
 		var list = xlPicked(), cnt = { NEW: 0, DUP: 0, CLOSED: 0, ERR: 0 }, sum = 0;
-		list.forEach(function(x) { cnt[x.STATUS]++; if (x.STATUS === 'NEW') sum += Number(x.AMT); });
+		list.forEach(function(x) { if (xlOk(x)) { cnt.NEW++; sum += Number(x.AMT); } else cnt[x.STATUS]++; });
 		$b.append($('<div class="cd-stat">').append(
 			$('<div>').append('새로 등록', $('<b class="t-MATCH">').text(cnt.NEW + '건'), won(sum) + '원'),
 			$('<div>').append('이미 있음', $('<b class="t-NONE">').text(cnt.DUP + '건')),
@@ -401,11 +406,16 @@
 			$('<div>').append('확인 필요', $('<b class="t-REG_ONLY">').text(cnt.ERR + '건'))));
 		var $t = $('<table class="table table-sm cd-set mb-0"><thead><tr><th>상태</th><th>시트·행</th><th>사용일</th><th class="text-right">금액</th><th>사용처 코드</th><th>사용처</th><th>내용</th><th>대상</th></tr></thead><tbody></tbody></table>');
 		list.forEach(function(x) {
-			var $cd = x.STATUS !== 'NEW' ? (x.CD ? chip(x.CD) : '') : $('<select class="form-control form-control-sm">').attr('aria-label', x.USE_DT + ' ' + won(x.AMT) + '원 사용처 코드')
+			var err = x.STATUS === 'ERR', ok = xlOk(x), at = x.SHEET + ' ' + x.ROW + '행 ';
+			var $cd = !ok && !err ? (x.CD ? chip(x.CD) : '') : $('<select class="form-control form-control-sm">').attr('aria-label', at + '사용처 코드')
 				.append(codes.map(function(c) { return $('<option>').val(c.CD).text(c.NM); })).val(x.CD).change(function() { x.CD = this.value; });
-			$('<tr>').toggleClass('r-closed', x.STATUS !== 'NEW').toggleClass('r-REG_ONLY', x.STATUS === 'ERR').append(
-				$('<td>').append($('<span>').addClass(x.STATUS === 'NEW' ? 't-MATCH' : x.STATUS === 'ERR' ? 't-REG_ONLY' : 't-NONE').text(XL[x.STATUS] + (x.ERR ? ' · ' + x.ERR : ''))),
-				$('<td>').text(x.SHEET + ' ' + x.ROW + '행'), $('<td>').text(x.USE_DT || '-'), $('<td class="text-right">').text(won(x.AMT)), $('<td>').append($cd),
+			// 확인 필요 줄은 날짜·금액을 직접 채우면 등록 대상이 된다
+			var $dt = !err ? (x.USE_DT || '-') : $('<input type="date" class="form-control form-control-sm">').attr('aria-label', at + '사용일').val(x.USE_DT || '').change(function() { x.USE_DT = this.value; xlDraw(); });
+			var $amt = !err ? won(x.AMT) : $('<input type="text" inputmode="numeric" class="form-control form-control-sm text-right" style="min-width:90px;">').attr('aria-label', at + '금액')
+				.val(x.AMT ? won(x.AMT) : '').change(function() { x.AMT = Number(this.value.replace(/[^\d-]/g, '')) || 0; xlDraw(); });
+			$('<tr>').toggleClass('r-closed', !ok && !err).toggleClass('r-REG_ONLY', err && !ok).append(
+				$('<td>').append($('<span>').addClass(ok ? 't-MATCH' : err ? 't-REG_ONLY' : 't-NONE').text(err ? (ok ? '고침 · 등록' : XL.ERR + ' · ' + x.ERR) : XL[x.STATUS])),
+				$('<td>').text(x.SHEET + ' ' + x.ROW + '행'), $('<td>').append($dt), $('<td class="text-right">').append($amt), $('<td>').append($cd),
 				$('<td>').text(x.MERCHANT || ''), $('<td>').text(x.DETAIL || ''), $('<td>').text(x.TARGET_NM || '')).appendTo($t.find('tbody'));
 		});
 		$b.append($('<div class="table-responsive" style="max-height:55vh;">').append($t));
@@ -413,7 +423,7 @@
 	}
 
 	function xlSave() {
-		var list = xlPicked().filter(function(x) { return x.STATUS === 'NEW'; }), data = { CARD_SQ: card.CARD_SQ, USE_DT: [], AMT: [], USE_CD: [], DETAIL: [], MERCHANT: [], TARGET_NM: [] };
+		var list = xlPicked().filter(xlOk), data = { CARD_SQ: card.CARD_SQ, USE_DT: [], AMT: [], USE_CD: [], DETAIL: [], MERCHANT: [], TARGET_NM: [] };
 		if (!list.length) return;
 		list.forEach(function(x) { data.USE_DT.push(x.USE_DT); data.AMT.push(x.AMT); data.USE_CD.push(x.CD); data.DETAIL.push(x.DETAIL || ''); data.MERCHANT.push(x.MERCHANT || ''); data.TARGET_NM.push(x.TARGET_NM || ''); });
 		var $b = $('#xlSave').prop('disabled', true);
