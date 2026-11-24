@@ -153,6 +153,27 @@
 		</div>
 	</div>
 
+	<div class="modal fade" id="xlModal" tabindex="-1" role="dialog" aria-labelledby="xlTitle" aria-hidden="true">
+		<div class="modal-dialog modal-xl" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="xlTitle">사용내역 엑셀 올리기</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
+				</div>
+				<div class="modal-body">
+					<div class="cd-drop" id="xlDrop">법인카드 사용내역 엑셀(담당·카드·월·일·사용처·금액·내용·대상, 연도별 시트)을 끌어다 놓거나 <a href="#" id="xlPick">파일 선택</a>
+						<input type="file" id="xlFile" accept=".xls,.xlsx" class="d-none"><div class="mt-1" id="xlName"></div></div>
+					<div id="xlBody" class="mt-2"></div>
+				</div>
+				<div class="modal-footer">
+					<small class="text-muted mr-auto">같은 날·금액·사용처가 이미 있거나 마감한 달이면 건너뜁니다. 파일은 저장하지 않습니다.</small>
+					<button type="button" class="btn btn-sm btn-outline-secondary" data-dismiss="modal">취소</button>
+					<button type="button" class="btn btn-sm btn-primary" id="xlSave" disabled>등록</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
 	<div id="cdToast" role="status" aria-live="polite"></div>
 
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
@@ -231,7 +252,8 @@
 			$('<button type="button" class="btn btn-sm btn-outline-secondary" aria-label="이전 달">◀</button>').click(function() { ym = shiftYm(ym, -1); loadMonth(); }),
 			$('<strong>').text(ym.replace('-', '년 ') + '월'),
 			$('<button type="button" class="btn btn-sm btn-outline-secondary" aria-label="다음 달">▶</button>').click(function() { ym = shiftYm(ym, 1); loadMonth(); }),
-			$('<button type="button" class="btn btn-sm btn-outline-secondary">오늘</button>').click(function() { ym = kstYm(0); loadMonth(); }), $sum));
+			$('<button type="button" class="btn btn-sm btn-outline-secondary">오늘</button>').click(function() { ym = kstYm(0); loadMonth(); }),
+			$('<button type="button" class="btn btn-sm btn-outline-primary"><i class="fas fa-file-upload"></i> 엑셀 올리기</button>').click(openExcel), $sum));
 		var $g = $('<div class="cd-cal">').appendTo($b), p = ym.split('-'), first = new Date(Date.UTC(+p[0], +p[1] - 1, 1)), days = new Date(Date.UTC(+p[0], +p[1], 0)).getUTCDate(), today = kstToday();
 		DOW.forEach(function(d, i) { $('<div class="w">').toggleClass('sun', i === 0).toggleClass('sat', i === 6).text(d).appendTo($g); });
 		for (var i = 0; i < first.getUTCDay(); i++) $('<div class="cd-day out" aria-hidden="true">').appendTo($g);
@@ -334,6 +356,86 @@
 			hrPost('/admin/card/deleteUseData.do', { CARD_SQ: card.CARD_SQ, USE_SQ: sq }, function() { toast('삭제했습니다'); pRes = null; loadMonth(function() { fillUse(null, date); }); });
 		});
 	}
+
+	// ── 사용내역 엑셀 올리기: 미리보기(저장 안 함) → 새 건만 등록 ──
+	var xlRows = [], XL = { NEW: '새로', DUP: '이미 있음', CLOSED: '마감한 달', ERR: '확인 필요' };
+
+	function openExcel() {
+		xlRows = [];
+		$('#xlName').text(''); $('#xlBody').empty(); $('#xlSave').prop('disabled', true).text('등록');
+		$('#xlTitle').text('사용내역 엑셀 올리기 — ' + card.CARD_NM + ' ****-' + card.LAST4);
+		$('#xlModal').modal('show');
+	}
+
+	function xlLoad(f) {
+		$('#xlName').text(f.name + ' 읽는 중…');
+		postForm('/admin/card/excelPreviewData.do', { CARD_SQ: card.CARD_SQ, file: f }, function(res) {
+			xlRows = res.result.rows;
+			xlRows.forEach(function(x) { x.CD = x.GUESS_CD; });
+			$('#xlName').text(f.name);
+			xlDraw();
+		});
+	}
+
+	// 시트·카드 칸으로 거른다(한 시트에 카드가 여러 장 섞인 해가 있음)
+	function xlPicked() {
+		var sh = $('#xlSheet').val(), cd = $('#xlCard').val();
+		return xlRows.filter(function(x) { return (!sh || x.SHEET === sh) && (!cd || x.CARD_TXT === cd); });
+	}
+
+	function xlDraw() {
+		var sheets = [], cardsTxt = [], sh = $('#xlSheet').val() || '', cd = $('#xlCard').val() || '';
+		xlRows.forEach(function(x) { if (sheets.indexOf(x.SHEET) < 0) sheets.push(x.SHEET); if (x.CARD_TXT && cardsTxt.indexOf(x.CARD_TXT) < 0) cardsTxt.push(x.CARD_TXT); });
+		function sel(id, label, list, v) {
+			var $s = $('<select class="form-control form-control-sm">').attr('id', id).append('<option value="">전체</option>');
+			list.forEach(function(n) { $s.append($('<option>').val(n).text(n)); });
+			return $('<div>').append($('<label class="mb-0">').attr('for', id).text(label), $s.val(v).change(xlDraw));
+		}
+		var $b = $('#xlBody').empty().append($('<div class="cd-bar">').append(sel('xlSheet', '시트', sheets, sh), sel('xlCard', '엑셀의 카드 칸', cardsTxt, cd)));
+		var list = xlPicked(), cnt = { NEW: 0, DUP: 0, CLOSED: 0, ERR: 0 }, sum = 0;
+		list.forEach(function(x) { cnt[x.STATUS]++; if (x.STATUS === 'NEW') sum += Number(x.AMT); });
+		$b.append($('<div class="cd-stat">').append(
+			$('<div>').append('새로 등록', $('<b class="t-MATCH">').text(cnt.NEW + '건'), won(sum) + '원'),
+			$('<div>').append('이미 있음', $('<b class="t-NONE">').text(cnt.DUP + '건')),
+			$('<div>').append('마감한 달', $('<b class="t-NONE">').text(cnt.CLOSED + '건')),
+			$('<div>').append('확인 필요', $('<b class="t-REG_ONLY">').text(cnt.ERR + '건'))));
+		var $t = $('<table class="table table-sm cd-set mb-0"><thead><tr><th>상태</th><th>시트·행</th><th>사용일</th><th class="text-right">금액</th><th>사용처 코드</th><th>사용처</th><th>내용</th><th>대상</th></tr></thead><tbody></tbody></table>');
+		list.forEach(function(x) {
+			var $cd = x.STATUS !== 'NEW' ? (x.CD ? chip(x.CD) : '') : $('<select class="form-control form-control-sm">').attr('aria-label', x.USE_DT + ' ' + won(x.AMT) + '원 사용처 코드')
+				.append(codes.map(function(c) { return $('<option>').val(c.CD).text(c.NM); })).val(x.CD).change(function() { x.CD = this.value; });
+			$('<tr>').toggleClass('r-closed', x.STATUS !== 'NEW').toggleClass('r-REG_ONLY', x.STATUS === 'ERR').append(
+				$('<td>').append($('<span>').addClass(x.STATUS === 'NEW' ? 't-MATCH' : x.STATUS === 'ERR' ? 't-REG_ONLY' : 't-NONE').text(XL[x.STATUS] + (x.ERR ? ' · ' + x.ERR : ''))),
+				$('<td>').text(x.SHEET + ' ' + x.ROW + '행'), $('<td>').text(x.USE_DT || '-'), $('<td class="text-right">').text(won(x.AMT)), $('<td>').append($cd),
+				$('<td>').text(x.MERCHANT || ''), $('<td>').text(x.DETAIL || ''), $('<td>').text(x.TARGET_NM || '')).appendTo($t.find('tbody'));
+		});
+		$b.append($('<div class="table-responsive" style="max-height:55vh;">').append($t));
+		$('#xlSave').prop('disabled', !cnt.NEW).text(cnt.NEW ? cnt.NEW + '건 등록' : '등록');
+	}
+
+	function xlSave() {
+		var list = xlPicked().filter(function(x) { return x.STATUS === 'NEW'; }), data = { CARD_SQ: card.CARD_SQ, USE_DT: [], AMT: [], USE_CD: [], DETAIL: [], MERCHANT: [], TARGET_NM: [] };
+		if (!list.length) return;
+		list.forEach(function(x) { data.USE_DT.push(x.USE_DT); data.AMT.push(x.AMT); data.USE_CD.push(x.CD); data.DETAIL.push(x.DETAIL || ''); data.MERCHANT.push(x.MERCHANT || ''); data.TARGET_NM.push(x.TARGET_NM || ''); });
+		var $b = $('#xlSave').prop('disabled', true);
+		hrPost('/admin/card/excelSaveData.do', $.param(data, true), function(res) {
+			var n = res.result;
+			$('#xlModal').modal('hide');
+			toast(n.added + '건을 등록했습니다' + (n.skipped ? ' (건너뜀 ' + n.skipped + '건)' : ''));
+			ym = list[0].USE_DT.slice(0, 7);
+			pRes = null; cRes = null;
+			loadMonth();
+			loadList();
+		}, function() { $b.prop('disabled', false); });
+	}
+
+	$(function() {
+		var $d = $('#xlDrop');
+		$('#xlPick').click(function(e) { e.preventDefault(); $('#xlFile').click(); });
+		$('#xlFile').on('change', function() { if (this.files[0]) xlLoad(this.files[0]); this.value = ''; });
+		$d.on('dragover', function(e) { e.preventDefault(); $d.addClass('over'); }).on('dragleave', function() { $d.removeClass('over'); })
+			.on('drop', function(e) { e.preventDefault(); $d.removeClass('over'); var f = e.originalEvent.dataTransfer.files[0]; if (f) xlLoad(f); });
+		$('#xlSave').click(xlSave);
+	});
 
 	// ── 정산: 기간 안에 등록한 건을 모두 보이고, 카드사 엑셀을 올리면 날짜·금액으로 대조한다 ──
 	var TYPE = { MATCH: '일치', REG_ONLY: '불일치', EXCEL_ONLY: '미등록', NONE: '대조 전' };

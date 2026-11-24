@@ -58,6 +58,21 @@ public class BoCardController {
 		return call(() -> { service.deleteUse(cardSq, useSq, loginId(session)); return "OK"; });
 	}
 
+	/** 경영지원 양식 사용내역 엑셀 미리보기(저장 안 함) */
+	@RequestMapping(value = "/admin/card/excelPreviewData.do", method = RequestMethod.POST)
+	public ModelAndView excelPreviewData(@RequestParam("CARD_SQ") int cardSq, @RequestParam("file") MultipartFile file, HttpSession session) {
+		return call(() -> {
+			Upload.check(file, Upload.EXCEL);
+			return service.excelPreview(cardSq, file.getBytes(), loginId(session));
+		});
+	}
+
+	/** 미리보기에서 고른 새 건 등록. 배열은 그대로 읽는다(savePeriodData 와 같은 이유) */
+	@RequestMapping(value = "/admin/card/excelSaveData.do", method = RequestMethod.POST)
+	public ModelAndView excelSaveData(@RequestParam("CARD_SQ") int cardSq, HttpServletRequest req, HttpSession session) {
+		return call(() -> service.excelSave(cardSq, req.getParameterMap(), loginId(session)));
+	}
+
 	/** 정산 기간 목록. 카드사 엑셀(file)은 있으면 대조한다 */
 	@RequestMapping(value = "/admin/card/periodData.do", method = RequestMethod.POST)
 	public ModelAndView periodData(@RequestParam("CARD_SQ") int cardSq, @RequestParam("FROM") String from, @RequestParam("TO") String to,

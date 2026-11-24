@@ -155,6 +155,105 @@ public class BoCardService {
 		return s;
 	}
 
+	// ── 사용내역 엑셀 올리기 (경영지원 양식) ──
+
+	/** 미리보기: 줄마다 STATUS = NEW 새로 | DUP 이미 있음(같은 날·금액·사용처) | CLOSED 마감한 달 | ERR 못 읽음. 파일은 저장하지 않는다 */
+	public Map<String, Object> excelPreview(Object cardSq, byte[] file, String loginId) {
+		Map<String, Object> c = card(cardSq, loginId);
+		if (file == null || file.length == 0) throw new IllegalArgumentException("엑셀 파일을 골라 주세요.");
+		if (file.length > 10L * 1024 * 1024) throw new IllegalArgumentException("10MB 이하 파일만 올릴 수 있습니다.");
+		List<Map<String, Object>> rows = CardUseExcelParser.parse(file);
+		Set<String> codes = codeSet();
+		String fallback = codes.contains("ETC") ? "ETC" : "";
+		List<Map<String, Object>> ok = new ArrayList<>();
+		for (Map<String, Object> x : rows) {
+			if (!codes.contains(x.get("GUESS_CD"))) x.put("GUESS_CD", fallback);
+			if (x.containsKey("ERR")) x.put("STATUS", "ERR");
+			else ok.add(x);
+		}
+		markExisting(cardSq, str(c.get("LAST_CLOSE_YM")), ok, "STATUS");
+		for (Map<String, Object> x : ok) x.putIfAbsent("STATUS", "NEW");
+		Map<String, Object> out = new HashMap<>();
+		out.put("rows", rows);
+		out.put("lastCloseYm", c.get("LAST_CLOSE_YM"));
+		return out;
+	}
+
+	/** 미리보기에서 고른 새 건을 등록한다. 그 사이 생긴 같은 건·마감한 달은 다시 걸러 건너뛴다 */
+	public Map<String, Object> excelSave(Object cardSq, Map<String, String[]> a, String loginId) {
+		Map<String, Object> c = card(cardSq, loginId);
+		String[] dt = arr(a, "USE_DT"), amt = arr(a, "AMT"), cd = arr(a, "USE_CD"), detail = arr(a, "DETAIL"), mc = arr(a, "MERCHANT"), tg = arr(a, "TARGET_NM");
+		if (dt.length == 0) throw new IllegalArgumentException("등록할 건이 없습니다.");
+		if (dt.length > 3000) throw new IllegalArgumentException("한 번에 3,000건까지 올릴 수 있습니다.");
+		if (!sameLen(dt, amt, cd, detail, mc, tg)) throw new IllegalArgumentException("미리보기를 다시 해 주세요.");
+		Set<String> codes = codeSet();
+		List<Map<String, Object>> list = new ArrayList<>();
+		for (int i = 0; i < dt.length; i++) {
+			Map<String, Object> p = one("CARD_SQ", cardSq);
+			try {
+				p.put("USE_DT", LocalDate.parse(dt[i]).toString());
+				p.put("AMT", Long.parseLong(amt[i]));
+			} catch (DateTimeParseException | NumberFormatException e) {
+				throw new IllegalArgumentException("미리보기를 다시 해 주세요.");
+			}
+			if ((Long) p.get("AMT") == 0 || Math.abs((Long) p.get("AMT")) > 1_000_000_000L) throw new IllegalArgumentException(dt[i] + " 금액을 확인해 주세요.");
+			p.put("USE_CD", cd[i]);
+			p.put("DETAIL", detail[i].trim());
+			p.put("MERCHANT", mc[i].trim());
+			p.put("TARGET_NM", tg[i].trim());
+			p.put("UPDT_EMPLY_ID", loginId);
+			checkFields(p, codes);
+			list.add(p);
+		}
+		markExisting(cardSq, str(c.get("LAST_CLOSE_YM")), list, "SKIP");
+		int[] n = new int[2];
+		tx.execute(s -> {
+			for (Map<String, Object> p : list) {
+				if (p.containsKey("SKIP")) { n[1]++; continue; }
+				p.remove("SKIP");
+				mapper.insertUse(p);
+				n[0]++;
+			}
+			return null;
+		});
+		Map<String, Object> out = new HashMap<>();
+		out.put("added", n[0]);
+		out.put("skipped", n[1]);
+		return out;
+	}
+
+	/**
+	 * 마감한 달(카드의 마지막 마감 달까지)은 CLOSED, 이미 등록된 같은 날·금액·사용처는 DUP 을 key 에 적는다.
+	 * 등록 건 사용처가 비어 있으면 날·금액만 같아도 같은 건으로 본다. 같은 건이 여러 개면 개수만큼만 짝짓는다.
+	 */
+	private void markExisting(Object cardSq, String lastCloseYm, List<Map<String, Object>> rows, String key) {
+		if (rows.isEmpty()) return;
+		String min = null, max = null;
+		for (Map<String, Object> x : rows) {
+			String d = str(x.get("USE_DT"));
+			if (min == null || d.compareTo(min) < 0) min = d;
+			if (max == null || d.compareTo(max) > 0) max = d;
+		}
+		Map<String, Integer> full = new HashMap<>(), loose = new HashMap<>();
+		for (Map<String, Object> u : mapper.selectUses(range(cardSq, LocalDate.parse(min), LocalDate.parse(max)))) {
+			String k = u.get("USE_DT") + "|" + Long.parseLong(str(u.get("AMT")));
+			String shop = shop(u.get("MERCHANT"));
+			if (shop.isEmpty()) loose.merge(k, 1, Integer::sum);
+			else full.merge(k + "|" + shop, 1, Integer::sum);
+		}
+		for (Map<String, Object> x : rows) {
+			String d = str(x.get("USE_DT"));
+			if (!lastCloseYm.isEmpty() && d.substring(0, 7).compareTo(lastCloseYm) <= 0) { x.put(key, "CLOSED"); continue; }
+			String k = d + "|" + Long.parseLong(str(x.get("AMT"))), f = k + "|" + shop(x.get("MERCHANT"));
+			if (full.getOrDefault(f, 0) > 0) { full.merge(f, -1, Integer::sum); x.put(key, "DUP"); }
+			else if (loose.getOrDefault(k, 0) > 0) { loose.merge(k, -1, Integer::sum); x.put(key, "DUP"); }
+		}
+	}
+
+	private static String shop(Object o) {
+		return str(o).replaceAll("\\s", "").toLowerCase();
+	}
+
 	// ── 정산: 기간 목록 ──
 
 	/**
