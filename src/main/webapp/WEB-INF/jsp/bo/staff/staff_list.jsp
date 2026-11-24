@@ -771,7 +771,7 @@
 		var $cards = $('<div class="st-cards">').appendTo($p);
 		function card(wide) { return $('<div class="st-card">').toggleClass('wide', !!wide).appendTo($cards); }
 		SECTIONS.filter(function(s) { return CARD_TABS[cardTab][1].indexOf(s[0]) >= 0; }).forEach(function(s) {
-			var $c = card(s[0] === '일자');
+			var $c = card(s[0] === '기초정보' || s[0] === '일자'); // 기초정보는 전체 폭(칸이 옆으로 늘어 높이가 줄고), 계약 목록은 바로 아래
 			if (s[0] === '일자') { contractSection($c, r, s[1]); return; }
 			if (LISTS[s[0]]) { itemSection($c, r, LISTS[s[0]]); return; }
 			$c.append(sectionHead(r, s[0], s[1]));
