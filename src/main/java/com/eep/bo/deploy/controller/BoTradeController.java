@@ -14,8 +14,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.ModelAndView;
 
+import com.common.upload.Upload;
 import com.eep.bo.deploy.service.BoTradeService;
 import com.eep.bo.deploy.service.SecretFilter;
 
@@ -111,6 +113,58 @@ public class BoTradeController {
 		}
 		String name = java.net.URLEncoder.encode("이에스티_" + ym + "_" + ("SALE".equals(k) ? "매출" : "매입") + "_계산서.xlsx", "UTF-8").replace("+", "%20");
 		res.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+		res.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + name);
+		res.setContentLength(file.length);
+		res.getOutputStream().write(file);
+	}
+
+	// ── 홈택스 일괄발급 엑셀(매출만, 세금계산서 메뉴 권한 /admin/trade/sale/**) ──
+	@RequestMapping(value = "/admin/trade/sale/invoiceConfData.do", method = RequestMethod.POST)
+	public ModelAndView invoiceConfData() {
+		return run(service::invoiceConf);
+	}
+
+	@RequestMapping(value = "/admin/trade/sale/supplierData.do", method = RequestMethod.POST)
+	public ModelAndView supplierData(@RequestParam Map<String, Object> param) {
+		return run(() -> { service.saveSupplier(param); return "OK"; });
+	}
+
+	/** 홈택스 양식이 바뀌면 다시 올린다. 저장 전에 필요한 칸이 다 있는지 검사한다 */
+	@RequestMapping(value = "/admin/trade/sale/formData.do", method = RequestMethod.POST)
+	public ModelAndView formData(@RequestParam("file") MultipartFile file, HttpSession session) {
+		return run(() -> {
+			Upload.check(file, Upload.EXCEL);
+			return service.saveForm(file.getOriginalFilename(), file.getBytes(), loginId(session));
+		});
+	}
+
+	@RequestMapping(value = "/admin/trade/sale/formResetData.do", method = RequestMethod.POST)
+	public ModelAndView formResetData() {
+		return run(() -> { service.resetForm(); return "OK"; });
+	}
+
+	/** 내려받기 전 확인: 몇 장이 들어가고 무엇이 빠지는지 */
+	@RequestMapping(value = "/admin/trade/sale/hometaxCheckData.do", method = RequestMethod.POST)
+	public ModelAndView hometaxCheckData(@RequestParam("YM") String ym, @RequestParam(value = "KEY", required = false) String[] keys, HttpSession session) {
+		return run(() -> service.hometax(ym, keys, visible("SALE", ym, session), false));
+	}
+
+	@RequestMapping(value = "/admin/trade/sale/hometax.do", method = RequestMethod.POST)
+	public void hometax(@RequestParam("YM") String ym, @RequestParam(value = "KEY", required = false) String[] keys, HttpSession session, javax.servlet.http.HttpServletResponse res) throws java.io.IOException {
+		byte[] file;
+		try {
+			file = (byte[]) service.hometax(ym, keys, visible("SALE", ym, session), true).get("file");
+		} catch (IllegalArgumentException e) {
+			res.sendError(400);
+			return;
+		}
+		if (file == null) {
+			res.sendError(404);
+			return;
+		}
+		boolean xlsx = file.length > 1 && file[0] == 'P' && file[1] == 'K'; // 올린 양식이 xlsx 면 xlsx 로 나온다
+		String name = java.net.URLEncoder.encode("세금계산서_일괄발급_" + ym + (xlsx ? ".xlsx" : ".xls"), "UTF-8").replace("+", "%20");
+		res.setContentType(xlsx ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : "application/vnd.ms-excel");
 		res.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + name);
 		res.setContentLength(file.length);
 		res.getOutputStream().write(file);

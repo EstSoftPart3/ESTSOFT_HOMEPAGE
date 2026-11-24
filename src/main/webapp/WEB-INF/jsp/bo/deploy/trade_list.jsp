@@ -54,6 +54,8 @@
 					<h3 class="card-title bTitle"><b id="pageTitle"></b></h3>
 					<span class="ml-auto d-flex" style="gap:6px;">
 						<button type="button" class="btn btn-sm btn-outline-secondary" id="btnExcel" style="display:none;"><i class="fas fa-file-excel"></i> 엑셀 다운로드</button>
+						<button type="button" class="btn btn-sm btn-success only-inv" id="btnHometax" style="display:none;" onclick="hometax();"><i class="fas fa-file-excel"></i> 홈택스 일괄발급 엑셀</button>
+						<button type="button" class="btn btn-sm btn-outline-secondary only-inv" id="btnInvConf" style="display:none;" onclick="openInvConf();" aria-label="발급 설정(공급자 정보·양식)"><i class="fas fa-cog"></i> 발급 설정</button>
 						<button type="button" class="btn btn-sm btn-primary" id="btnAdd" onclick="openForm(null);"><i class="fas fa-plus"></i> <span id="btnAddText">일반 건 등록</span></button>
 					</span>
 				</div>
@@ -131,6 +133,40 @@
 		</div>
 	</div>
 
+	<div class="modal fade" id="invConfModal" tabindex="-1" role="dialog" aria-labelledby="invConfTitle" aria-hidden="true">
+		<div class="modal-dialog" role="document">
+			<form class="modal-content" onsubmit="saveSupplier(); return false;">
+				<div class="modal-header">
+					<h5 class="modal-title" id="invConfTitle">발급 설정</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
+				</div>
+				<div class="modal-body">
+					<h6 class="font-weight-bold">우리 회사(공급자) 정보</h6>
+					<div class="form-row">
+						<div class="form-group col-6"><label for="SUP_BIZ_NO">사업자번호</label><input id="SUP_BIZ_NO" class="form-control form-control-sm" inputmode="numeric" maxlength="12" placeholder="000-00-00000" required></div>
+						<div class="form-group col-6"><label for="SUP_NM">상호</label><input id="SUP_NM" class="form-control form-control-sm" maxlength="70" required></div>
+						<div class="form-group col-6"><label for="SUP_CEO">대표자</label><input id="SUP_CEO" class="form-control form-control-sm" maxlength="30" required></div>
+						<div class="form-group col-6"><label for="SUP_EMAIL">담당 이메일</label><input type="email" id="SUP_EMAIL" class="form-control form-control-sm" maxlength="40"></div>
+						<div class="form-group col-12"><label for="SUP_ADDR">사업장 주소</label><input id="SUP_ADDR" class="form-control form-control-sm" maxlength="150"></div>
+						<div class="form-group col-6"><label for="SUP_TYPE">업태</label><input id="SUP_TYPE" class="form-control form-control-sm" maxlength="40"></div>
+						<div class="form-group col-6"><label for="SUP_ITEM">종목</label><input id="SUP_ITEM" class="form-control form-control-sm" maxlength="60"></div>
+					</div>
+					<div class="text-right"><button type="submit" class="btn btn-sm btn-primary">공급자 정보 저장</button></div>
+					<hr>
+					<h6 class="font-weight-bold">홈택스 양식</h6>
+					<div class="small mb-1"><b id="formNm"></b> <span class="text-muted" id="formDt"></span></div>
+					<div class="small text-muted mb-2" id="formSummary"></div>
+					<div class="d-flex flex-wrap align-items-center" style="gap:6px;">
+						<label for="formFile" class="btn btn-sm btn-outline-primary mb-0"><i class="fas fa-upload"></i> 새 양식 올리기</label>
+						<input type="file" id="formFile" accept=".xls,.xlsx" class="sr-only" onchange="uploadForm(this);">
+						<button type="button" class="btn btn-sm btn-outline-secondary" id="btnFormReset" onclick="resetForm();">기본 양식으로 되돌리기</button>
+					</div>
+					<p class="small text-muted mt-2 mb-0">홈택스 › 전자(세금)계산서 일괄발급 화면에서 양식이 바뀌면 새로 내려받아 올려 주세요. 칸은 머리글 이름으로 찾으므로 순서가 바뀌어도 됩니다. 작성일자는 그 달 마지막 평일, 영수/청구는 청구로 넣습니다.</p>
+				</div>
+			</form>
+		</div>
+	</div>
+
 	<div id="trToast" role="status" aria-live="polite"></div>
 
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
@@ -140,7 +176,7 @@
 	var INV_ONLY = '${invoiceOnly}' === 'true', invOff = {};
 	var lines = [], partners = [], tab = INV_ONLY ? 1 : 0, typeOff = {}, inv = {}, drag = null;
 	// pend[거래처] = 아직 계산서에 넣지 않은 새 건(오른쪽), pnm[거래처] = 거래처 이름
-	var pend = {}, pnm = {};
+	var pend = {}, pnm = {}, pickOff = {};
 
 	function toast(msg) { $('#trToast').text(msg).stop(true, true).fadeIn(100).delay(1500).fadeOut(300); }
 	function ymNow() { return $('#ym').val(); }
@@ -194,6 +230,7 @@
 		var s = sum(list);
 		$('#kpis').empty().append(kpi('건수', list.length + '건'), kpi('공급가액', dpWon(s)), kpi('세액', dpWon(vat(s))), kpi('합계금액', dpWon(s + vat(s))),
 			SALE ? kpi('세금계산서', groups.length + '장 · 발급 ' + done + '장', done < groups.length ? 'warn' : '') : '');
+		$('.only-inv').toggle(INV_ONLY || (SALE && tab === 1));
 		if (INV_ONLY) {
 			// 미발급·발급 완료 칩으로 계산서를 거른다
 			var $c = $('#chips').empty();
@@ -482,6 +519,9 @@
 	function invCard(p, g, i) {
 		var lock = issued(g), s = sum(g), prev = inv[p][i - 1];
 		var $c = $('<div class="tr-inv">').toggleClass('issued', lock), $h = $('<div class="tr-inv-h">').appendTo($c);
+		// 홈택스 일괄발급 엑셀에 넣을 장(미발급만, 기본 체크)
+		if (!lock) $h.append($('<input type="checkbox" class="tr-pick">').prop('checked', !pickOff[g[0].KEY]).attr('aria-label', pnm[p] + ' 계산서 ' + (i + 1) + ' 홈택스 엑셀에 넣기')
+			.on('change', function() { pickOff[g[0].KEY] = !this.checked; }));
 		$h.append($('<b>').text('계산서 ' + (i + 1)), $('<span class="dp-mute">').text(g.length + '행'));
 		if (lock) $h.append($('<span class="dp-pill ok">').text('발급 완료 ' + g[0].ISSUE_DT));
 		$h.append($('<span class="sum">').append('공급가액 ', $('<b>').text(dpWon(s)), cp(s, '공급가액'), ' · 세액 ' + dpWon(vat(s)), cp(vat(s), '세액'), ' · 합계 ', $('<b>').text(dpWon(s + vat(s))), cp(s + vat(s), '합계금액')));
@@ -518,6 +558,86 @@
 		// 장의 빈 곳에 놓으면 그 장 맨 끝으로
 		if (!lock) $c.on('dragover', function(e) { if (drag && drag.p === p) { e.preventDefault(); } }).on('drop', function(e) { e.preventDefault(); dropTo(p, g, g.length); });
 		return $c;
+	}
+
+	// ── 홈택스 일괄발급 엑셀: 보이는 미발급 계산서 중 체크한 장 → 확인 → 내려받기 → 발급 완료 표시를 묻는다 ──
+	function hometax() {
+		var keys = [], unsaved = [];
+		invKeys().forEach(function(p) {
+			inv[p].forEach(function(g) {
+				if (issued(g) || invOff.todo || pickOff[g[0].KEY]) return;
+				if (g.some(function(l) { return !has(l); })) { if (unsaved.indexOf(pnm[p]) < 0) unsaved.push(pnm[p]); return; }
+				g.forEach(function(l) { keys.push(l.KEY); });
+			});
+		});
+		if (unsaved.length) { bootbox.alert($('<div>').text('묶음을 저장하지 않은 거래처가 있습니다: ' + unsaved.join(', ') + '. 「저장」을 누른 뒤 다시 내려받아 주세요.').html()); return; }
+		if (!keys.length) { toast('넣을 미발급 계산서가 없습니다'); return; }
+		var data = $.param({ YM: ymNow(), KEY: keys }, true);
+		hrPost('/admin/trade/sale/hometaxCheckData.do', data, function(res) {
+			var r = res.result, $m = $('<div>');
+			$m.append($('<p>').text(dpYmLabel(ymNow()) + ' 계산서 ' + r.count + '장을 홈택스 일괄발급 엑셀로 내려받습니다. 작성일자 ' + r.writeDt + ' · 청구'));
+			if (r.skipped.length) $m.append($('<p class="text-danger mb-1">').text('빠지는 장 ' + r.skipped.length + '개'), $('<ul class="small text-danger">').append(r.skipped.map(function(s) { return $('<li>').text(s); })));
+			if (!r.count) { bootbox.alert($m.html()); return; }
+			bootbox.confirm({ title: '홈택스 일괄발급 엑셀', message: $m.html(), callback: function(ok) { if (ok) downloadHometax(data, r); } });
+		});
+	}
+
+	function downloadHometax(data, r) {
+		fetch('/admin/trade/sale/hometax.do', { method: 'POST', body: new URLSearchParams(data), credentials: 'same-origin' }).then(function(res) {
+			// 로그인이 풀리면 로그인 화면(HTML)이 오므로 엑셀인지 확인한다
+			if (!res.ok || (res.headers.get('Content-Type') || '').indexOf('excel') < 0 && (res.headers.get('Content-Type') || '').indexOf('spreadsheet') < 0) throw new Error();
+			var m = /filename\*=UTF-8''([^;]+)/.exec(res.headers.get('Content-Disposition') || '');
+			return res.blob().then(function(b) { return { blob: b, name: m ? decodeURIComponent(m[1]) : '세금계산서_일괄발급.xls' }; });
+		}).then(function(f) {
+			var a = document.createElement('a');
+			a.href = URL.createObjectURL(f.blob);
+			a.download = f.name;
+			document.body.appendChild(a);
+			a.click();
+			setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+			bootbox.confirm('홈택스에 올려 발급했으면, 방금 내려받은 ' + r.count + '장을 발급 완료로 표시할까요? (나중에 장마다 「발급 완료」를 눌러도 됩니다)', function(ok) {
+				if (ok) hrPost(BASE + 'issueData.do', $.param({ YM: ymNow(), KEY: r.keys, ON: 'Y' }, true), function() { toast(r.count + '장을 발급 완료로 표시했습니다'); load(); });
+			});
+		}).catch(function() { bootbox.alert('엑셀을 만들지 못했습니다. 화면을 새로 고친 뒤 다시 해 주세요.'); });
+	}
+
+	var SUP_KEYS = ['BIZ_NO', 'NM', 'CEO', 'ADDR', 'TYPE', 'ITEM', 'EMAIL'];
+	function openInvConf() {
+		hrPost('/admin/trade/sale/invoiceConfData.do', {}, function(res) {
+			var r = res.result;
+			SUP_KEYS.forEach(function(k) { $('#SUP_' + k).val(r.supplier[k] || ''); });
+			$('#formNm').text(r.formNm);
+			$('#formDt').text(r.formDt ? '· ' + r.formDt + ' 올림' : '');
+			$('#formSummary').text(r.formSummary);
+			$('#btnFormReset').toggle(!!r.formCustom);
+			$('#invConfModal').modal('show');
+		});
+	}
+
+	function saveSupplier() {
+		var d = {};
+		SUP_KEYS.forEach(function(k) { d[k] = $('#SUP_' + k).val(); });
+		hrPost('/admin/trade/sale/supplierData.do', d, function() { toast('공급자 정보를 저장했습니다'); });
+	}
+
+	function uploadForm(input) {
+		var f = input.files[0];
+		input.value = '';
+		if (!f) return;
+		var fd = new FormData();
+		fd.append('file', f);
+		$.ajax({ url: '/admin/trade/sale/formData.do', type: 'POST', data: fd, processData: false, contentType: false }).done(function(res) {
+			if (res.error) { bootbox.alert(res.error); return; }
+			toast('새 양식을 등록했습니다: ' + res.result);
+			$('#invConfModal').modal('hide');
+			openInvConf();
+		}).fail(function() { bootbox.alert('올리지 못했습니다.'); });
+	}
+
+	function resetForm() {
+		bootbox.confirm('올린 양식을 지우고 기본 양식으로 되돌릴까요?', function(ok) {
+			if (ok) hrPost('/admin/trade/sale/formResetData.do', {}, function() { toast('기본 양식으로 되돌렸습니다'); $('#invConfModal').modal('hide'); openInvConf(); });
+		});
 	}
 
 	$('#pageTitle').text(INV_ONLY ? '세금계산서' : SALE ? '매출관리' : '매입관리');

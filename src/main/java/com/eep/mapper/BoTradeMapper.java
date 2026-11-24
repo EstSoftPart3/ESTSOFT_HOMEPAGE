@@ -33,4 +33,11 @@ public interface BoTradeMapper {
 	public int deleteClose(String ym);
 	public int insertRepeats(Map<String, Object> param);
 	public int stopRepeat(Map<String, Object> param);
+
+	public Map<String, Object> selectForm();
+	public int upsertForm(Map<String, Object> param);
+	public int deleteForm();
+	public List<Map<String, Object>> selectSupplier();
+	public int upsertSupplier(Map<String, Object> param);
+	public List<Map<String, Object>> selectPartnerTax();
 }

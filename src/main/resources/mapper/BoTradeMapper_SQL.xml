@@ -78,7 +78,41 @@
 		WHERE MENU_CODE = 'H00009' AND MENU_NM = '매출관리';
 		UPDATE TB_EEP_MENU SET MENU_NM = '세금계산서', MENU_URL = '/admin/trade/openInvoiceList.do', AUTH_PATTERN = '/admin/trade/openInvoiceList.do,/admin/trade/sale/**', LAST_UPDT_DT = NOW()
 		WHERE MENU_CODE = 'H00010' AND MENU_NM = '매입관리';
+
+		<!-- 2026-11-24 홈택스 일괄발급 양식(바뀌면 다시 올림, 없으면 앱에 든 기본 양식). 되돌리기: DROP TABLE TB_EEP_TRADE_FORM_M; DELETE FROM TB_EEP_CAL_CONF_M WHERE CONF_KEY LIKE 'INVOICE.SUP.%'; -->
+		CREATE TABLE IF NOT EXISTS TB_EEP_TRADE_FORM_M (
+			  FORM_CD       varchar(20) NOT NULL COMMENT 'HOMETAX 일괄발급 양식'
+			, FILE_NM       varchar(200) NOT NULL
+			, FILE_DATA     mediumblob NOT NULL
+			, UPDT_EMPLY_ID varchar(50) NULL
+			, UPDT_DT       datetime NULL
+			, PRIMARY KEY (FORM_CD)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='세금계산서 엑셀 양식(올린 것)';
 	</update>
+
+	<select id="selectForm" resultType="hashMap">
+		SELECT FILE_NM, FILE_DATA, UPDT_EMPLY_ID, DATE_FORMAT(UPDT_DT, '%Y-%m-%d %H:%i') AS UPDT_DT FROM TB_EEP_TRADE_FORM_M WHERE FORM_CD = 'HOMETAX'
+	</select>
+	<insert id="upsertForm" parameterType="hashMap">
+		INSERT INTO TB_EEP_TRADE_FORM_M (FORM_CD, FILE_NM, FILE_DATA, UPDT_EMPLY_ID, UPDT_DT) VALUES ('HOMETAX', #{FILE_NM}, #{FILE_DATA}, #{UPDT_EMPLY_ID}, NOW())
+		ON DUPLICATE KEY UPDATE FILE_NM = VALUES(FILE_NM), FILE_DATA = VALUES(FILE_DATA), UPDT_EMPLY_ID = VALUES(UPDT_EMPLY_ID), UPDT_DT = NOW()
+	</insert>
+	<delete id="deleteForm">
+		DELETE FROM TB_EEP_TRADE_FORM_M WHERE FORM_CD = 'HOMETAX'
+	</delete>
+
+	<!-- 공급자(우리 회사) 정보는 공통 설정 표에 INVOICE.SUP.* 로 둔다 -->
+	<select id="selectSupplier" resultType="hashMap">
+		SELECT SUBSTRING(CONF_KEY, 13) AS K, CONF_VAL AS V FROM TB_EEP_CAL_CONF_M WHERE CONF_KEY LIKE 'INVOICE.SUP.%'
+	</select>
+	<insert id="upsertSupplier" parameterType="hashMap">
+		INSERT INTO TB_EEP_CAL_CONF_M (CONF_KEY, CONF_VAL, UPDT_DT) VALUES (CONCAT('INVOICE.SUP.', #{K}), #{V}, NOW())
+		ON DUPLICATE KEY UPDATE CONF_VAL = VALUES(CONF_VAL), UPDT_DT = NOW()
+	</insert>
+
+	<select id="selectPartnerTax" resultType="hashMap">
+		SELECT PARTNER_SQ, PARTNER_NM, BIZ_NO, CEO_NM, ADDR, BIZ_TYPE, BIZ_ITEM, COALESCE(NULLIF(TAX_EMAIL, ''), MGR_EMAIL) AS TAX_EMAIL FROM TB_EEP_PARTNER_M
+	</select>
 
 	<select id="selectClosed" parameterType="string" resultType="int">
 		SELECT COUNT(*) FROM TB_EEP_TRADE_CLOSE_M WHERE YM = #{ym}

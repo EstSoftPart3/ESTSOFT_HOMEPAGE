@@ -1,5 +1,6 @@
 package com.eep.bo.deploy.service;
 
+import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
@@ -252,6 +253,114 @@ public class BoTradeService {
 		Map<String, Object> q = q(null, ym);
 		q.put("UPDT_EMPLY_ID", loginId);
 		mapper.insertClose(q);
+	}
+
+	// ── 홈택스 일괄발급 엑셀 ──
+	private static final String[] SUP = { "BIZ_NO", "NM", "CEO", "ADDR", "TYPE", "ITEM", "EMAIL" };
+
+	public Map<String, String> supplier() {
+		Map<String, String> out = new HashMap<>();
+		for (String k : SUP) out.put(k, "");
+		for (Map<String, Object> r : mapper.selectSupplier()) out.put(s(r.get("K")), s(r.get("V")));
+		return out;
+	}
+
+	public void saveSupplier(Map<String, Object> p) {
+		String biz = HometaxExcel.digits(s(p.get("BIZ_NO")));
+		if (biz.length() != 10) throw new IllegalArgumentException("사업자번호 10자리를 입력해 주세요.");
+		String mail = s(p.get("EMAIL")).trim();
+		if (!mail.isEmpty() && !mail.matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")) throw new IllegalArgumentException("이메일을 확인해 주세요.");
+		if (s(p.get("NM")).trim().isEmpty() || s(p.get("CEO")).trim().isEmpty()) throw new IllegalArgumentException("상호와 대표자를 입력해 주세요.");
+		tx.execute(st -> {
+			for (String k : SUP) {
+				Map<String, Object> q = new HashMap<>();
+				q.put("K", k);
+				String v = "BIZ_NO".equals(k) ? biz : s(p.get(k)).trim();
+				q.put("V", v.length() > 500 ? v.substring(0, 500) : v);
+				mapper.upsertSupplier(q);
+			}
+			return null;
+		});
+	}
+
+	/** 지금 쓰는 양식: 올린 것이 없으면 앱에 든 기본 양식 */
+	private byte[] formBytes() throws java.io.IOException {
+		Map<String, Object> f = mapper.selectForm();
+		if (f != null) return (byte[]) f.get("FILE_DATA");
+		try (java.io.InputStream in = getClass().getResourceAsStream(HometaxExcel.DEFAULT_FORM)) {
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			byte[] b = new byte[8192];
+			for (int n; (n = in.read(b)) > 0;) out.write(b, 0, n);
+			return out.toByteArray();
+		}
+	}
+
+	public Map<String, Object> invoiceConf() throws java.io.IOException {
+		Map<String, Object> out = new HashMap<>(), f = mapper.selectForm();
+		out.put("supplier", supplier());
+		out.put("formNm", f == null ? "기본 양식(세금계산서등록양식(일반).xls, 2026-11 홈택스)" : f.get("FILE_NM"));
+		out.put("formDt", f == null ? "" : f.get("UPDT_DT"));
+		out.put("formCustom", f != null);
+		out.put("formSummary", HometaxExcel.form(formBytes()).summary());
+		return out;
+	}
+
+	public String saveForm(String name, byte[] data, String loginId) {
+		String summary = HometaxExcel.form(data).summary();
+		Map<String, Object> q = new HashMap<>();
+		q.put("FILE_NM", name.length() > 200 ? name.substring(0, 200) : name);
+		q.put("FILE_DATA", data);
+		q.put("UPDT_EMPLY_ID", loginId);
+		mapper.upsertForm(q);
+		return summary;
+	}
+
+	public void resetForm() {
+		mapper.deleteForm();
+	}
+
+	/** 고른 건(keys)이 속한 미발급 계산서를 장 단위로 모은다. 거래처 정보가 모자란 장은 skipped 로 빼고, file 은 build 가 true 일 때만 */
+	public Map<String, Object> hometax(String ym, String[] keys, List<Map<String, Object>> visible, boolean build) throws java.io.IOException {
+		YearMonth m = month(ym);
+		byte[] form = formBytes();
+		HometaxExcel.Form fm = HometaxExcel.form(form);
+		Map<String, String> sup = supplier();
+		if (fm.supplier() && (sup.get("BIZ_NO").isEmpty() || sup.get("NM").isEmpty() || sup.get("CEO").isEmpty())) throw new IllegalArgumentException("⚙ 설정에서 우리 회사(공급자) 정보를 먼저 입력해 주세요.");
+		Set<String> want = new java.util.HashSet<>(java.util.Arrays.asList(keys == null ? new String[0] : keys));
+		Map<String, Map<String, Object>> partners = new HashMap<>();
+		for (Map<String, Object> p : mapper.selectPartnerTax()) partners.put(s(p.get("PARTNER_SQ")), p);
+		// 장 = 거래처 + 계산서 번호, 화면과 같은 순서
+		Map<String, List<Map<String, Object>>> groups = new java.util.TreeMap<>();
+		for (Map<String, Object> l : visible) {
+			if (!want.contains(s(l.get("KEY"))) || l.get("INV_NO") == null || l.get("ISSUE_DT") != null) continue;
+			String g = s(l.get("PARTNER_NM")) + "\t" + s(l.get("PARTNER_SQ")) + "\t" + String.format("%04d", ((Number) l.get("INV_NO")).intValue());
+			groups.computeIfAbsent(g, x -> new ArrayList<>()).add(l);
+		}
+		List<HometaxExcel.Invoice> invoices = new ArrayList<>();
+		List<String> skipped = new ArrayList<>(), okKeys = new ArrayList<>();
+		for (Map.Entry<String, List<Map<String, Object>>> e : groups.entrySet()) {
+			List<Map<String, Object>> g = e.getValue();
+			g.sort((a, b) -> Integer.compare(((Number) a.get("SORT_NO")).intValue(), ((Number) b.get("SORT_NO")).intValue()));
+			String[] k = e.getKey().split("\t", -1);
+			String label = k[0] + " 계산서 " + Integer.parseInt(k[2]);
+			Map<String, Object> p = partners.get(k[1]);
+			String why = p == null ? "거래처로 등록되지 않은 곳(매출/매입처 관리에서 등록)"
+					: HometaxExcel.digits(s(p.get("BIZ_NO"))).length() != 10 ? "거래처 사업자번호 없음"
+					: s(p.get("CEO_NM")).trim().isEmpty() ? "거래처 대표자 없음"
+					: g.size() > fm.items ? "품목이 " + fm.items + "줄을 넘음(나누기)" : null;
+			if (why != null) { skipped.add(label + ": " + why); continue; }
+			invoices.add(new HometaxExcel.Invoice(p, g));
+			for (Map<String, Object> l : g) okKeys.add(s(l.get("KEY")));
+		}
+		if (invoices.size() > fm.max) throw new IllegalArgumentException("한 파일에 " + fm.max + "장까지 넣을 수 있습니다. 거래처를 골라 나눠 내려받아 주세요.");
+		LocalDate writeDt = HometaxExcel.lastWeekday(m);
+		Map<String, Object> out = new HashMap<>();
+		out.put("count", invoices.size());
+		out.put("skipped", skipped);
+		out.put("keys", okKeys);
+		out.put("writeDt", writeDt.toString());
+		if (build && !invoices.isEmpty()) out.put("file", HometaxExcel.build(form, sup, invoices, writeDt));
+		return out;
 	}
 
 	private void open(String ym) {
