@@ -80,8 +80,8 @@ public class BoTradeService {
 			boolean sale = "SALE".equals(kind), closed = "Y".equals(d.get("CLOSED_YN"));
 			long monthly = sale ? Math.max(0, n(d.get("SALE_PRICE")) - n(d.get("DIRECT_AMT"))) : n(d.get("COST_PRICE"));
 			Object fixed = sale ? d.get("REAL_SALE") : d.get("BASE_AMT");
-			// 마감한 달은 급여관리에 남은 금액, 아니면 투입 단가 일할
-			long calc = closed && fixed != null ? n(fixed) : PayCalc.prorate(monthly, days, total);
+			// 마감한 달은 급여관리에 남은 금액(급여에 행이 없는 건은 0: 정규·수습처럼 겹친 건을 급여는 한 번만 센다), 아니면 투입 단가 일할
+			long calc = closed ? n(fixed) : PayCalc.prorate(monthly, days, total);
 			Map<String, Object> l = line("D", d.get("DEPLOY_SQ"), "투입", d, saved);
 			if (calc == 0 && l.get("AMT_FIXED") == null) continue;
 			l.put("STAFF_SQ", d.get("STAFF_SQ"));
@@ -94,7 +94,7 @@ public class BoTradeService {
 			l.put("END_DT", to.toString());
 			l.put("CALC_AMT", calc);
 			l.put("AMT", l.get("AMT_FIXED") == null ? calc : n(l.get("AMT_FIXED")));
-			l.put("HOW", closed && fixed != null ? "마감한 달의 급여관리 금액" : "월 " + monthly + " ÷ " + total + "일 × " + days + "일");
+			l.put("HOW", closed ? (fixed != null ? "마감한 달의 급여관리 금액" : "마감한 달 급여관리에 없는 건(0)") : "월 " + monthly + " ÷ " + total + "일 × " + days + "일");
 			prev(l, prev.get("D:" + d.get("DEPLOY_SQ")));
 			out.add(l);
 		}
