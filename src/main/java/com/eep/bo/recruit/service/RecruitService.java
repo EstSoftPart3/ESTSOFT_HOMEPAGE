@@ -401,9 +401,14 @@ public class RecruitService {
 				try {
 					if (RecruitCalParser.recruitTitle(title) != null) cnt.merge(calRecruit(r, title, uid, recs, today), 1, Integer::sum);
 					else if (iv != null) {
-						String res = calInterview(r, iv[0], iv[1], uid, recs, moods);
-						cnt.merge(res.startsWith("MISS") ? "MISS" : res, 1, Integer::sum);
-						if (res.startsWith("MISS") && miss.size() < 30) miss.add(missRow(r, title, res.substring(5)));
+						// 「인터뷰 - 김현섭,김명규(…)」처럼 여러 명이면 사람마다. 한 명이면 예전처럼 일정 ID 그대로(이미 가져온 건과 이어짐)
+						String[] names = iv[0].split("\\s*[,，/·&]\\s*");
+						for (String nm : names) {
+							if (nm.trim().isEmpty()) continue;
+							String res = calInterview(r, nm.trim(), iv[1], names.length > 1 ? uid + "|" + nm.trim() : uid, recs, moods);
+							cnt.merge(res.startsWith("MISS") ? "MISS" : res, 1, Integer::sum);
+							if (res.startsWith("MISS") && miss.size() < 30) miss.add(missRow(r, title, res.substring(5)));
+						}
 					} else cnt.merge("OTHER", 1, Integer::sum);
 				} catch (RuntimeException e) {
 					cnt.merge("MISS", 1, Integer::sum);
@@ -485,9 +490,17 @@ public class RecruitService {
 	/** 인터뷰 일정 → INTV(있는 지원자에 일시·보고) / ADD(지원자로 추가) / SAME / MISS:이유 */
 	private String calInterview(Map<String, Object> r, String name, String prj, String uid, List<Map<String, Object>> recs, List<String> moods) {
 		if (!jdbc.queryForList("SELECT APPLY_SQ FROM TB_EEP_RECRUIT_APPLY_R WHERE FIND_IN_SET(?, CAL_UID)", uid).isEmpty()) return "SAME";
-		List<Object> staff = jdbc.queryForList("SELECT STAFF_SQ FROM TB_EEP_HR_STAFF_M WHERE STAFF_NM = ? AND STATUS_CD IN ('WORK', 'WAIT')", Object.class, name);
-		if (staff.size() != 1) return staff.isEmpty() ? "MISS:직원 「" + name + "」 없음" : "MISS:동명이인 「" + name + "」";
 		String start = s(r.get("START_DT")), date = start.substring(0, 10), desc = s(r.get("EVT_DESC"));
+		// 지난 인터뷰는 지금 퇴사자인 사람이 많다. 이름이 같으면 그 날짜에 재직하던 사람, 그래도 여럿이면 지금 재직·대기 중인 사람
+		List<Map<String, Object>> found = jdbc.queryForList("SELECT STAFF_SQ, STATUS_CD, DATE_FORMAT(JOIN_DT, '%Y-%m-%d') AS JOIN_D, DATE_FORMAT(LEAVE_DT, '%Y-%m-%d') AS LEAVE_D FROM TB_EEP_HR_STAFF_M WHERE STAFF_NM = ?", name);
+		if (found.size() > 1) {
+			List<Map<String, Object>> on = new ArrayList<>();
+			for (Map<String, Object> f : found) if (s(f.get("JOIN_D")).compareTo(date) <= 0 && (s(f.get("LEAVE_D")).isEmpty() || s(f.get("LEAVE_D")).compareTo(date) >= 0)) on.add(f);
+			if (on.size() != 1) { on.clear(); for (Map<String, Object> f : found) if (Arrays.asList("WORK", "WAIT").contains(s(f.get("STATUS_CD")))) on.add(f); }
+			if (on.size() == 1) found = on;
+		}
+		if (found.size() != 1) return found.isEmpty() ? "MISS:직원 「" + name + "」 없음(인사카드 없음)" : "MISS:동명이인 「" + name + "」";
+		List<Object> staff = Arrays.asList(found.get(0).get("STAFF_SQ"));
 		String k = RecruitCalParser.key(prj), k2 = RecruitCalParser.key(RecruitParser.stripHtml(desc).trim().split("\\r?\\n")[0]);
 		Map<String, Object> rec = null;
 		long best = Long.MAX_VALUE;
