@@ -62,6 +62,7 @@
 					</div>
 					<div class="modal-footer">
 						<button type="button" class="btn btn-sm btn-outline-danger mr-auto" id="btnDelete" onclick="deleteEdit();">삭제</button>
+						<button type="button" class="btn btn-sm btn-success" id="btnFinish" onclick="finishEdit();"><i class="fas fa-check"></i> 교육완료</button>
 						<button type="submit" class="btn btn-sm btn-primary">저장</button>
 					</div>
 				</form>
@@ -389,6 +390,7 @@
 		hrFillForm('#editForm', FIELDS, row);
 		$('#editTitle').text(row.TRN_SQ ? '교육생 상세 · 순번 ' + (row.SEQ_NO || '-') : '교육생 직접 등록');
 		$('#btnDelete').toggle(!!row.TRN_SQ);
+		$('#btnFinish').toggle(!!row.TRN_SQ && row.STATUS_CD === 'ING');
 		// 기술 평가는 저장된 교육생에만 바로 저장할 수 있다
 		$('#skillArea').toggle(!!row.TRN_SQ);
 		if (!$('#editMemo').length) $('<div class="mt-2"><div class="hr-section">메모</div><div id="editMemo"></div></div>').insertAfter('#editFields');
@@ -403,6 +405,13 @@
 		var data = hrFormData('#editForm');
 		if (editing.TRN_SQ) data.push({ name: 'TRN_SQ', value: editing.TRN_SQ });
 		hrPost('/admin/hr/saveTraineeData.do', data, function() { $('#editModal').modal('hide'); load(); });
+	}
+
+	// 상태 칸 저장과 같은 주소를 써서 직원관리 대기 카드·장비 반납 확인이 똑같이 돈다
+	function finishEdit() {
+		bootbox.confirm(editing.TRN_NM + ' 교육생을 교육완료(교육종료)로 바꿀까요?', function(ok) {
+			if (ok) hrPost('/admin/hr/saveTraineeFieldData.do', { TRN_SQ: editing.TRN_SQ, FIELD: 'STATUS_CD', VALUE: 'END' }, function() { $('#editModal').modal('hide'); current = 'END'; load(); });
+		});
 	}
 
 	function deleteEdit() {
