@@ -91,6 +91,9 @@
 	.rc-qview { border: 1px solid #dfe4e8; border-radius: 10px; overflow: hidden; } .rc-qview > div { display: grid; grid-template-columns: 30px 1fr; gap: 6px; padding: 7px 10px; border-bottom: 1px solid #eef1f4; font-size: 13px; }
 	.rc-qview > div:last-child { border-bottom: 0; } .rc-qview .n { color: #868e96; } .rc-qview .q { font-weight: 700; } .rc-qview .a { color: #495057; white-space: pre-wrap; }
 	.rc-memo { background: #fafbfc; border: 1px solid #e9ecef; border-radius: 8px; padding: 6px 10px; font-size: 13px; white-space: pre-wrap; }
+	.rc-calstat { background: #fafbfc; border: 1px solid #dfe4e8; border-radius: 8px; padding: 4px 10px; font-size: 12px; } .rc-calstat b { display: block; font-size: 16px; }
+	.rc-calstat.bad { border-color: #ffa8a8; } .rc-calstat.bad b { color: #c92a2a; }
+	.rc-fromcal { display: inline-block; border-radius: 999px; padding: 0 7px; font-size: 10.5px; font-weight: 800; background: #e7f5ff; color: #1864ab; }
 	.rc-notebtn { border: 1px dashed #b197fc; background: #fff; color: #6741d9; border-radius: 999px; padding: 0 9px; font-size: 11.5px; font-weight: 700; max-width: 100%; white-space: normal; text-align: left; }
 	.rc-notebtn.has { border-style: solid; background: #f3f0ff; } .rc-notebtn:hover, .rc-notebtn:focus { background: #e5dbff; }
 	.ist { font-style: normal; font-size: 10px; font-weight: 800; border-radius: 4px; padding: 0 4px; background: #fff4e6; color: #d9480f; }
@@ -159,6 +162,7 @@
 		<div class="rc-views" role="group" aria-label="보기">
 			<button type="button" data-view="cal" aria-pressed="true">📅 달력</button><button type="button" data-view="card" aria-pressed="false">▦ 카드</button><button type="button" data-view="table" aria-pressed="false">☰ 표</button><button type="button" data-view="board" aria-pressed="false">▥ 상태 보드</button><button type="button" data-view="tl" aria-pressed="false">▬ 타임라인</button>
 		</div>
+		<button type="button" class="btn btn-sm btn-outline-primary" id="calBtn" title="구글 캘린더(est.part2)의 모집·인터뷰 가져오기 — 매일 09:00 배치 때도 자동">📅 캘린더</button>
 		<button type="button" class="btn btn-sm btn-primary" id="addBtn">+ 모집 등록</button>
 	</div>
 	<div class="rc-main" id="rcMain"><div class="text-muted p-3">불러오는 중…</div></div>
@@ -218,6 +222,7 @@ $(function() {
 	$('.rc-views').on('click', 'button', function() { VIEW = $(this).data('view'); render(); });
 	$('#rcFind').on('input', render);
 	$('#addBtn').on('click', function() { pasteDialog(); });
+	$('#calBtn').on('click', calDialog);
 	$('#pfLoc, #pfTech').on('input', people);
 	$('#pfYear').on('change', people);
 	$('#ppSort').on('click', 'button', function() { PP_SORT = $(this).data('sort'); people(); });
@@ -470,6 +475,7 @@ function card(r, compact) {
 	var $top = $('<div class="d-flex align-items-center flex-wrap" style="gap:4px">').append($('<span class="rc-pill">').addClass(r.STATUS_CD).text(STATUS[r.STATUS_CD]));
 	if (miss.length) $top.append($('<span class="rc-pill warn">').text('⚠ 확인 필요 ' + miss.length).attr('title', miss.map(function(m) { return m[1]; }).join(', ')));
 	if (left !== null && r.STATUS_CD !== 'CLOSED') $top.append($('<span class="rc-pill">').toggleClass('bad', left <= 3).text(left >= 0 ? '마감 D-' + left : '마감 지남'));
+	if (r.FROM_CAL === 'Y') $top.append($('<span class="rc-fromcal" title="구글 캘린더에서 가져온 모집">📅 캘린더</span>'));
 	$top.append($('<span class="ml-auto rc-note">').text(md(r.REG_D)));
 	$c.append($top).append($('<div class="cl">').append(q(r.CLIENT_NM))).append($('<div class="pj">').append(r.PRJ_NM ? document.createTextNode(r.PRJ_NM) : $('<span class="rc-q">사업명 — 못 읽음</span>')));
 	if (!compact) {
@@ -776,6 +782,7 @@ function applyRow(a) {
 	var $r = $('<div class="d-flex align-items-center flex-wrap mb-2" style="gap:8px">').toggleClass('text-muted', a.STEP_CD === 'DROP');
 	$r.append($('<b style="min-width:56px">').text(a.STAFF_NM));
 	$r.append($('<span class="rc-ver">').addClass(String(a.VER_LABEL || '').indexOf('가필') === 0 ? 'EDIT' : '').text(a.VER_LABEL || '-'));
+	if (a.FROM_CAL === 'Y') $r.append($('<span class="rc-fromcal" title="캘린더 인터뷰 일정에서 가져옴">📅 캘린더</span>'));
 	if (a.STEP_CD === 'DROP') $r.append($('<span class="rc-step DROP">').text('탈락')).append($('<span class="rc-note">').text(a.DROP_REASON || ''))
 		.append($('<button type="button" class="btn btn-sm btn-link p-0">되살리기</button>').on('click', function() { changeStep(a, 'DOC'); }));
 	else $r.append(stepper(a)).append($('<button type="button" class="rc-x drop" title="떨어짐 — 기록이 남아요">✕ 탈락</button>').on('click', function() { changeStep(a, 'DROP'); }));
@@ -859,6 +866,42 @@ function uploadFiles(sq, files, done) {
 			next(i + 1);
 		}).fail(function() { next(i + 1); });
 	})(0);
+}
+
+// ── 📅 캘린더 가져오기(plans/recruit-cal-import-spec.html): 설정·마지막 결과·못 맞춘 일정, 지금 가져오기 ──
+function calDialog() {
+	var CNT = [['NEW', '모집 새로'], ['SAME', '이미 있음'], ['INTV', '인터뷰 맞춤'], ['ADD', '지원자 추가'], ['MISS', '못 맞춤'], ['OTHER', '그 밖 일정']];
+	var $f = $('<div>'), dlg;
+	function paint(d) {
+		var $id = $('<input class="form-control form-control-sm" style="max-width:280px">').val(d.CAL_ID);
+		$f.empty().append($('<div class="d-flex align-items-center flex-wrap mb-2" style="gap:6px">').append('<b class="small">읽을 캘린더 ID</b>').append($id)
+			.append($('<button type="button" class="btn btn-sm btn-outline-secondary">저장</button>').on('click', function() { post({ ACT: 'SAVE', CAL_ID: $id.val() }, '저장했어요.'); }))
+			.append('<span class="rc-note">회사 공용 캘린더 연결(면접 배치와 같은)로 읽어요. 매일 09:00 배치 때 최근 30일을 자동으로 가져와요.</span>'));
+		var l = d.last;
+		if (!l) { $f.append('<div class="rc-note mb-2">아직 가져온 적이 없어요. 처음엔 「처음부터 전체」로 2021년 1월부터 가져와 주세요.</div>'); return; }
+		$f.append($('<div class="small mb-1">').text('마지막 가져오기 ' + l.AT + ' · ' + ({ AUTO: '배치', RUN: '최근 30일', ALL: '처음부터 전체' }[l.TRIGGER] || l.TRIGGER) + ' · ' + l.FROM + ' 부터 · ' + l.CAL_ID));
+		if (l.OK === false) $f.append($('<div class="alert alert-danger py-1 px-2 small">').text('가져오지 못했어요: ' + (l.ERROR || '')));
+		var $s = $('<div class="d-flex flex-wrap mb-2" style="gap:6px">');
+		CNT.forEach(function(c) { $s.append($('<div class="rc-calstat">').toggleClass('bad', c[0] === 'MISS' && (l.CNT || {})[c[0]] > 0).append($('<b>').text((l.CNT || {})[c[0]] || 0)).append(document.createTextNode(c[1]))); });
+		$f.append($s);
+		var miss = l.MISS_LIST || [];
+		if (miss.length) {
+			var $t = $('<table class="table table-sm mb-1" data-nopick>').append('<thead><tr><th>날짜</th><th>일정</th><th>못 맞춘 이유</th></tr></thead>'), $b = $('<tbody>').appendTo($t);
+			miss.forEach(function(m) { $b.append($('<tr>').append($('<td class="text-nowrap">').text(m.D)).append($('<td>').text(m.T)).append($('<td class="text-danger">').text(m.WHY))); });
+			$f.append($t).append('<div class="rc-note">모집을 먼저 등록하거나 직원 이름을 맞춰 두면 다음 가져오기 때 자동으로 맞춰져요.</div>');
+		}
+	}
+	function post(data, toast) {
+		hrPost('/admin/recruit/calData.do', data, function(res) { paint(res.result); if (toast) hrToast(toast); if (data.ACT === 'RUN' || data.ACT === 'ALL') load(); });
+	}
+	dlg = bootbox.dialog({ title: '📅 모집 캘린더 가져오기', message: $f, size: 'large', onEscape: true, buttons: {
+		all: { label: '처음부터 전체(2021-01~)', className: 'btn-sm btn-outline-secondary mr-auto', callback: function() {
+			bootbox.confirm('2021년 1월부터 캘린더 전체를 가져올까요? 몇 분 걸릴 수 있어요. 이미 가져온 일정은 다시 넣지 않아요.', function(ok) { if (ok) post({ ACT: 'ALL' }, '가져왔어요.'); });
+			return false;
+		} },
+		close: { label: '닫기', className: 'btn-sm btn-outline-secondary' },
+		run: { label: '지금 가져오기(최근 30일)', className: 'btn-sm btn-primary', callback: function() { post({ ACT: 'RUN' }, '가져왔어요.'); return false; } } } });
+	post({ ACT: 'VIEW' });
 }
 
 // ── + 모집 등록(원문 붙여 넣기). day: 달력에서 고른 날짜 → 투입 시작(또는 지원 마감)에 넣는다 ──
@@ -1023,6 +1066,7 @@ function noteDialog(a) {
 	if (a.LINK_SUBMIT_DT) $state.append($('<span class="rc-self">').text('본인 제출 ' + md(a.LINK_SUBMIT_DT) + ' ' + a.LINK_SUBMIT_DT.substring(11)));
 	else $state.append($('<span class="rc-self wait">').text('제출 전' + (live ? ' · 링크 보냄 ' + md(a.LINK_EXP_DT) + ' 만료' : '')));
 	if (n.adminAt) $state.append($('<span class="rc-self adm">').text('관리자 수정 ' + n.adminAt));
+	if (n.by === 'CAL') $state.append($('<span class="rc-fromcal">').text('📅 캘린더 보고에서 가져옴 ' + (n.calAt || '')));
 	$state.append($('<span class="rc-step">').addClass(a.STEP_CD).text(STEP_NM[a.STEP_CD] || ''));
 	$state.append($('<button type="button" class="rc-linkbtn">🔗 제출 링크 복사</button>').attr('title', '본인이 계정 없이 이 기록을 남기는 링크').on('click', function() {
 		if (linkLive(a)) copyText(linkUrl(a.LINK_TOKEN), '링크를 복사했어요 · ' + md(a.LINK_EXP_DT) + ' 까지 열려요');

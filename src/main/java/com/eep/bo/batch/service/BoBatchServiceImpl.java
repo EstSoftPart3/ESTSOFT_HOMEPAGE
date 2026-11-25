@@ -61,6 +61,9 @@ public class BoBatchServiceImpl implements BoBatchService {
 	@Autowired
 	private com.eep.bo.calendar.service.GoogleCalendarApi calendarApi;
 
+	@Autowired
+	private com.eep.bo.recruit.service.RecruitService recruitService;
+
 	private final RestTemplate rest;
 	private volatile LocalDateTime lastPreRunCheck;
 
@@ -98,6 +101,13 @@ public class BoBatchServiceImpl implements BoBatchService {
 		}
 		for (Map<String, Object> target : targets) {
 			run("AUTO", target);
+		}
+		// 모집 캘린더(est.part2)의 모집·인터뷰도 같이 가져온다(최근 30일, 같은 일정은 한 번만). 결과는 모집 관리 「📅 캘린더」에
+		try {
+			Map<String, Object> r = recruitService.importCalendar(LocalDate.now(InterviewCalendarParser.SEOUL).minusDays(30), "AUTO");
+			log.warn("모집 캘린더 가져오기 {} {}", r.get("OK"), r.get("CNT"));
+		} catch (Exception e) {
+			log.error("모집 캘린더 가져오기 실패: {}", InterviewCalendarParser.cleanError(e));
 		}
 	}
 

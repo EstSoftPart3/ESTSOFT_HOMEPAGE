@@ -187,6 +187,21 @@ public class BoRecruitController {
 		return run(() -> { guardApply(applySq, session); recruit.noteSeen(applySq); return "OK"; });
 	}
 
+	/** 모집 캘린더 가져오기: ACT=VIEW(설정·마지막 결과) / SAVE(캘린더 ID) / RUN(최근 30일) / ALL(2021-01 부터 전체) */
+	@RequestMapping(value = "/admin/recruit/calData.do", method = RequestMethod.POST)
+	public ModelAndView calData(@RequestParam(value = "ACT", defaultValue = "VIEW") String act, @RequestParam(value = "CAL_ID", defaultValue = "") String calId) {
+		return run(() -> {
+			if ("SAVE".equals(act)) recruit.saveCalId(calId);
+			Map<String, Object> out = new HashMap<>();
+			if ("RUN".equals(act) || "ALL".equals(act)) {
+				out.put("run", recruit.importCalendar("ALL".equals(act) ? RecruitService.CAL_FIRST : java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).minusDays(30), act));
+			}
+			out.put("CAL_ID", recruit.calId());
+			out.put("last", recruit.calLast());
+			return out;
+		});
+	}
+
 	// ── 공개(로그인 없음): /admin·/eep 밖이라 로그인 인터셉터를 타지 않는다. 토큰이 곧 권한 ──
 
 	@RequestMapping(value = "/intv.do", method = RequestMethod.GET)

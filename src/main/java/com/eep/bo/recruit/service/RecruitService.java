@@ -92,6 +92,8 @@ public class RecruitService {
 	private BoDeployService deployService;
 	@Autowired
 	private MailConfService mailConf;
+	@Autowired
+	private com.eep.bo.calendar.service.GoogleCalendarApi calendarApi;
 
 	@Autowired
 	public void setDataSource(@Qualifier("dataSource") DataSource ds) {
@@ -123,6 +125,9 @@ public class RecruitService {
 			// 인터뷰 기록 링크(계정 없이 본인이 제출). 2026-11-20 사용자 승인(A 방식)
 			jdbc.execute("ALTER TABLE TB_EEP_RECRUIT_APPLY_R ADD COLUMN IF NOT EXISTS LINK_TOKEN VARCHAR(64) NULL COMMENT '인터뷰 기록 링크 토큰' AFTER INTV_NOTE,"
 					+ " ADD COLUMN IF NOT EXISTS LINK_EXP_DT DATETIME NULL COMMENT '링크 만료' AFTER LINK_TOKEN, ADD COLUMN IF NOT EXISTS LINK_SUBMIT_DT DATETIME NULL COMMENT '본인 제출 시각' AFTER LINK_EXP_DT");
+			// 모집 캘린더 가져오기: 가져온 캘린더 일정 ID(쉼표로 여러 개). 2026-11-25 사용자 승인(plans/recruit-cal-import-spec.html)
+			jdbc.execute("ALTER TABLE TB_EEP_RECRUIT_M ADD COLUMN IF NOT EXISTS CAL_UID TEXT NULL COMMENT '캘린더 일정 ID'");
+			jdbc.execute("ALTER TABLE TB_EEP_RECRUIT_APPLY_R ADD COLUMN IF NOT EXISTS CAL_UID TEXT NULL COMMENT '캘린더 일정 ID'");
 			jdbc.update("INSERT IGNORE INTO TB_EEP_MAIL_USE_M (USE_CD, ACC_SQ, TO_LIST) VALUES (?, 1, NULL)", MAIL_INTV);
 			seedMenu();
 		} catch (RuntimeException e) {
@@ -198,7 +203,7 @@ public class RecruitService {
 	public Map<String, Object> screen(boolean canPay) {
 		Map<String, Object> out = new HashMap<>();
 		List<Map<String, Object>> recruits = jdbc.queryForList("SELECT R.RECRUIT_SQ, R.CLIENT_NM, R.PRJ_NM, R.GRADE_TXT, R.HEAD_CNT, R.START_DT, R.END_DT, R.PERIOD_TXT, R.WORK_AREA, R.PRICE_TXT, R.SKILLS, R.PREFER,"
-				+ " R.SALE_PARTNER_SQ, R.SALE_PARTNER_TXT, R.MGR_NM, R.CLOSE_DT, R.MEMO, R.STATUS_CD, R.FOLDER_ID, DATE_FORMAT(R.REG_DT, '%Y-%m-%d') AS REG_D, P.PARTNER_NM AS SALE_PARTNER_NM,"
+				+ " R.SALE_PARTNER_SQ, R.SALE_PARTNER_TXT, R.MGR_NM, R.CLOSE_DT, R.MEMO, R.STATUS_CD, R.FOLDER_ID, DATE_FORMAT(R.REG_DT, '%Y-%m-%d') AS REG_D, IF(R.CAL_UID IS NULL, 'N', 'Y') AS FROM_CAL, P.PARTNER_NM AS SALE_PARTNER_NM,"
 				+ " (SELECT COUNT(*) FROM TB_EEP_RECRUIT_FILE_R F WHERE F.RECRUIT_SQ = R.RECRUIT_SQ) AS FILE_CNT"
 				+ " FROM TB_EEP_RECRUIT_M R LEFT JOIN TB_EEP_PARTNER_M P ON P.PARTNER_SQ = R.SALE_PARTNER_SQ WHERE R.DEL_YN = 'N' ORDER BY R.REG_DT DESC");
 		for (Map<String, Object> r : recruits) {
@@ -216,7 +221,7 @@ public class RecruitService {
 	/** 지원 전체. 직원 이름 포함 */
 	public List<Map<String, Object>> applies() {
 		return jdbc.queryForList("SELECT A.APPLY_SQ, A.RECRUIT_SQ, A.STAFF_SQ, A.STEP_CD, A.VER_NO, A.VER_LABEL, A.FILE_ID, A.FILE_NM, A.DEPLOY_SQ, A.DROP_REASON, A.DRAFT,"
-				+ " DATE_FORMAT(A.INTV_DT, '%Y-%m-%d %H:%i') AS INTV_DT, DATE_FORMAT(A.INTV_END_DT, '%Y-%m-%d %H:%i') AS INTV_END_DT, A.INTV_WAY, A.INTV_PLACE, A.INTV_WITH, A.INTV_NOTE, A.LINK_TOKEN,"
+				+ " DATE_FORMAT(A.INTV_DT, '%Y-%m-%d %H:%i') AS INTV_DT, DATE_FORMAT(A.INTV_END_DT, '%Y-%m-%d %H:%i') AS INTV_END_DT, A.INTV_WAY, A.INTV_PLACE, A.INTV_WITH, A.INTV_NOTE, A.LINK_TOKEN, IF(A.CAL_UID IS NULL, 'N', 'Y') AS FROM_CAL,"
 				+ " DATE_FORMAT(A.LINK_EXP_DT, '%Y-%m-%d %H:%i') AS LINK_EXP_DT, DATE_FORMAT(A.LINK_SUBMIT_DT, '%Y-%m-%d %H:%i') AS LINK_SUBMIT_DT,"
 				+ " DATE_FORMAT(A.UPDT_DT, '%Y-%m-%d %H:%i') AS UPDT_DT, A.UPDT_EMPLY_ID, S.STAFF_NM, S.POSITION_NM, S.DEPT_NM"
 				+ " FROM TB_EEP_RECRUIT_APPLY_R A JOIN TB_EEP_HR_STAFF_M S ON S.STAFF_SQ = A.STAFF_SQ JOIN TB_EEP_RECRUIT_M R ON R.RECRUIT_SQ = A.RECRUIT_SQ AND R.DEL_YN = 'N' ORDER BY A.APPLY_SQ");
@@ -345,6 +350,176 @@ public class RecruitService {
 		r.put("RECRUIT_SQ", sq);
 		r.put("notes", notes);
 		return r;
+	}
+
+	// ── 모집 캘린더 가져오기(plans/recruit-cal-import-spec.html): 캘린더 → 시스템 한 방향, 사람이 고친 값은 덮어쓰지 않는다 ──
+
+	static final String CONF_CAL = "RECRUIT.CAL_ID", CAL_DEFAULT = "est.part2@gmail.com", CAL_WHO = "(캘린더)";
+	public static final LocalDate CAL_FIRST = LocalDate.of(2021, 1, 1);
+
+	/** 읽을 캘린더 ID(회사 공용 캘린더 연결로 읽는다. 면접 배치와 같은 연결) */
+	public String calId() {
+		List<String> r = jdbc.queryForList("SELECT CONF_VAL FROM TB_EEP_CAL_CONF_M WHERE CONF_KEY = ?", String.class, CONF_CAL);
+		return r.isEmpty() || s(r.get(0)).trim().isEmpty() ? CAL_DEFAULT : r.get(0).trim();
+	}
+
+	public void saveCalId(String id) {
+		String v = s(id).trim();
+		require(v.matches("[A-Za-z0-9._%+\\-#@]{3,200}"), "캘린더 ID(예: est.part2@gmail.com)를 확인해 주세요.");
+		jdbc.update("INSERT INTO TB_EEP_CAL_CONF_M (CONF_KEY, CONF_VAL, UPDT_DT) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE CONF_VAL = VALUES(CONF_VAL), UPDT_DT = NOW()", CONF_CAL, v);
+	}
+
+	/** 마지막 가져오기 결과(변경 이력 ACT=CAL 의 JSON) */
+	public Map<String, Object> calLast() {
+		List<String> r = jdbc.queryForList("SELECT SUMMARY FROM TB_EEP_RECRUIT_LOG_H WHERE ACT = 'CAL' ORDER BY LOG_SQ DESC LIMIT 1", String.class);
+		return r.isEmpty() ? null : parseNote(r.get(0));
+	}
+
+	/**
+	 * from 부터 120일 뒤까지 캘린더를 읽어 모집·지원자·인터뷰 일시·인터뷰 보고를 넣는다. 같은 일정은 일정 ID 로 한 번만.
+	 * 배치(매일 09:00, 최근 30일)와 화면 버튼(최근 30일 / 2021-01 부터 전체)이 부른다. @return 결과 요약(이력에도 남김)
+	 */
+	public synchronized Map<String, Object> importCalendar(LocalDate from, String trigger) {
+		Map<String, Object> out = new LinkedHashMap<>();
+		Map<String, Integer> cnt = new LinkedHashMap<>();
+		for (String k : new String[] { "NEW", "SAME", "INTV", "ADD", "MISS", "OTHER" }) cnt.put(k, 0);
+		List<Map<String, String>> miss = new ArrayList<>();
+		out.put("AT", LocalDateTime.now(SEOUL).format(DT));
+		out.put("TRIGGER", trigger);
+		out.put("FROM", from.toString());
+		out.put("CAL_ID", calId());
+		try {
+			LocalDate today = LocalDate.now(SEOUL);
+			String token = googleLink.accessToken(GoogleLinkService.COMPANY, GoogleLinkService.CALENDAR);
+			List<Map<String, Object>> rows = new ArrayList<>(calendarApi.events(token, calId(), from, today.plusDays(120)));
+			rows.sort((x, y) -> s(x.get("START_DT")).compareTo(s(y.get("START_DT")))); // 같은 날이면 모집(종일 00:00)이 인터뷰보다 먼저
+			List<Map<String, Object>> recs = jdbc.queryForList("SELECT RECRUIT_SQ, CLIENT_NM, PRJ_NM, RAW_TEXT, CAL_UID, STATUS_CD, DATE_FORMAT(REG_DT, '%Y-%m-%d') AS REG_D FROM TB_EEP_RECRUIT_M WHERE DEL_YN = 'N'");
+			List<String> moods = intvCodes().get("MOOD");
+			for (Map<String, Object> r : rows) {
+				String title = s(r.get("EVT_TITLE")), uid = s(r.get("ICAL_UID")).isEmpty() ? s(r.get("GCAL_EVT_ID")) : s(r.get("ICAL_UID"));
+				String[] iv = RecruitCalParser.interview(title);
+				try {
+					if (RecruitCalParser.recruitTitle(title) != null) cnt.merge(calRecruit(r, title, uid, recs, today), 1, Integer::sum);
+					else if (iv != null) {
+						String res = calInterview(r, iv[0], iv[1], uid, recs, moods);
+						cnt.merge(res.startsWith("MISS") ? "MISS" : res, 1, Integer::sum);
+						if (res.startsWith("MISS") && miss.size() < 30) miss.add(missRow(r, title, res.substring(5)));
+					} else cnt.merge("OTHER", 1, Integer::sum);
+				} catch (RuntimeException e) {
+					cnt.merge("MISS", 1, Integer::sum);
+					if (miss.size() < 30) miss.add(missRow(r, title, "읽지 못함(" + e.getClass().getSimpleName() + ")"));
+				}
+			}
+			out.put("OK", true);
+		} catch (RuntimeException e) {
+			out.put("OK", false);
+			out.put("ERROR", googleWhy(e));
+		}
+		out.put("CNT", cnt);
+		out.put("MISS_LIST", miss);
+		String js = json(out);
+		while (js.length() > 2000 && !miss.isEmpty()) { miss.remove(miss.size() - 1); js = json(out); } // 이력 칸이 2000자
+		log(null, null, "CAL", js, CAL_WHO);
+		return out;
+	}
+
+	private static Map<String, String> missRow(Map<String, Object> r, String title, String why) {
+		Map<String, String> m = new LinkedHashMap<>();
+		m.put("D", s(r.get("START_DT")).length() >= 10 ? s(r.get("START_DT")).substring(0, 10) : "");
+		m.put("T", cut(title, 80));
+		m.put("WHY", why);
+		return m;
+	}
+
+	private static boolean hasUid(Object list, String uid) {
+		return !uid.isEmpty() && Arrays.asList(s(list).split(",")).contains(uid);
+	}
+
+	/** 모집 1건이 이 사업명(key)과 같은지: 고객사+사업명, 사업명, 원문 첫 줄(캘린더에서 온 건 「모집(…) - 사업명」) */
+	private static boolean sameRecruit(Map<String, Object> rec, String k) {
+		if (k.length() < 3) return false;
+		String first = s(rec.get("RAW_TEXT")).trim().split("\\r?\\n")[0];
+		String t = RecruitCalParser.recruitTitle(first);
+		return k.equals(RecruitCalParser.key(s(rec.get("CLIENT_NM")) + s(rec.get("PRJ_NM")))) || k.equals(RecruitCalParser.key(s(rec.get("PRJ_NM"))))
+				|| k.equals(RecruitCalParser.key(t != null ? t : first));
+	}
+
+	/** 모집 일정 → NEW(새로) / SAME(이미 있음, 30일 안 같은 사업명이면 그 모집에 일정 ID 만 붙임) */
+	private String calRecruit(Map<String, Object> r, String title, String uid, List<Map<String, Object>> recs, LocalDate today) {
+		for (Map<String, Object> rec : recs) if (hasUid(rec.get("CAL_UID"), uid)) return "SAME";
+		String date = s(r.get("START_DT")).substring(0, 10), k = RecruitCalParser.key(RecruitCalParser.recruitTitle(title));
+		LocalDate d = LocalDate.parse(date);
+		for (Map<String, Object> rec : recs) {
+			if (!sameRecruit(rec, k) || Math.abs(java.time.temporal.ChronoUnit.DAYS.between(LocalDate.parse(s(rec.get("REG_D"))), d)) > 30) continue;
+			jdbc.update("UPDATE TB_EEP_RECRUIT_M SET CAL_UID = CONCAT_WS(',', CAL_UID, ?) WHERE RECRUIT_SQ = ?", uid, rec.get("RECRUIT_SQ"));
+			rec.put("CAL_UID", s(rec.get("CAL_UID")) + "," + uid);
+			log(rec.get("RECRUIT_SQ"), null, "CAL", "캘린더에 같은 모집이 다시 올라옴 (" + date + ")", CAL_WHO);
+			return "SAME";
+		}
+		String desc = s(r.get("EVT_DESC"));
+		Map<String, Object> f = RecruitParser.parse(title, desc, d);
+		f.put("SALE_PARTNER_SQ", partnerOf(s(f.get("SALE_PARTNER_TXT"))));
+		if (!s(f.get("START_DT")).isEmpty() && s(f.get("END_DT")).compareTo(s(f.get("START_DT"))) < 0) f.put("END_DT", null); // 못 읽은 기간은 비워 둔다
+		java.util.regex.Matcher g = java.util.regex.Pattern.compile("모\\s*집\\s*\\(([^)]*)\\)").matcher(title);
+		if (g.find() && g.group(1).contains("~")) f.put("GRADE_TXT", g.group(1).trim()); // 「초급~중급 2」 같은 범위는 해석기가 줄이므로 제목 그대로
+		Map<String, Object> v = clean(f);
+		String status = d.isBefore(today.minusDays(60)) ? "CLOSED" : "OPEN"; // 오래된 모집은 마감으로
+		KeyHolder kh = new GeneratedKeyHolder();
+		StringBuilder cols = new StringBuilder("RAW_TEXT, STATUS_CD, CAL_UID, REG_EMPLY_ID, REG_DT, UPDT_EMPLY_ID, UPDT_DT"), qs = new StringBuilder("?, ?, ?, ?, ?, ?, NOW()");
+		List<Object> args = new ArrayList<>(Arrays.asList(cut(title + "\n" + RecruitParser.stripHtml(desc), 20000), status, uid, CAL_WHO, date + " 09:00:00", CAL_WHO));
+		for (String c : EDIT_COLS) { cols.append(", ").append(c); qs.append(", ?"); args.add(v.get(c)); }
+		jdbc.update(con -> {
+			java.sql.PreparedStatement ps = con.prepareStatement("INSERT INTO TB_EEP_RECRUIT_M (" + cols + ") VALUES (" + qs + ")", java.sql.Statement.RETURN_GENERATED_KEYS);
+			for (int i = 0; i < args.size(); i++) ps.setObject(i + 1, args.get(i));
+			return ps;
+		}, kh);
+		Object sq = kh.getKey().intValue();
+		log(sq, null, "NEW", "캘린더에서 가져옴 (" + date + ") · " + brief(v), CAL_WHO);
+		Map<String, Object> rec = new HashMap<>();
+		rec.put("RECRUIT_SQ", sq); rec.put("CLIENT_NM", v.get("CLIENT_NM")); rec.put("PRJ_NM", v.get("PRJ_NM")); rec.put("RAW_TEXT", title);
+		rec.put("CAL_UID", uid); rec.put("STATUS_CD", status); rec.put("REG_D", date);
+		recs.add(rec);
+		return "NEW";
+	}
+
+	/** 인터뷰 일정 → INTV(있는 지원자에 일시·보고) / ADD(지원자로 추가) / SAME / MISS:이유 */
+	private String calInterview(Map<String, Object> r, String name, String prj, String uid, List<Map<String, Object>> recs, List<String> moods) {
+		if (!jdbc.queryForList("SELECT APPLY_SQ FROM TB_EEP_RECRUIT_APPLY_R WHERE FIND_IN_SET(?, CAL_UID)", uid).isEmpty()) return "SAME";
+		List<Object> staff = jdbc.queryForList("SELECT STAFF_SQ FROM TB_EEP_HR_STAFF_M WHERE STAFF_NM = ? AND STATUS_CD IN ('WORK', 'WAIT')", Object.class, name);
+		if (staff.size() != 1) return staff.isEmpty() ? "MISS:직원 「" + name + "」 없음" : "MISS:동명이인 「" + name + "」";
+		String start = s(r.get("START_DT")), date = start.substring(0, 10), desc = s(r.get("EVT_DESC"));
+		String k = RecruitCalParser.key(prj), k2 = RecruitCalParser.key(RecruitParser.stripHtml(desc).trim().split("\\r?\\n")[0]);
+		Map<String, Object> rec = null;
+		long best = Long.MAX_VALUE;
+		for (Map<String, Object> x : recs) {
+			if (!sameRecruit(x, k) && !sameRecruit(x, k2)) continue;
+			long gap = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.parse(s(x.get("REG_D"))), LocalDate.parse(date));
+			long score = gap >= 0 ? gap : 1000 - gap; // 인터뷰 전에 올라온 모집 중 가장 가까운 것을 먼저
+			if (score < best) { best = score; rec = x; }
+		}
+		if (rec == null) return "MISS:모집 「" + prj + "」 없음";
+		Map<String, Object> rep = RecruitCalParser.report(desc, moods);
+		String note = null;
+		if (rep != null) { rep.put("by", "CAL"); rep.put("calAt", date); note = json(rep); }
+		boolean past = start.compareTo(LocalDateTime.now(SEOUL).format(DT)) < 0;
+		String step = past ? "INTV_CHK" : "INTV", end = s(r.get("END_DT")).isEmpty() ? null : s(r.get("END_DT"));
+		List<Map<String, Object>> ap = jdbc.queryForList("SELECT APPLY_SQ, STEP_CD FROM TB_EEP_RECRUIT_APPLY_R WHERE RECRUIT_SQ = ? AND STAFF_SQ = ?", rec.get("RECRUIT_SQ"), staff.get(0));
+		if (ap.isEmpty()) {
+			jdbc.update("INSERT INTO TB_EEP_RECRUIT_APPLY_R (RECRUIT_SQ, STAFF_SQ, STEP_CD, VER_LABEL, INTV_DT, INTV_END_DT, INTV_WAY, INTV_PLACE, INTV_NOTE, CAL_UID, REG_EMPLY_ID, REG_DT, UPDT_EMPLY_ID, UPDT_DT)"
+					+ " VALUES (?, ?, ?, '캘린더', ?, ?, 'FACE', ?, ?, ?, ?, NOW(), ?, NOW())", rec.get("RECRUIT_SQ"), staff.get(0), step, start, end, cut(s(r.get("EVT_LOC")), 300), note, uid, CAL_WHO, CAL_WHO);
+			log(rec.get("RECRUIT_SQ"), null, "APPLY", name + " 캘린더에서 지원자 추가 · 인터뷰 " + start.substring(0, 16) + (rep != null ? " · 보고 질문 " + ((List<?>) rep.get("qa")).size() + "개" : ""), CAL_WHO);
+			if ("OPEN".equals(rec.get("STATUS_CD"))) { setStatus(rec.get("RECRUIT_SQ"), "APPLY", CAL_WHO); rec.put("STATUS_CD", "APPLY"); }
+			return "ADD";
+		}
+		Object applySq = ap.get(0).get("APPLY_SQ");
+		jdbc.update("UPDATE TB_EEP_RECRUIT_APPLY_R SET INTV_DT = COALESCE(INTV_DT, ?), INTV_END_DT = COALESCE(INTV_END_DT, ?), INTV_NOTE = COALESCE(INTV_NOTE, ?), CAL_UID = CONCAT_WS(',', CAL_UID, ?) WHERE APPLY_SQ = ?",
+				start, end, note, uid, applySq);
+		if (Arrays.asList("DOC", "INTV_WAIT").contains(s(ap.get(0).get("STEP_CD")))) {
+			jdbc.update("UPDATE TB_EEP_RECRUIT_APPLY_R SET STEP_CD = ? WHERE APPLY_SQ = ?", step, applySq);
+			log(rec.get("RECRUIT_SQ"), applySq, "STEP", name + " " + stepName(s(ap.get(0).get("STEP_CD"))) + " → " + stepName(step) + " (캘린더 인터뷰)", CAL_WHO);
+		}
+		log(rec.get("RECRUIT_SQ"), applySq, "INTV", name + " 캘린더 인터뷰 " + start.substring(0, 16) + (rep != null ? " · 보고" : ""), CAL_WHO);
+		return "INTV";
 	}
 
 	/** 화면에서 온 값 검사·정리 */
