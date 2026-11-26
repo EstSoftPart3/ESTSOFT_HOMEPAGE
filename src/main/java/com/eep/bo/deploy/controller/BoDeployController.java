@@ -58,6 +58,9 @@ public class BoDeployController {
 	@Autowired
 	private com.eep.bo.staff.service.StaffCareerService career;
 
+	@Autowired
+	private com.eep.bo.staff.service.StaffVacationService vacations;
+
 	// ── 투입현황 ──
 
 	@RequestMapping("/admin/deploy/openDeployList.do")
@@ -75,6 +78,8 @@ public class BoDeployController {
 		// 대기 현황의 「프로필 버전」「지원 중 모집」 칸
 		out.put("profiles", v.filter(recruitService.profiles()));
 		out.put("recruitApplies", v.filter(recruitService.activeApplies()));
+		// 인사카드 휴가(🏖 표시·휴직 판단·상세 팝업 휴가 탭). 직원관리 권한이 없어도 투입현황에서 보이게 서버에서 같이 보낸다
+		out.put("vacations", v.filter(vacations.range("2000-01-01", "2099-12-31")));
 		out.put("secretViewer", v.secret);
 		return json("data", out);
 	}

@@ -75,6 +75,11 @@
 	.pl-scroll { max-height: calc(100vh - 140px); min-height: 320px; overflow: auto; }
 	/* 칸별 합계: 머리글 칸 아랫줄(머리글과 같이 고정) */
 	#dpHead .dp-sumv { margin: 3px -8px -4px; padding: 2px 8px; background: #eef5ff; color: #0b4a8a; font-size: 12px; font-weight: 700; white-space: nowrap; border-top: 1px solid #9cc1ea; }
+	/* 투입 상세: 단가 상자, 지금 건 줄, 탭 */
+	#detailFields .dp-money { background: #f8fafc; border: 1px solid #e5e9ee; border-radius: 6px; padding: 6px 4px 0; }
+	#histBody tr.cur td { background: #f3f8ff; }
+	.dp-dtabs .nav-link { font-weight: 700; color: #555; padding: 6px 12px; } .dp-dtabs .nav-link b { background: #eef1f4; border-radius: 9px; padding: 0 6px; margin-left: 3px; font-size: 11px; }
+	.dp-office-sw .custom-control-label { color: #2f4a6d; }
 	.dp-chip-sep { width: 1px; height: 22px; background: #c9d1db; margin: 0 4px; }
 	.pl-chip.dp-chip-st { border-color: #8aa2c0; }
 	.dp-st { display: inline-block; border-radius: 8px; padding: 0 7px; font-size: 11px; font-weight: 700; margin-left: 4px; }
@@ -161,27 +166,34 @@
 			<div class="modal-content">
 				<div class="modal-header">
 					<h5 class="modal-title" id="detailTitle">투입 상세</h5>
+					<span class="small text-muted ml-2 align-self-center" id="detailWho"></span>
+					<div class="custom-control custom-switch ml-3 align-self-center dp-office-sw" title="이 사람의 오늘 진행 중인 투입 건이 모두 같이 바뀝니다"><input type="checkbox" class="custom-control-input" id="dOffice"><label class="custom-control-label font-weight-bold" for="dOffice">내근직</label></div>
 					<button type="button" class="close" data-dismiss="modal" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
 				</div>
 				<form id="detailForm" onsubmit="saveDetail(); return false;">
-					<input type="hidden" name="DEPLOY_SQ"><input type="hidden" name="STAFF_SQ">
+					<input type="hidden" name="DEPLOY_SQ"><input type="hidden" name="STAFF_SQ"><input type="hidden" name="STAFF_NM">
 					<div class="modal-body">
 						<div class="form-row" id="detailFields"></div>
-						<div class="hr-section">근무 상태</div>
-						<div class="custom-control custom-switch mb-2"><input type="checkbox" class="custom-control-input" id="dOffice"><label class="custom-control-label" for="dOffice">내근직 <span class="small text-muted">· 켜고 저장하면 투입 현황·대기·철수 임박에서 빠지고 내근직 탭에만 보입니다</span></label></div>
-						<div class="custom-control custom-switch mb-1"><input type="checkbox" class="custom-control-input" id="dRest"><label class="custom-control-label" for="dRest">휴직 <span class="small text-muted">· 켜고 기간을 넣어 저장하면 휴직이 끝날 때까지 다른 탭에서 빠지고 휴직 탭에만 보입니다</span></label></div>
-						<div class="d-none align-items-center mb-2 ml-4" style="gap:6px" id="dRestDates">
-							<label class="mb-0 small text-muted" for="dRestFrom">휴직 기간</label>
-							<input type="date" class="form-control form-control-sm" style="width:160px" id="dRestFrom" aria-label="휴직 시작일">
-							<span>~</span>
-							<input type="date" class="form-control form-control-sm" style="width:160px" id="dRestTo" aria-label="휴직 종료일(비우면 미정)">
-							<span class="small text-muted">종료일을 비우면 미정</span>
+						<ul class="nav nav-tabs mt-3 dp-dtabs" role="tablist">
+							<li class="nav-item"><a class="nav-link active" id="dTabHistBtn" data-toggle="tab" href="#dTabHist" role="tab" aria-controls="dTabHist" aria-selected="true">투입 이력 <b id="histCnt"></b></a></li>
+							<li class="nav-item"><a class="nav-link" id="dTabVacBtn" data-toggle="tab" href="#dTabVac" role="tab" aria-controls="dTabVac" aria-selected="false">휴가 · 휴직 <b id="vacCnt"></b></a></li>
+						</ul>
+						<div class="tab-content pt-2">
+							<div class="tab-pane fade show active" id="dTabHist" role="tabpanel" aria-labelledby="dTabHistBtn">
+								<table class="table table-sm cal-table mb-0" data-nofrz data-nopick>
+									<thead><tr><th>기간</th><th>형태</th><th>고객사 · 프로젝트</th><th>지역</th><th>등급</th><th></th></tr></thead>
+									<tbody id="histBody"></tbody>
+								</table>
+								<div class="small text-muted mt-1 dp-pay-only">기간 옆 ⓘ 를 누르면 그 건의 월별 단가·급여가 보입니다. 줄을 누르면 그 건으로 바뀝니다.</div>
+							</div>
+							<div class="tab-pane fade" id="dTabVac" role="tabpanel" aria-labelledby="dTabVacBtn">
+								<table class="table table-sm cal-table mb-0" data-nofrz data-nopick>
+									<thead><tr><th>기간</th><th>종류</th><th>구분</th><th class="dp-num">일수</th><th>메모</th></tr></thead>
+									<tbody id="vacBody"></tbody>
+								</table>
+								<div class="text-right mt-2"><a class="btn btn-sm btn-outline-secondary" id="vacLink" target="_blank" rel="noopener">＋ 휴가 등록 · 고치기 (인사카드 휴가 탭)</a></div>
+							</div>
 						</div>
-						<div class="hr-section">투입 이력 <span class="small text-muted font-weight-normal dp-pay-only">기간 옆 ⓘ 를 누르면 그 건의 월별 단가·급여가 보입니다</span></div>
-						<table class="table table-sm cal-table mb-0">
-							<thead><tr><th>기간</th><th>형태</th><th>고객사</th><th>프로젝트</th><th>지역</th><th>등급</th></tr></thead>
-							<tbody id="histBody"></tbody>
-						</table>
 					</div>
 					<div class="modal-footer">
 						<button type="button" class="btn btn-sm btn-outline-danger mr-auto" onclick="deleteDetail();">삭제</button>
@@ -475,8 +487,17 @@
 		if (!act.length) { var lastDt = d.reduce(function(m, x) { return x.START_DT > m ? x.START_DT : m; }, ''); act = d.filter(function(x) { return x.START_DT === lastDt; }); }
 		return act.some(function(x) { return x.OFFICE_YN === 'Y'; });
 	}
-	// 휴직: 휴직 기간이 끝나지 않은(예정 포함) 투입 건. 있으면 다른 탭에서 모두 빠지고 휴직 탭에만 보인다. 종료일이 지나면 원래 목록으로
-	function restOf(sq) { return data.all.filter(function(x) { return x.STAFF_SQ === sq && x.REST_FROM_DT && (!x.REST_TO_DT || !moment(x.REST_TO_DT).isBefore(today)); }).pop(); }
+	// 인사카드 휴가(직원관리). 종류 이름은 공통코드 HR_VAC_TYPE, 없으면 기본 이름
+	var VAC_NM = { ANNUAL: '연차', HALF: '반차', SICK: '병가', FAMILY: '경조', PERSONAL: '개인사유', MATERNITY: '출산휴가', PARENTAL: '육아휴직', LEAVE: '무급휴직', ETC: '기타' };
+	var REST_VAC = ['MATERNITY', 'PARENTAL', 'LEAVE']; // 휴직으로 보는 휴가 종류
+	function vacName(v) { var c = (hrAllCodes('HR_VAC_TYPE') || []).filter(function(x) { return x.CD === v.VAC_CD; })[0]; return c ? c.NM : VAC_NM[v.VAC_CD] || v.VAC_CD; }
+	function vacsOf(sq) { return (data.vacations || []).filter(function(v) { return v.STAFF_SQ === sq; }); }
+	// 휴직: 인사카드에 끝나지 않은(예정 포함) 출산휴가·육아휴직·무급휴직이 있거나, 예전처럼 투입 건에 휴직 기간이 있는 사람. 다른 탭에서 빠지고 휴직 탭에 보인다
+	function restOf(sq) {
+		var v = vacsOf(sq).filter(function(v) { return REST_VAC.indexOf(v.VAC_CD) >= 0 && (!v.END_DT || !moment(v.END_DT).isBefore(today)); }).sort(function(a, b) { return a.START_DT.localeCompare(b.START_DT); })[0];
+		if (v) { var d = depsOf(sq); return $.extend({ STAFF_SQ: sq, STAFF_NM: staffOf(sq).STAFF_NM }, d[d.length - 1] || {}, { REST_FROM_DT: v.START_DT, REST_TO_DT: v.END_DT, REST_NM: vacName(v) }); }
+		return data.all.filter(function(x) { return x.STAFF_SQ === sq && x.REST_FROM_DT && (!x.REST_TO_DT || !moment(x.REST_TO_DT).isBefore(today)); }).pop();
+	}
 	function away(sq) { return isOffice(sq) || !!restOf(sq); }
 	function restList() {
 		return data.staff.filter(function(s) { return showSecret(s) && restOf(s.STAFF_SQ); }).map(function(s) { return { s: s, x: restOf(s.STAFF_SQ) }; })
@@ -599,18 +620,26 @@
 	function shortDt(d) { return d ? moment(d).format('YY.M.D') : ''; }
 	function statusCell($td, g, r) {
 		if (g.kind === 'REST') r = restOf(r.STAFF_SQ) || r;
-		if (g.kind === 'REST') return $td.append($('<span class="dp-st r">').text('휴직중')).append(' ' + [r.PRJ_NM || '휴직', shortDt(r.REST_FROM_DT) + ' ~ ' + shortDt(r.REST_TO_DT)].join(' / '));
+		if (g.kind === 'REST') return $td.append($('<span class="dp-st r">').text('휴직중')).append(' ' + [r.REST_NM || r.PRJ_NM || '휴직', shortDt(r.REST_FROM_DT) + ' ~ ' + shortDt(r.REST_TO_DT)].join(' / '));
 		var o = g.idle;
 		return $td.append($('<span class="dp-st w">').text('대기중')).append(' ' + (o.kind === 'FUTURE' ? shortDt(o.future.START_DT) + ' 투입 예정' : o.kind === 'WAIT' ? shortDt(moment(o.last.END_DT).add(1, 'days')) + ' ~' : '입사 후 투입 전'));
 	}
 	function leaveMarks($td, g) {
 		if (g.kind === 'OFFICE') $td.append($('<span class="dp-st o">').text('내근'));
-		g.leaves.forEach(function(x) {
-			var paid = !/무급/.test(x.PRJ_NM), days = x.END_DT ? moment(x.END_DT).diff(moment(x.START_DT), 'days') + 1 : '';
-			var tip = (x.PRJ_NM || '휴가') + ' · ' + x.START_DT + ' ~ ' + (x.END_DT || '') + (days ? ' (' + days + '일)' : '') + (x.MEMO ? '\n' + x.MEMO : '');
-			$td.append($('<button type="button" class="dp-lv">').addClass(paid ? 'p' : 'u').text('🏖 ' + (paid ? '유급' : '무급')).attr({ title: tip, 'aria-label': tip })
-				.on('click', function(e) { e.stopPropagation(); openDetail(x); }));
+		// 기준월에 걸친 인사카드 휴가(휴직 종류 빼고) + 그와 시작일이 다른 투입 건 휴가(대기-유급휴가 등)
+		var first = ym + '-01', last = moment(first).endOf('month').format('YYYY-MM-DD');
+		var vacs = vacsOf(g.top.STAFF_SQ).filter(function(v) { return REST_VAC.indexOf(v.VAC_CD) < 0 && v.START_DT <= last && (!v.END_DT || v.END_DT >= first); });
+		vacs.forEach(function(v) {
+			mark(v.PAID_YN === 'Y', vacName(v) + ' · ' + v.START_DT + ' ~ ' + (v.END_DT || '미정') + ' (' + v.DAYS + '일)' + (v.MEMO ? '\n' + v.MEMO : ''), function() { window.open('/admin/staff/openStaffList.do?STAFF_SQ=' + v.STAFF_SQ, '_blank', 'noopener'); });
 		});
+		g.leaves.filter(function(x) { return !vacs.some(function(v) { return v.START_DT === x.START_DT; }); }).forEach(function(x) {
+			var days = x.END_DT ? moment(x.END_DT).diff(moment(x.START_DT), 'days') + 1 : '';
+			mark(!/무급/.test(x.PRJ_NM), (x.PRJ_NM || '휴가') + ' · ' + x.START_DT + ' ~ ' + (x.END_DT || '') + (days ? ' (' + days + '일)' : '') + (x.MEMO ? '\n' + x.MEMO : ''), function() { openDetail(x); });
+		});
+		function mark(paid, tip, open) {
+			$td.append($('<button type="button" class="dp-lv">').addClass(paid ? 'p' : 'u').text('🏖 ' + (paid ? '유급' : '무급')).attr({ title: tip, 'aria-label': tip })
+				.on('click', function(e) { e.stopPropagation(); open(); }));
+		}
 	}
 
 	// 사람 단위 칸(성명·근속·거주지역·이력 등)은 윗줄에만, 계약 단위 칸은 줄마다
@@ -876,20 +905,22 @@
 		return [].concat.apply([], detailSections().map(function(s) { return s[1]; }));
 	}
 	// 상세 팝업 칸 묶음: [섹션 제목, 칸들]
+	// 칸은 4칸 격자 한 묶음으로 모으고, 단가는 색 상자 하나, 메모는 한 줄 전체
 	function detailSections() {
-		var s = [['인원·계약', [['STAFF_NM', '성명', 3], ['EMP_TYPE_CD', '고용형태', 3, { code: 'HR_EMP_TYPE' }], ['GRADE_CD', '투입등급', 3, { code: 'HR_DEPLOY_GRADE' }], ['WORK_AREA', '근무지역', 3]]],
-			['투입처', [['CLIENT_NM', '고객사', 3], ['PRJ_NM', '프로젝트', 3], ['SALE_PARTNER_SQ', '매출처', 3, { values: {} }], ['BUY_PARTNER_SQ', '매입처', 3, { values: {} }]]],
-			['기간', [['START_DT', '투입일', 3, 'date'], ['END_DT', '철수일', 3, 'date'], ['PROB_END_DT', '수습해제일', 3, 'date']]]];
+		var s = [['이 투입 건', [['EMP_TYPE_CD', '고용형태', 3, { code: 'HR_EMP_TYPE' }], ['SALE_PARTNER_SQ', '매출처', 3, { values: {} }], ['BUY_PARTNER_SQ', '매입처', 3, { values: {} }], ['GRADE_CD', '투입등급', 3, { code: 'HR_DEPLOY_GRADE' }],
+			['CLIENT_NM', '고객사', 3], ['PRJ_NM', '프로젝트', 3], ['WORK_AREA', '근무지역', 3], ['PROB_END_DT', '수습해제일', 3, 'date'],
+			['START_DT', '투입일', 3, 'date'], ['END_DT', '철수일', 3, 'date']]]];
 		if (data.canPay) s.push(['단가 🔒', [['SALE_PRICE', '월 매출단가', 3], ['COST_PRICE', '월 계약단가', 3]]]);
-		s.push(['메모', [['MEMO', '메모', 12, null, true]]]);
+		s.push(['', [['MEMO', '메모', 12, null, true]]]);
 		return s;
 	}
 
 	function openDetail(r) {
 		$('#detailFields').empty();
-		detailSections().forEach(function(s) {
-			$('<div class="col-12 hr-section">').text(s[0]).appendTo('#detailFields');
-			hrBuildFields('#detailFields', s[1]);
+		detailSections().forEach(function(s, i) {
+			if (s[0]) $('<div class="col-12 hr-section">').text(s[0]).append(i ? '' : $('<span class="dp-st ml-2" id="detailState">')).appendTo('#detailFields');
+			var $box = s[0] === '단가 🔒' ? $('<div class="col-12 form-row dp-money mx-0">').appendTo('#detailFields') : $('#detailFields');
+			hrBuildFields($box, s[1]);
 		});
 		[['SALE_PARTNER_SQ', 'SALE_YN'], ['BUY_PARTNER_SQ', 'BUY_YN']].forEach(function(x) {
 			var $s = $('#detailForm [name=' + x[0] + ']').empty();
@@ -898,21 +929,36 @@
 		hrFillForm('#detailForm', detailFields(), r);
 		$('#detailForm [name=DEPLOY_SQ]').val(r.DEPLOY_SQ);
 		$('#detailForm [name=STAFF_SQ]').val(r.STAFF_SQ);
-		$('#detailForm [name=STAFF_NM]').prop('readonly', true);
-		$('#detailTitle').text(r.STAFF_NM + ' 투입 상세');
-		$('#dOffice').prop('checked', r.OFFICE_YN === 'Y');
-		$('#dRest').prop('checked', !!r.REST_FROM_DT);
-		$('#dRestFrom').val(r.REST_FROM_DT || ''); $('#dRestTo').val(r.REST_TO_DT || '');
-		$('#dRestDates').toggleClass('d-none', !r.REST_FROM_DT).toggleClass('d-flex', !!r.REST_FROM_DT);
-		var $hb = $('#histBody').empty();
-		data.all.filter(function(x) { return x.STAFF_SQ === r.STAFF_SQ; }).slice().reverse().forEach(function(x) {
-			var $tr = $('<tr class="dp-hist" tabindex="0">').toggleClass('font-weight-bold', x.DEPLOY_SQ === r.DEPLOY_SQ)
+		$('#detailForm [name=STAFF_NM]').val(r.STAFF_NM);
+		var s = staffOf(r.STAFF_SQ);
+		$('#detailTitle').text(r.STAFF_NM);
+		$('#detailWho').text([typeLabel(r), s.JOIN_DT || r.JOIN_DT ? '입사 ' + (s.JOIN_DT || r.JOIN_DT) : '', tenure(s.JOIN_DT || r.JOIN_DT) ? '근속 ' + tenure(s.JOIN_DT || r.JOIN_DT) : ''].filter(Boolean).join(' · '));
+		// 내근직은 사람 기준 한 값(목록 탭·칩과 같은 판단)
+		$('#dOffice').prop('checked', isOffice(r.STAFF_SQ));
+		var st = isActive(r) ? ['진행 중', 'o'] : moment(r.START_DT).isAfter(today) ? ['투입 예정', 'w'] : ['지난 건', ''];
+		$('#detailState').attr('class', 'dp-st ml-2 ' + st[1]).text(st[0] + ' · ' + r.START_DT + ' ~ ' + (r.END_DT || '미정'));
+		var deps = data.all.filter(function(x) { return x.STAFF_SQ === r.STAFF_SQ; }).slice().reverse(), $hb = $('#histBody').empty();
+		deps.forEach(function(x) {
+			var $tr = $('<tr class="dp-hist" tabindex="0">').toggleClass('font-weight-bold cur', x.DEPLOY_SQ === r.DEPLOY_SQ)
 				.append($('<td>').text(x.START_DT + ' ~ ' + (x.END_DT || '미정')).append(data.canPay ? dpInfoBtn('단가·급여 이력', function() { payHistory(x); }) : ''))
 				.append($('<td>').text(typeName(x.EMP_TYPE_CD)))
-				.append($('<td>').text(x.CLIENT_NM || '')).append($('<td>').text(x.PRJ_NM || '')).append($('<td>').text(x.WORK_AREA || '')).append($('<td>').text(x.GRADE_CD || ''))
+				.append($('<td>').text([x.CLIENT_NM, x.PRJ_NM].filter(Boolean).join(' · '))).append($('<td>').text(x.WORK_AREA || '')).append($('<td>').text(x.GRADE_CD || ''))
+				.append($('<td>').append(x.OFFICE_YN === 'Y' ? $('<span class="dp-st o">').text('내근') : ''))
 				.on('click', function() { openDetail(x); });
 			$hb.append($tr);
 		});
+		$('#histCnt').text(deps.length);
+		var vacs = vacsOf(r.STAFF_SQ).slice().sort(function(a, b) { return b.START_DT.localeCompare(a.START_DT); }), $vb = $('#vacBody').empty();
+		if (!vacs.length) boEmpty($vb, '등록된 휴가·휴직이 없습니다.');
+		vacs.forEach(function(v) {
+			var rest = REST_VAC.indexOf(v.VAC_CD) >= 0;
+			$vb.append($('<tr>').append($('<td>').text(v.START_DT + ' ~ ' + (v.END_DT || '미정')))
+				.append($('<td>').text(vacName(v)).append(rest ? $('<span class="dp-st r ml-1">').text('휴직') : ''))
+				.append($('<td>').append($('<span class="dp-lv">').addClass(v.PAID_YN === 'Y' ? 'p' : 'u').css('margin-left', 0).text(v.PAID_YN === 'Y' ? '유급' : '무급')))
+				.append($('<td class="dp-num">').text(v.DAYS)).append($('<td>').text(v.MEMO || '')));
+		});
+		$('#vacCnt').text(vacs.length);
+		$('#vacLink').attr('href', '/admin/staff/openStaffList.do?STAFF_SQ=' + r.STAFF_SQ);
 		$('#detailModal').modal('show');
 	}
 
@@ -951,12 +997,7 @@
 	function saveDetail() {
 		var p = {};
 		$('#detailForm').serializeArray().forEach(function(x) { p[x.name] = x.value; });
-		delete p.STAFF_NM;
-		p.OFFICE_YN = $('#dOffice').prop('checked') ? 'Y' : 'N';
-		p.REST_YN = $('#dRest').prop('checked') ? 'Y' : 'N';
-		p.REST_FROM_DT = p.REST_YN === 'Y' ? $('#dRestFrom').val() : '';
-		p.REST_TO_DT = p.REST_YN === 'Y' ? $('#dRestTo').val() : '';
-		if (p.REST_YN === 'Y' && !p.REST_FROM_DT) { $('#dRestFrom').focus(); return; }
+		delete p.STAFF_NM; // 내근직·휴직 기간은 보내지 않아 서버가 지금 값을 지킨다(내근직은 맨 위 토글, 휴직은 인사카드 휴가)
 		hrPost('/admin/deploy/saveDeployData.do', p, function() { $('#detailModal').modal('hide'); load(); });
 	}
 
@@ -1005,22 +1046,29 @@
 
 	// ── 휴직 ──
 
-	$(document).on('change', '#dRest', function() {
-		$('#dRestDates').toggleClass('d-none', !this.checked).toggleClass('d-flex', this.checked);
-		if (this.checked && !$('#dRestFrom').val()) $('#dRestFrom').val(today.format('YYYY-MM-DD'));
+	// 내근직 토글: 사람 기준. 오늘 진행 중인 그 사람 투입 건을 모두 같이 바꾼다(진행 중인 건이 없으면 열어 본 건). 지난 건은 그대로
+	$(document).on('change', '#dOffice', function() {
+		var sq = Number($('#detailForm [name=STAFF_SQ]').val()), cur = Number($('#detailForm [name=DEPLOY_SQ]').val()), on = this.checked ? 'Y' : 'N';
+		var targets = depsOf(sq).filter(isActive);
+		if (!targets.length) targets = data.all.filter(function(x) { return x.DEPLOY_SQ === cur; });
+		targets = targets.filter(function(x) { return (x.OFFICE_YN === 'Y' ? 'Y' : 'N') !== on; });
+		(function next(i) {
+			if (i >= targets.length) return load(function() { var x = data.all.filter(function(d) { return d.DEPLOY_SQ === cur; })[0]; if (x) openDetail(x); });
+			hrPost('/admin/deploy/saveFieldData.do', { DEPLOY_SQ: targets[i].DEPLOY_SQ, FIELD: 'OFFICE_YN', VALUE: on }, function() { next(i + 1); });
+		})(0);
 	});
 
 	function renderRest(list) {
 		var $t = $('<table class="table table-sm cal-table mb-0">').append('<thead><tr><th>성명</th><th>형태</th><th>직급·소속</th><th>휴직 기간</th><th>복귀</th><th>프로젝트</th><th>근속</th><th>프로젝트 이력</th></tr></thead>');
 		var $b = $('<tbody>').appendTo($t);
-		if (!list.length) boEmpty($b, '휴직 중인 사람이 없습니다. 투입 상세 팝업에서 휴직을 켜고 기간을 넣으면 여기에만 보입니다.');
+		if (!list.length) boEmpty($b, '휴직 중인 사람이 없습니다. 인사카드 휴가 탭에서 출산휴가·육아휴직·무급휴직을 등록하면 여기에 보입니다.');
 		list.forEach(function(it) {
 			var s = it.s, x = it.x, back = x.REST_TO_DT ? moment(x.REST_TO_DT).add(1, 'days') : null;
 			var left = back ? back.diff(today, 'days') : null, plan = moment(x.REST_FROM_DT).isAfter(today);
 			$b.append($('<tr>').toggleClass('dp-secret', !!s.SECRET)
-				.append($('<td>').append(s.SECRET ? $('<span title="시크릿">').text('🔒 ') : '').append($('<button type="button" class="dp-name">').text(s.STAFF_NM).on('click', function() { openDetail(x); })))
+				.append($('<td>').append(s.SECRET ? $('<span title="시크릿">').text('🔒 ') : '').append(x.DEPLOY_SQ ? $('<button type="button" class="dp-name">').text(s.STAFF_NM).on('click', function() { openDetail(x); }) : $('<span class="font-weight-bold">').text(s.STAFF_NM)))
 				.append($('<td>').text(typeLabel(x))).append($('<td>').text([s.POSITION_NM, s.DEPT_NM || s.ORG_NM].filter(Boolean).join(' · ')))
-				.append($('<td>').text(x.REST_FROM_DT + ' ~ ' + (x.REST_TO_DT || '미정')).append(plan ? $('<span class="dp-pill rent ml-1">').text('예정') : ''))
+				.append($('<td>').text((x.REST_NM ? x.REST_NM + ' · ' : '') + x.REST_FROM_DT + ' ~ ' + (x.REST_TO_DT || '미정')).append(plan ? $('<span class="dp-pill rent ml-1">').text('예정') : ''))
 				.append($('<td>').append($('<span class="dp-pill">').addClass(left !== null && left <= 14 ? 'warn' : '').text(back ? back.format('YYYY-MM-DD') + ' (D-' + left + ')' : '미정')))
 				.append($('<td>').text([x.CLIENT_NM, x.PRJ_NM].filter(Boolean).join(' '))).append($('<td>').text(tenure(s.JOIN_DT))).append($('<td>').append(prjBtn(s.STAFF_SQ, s.STAFF_NM))).append(payCells(s.STAFF_SQ)));
 		});
