@@ -72,7 +72,9 @@
 	.prj-pv .k { width: 78px; color: #8a949c; font-size: 11px; font-weight: 700; }
 	/* 급여관리와 같은 목록: 체크 칩, 고정 머리글, 위 스크롤, 정렬, 두 줄 */
 	.pl-chks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 14px; }
-	.pl-scroll { max-height: 70vh; overflow: auto; }
+	.pl-scroll { max-height: calc(100vh - 140px); min-height: 320px; overflow: auto; }
+	.dp-sum { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 6px 12px; margin: 0 0 6px; background: #f4f7fb; border: 1px solid #e1e7ef; border-radius: 6px; font-size: 13px; }
+	.dp-sum b { font-variant-numeric: tabular-nums; }
 	#dpHead th { position: sticky; top: 0; z-index: 3; background: #fafbfc; box-shadow: 0 1px 0 rgba(17,17,17,.1); }
 	#dpHead th:last-child { right: 0; z-index: 4; }
 	.pl-sort { background: none; border: 0; padding: 0 0 0 3px; color: #9aa4ac; font-size: 10px; cursor: pointer; }
@@ -131,6 +133,7 @@
 							<div class="ml-auto"><button type="button" class="btn btn-sm btn-outline-secondary" id="btnResetCols">컬럼 순서 초기화</button></div>
 						</div>
 						<div id="tableView">
+								<div class="dp-sum" id="dpSum" aria-live="polite"></div>
 								<div class="pl-scroll" id="mainScroll">
 								<table data-no-card class="table table-sm cal-table mb-0">
 									<thead id="dpHead"></thead>
@@ -192,7 +195,7 @@
 
 	<script>
 	var COLS = [['STAFF_NM', '성명'], ['EMP_TYPE_CD', '형태'], ['HOME_AREA', '거주지역'], ['WORK_AREA', '근무지역'], ['SALE_PARTNER_NM', '매출처'], ['BUY_PARTNER_NM', '매입처'], ['SALE_PRICE', '매출단가', true], ['COST_PRICE', '계약단가', true],
-		['CLIENT_NM', '고객사'], ['PRJ_NM', '프로젝트'],['GRADE_CD', '등급'], ['START_DT', '투입일'], ['END_DT', '철수일'], ['REMAIN', '남은 기간'], ['TENURE', '근속'], ['PRJ', '프로젝트 이력'],
+		['CLIENT_NM', '고객사'], ['PRJ_NM', '프로젝트'], ['JOIN_DT', '입사일'], ['GRADE_CD', '등급'], ['START_DT', '투입일'], ['END_DT', '철수일'], ['REMAIN', '남은 기간'], ['TENURE', '근속'], ['PRJ', '프로젝트 이력'],
 		['MEMOS', '메모'], ['HIST', '이력']];
 	var data = null, order = [], view = 'table', drag = null, page = 'ACTIVE', prjCache = {};
 	// 관리자 홈 바로가기: ?page=IDLE(대기 현황) · ENDING(철수 임박)
@@ -236,7 +239,9 @@
 			data = res.data;
 			hrSetCodes(data.codes);
 			var saved = (data.columns || []).filter(function(k) { return visibleCols().some(function(c) { return c[0] === k; }); });
-			order = saved.concat(defaultOrder().filter(function(k) { return saved.indexOf(k) < 0; }));
+			// 저장된 순서에 없는 새 칸은 기본 순서에서 바로 앞 칸 뒤에 끼운다
+			order = saved.slice();
+			defaultOrder().forEach(function(k, i, all) { if (order.indexOf(k) < 0) order.splice(i ? order.indexOf(all[i - 1]) + 1 : 0, 0, k); });
 			$('.dp-pay-only').toggle(!!data.canPay);
 			$('#staffList').remove();
 			var $dl = $('<datalist id="staffList">').appendTo('body');
@@ -528,10 +533,24 @@
 		if (!groups.length) boEmpty($b, moment(ym + '-01').format('YYYY년 M월') + '에 걸친 투입이 없습니다. 체크나 기준월을 바꿔 보세요.');
 		groups.forEach(function(g) { var open = isOpen(g); g.rows.forEach(function(r, i) { if (!i || open) $b.append(viewRow(r, g, i > 0).toggleClass('dp-dup', g.rows.length > 1)); }); });
 		arrangeAll();
+		renderSum(groups);
+	}
+
+	// 표 위 합계: 지금 걸러진 목록 기준. 단가는 계약 줄마다, 급여는 사람마다 한 번
+	function renderSum(groups) {
+		var rows = [].concat.apply([], groups.map(function(g) { return g.rows; }));
+		function sum(list, f) { return list.reduce(function(s, x) { return s + Number(x[f] || 0); }, 0); }
+		var items = [['인원', groups.length + '명'], ['투입 건', rows.length + '건']];
+		if (data.canPay) {
+			items.push(['매출단가 합', dpWon(sum(rows, 'SALE_PRICE'))], ['계약단가 합', dpWon(sum(rows, 'COST_PRICE'))]);
+			var ps = groups.map(function(g) { return pay.by[g.top.STAFF_SQ]; }).filter(Boolean);
+			if (ps.length) items.push(['실매출 합', dpWon(sum(ps, 'REAL_SALE'))], ['실지급 합', dpWon(sum(ps, 'NET'))], ['영업이익 합', dpWon(sum(ps, 'PROFIT'))]);
+		}
+		$('#dpSum').empty().append(items.map(function(x) { return $('<span>').text(x[0] + ' ').append($('<b>').text(x[1])); }));
 	}
 
 	// 사람 단위 칸(성명·근속·거주지역·이력 등)은 윗줄에만, 계약 단위 칸은 줄마다
-	var PERSON = ['STAFF_NM', 'TENURE', 'HOME_AREA', 'PRJ', 'MEMOS', 'HIST'];
+	var PERSON = ['STAFF_NM', 'JOIN_DT', 'TENURE', 'HOME_AREA', 'PRJ', 'MEMOS', 'HIST'];
 
 	// 정규·수습은 '정규'로, 입사일부터 3개월(수습 기간) 안이면 '정규(수습 D-n)'
 	function typeLabel(r) {
@@ -747,7 +766,7 @@
 			else if (k === 'BUY_PARTNER_NM') $td.append(put(k, hrControl(partnerOptions('BUY_YN'), '')));
 			else if (c[2]) $td.append(put(k, $('<input class="form-control dp-num" inputmode="numeric" placeholder="0">')));
 			else if (k === 'START_DT' || k === 'END_DT') $td.append(put(k, $('<input class="form-control" type="date">')));
-			else if (k === 'REMAIN' || k === 'TENURE' || k === 'HOME_AREA' || k === 'PRJ') $td.append('<span class="dp-mute">자동</span>');
+			else if (k === 'REMAIN' || k === 'TENURE' || k === 'HOME_AREA' || k === 'PRJ' || k === 'JOIN_DT') $td.append('<span class="dp-mute">자동</span>');
 			else $td.append(put(k, $('<input class="form-control">')));
 			$tr.append($td);
 		});
