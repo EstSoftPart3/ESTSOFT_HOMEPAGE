@@ -428,7 +428,7 @@
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
 	<script>$(function() { hrDriveGear('STAFF'); }); // 드라이브 폴더·파일 이름 규칙 ⚙</script>
 	<script src="/resources/common/staff-career.js?v=20261120w"></script>
-	<script src="/resources/common/staff-vacation.js?v=20261126"></script>
+	<script src="/resources/common/staff-vacation.js?v=20261126b"></script>
 
 	<script>
 	// 공통코드 HR_STAFF_STATUS 의 이름·순서. 코드가 없을 때만 기본값

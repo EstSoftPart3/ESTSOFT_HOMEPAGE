@@ -114,7 +114,7 @@
 	<script src="/resources/bo/plugins/fullcalendar-timegrid/main.min.js"></script>
 	<script src="/resources/bo/plugins/fullcalendar-interaction/main.min.js"></script>
 	<script src="/resources/bo/plugins/fullcalendar/locales/ko.js" charset="utf-8"></script>
-	<script src="/resources/common/staff-vacation.js?v=20261126"></script>
+	<script src="/resources/common/staff-vacation.js?v=20261126b"></script>
 	<script>
 	// 서버가 넣은 것: cards(열 수 있는 카드), journals(내 결재 차례), memos(최근 메모)
 	var HOME = ${homeJson};

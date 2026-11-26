@@ -156,7 +156,9 @@
 				list.forEach(function(v) {
 					var end = v.END_DT || today();
 					if (v.START_DT <= ymd && ymd <= end) {
+						// 이어진 기간은 한 줄 막대: 주의 첫 칸·시작일에만 글자, 옆 칸과 붙임
 						$c.append($('<button type="button" class="vc-bar">').addClass(v.PAID_YN === 'Y' ? 'paid' : 'unpaid').toggleClass('open', !v.END_DT)
+							.toggleClass('cl', ymd > v.START_DT && dow !== 0 && d !== 1).toggleClass('cr', ymd < end && dow !== 6 && d !== last)
 							.attr('title', period(v) + ' · ' + typeName(v.VAC_CD) + (v.MEMO ? ' · ' + v.MEMO : '')).text(typeName(v.VAC_CD) + (v.HALF_CD ? (v.HALF_CD === 'AM' ? '(오전)' : '(오후)') : ''))
 							.on('mousedown click', function(e) { e.stopPropagation(); if (e.type === 'click') form(null, null, v); }));
 					}
@@ -201,6 +203,7 @@
 		'.vc-day.sel { background: #e3f6fb; box-shadow: inset 0 0 0 2px #16a0c4; } .vc-day.today .vc-n { background: #0b6e8a; color: #fff; border-radius: 999px; padding: 0 5px; }',
 		'.sun, .vc-day.sun .vc-n { color: #c0392b; } .sat, .vc-day.sat .vc-n { color: #2f6fb0; }',
 		'.vc-bar { display: block; width: 100%; margin-top: 2px; border: 0; border-radius: 4px; padding: 0 4px; font-size: 11px; font-weight: 600; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
+		'.vc-bar.cl { margin-left: -4px; width: calc(100% + 4px); border-top-left-radius: 0; border-bottom-left-radius: 0; color: transparent; } .vc-bar.cr { margin-right: -4px; width: calc(100% + 4px); border-top-right-radius: 0; border-bottom-right-radius: 0; } .vc-bar.cl.cr { width: calc(100% + 8px); }',
 		'.vc-bar.open { background-image: repeating-linear-gradient(45deg, transparent 0 5px, rgba(255,255,255,.55) 5px 8px); }',
 		'.vc-list { margin-top: 12px; font-size: 12.5px; } .vc-list td { vertical-align: middle; white-space: nowrap; } .vc-list td.vc-memo { white-space: normal; max-width: 280px; }',
 		'.vc-tag { font-size: 10.5px; background: #fff3c4; color: #8a5a00; border-radius: 999px; padding: 0 6px; } .vc-act { background: none; border: 0; color: #888; } .vc-act:hover { color: #0b6e8a; }',
