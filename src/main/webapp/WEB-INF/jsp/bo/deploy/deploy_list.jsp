@@ -40,6 +40,7 @@
 	td.dp-pay { background: #f7f8fa; }
 	td.dp-pay.a { background: #eefaf8; } td.dp-pay.d { background: #fdf3ec; } td.dp-pay.p { background: #f6f1fc; }
 	td.dp-pay.edit { text-decoration: underline dotted rgba(11,110,138,.6); text-underline-offset: 3px; cursor: pointer; }
+	#payTog { margin-right: 6px; align-self: center; }
 	.dp-pay-tog { border: 0; background: #111; color: #fff; border-radius: 999px; padding: 1px 10px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
 	.dp-pay-band { border: 0; border-radius: 8px; padding: 0 6px; font-size: 11px; font-weight: 700; color: #fff; margin-left: 4px; }
 	.dp-pay-band.a { background: #0e7c86; } .dp-pay-band.d { background: #b4531a; } .dp-pay-band.p { background: #6b3fa0; }
@@ -248,7 +249,7 @@
 		$(document).on('change', '.dp-filter', render);
 		$('[data-view]').on('click', function() { view = $(this).data('view'); $('[data-view]').removeClass('active'); $(this).addClass('active'); render(); });
 		$('#btnAdd').on('click', function() { if (view !== 'table') $('[data-view=table]').click(); addRow(true); });
-		$('#btnResetCols').on('click', function() { saveOrder(''); order = defaultOrder(); payOrder = []; try { localStorage.removeItem('dpPayOrder'); } catch (e) {} arrangeAll(); });
+		$('#btnResetCols').on('click', function() { saveOrder(''); order = defaultOrder(); setPayAt(null); try { localStorage.removeItem('dpPayOrder'); } catch (e) {} arrangeAll(); });
 		$('#ym').val(ym).on('change', function() { if (this.value) { ym = this.value; loadPay(render); } });
 		$('#prevYm, #nextYm').on('click', function() { ym = moment(ym + '-01').add(this.id === 'prevYm' ? -1 : 1, 'months').format('YYYY-MM'); $('#ym').val(ym); loadPay(render); });
 	});
@@ -303,21 +304,32 @@
 		if (payBand.p) PAY_PL.forEach(function(x) { c.push(['P_' + x[0], x[1], 'p']); });
 		return c.concat([['P_PROFIT', 'Σ 영업이익', 'p', ['p', '손익']], ['P_FLAG', '확인 사항'], ['P_LINK', '메모·이력']]);
 	}
-	// 급여 칸 순서: 이 브라우저에 기억. 펼친 칸처럼 저장된 순서에 없는 칸은 기본 순서에서 바로 앞 칸 뒤에. 접기·펴기 칸(P_TOG)은 늘 맨 앞
-	var payOrder = [];
-	try { payOrder = (localStorage.getItem('dpPayOrder') || '').split(',').filter(Boolean); } catch (e) {}
-	function payKeys() {
-		var def = payCols().map(function(c) { return c[0]; }), out = payOrder.filter(function(k) { return def.indexOf(k) >= 0 && k !== 'P_TOG'; });
-		def.forEach(function(k, i) { if (k !== 'P_TOG' && out.indexOf(k) < 0) out.splice(i > 1 ? out.indexOf(def[i - 1]) + 1 : 0, 0, k); });
-		return def.indexOf('P_TOG') >= 0 ? ['P_TOG'].concat(out) : out;
-	}
+	// 급여 칸 묶음 자리: 묶음 바로 앞 투입 칸 키('' = 맨 앞, 없으면 맨 뒤). 묶음째로만 옮기고 이 브라우저에 기억
+	var payAt = null;
+	try { payAt = localStorage.getItem('dpPayAt'); } catch (e) {}
+	function payKeys() { return payCols().map(function(c) { return c[0]; }); }
+	function payPos() { var i = order.indexOf(payAt); return payAt === '' ? 0 : i < 0 ? order.length : i + 1; }
+	function setPayAt(k) { payAt = k; try { if (k === null) localStorage.removeItem('dpPayAt'); else localStorage.setItem('dpPayAt', k); } catch (e) {} }
 	function payUrl(sq, tab) { return '/admin/pay/openPayList.do?ym=' + ym + '&open=' + sq + (tab ? '&tab=' + tab : ''); }
-	function payHeads() {
+	function payTogBtn() {
+		return $('<button type="button" class="dp-pay-tog">').attr('aria-expanded', payOpen)
+			.text('급여 · ' + Number(ym.substring(5)) + '월 ' + (pay.closed ? '마감' : '작성중') + (payOpen ? ' ▾ 접기' : ' ▸ 펼치기'))
+			.on('click', function() { payOpen = !payOpen; try { localStorage.setItem('dpPay', payOpen ? 'on' : 'off'); } catch (e) {} dpHide(); render(); });
+	}
+	// 투입 목록 표는 접기·펴기 버튼을 표 위 틀고정 버튼 왼쪽에 둔다(머리글 높이를 줄이려고). 틀고정 바는 공통 스크립트가 조금 뒤에 만든다
+	var $payTog = $();
+	function placeTog(n) {
+		$payTog.remove();
+		if (!data.canPay || page !== 'ACTIVE' || view !== 'table') return;
+		$payTog = payTogBtn().attr('id', 'payTog');
+		var $bar = $('#mainScroll').prevAll('.frz-bar').first(), mine = $payTog;
+		if ($bar.length) $bar.find('.frz-btn').before($payTog);
+		else if ((n || 0) < 10) setTimeout(function() { if (mine === $payTog) placeTog((n || 0) + 1); }, 300);
+	}
+	function payHeads(main) {
 		return payCols().map(function(c) {
 			var $th = $('<th class="dp-pay-h">').attr('data-c', c[0]).toggleClass('dp-num', /^P_(?!DAYS|FLAG|LINK|TOG)/.test(c[0]));
-			if (c[0] === 'P_TOG') return $th.append($('<button type="button" class="dp-pay-tog">').attr('aria-expanded', payOpen)
-				.text('급여 · ' + Number(ym.substring(5)) + '월 ' + (pay.closed ? '마감' : '작성중') + (payOpen ? ' ▾ 접기' : ' ▸ 펼치기'))
-				.on('click', function() { payOpen = !payOpen; try { localStorage.setItem('dpPay', payOpen ? 'on' : 'off'); } catch (e) {} dpHide(); render(); }));
+			if (c[0] === 'P_TOG') return main ? $th.text('급여') : $th.append(payTogBtn());
 			$th.text(c[1]);
 			if (c[3]) $th.append($('<button type="button" class="dp-pay-band">').addClass(c[3][0]).attr('aria-expanded', !!payBand[c[3][0]])
 				.text(c[3][1] + (payBand[c[3][0]] ? ' ▾' : ' ▸')).on('click', function() { payBand[c[3][0]] = !payBand[c[3][0]]; render(); }));
@@ -576,6 +588,7 @@
 		$('#tableView').toggle(view === 'table');
 		$('#timelineView').toggle(view === 'timeline');
 		if (view === 'timeline') renderTimeline(filtered()); else renderTable(sortGroups(monthGroups()));
+		placeTog();
 	}
 
 	// ── 표 ──
@@ -589,7 +602,7 @@
 					.on('click', function(e) { e.stopPropagation(); if (sortKey === c[0]) sortDir = -sortDir; else { sortKey = c[0]; sortDir = 1; } render(); }));
 			$h.append($th);
 		});
-		$h.append(payHeads()).append($('<th data-c="_ACT">').append('<span class="sr-only">작업</span>'));
+		$h.append(payHeads(true)).append($('<th data-c="_ACT">').append('<span class="sr-only">작업</span>'));
 		putSums($h, groups);
 		$('#dpHead').empty().append($h);
 		bindDrag();
@@ -606,7 +619,7 @@
 		var rows = [].concat.apply([], groups.map(function(g) { return g.rows; })).filter(function(x) { return !x.PSEUDO; });
 		var ps = groups.map(function(g) { return pay.by[g.top.STAFF_SQ]; }).filter(Boolean);
 		function sum(list, f) { return list.reduce(function(s, x) { return s + Number(x[f] || 0); }, 0); }
-		function put(k, txt) { $h.children('[data-c="' + k + '"]').append($('<div class="dp-sumv">').text(txt)); }
+		function put(k, txt) { $h.children('[data-c="' + k + '"]').append($('<div class="dp-sumv th-sum">').text(txt)); }
 		put('STAFF_NM', '합계 ' + groups.length + '명 · ' + rows.length + '건');
 		visibleCols().forEach(function(c) { if (c[2]) put(c[0], dpWon(sum(rows, c[0]))); });
 		payCols().forEach(function(c) {
@@ -816,26 +829,23 @@
 	}
 
 	function arrange($tr) {
-		order.concat(payKeys(), ['_ACT']).forEach(function(k) { var $c = $tr.children('[data-c="' + k + '"]'); if ($c.length) $tr.append($c); });
+		var at = payPos();
+		order.slice(0, at).concat(payKeys(), order.slice(at), ['_ACT']).forEach(function(k) { var $c = $tr.children('[data-c="' + k + '"]'); if ($c.length) $tr.append($c); });
 	}
 	function arrangeAll() { $('#dpHead tr, #dpBody tr').each(function() { arrange($(this)); }); }
 
 	function saveOrder(val) { $.post('/admin/deploy/saveColumnsData.do', { ORDER: val }); }
 
-	// 투입 칸은 투입 칸끼리, 급여 칸은 급여 칸끼리 옮긴다(투입 칸 순서는 계정에, 급여 칸 순서는 이 브라우저에 저장)
+	// 투입 칸은 한 칸씩(순서는 계정에), 급여 칸은 어느 칸을 끌어도 묶음째로(자리는 이 브라우저에) 옮긴다
 	function move(from, to, after) {
-		if (/^P_/.test(from) !== /^P_/.test(to)) return;
-		if (/^P_/.test(from)) {
-			var cur = payKeys().filter(function(k) { return k !== 'P_TOG'; });
-			if (to === 'P_TOG') { to = cur[0]; after = false; }
-			cur.splice(cur.indexOf(from), 1);
-			cur.splice(cur.indexOf(to) + (after ? 1 : 0), 0, from);
-			payOrder = cur.concat(payOrder.filter(function(k) { return cur.indexOf(k) < 0; }));
-			try { localStorage.setItem('dpPayOrder', payOrder.join(',')); } catch (e) {}
-			return arrangeAll();
-		}
+		var fp = /^P_/.test(from), tp = /^P_/.test(to), i = order.indexOf(to);
+		if (fp && tp) return;
+		if (fp) { setPayAt(after ? to : i > 0 ? order[i - 1] : ''); return arrangeAll(); }
+		// 묶음 바로 앞 칸을 빼면 묶음은 그 앞 칸 뒤에 그대로 남는다
+		if (from === payAt) { var j = order.indexOf(from); setPayAt(j > 0 ? order[j - 1] : ''); }
 		order.splice(order.indexOf(from), 1);
-		order.splice(order.indexOf(to) + (after ? 1 : 0), 0, from);
+		if (tp) { order.splice(payPos(), 0, from); if (!after) setPayAt(from); }
+		else order.splice(order.indexOf(to) + (after ? 1 : 0), 0, from);
 		arrangeAll();
 		saveOrder(order.join(','));
 	}
@@ -843,8 +853,8 @@
 	function bindDrag() {
 		$('#dpHead tr').first().children('th').each(function() {
 			var th = this, c = $(th).attr('data-c');
-			if (c === '_ACT' || c === 'P_TOG') return; // 급여 접기·펴기 칸은 맨 앞 고정
-			$(th).attr({ draggable: true, tabindex: 0, title: '끌어서 순서 변경 (Alt+←/→)' });
+			if (c === '_ACT') return;
+			$(th).attr({ draggable: true, tabindex: 0, title: /^P_/.test(c) ? '끌면 급여 칸 묶음째 옮겨요 (Alt+←/→)' : '끌어서 순서 변경 (Alt+←/→)' });
 			function after(e) { var r = th.getBoundingClientRect(); return e.originalEvent.clientX > r.left + r.width / 2; }
 			function clear() { $('#dpHead th').removeClass('drop-l drop-r dragging'); }
 			$(th).on('dragstart', function(e) { drag = c; e.originalEvent.dataTransfer.setData('text/plain', c); e.originalEvent.dataTransfer.effectAllowed = 'move'; $(th).addClass('dragging'); })
@@ -854,8 +864,10 @@
 				.on('keydown', function(e) {
 					if (!e.altKey || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
 					e.preventDefault();
-					var list = /^P_/.test(c) ? payKeys().filter(function(k) { return k !== 'P_TOG'; }) : order, next = list[list.indexOf(c) + (e.key === 'ArrowRight' ? 1 : -1)];
-					if (next) { move(c, next, e.key === 'ArrowRight'); th.focus(); }
+					// 급여 묶음은 한 칸('P')으로 보고 옆 칸과 자리를 바꾼다
+					var seq = order.slice(); if (data.canPay) seq.splice(payPos(), 0, 'P');
+					var next = seq[seq.indexOf(/^P_/.test(c) ? 'P' : c) + (e.key === 'ArrowRight' ? 1 : -1)];
+					if (next) { move(c, next === 'P' ? 'P_TOG' : next, e.key === 'ArrowRight'); th.focus(); }
 				});
 		});
 	}

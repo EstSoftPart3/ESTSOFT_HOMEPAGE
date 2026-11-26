@@ -448,7 +448,8 @@
 				p = document.createElement('button');
 				p.type = 'button';
 				p.className = 'frz-pin';
-				th.appendChild(p);
+				th.insertBefore(p, th.querySelector(':scope>.th-sum')); // 머리글 안 합계 줄(.th-sum)이 있으면 그 앞, 칸 이름 옆
+
 			}
 			p.setAttribute('data-c', ci + 1);
 			p.setAttribute('aria-label', '맨 앞부터 ' + (text(th) || (ci + 1) + '번째') + ' 칸까지 고정');
