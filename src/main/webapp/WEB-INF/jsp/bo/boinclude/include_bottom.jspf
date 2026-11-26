@@ -63,7 +63,7 @@ $(document).ajaxSuccess(function(e, xhr, o) {
   <link rel="stylesheet" href="/resources/bo/plugins/jsgrid/jsgrid-theme.min.css">
 
 
-<script src="/resources/common/ui-table.js?v=20261126pin"></script>
+<script src="/resources/common/ui-table.js?v=20261126frz"></script>
 <script src="/resources/common/bo-list.js?v=20261113"></script>
 <script src="/resources/common/bo-view.js?v=20261120load"></script>
 <script src="/resources/common/bo-tabs.js?v=20261119m"></script>

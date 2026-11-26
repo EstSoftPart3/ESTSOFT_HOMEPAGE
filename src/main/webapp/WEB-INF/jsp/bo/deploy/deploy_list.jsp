@@ -315,20 +315,21 @@
 	function payPos() { var i = order.indexOf(payAt === null ? 'COST_PRICE' : payAt); return payAt === '' ? 0 : i < 0 ? order.length : i + 1; }
 	function setPayAt(k) { payAt = k; try { if (k === null) localStorage.removeItem('dpPayAt'); else localStorage.setItem('dpPayAt', k); } catch (e) {} }
 	function payUrl(sq, tab) { return '/admin/pay/openPayList.do?ym=' + ym + '&open=' + sq + (tab ? '&tab=' + tab : ''); }
+	function togText() { return '급여 · ' + Number(ym.substring(5)) + '월 ' + (pay.closed ? '마감' : '작성중') + (payOpen ? ' ▾ 접기' : ' ▸ 펼치기'); }
 	function payTogBtn() {
-		return $('<button type="button" class="dp-pay-tog">').attr('aria-expanded', payOpen)
-			.text('급여 · ' + Number(ym.substring(5)) + '월 ' + (pay.closed ? '마감' : '작성중') + (payOpen ? ' ▾ 접기' : ' ▸ 펼치기'))
+		return $('<button type="button" class="dp-pay-tog">').attr('aria-expanded', payOpen).text(togText())
 			.on('click', function() { payOpen = !payOpen; try { localStorage.setItem('dpPay', payOpen ? 'on' : 'off'); } catch (e) {} dpHide(); render(); });
 	}
-	// 투입 목록 표는 접기·펴기 버튼을 표 위 틀고정 버튼 왼쪽에 둔다(머리글 높이를 줄이려고). 틀고정 바는 공통 스크립트가 조금 뒤에 만든다
+	// 투입 목록 표는 접기·펴기 버튼을 표 위 틀고정 버튼 왼쪽에 둔다(머리글 높이를 줄이려고). 틀고정 바는 공통 스크립트가 조금 뒤에 만든다.
+	// 버튼은 한 번 만들어 계속 쓴다(누른 뒤에도 포커스가 그대로 남게)
 	var $payTog = $();
 	function placeTog(n) {
-		$payTog.remove();
-		if (!data.canPay || page !== 'ACTIVE' || view !== 'table') return;
-		$payTog = payTogBtn().attr('id', 'payTog');
-		var $bar = $('#mainScroll').prevAll('.frz-bar').first(), mine = $payTog;
-		if ($bar.length) $bar.find('.frz-btn').before($payTog);
-		else if ((n || 0) < 10) setTimeout(function() { if (mine === $payTog) placeTog((n || 0) + 1); }, 300);
+		if (!data.canPay || page !== 'ACTIVE' || view !== 'table') return $payTog.detach();
+		if (!$payTog.length) $payTog = payTogBtn().attr('id', 'payTog');
+		else $payTog.attr('aria-expanded', payOpen).text(togText());
+		var $bar = $('#mainScroll').prevAll('.frz-bar').first();
+		if ($bar.length) { if (!$payTog.parent().is($bar)) $bar.find('.frz-btn').before($payTog); }
+		else if ((n || 0) < 10) setTimeout(function() { placeTog((n || 0) + 1); }, 300);
 	}
 	function payHeads(main) {
 		return payCols().map(function(c) {
@@ -336,7 +337,7 @@
 			if (c[0] === 'P_TOG') return main ? $th.text('급여') : $th.append(payTogBtn());
 			$th.text(c[1]);
 			if (c[3]) $th.append($('<button type="button" class="dp-pay-band">').addClass(c[3][0]).attr('aria-expanded', !!payBand[c[3][0]])
-				.text(c[3][1] + (payBand[c[3][0]] ? ' ▾' : ' ▸')).on('click', function() { payBand[c[3][0]] = !payBand[c[3][0]]; render(); }));
+				.text(c[3][1] + (payBand[c[3][0]] ? ' ▾' : ' ▸')).on('click', function() { payBand[c[3][0]] = !payBand[c[3][0]]; render(); $('#dpHead .dp-pay-band.' + c[3][0]).trigger('focus'); }));
 			return $th;
 		});
 	}
@@ -704,11 +705,10 @@
 
 	function viewRow(r, g, child) {
 		var $tr = $('<tr>').toggleClass('dp-secret', !!r.SECRET).toggleClass('dp-sub', !!child), rm = remain(r);
-		// 급여관리처럼: 사람 단위 칸은 윗줄 하나로 합치고(rowspan), └ 줄에는 계약 칸만 둔다
-		var span = !child && isOpen(g) ? g.rows.length : 1;
+		// 사람 단위 칸은 윗줄에만, └ 줄은 빈 칸(줄을 합치면 공통 틀고정이 꺼져서 rowspan 을 쓰지 않는다)
 		visibleCols().forEach(function(c) {
 			var $td = $('<td>').attr('data-c', c[0]), v = r[c[0]];
-			if (PERSON.indexOf(c[0]) >= 0) { if (child) return; $td.attr('rowspan', span); }
+			if (PERSON.indexOf(c[0]) >= 0 && child) { $tr.append($td); return; }
 			if (c[0] === 'PRJ_NM' && !child && (g.kind === 'REST' || g.kind === 'IDLE')) statusCell($td, g, r);
 			else if (r.PSEUDO && EDIT[c[0]]) $td.text(''); // 대기중 사람: 그 달 투입 건이 없으니 고칠 칸도 없다
 			else if (c[0] === 'REMAIN' && child) $td.append($('<span class="dp-pill">').addClass(rm.tone).text(rm.text)).append(dpInfoBtn(r.STAFF_NM + ' 투입 상세', function() { openDetail(r); }));
@@ -728,8 +728,9 @@
 			if (c[0] === 'PRJ_NM' && !child) leaveMarks($td, g);
 			$tr.append($td);
 		});
-		// 급여는 사람 단위: 윗줄에만 두고 └ 줄까지 합친다
-		if (!child) payCells(r.STAFF_SQ).forEach(function($td) { $tr.append($td.attr('rowspan', span)); });
+		// 급여는 사람 단위: 윗줄에만, └ 줄은 빈 칸
+		if (!child) $tr.append(payCells(r.STAFF_SQ));
+		else payKeys().forEach(function(k) { $tr.append($('<td class="dp-pay">').attr('data-c', k)); });
 		$tr.append($('<td data-c="_ACT">'));
 		return $tr;
 	}
@@ -791,7 +792,8 @@
 		if (g.rows.length < 2) return '';
 		var open = isOpen(g);
 		var $p = $('<button type="button" class="pl-dup-arrow">').attr({ 'aria-expanded': open, 'aria-label': g.top.STAFF_NM + ' 다른 계약 ' + (g.rows.length - 1) + '건 ' + (open ? '접기' : '펼치기') }).text(open ? '▾' : '▸')
-			.on('click', function() { openDup[g.top.STAFF_SQ] = !open; dpHide(); render(); });
+			.attr('data-sq', g.top.STAFF_SQ)
+			.on('click', function() { openDup[g.top.STAFF_SQ] = !open; dpHide(); render(); $('#dpBody .pl-dup-arrow[data-sq="' + g.top.STAFF_SQ + '"]').trigger('focus'); });
 		dpHover($p, $p, function() {
 			var asc = g.rows.slice().reverse(), lines = [];
 			asc.forEach(function(x, i) {

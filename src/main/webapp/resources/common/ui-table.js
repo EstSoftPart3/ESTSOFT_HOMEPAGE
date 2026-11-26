@@ -412,6 +412,11 @@
 	function fRows(t) { return fAll(t).filter(function (r) { return !r.classList.contains('more-hide'); }); }
 	function fRowKey(tr) { var b = firstBox(tr); return (b && b.getAttribute('data-key')) || rowKey(tr); }
 
+	// 화면이 표를 다시 그려 고정 칸이 풀린 표: 120ms 뒤가 아니라 바로 다시 고정한다(풀렸다 붙으며 흔들리던 것)
+	function frzLost(t) {
+		var b = t.tBodies[0] && t.tBodies[0].rows[0];
+		return !!(t._frz && t._frz.fc > 0 && t.tHead && t.tHead.rows[0] && (!t.tHead.rows[0].querySelector('.frz-c') || (b && b.cells.length > 1 && !b.querySelector('.frz-c'))) && freezable(t) && colsOk(t));
+	}
 	function freeze(t) {
 		var s = fState(t), body = t.tBodies[0], head = t.tHead.rows[0], cols = colsOk(t), rok = rowsOk(t);
 		if (s.fc < 0) s.fc = fBase(t);
@@ -790,7 +795,7 @@
 	var timer = null;
 	function later() {
 		// 칸을 옮겨 둔 표는 화면이 줄을 다시 그리자마자 맞춘다(120ms 뒤에 하면 원래 순서가 잠깐 보인다)
-		if (BO) [].forEach.call(document.querySelectorAll('table.table'), function (t) { if (t._col && t._col.moved && movable(t)) arrange(t); if (t.classList.contains('cd-on')) card(t); });
+		if (BO) [].forEach.call(document.querySelectorAll('table.table'), function (t) { if (t._col && t._col.moved && movable(t)) arrange(t); if (t.classList.contains('cd-on')) card(t); if (frzLost(t)) freeze(t); });
 		clearTimeout(timer);
 		timer = setTimeout(scan, 120);
 	}
