@@ -371,8 +371,12 @@
 		});
 	}
 	// 사람 한 명의 급여 칸들. 급여 행이 없는 사람(그 달 급여 없음)은 빈 칸. top 을 주면 매입이 둘 이상인 사람은 그 줄 몫 + 아래 작게 합계
-	function payCells(sq, top) {
+	function payCells(sq, top, vis) {
 		var r = pay.by[sq], m = top && payParts(sq), part = m && m.by[top.DEPLOY_SQ];
+		// 합계는 지금 보이는(체크한) 줄의 몫이 둘 이상일 때만
+		var shown = part ? (vis || []).filter(function(x) { return m.by[x.DEPLOY_SQ]; }) : [];
+		if (shown.length > 1) m = { NET: shown.reduce(function(s, x) { return s + m.by[x.DEPLOY_SQ].NET; }, 0), PROFIT: shown.reduce(function(s, x) { return s + m.by[x.DEPLOY_SQ].PROFIT; }, 0) };
+		else if (part) m = {};
 		return payCols().map(function(c) {
 			var k = c[0], f = k.substring(2), $td = $('<td class="dp-pay">').attr('data-c', k).addClass(c[2] || '');
 			if (!r) return $td;
@@ -482,6 +486,9 @@
 		var ref = ym === YM ? today : last;
 		var groups = keys.map(function(k) {
 			var rows = by[k].slice().sort(function(a, b) { return b.START_DT.localeCompare(a.START_DT); });
+			// 체크 안 한 형태의 건(정규직의 기타계약·외부 몫 등)은 줄·합계에서 아예 뺀다. 내근·휴직 사람은 모두
+			if (!anyChip && !kindOf(k)) rows = rows.filter(function(x) { return checked[chipOf(x.EMP_TYPE_CD)]; });
+			if (!rows.length) return null;
 			// 수습도 정규직이다. 같은 달 수습·정규 건이 함께 있으면 정규 건 한 줄만 보인다(수습 D-n 은 형태 칸에)
 			if (dpProbReg(rows.map(function(x) { return x.EMP_TYPE_CD; }))) rows = rows.filter(function(x) { return x.EMP_TYPE_CD !== 'PROBATION'; });
 			// 휴가 건(대기-유급휴가 등)은 └ 줄이 아니라 윗줄 프로젝트 칸의 🏖 표시로
@@ -490,7 +497,7 @@
 			var now = rows.filter(function(x) { return !moment(x.START_DT).isAfter(ref) && (!x.END_DT || !moment(x.END_DT).isBefore(ref)); })[0];
 			if (now) rows = [now].concat(rows.filter(function(x) { return x !== now; }));
 			return { top: rows[0], rows: rows, leaves: leaves, kind: kindOf(k) };
-		});
+		}).filter(Boolean);
 		if (checked._IDLE) idleInMonth().forEach(function(o) {
 			if (by[o.s.STAFF_SQ]) return;
 			var last1 = o.last || {}, r = { STAFF_SQ: o.s.STAFF_SQ, STAFF_NM: o.s.STAFF_NM, SECRET: o.s.SECRET, JOIN_DT: o.s.JOIN_DT, HOME_ADDR: o.s.ADDR, EMP_TYPE_CD: last1.EMP_TYPE_CD, PSEUDO: true,
@@ -751,6 +758,11 @@
 
 	function viewRow(r, g, child) {
 		var $tr = $('<tr>').toggleClass('dp-secret', !!r.SECRET).toggleClass('dp-sub', !!child), rm = remain(r);
+		// 매출이 있는 줄이 둘 이상(같은 정규직에서 프로젝트만 바뀐 사람 등)이면 윗줄 매출단가 아래에 작게 그 달 매출 합계
+		if (!child) {
+			var sales = g.rows.filter(function(x) { return !x.PSEUDO && Number(x.SALE_PRICE); }).map(function(x) { return saleOf(x).amt; });
+			if (sales.length > 1) r._saleSum = sales.reduce(function(s, v) { return s + v; }, 0); else delete r._saleSum;
+		}
 		// 사람 단위 칸은 윗줄에만, └ 줄은 빈 칸(줄을 합치면 공통 틀고정이 꺼져서 rowspan 을 쓰지 않는다)
 		visibleCols().forEach(function(c) {
 			var $td = $('<td>').attr('data-c', c[0]), v = r[c[0]];
@@ -775,7 +787,7 @@
 			$tr.append($td);
 		});
 		// 급여는 사람 단위: 윗줄에만, └ 줄은 빈 칸
-		$tr.append(child ? payChildCells(r) : payCells(r.STAFF_SQ, r.PSEUDO ? null : r));
+		$tr.append(child ? payChildCells(r) : payCells(r.STAFF_SQ, r.PSEUDO ? null : r, g.rows));
 		$tr.append($('<td data-c="_ACT">'));
 		return $tr;
 	}
@@ -808,6 +820,13 @@
 	}
 
 	// 칸 하나 바로 수정. 저장되면 다시 불러온다(이력 건수·두 줄 묶음이 바뀔 수 있어서)
+	// 기준월 우리 매출(고객사 직접계약 뺀 값): 일부만 근무하면 일할
+	function saleOf(r, v) {
+		var net = Number((v === undefined ? r.SALE_PRICE : v) || 0) - Number(r.CLIENT_DIRECT_AMT || 0), m = moment(ym + '-01'), last = m.clone().endOf('month'), total = last.date();
+		var from = moment.max(moment(r.START_DT), m), to = r.END_DT ? moment.min(moment(r.END_DT), last) : last, days = Math.max(0, to.diff(from, 'days') + 1);
+		// shortcut: 일할 버림 단위를 1,000원으로 본다(급여관리 기준값 기본), 기준값을 바꾸면 이 화면 일할 금액만 천 원 단위로 보인다
+		return { net: net, days: days, total: total, amt: days >= total ? net : Math.floor(net * days / total / 1000) * 1000 };
+	}
 	function editCell($td, r, c) {
 		var e = EDIT[c[0]], field = e[0], type = e[1] === 'SALE_YN' || e[1] === 'BUY_YN' ? partnerOptions(e[1], r[field]) : e[1];
 		if (c[2]) $td.addClass('dp-num');
@@ -817,10 +836,9 @@
 				if (c[0] === 'EMP_TYPE_CD') $c.text(typeLabel(r));
 				else if (c[0] === 'SALE_PRICE') {
 					// 급여관리와 같은 모양: 기준월에 일부만 근무하면 일할(월 금액 취소선 + 일할 금액), 직접계약은 🤝 에만
-					var net = Number(v || 0) - Number(r.CLIENT_DIRECT_AMT || 0), m = moment(ym + '-01'), last = m.clone().endOf('month'), total = last.date();
-					var from = moment.max(moment(r.START_DT), m), to = r.END_DT ? moment.min(moment(r.END_DT), last) : last, days = Math.max(0, to.diff(from, 'days') + 1);
-					// shortcut: 일할 버림 단위를 1,000원으로 본다(급여관리 기준값 기본), 기준값을 바꾸면 이 화면 일할 금액만 천 원 단위로 보인다
-					dpSaleFill($c, r, net, days, total, Math.floor(net * days / total / 1000) * 1000, function() { directPopup(r); }).append(dpInfoBtn(r.STAFF_NM + ' 단가·급여 이력', function() { payHistory(r); }));
+					var s = saleOf(r, v);
+					dpSaleFill($c, r, s.net, s.days, s.total, s.amt, function() { directPopup(r); }).append(dpInfoBtn(r.STAFF_NM + ' 단가·급여 이력', function() { payHistory(r); }));
+					if (r._saleSum !== undefined) $c.append($('<div class="dp-part-sum">').text('합계 ' + dpWon(r._saleSum)));
 				}
 				else if (c[2]) $c.text(v ? dpWon(v) : '');
 				else if (c[0] === 'WORK_AREA') $c.text(v || '').append(farFrom(r.HOME_ADDR, v) ? $('<span class="dp-far">원거리</span>') : '');
