@@ -215,16 +215,16 @@
 	<script src="/resources/common/staff-career.js?v=20261120w"></script>
 
 	<script>
-	// 이 순서가 순정(기본) 칸 순서. 급여 칸 묶음은 기본으로 계약단가 뒤
-	var COLS = [['STAFF_NM', '성명'], ['EMP_TYPE_CD', '형태'], ['SALE_PARTNER_NM', '매출처'], ['BUY_PARTNER_NM', '매입처'], ['PRJ_NM', '프로젝트'], ['JOIN_DT', '입사일'], ['START_DT', '투입일'], ['END_DT', '철수일'],
-		['REMAIN', '남은 기간'], ['GRADE_CD', '등급'], ['SALE_PRICE', '매출단가', true], ['COST_PRICE', '계약단가', true], ['HOME_AREA', '거주지역'], ['WORK_AREA', '근무지역'], ['CLIENT_NM', '고객사'],
-		['TENURE', '근속'], ['PRJ', '프로젝트 이력'], ['MEMOS', '메모'], ['HIST', '이력']];
+	// 이 순서가 순정(기본) 칸 순서. 급여 칸 묶음은 기본으로 계약단가 뒤, 기본 정렬은 입사일 오름차순
+	var COLS = [['STAFF_NM', '성명'], ['EMP_TYPE_CD', '형태'], ['SALE_PARTNER_NM', '매출처'], ['BUY_PARTNER_NM', '매입처'], ['PRJ_NM', '프로젝트'], ['GRADE_CD', '등급'], ['JOIN_DT', '입사일'], ['START_DT', '투입일'],
+		['END_DT', '철수일'], ['REMAIN', '남은 기간'], ['SALE_PRICE', '매출단가', true], ['COST_PRICE', '계약단가', true], ['MEMOS', '메모'], ['HIST', '이력'], ['HOME_AREA', '거주지역'], ['WORK_AREA', '근무지역'],
+		['CLIENT_NM', '고객사'], ['TENURE', '근속'], ['PRJ', '프로젝트 이력']];
 	var data = null, order = [], view = 'table', drag = null, page = 'ACTIVE', prjCache = {};
 	// 관리자 홈 바로가기: ?page=IDLE(대기 현황) · ENDING(철수 임박)
 	var pageParam = /[?&]page=(IDLE|ENDING|OFFICE|REST)\b/.exec(location.search);
 	if (pageParam) page = pageParam[1];
 	// 기준월과 체크 칩(급여관리와 같은 구분). [키, 이름, 고용형태들]
-	var ym = moment().format('YYYY-MM'), sortKey = 'REMAIN', sortDir = 1;
+	var ym = moment().format('YYYY-MM'), sortKey = 'JOIN_DT', sortDir = 1;
 	// 고용형태 공통코드(HR_EMP_TYPE) 순서·이름대로 칩 하나씩. 코드에 없는 형태는 '코드 없음'
 	var CHIPS = hrAllCodes('HR_EMP_TYPE').map(function(c) { return [c.CD, c.NM, [c.CD]]; }).concat([['_NONE', '코드 없음', []]]), checked = {};
 	CHIPS.forEach(function(c) { checked[c[0]] = true; });
@@ -460,13 +460,18 @@
 			if (now) rows = [now].concat(rows.filter(function(x) { return x !== now; }));
 			return { top: rows[0], rows: rows, leaves: leaves, kind: kindOf(k) };
 		});
-		if (checked._IDLE) idleList().forEach(function(o) {
+		if (checked._IDLE) idleInMonth().forEach(function(o) {
 			if (by[o.s.STAFF_SQ]) return;
 			var last1 = o.last || {}, r = { STAFF_SQ: o.s.STAFF_SQ, STAFF_NM: o.s.STAFF_NM, SECRET: o.s.SECRET, JOIN_DT: o.s.JOIN_DT, HOME_ADDR: o.s.ADDR, EMP_TYPE_CD: last1.EMP_TYPE_CD, PSEUDO: true,
 				STATE: o.kind === 'WAIT' ? 'WAIT' : o.kind === 'FUTURE' ? 'FUTURE' : '', END_DT: o.kind === 'WAIT' ? last1.END_DT : '', START_DT: o.kind === 'FUTURE' ? o.future.START_DT : '' };
 			groups.push({ top: r, rows: [r], leaves: [], kind: 'IDLE', idle: o });
 		});
 		return groups.filter(function(g) { return g.kind ? matches(g.top, kw, true) : g.rows.some(function(x) { return matches(x, kw, anyChip); }); });
+	}
+	// 투입현황 표의 대기중: 마지막 투입이 정규·수습이고 입사일이 기준월 말일 이전인 사람만(대기 현황 탭은 모두)
+	function idleInMonth() {
+		var last = moment(ym + '-01').endOf('month');
+		return idleList().filter(function(o) { return o.s.JOIN_DT && !moment(o.s.JOIN_DT).isAfter(last) && /^(REGULAR|PROBATION)$/.test((o.last || {}).EMP_TYPE_CD || ''); });
 	}
 	function isLeave(x) { return /휴가/.test(x.PRJ_NM || '') && !Number(x.SALE_PRICE); }
 
@@ -588,7 +593,7 @@
 		if (page === 'ENDING') return renderEnding(ending);
 		if (page === 'OFFICE') return renderOffice(office);
 		if (page === 'REST') return renderRest(rest);
-		renderChips(monthGroups(true), office, rest, idle);
+		renderChips(monthGroups(true), office, rest, idleInMonth());
 		$('#tableView').toggle(view === 'table');
 		$('#timelineView').toggle(view === 'timeline');
 		if (view === 'timeline') renderTimeline(filtered()); else renderTable(sortGroups(monthGroups()));
