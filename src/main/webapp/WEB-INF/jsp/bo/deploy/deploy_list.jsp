@@ -659,16 +659,26 @@
 	// 칸별 합계: 머리글 칸 안 아랫줄에 넣는다(머리글이 한 줄이어야 공통 틀고정이 동작해서 줄을 따로 만들지 않음).
 	// 지금 걸러진 목록 기준. 단가는 계약 줄마다(휴가 건 빼고), 급여는 사람마다 한 번
 	function putSums($h, groups) {
-		var rows = [].concat.apply([], groups.map(function(g) { return g.rows; })).filter(function(x) { return !x.PSEUDO; });
+		// 체크한 형태의 줄만(내근·휴직 사람은 그 사람 줄 모두). 건수는 사람·형태별 한 건(같은 정규직에서 프로젝트만 바뀐 줄은 한 건)
+		var rows = [].concat.apply([], groups.map(function(g) { return g.rows.filter(function(x) { return !x.PSEUDO && (g.kind || checked[chipOf(x.EMP_TYPE_CD)]); }); }));
+		var cnt = {}; rows.forEach(function(x) { cnt[x.STAFF_SQ + '|' + chipOf(x.EMP_TYPE_CD)] = 1; });
 		var ps = groups.map(function(g) { return pay.by[g.top.STAFF_SQ]; }).filter(Boolean);
 		function sum(list, f) { return list.reduce(function(s, x) { return s + Number(x[f] || 0); }, 0); }
 		function put(k, txt) { $h.children('[data-c="' + k + '"]').append($('<div class="dp-sumv th-sum">').text(txt)); }
-		put('STAFF_NM', '합계 ' + groups.length + '명 · ' + rows.length + '건');
-		visibleCols().forEach(function(c) { if (c[2]) put(c[0], dpWon(sum(rows, c[0]))); });
+		put('STAFF_NM', '합계 ' + groups.length + '명 · ' + Object.keys(cnt).length + '건');
+		// 매출단가는 고객사 직접계약을 뺀 우리 매출(엑셀 월매출과 같은 기준)
+		visibleCols().forEach(function(c) { if (c[2]) put(c[0], dpWon(c[0] === 'SALE_PRICE' ? sum(rows, 'SALE_PRICE') - sum(rows, 'CLIENT_DIRECT_AMT') : sum(rows, c[0]))); });
+		// 실지급·영업이익: 계약 줄마다 나눈 사람은 합계에 넣은 줄의 몫만(체크 안 한 기타계약·외부 몫은 빼고)
+		function partSum(f) {
+			return groups.reduce(function(s, g) {
+				var sq = g.top.STAFF_SQ, m = payParts(sq), r = pay.by[sq];
+				if (!m) return s + (r ? Number(r[f] || 0) : 0);
+				return s + rows.filter(function(x) { return x.STAFF_SQ === sq && m.by[x.DEPLOY_SQ]; }).reduce(function(t, x) { return t + m.by[x.DEPLOY_SQ][f]; }, 0);
+			}, 0);
+		}
 		payCols().forEach(function(c) {
 			var f = c[0].substring(2);
-			// 실지급 합계는 줄 칸의 합계와 같게 업체 지급분(기타계약·외부)까지
-			if (c[0] === 'P_NET') return put(c[0], dpWon(groups.reduce(function(s, g) { var m = payParts(g.top.STAFF_SQ), r = pay.by[g.top.STAFF_SQ]; return s + (m ? m.NET : r ? Number(r.NET || 0) : 0); }, 0)));
+			if (c[0] === 'P_NET' || c[0] === 'P_PROFIT') return put(c[0], dpWon(partSum(f)));
 			if (/^P_(?!DAYS|FLAG|LINK|TOG|DELTA)/.test(c[0])) put(c[0], dpWon(f === '_SETTLE' ? ['NP_SETTLE', 'HI_SETTLE', 'EI_SETTLE', 'LTC_SETTLE', 'IT_SETTLE', 'LIT_SETTLE'].reduce(function(t, k) { return t + sum(ps, k); }, 0) : sum(ps, f)));
 		});
 	}
