@@ -470,8 +470,12 @@
 	function depsOf(sq) { return data.all.filter(function(x) { return x.STAFF_SQ === sq; }); }
 	function isActive(x) { return !moment(x.START_DT).isAfter(today) && (!x.END_DT || !moment(x.END_DT).isBefore(today)); }
 
-	// 내근직: 가장 최근 투입 건이 내근직인 사람(예전에만 내근이었으면 아님). 투입 현황·대기·철수 임박에서 빠지고 내근직 탭에 보인다
-	function isOffice(sq) { var last = depsOf(sq).reduce(function(a, x) { return !a || x.START_DT >= a.START_DT ? x : a; }, null); return !!last && last.OFFICE_YN === 'Y'; }
+	// 내근직: 오늘 진행 중인 건 중 내근이 있는 사람. 진행 중인 건이 없으면 가장 최근 투입일의 건들(같은 날 여럿이면 그중 하나라도) 기준. 예전에만 내근이었으면 아님
+	function isOffice(sq) {
+		var d = depsOf(sq), act = d.filter(isActive);
+		if (!act.length) { var lastDt = d.reduce(function(m, x) { return x.START_DT > m ? x.START_DT : m; }, ''); act = d.filter(function(x) { return x.START_DT === lastDt; }); }
+		return act.some(function(x) { return x.OFFICE_YN === 'Y'; });
+	}
 	// 휴직: 휴직 기간이 끝나지 않은(예정 포함) 투입 건. 있으면 다른 탭에서 모두 빠지고 휴직 탭에만 보인다. 종료일이 지나면 원래 목록으로
 	function restOf(sq) { return data.all.filter(function(x) { return x.STAFF_SQ === sq && x.REST_FROM_DT && (!x.REST_TO_DT || !moment(x.REST_TO_DT).isBefore(today)); }).pop(); }
 	function away(sq) { return isOffice(sq) || !!restOf(sq); }
