@@ -41,6 +41,7 @@
 	td.dp-pay.a { background: #eefaf8; } td.dp-pay.d { background: #fdf3ec; } td.dp-pay.p { background: #f6f1fc; }
 	td.dp-pay.edit { text-decoration: underline dotted rgba(11,110,138,.6); text-underline-offset: 3px; cursor: pointer; }
 	#payTog { margin-right: 6px; align-self: center; }
+	.dp-part-sum { font-size: 10.5px; font-weight: 400; color: #6b7680; line-height: 1.2; }
 	.dp-resize { height: 10px; cursor: ns-resize; background: linear-gradient(#b9c2cb, #b9c2cb) center / 48px 3px no-repeat; border-bottom: 1px solid #e5e9ee; }
 	.dp-resize:hover, .dp-resize:focus { background-color: #eef3f8; outline: none; }
 	.dp-pay-tog { border: 0; background: #111; color: #fff; border-radius: 999px; padding: 1px 10px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
@@ -341,12 +342,41 @@
 			return $th;
 		});
 	}
-	// 사람 한 명의 급여 칸들. 급여 행이 없는 사람(그 달 급여 없음)은 빈 칸
-	function payCells(sq) {
+	// 본인 계약(급여)과 업체 몫(기타계약·외부)이 같이 있는 사람: 계약 줄마다 실지급·영업이익을 나눈다(급여관리 계산과 같은 식).
+	// 본인 몫 = 실지급 · 본인 건 매출 − 지급계 − 회사부담, 업체 몫 = 그 건 지급액 · 그 건 매출 − 지급액. 나눈 합 = 사람 영업이익
+	// shortcut: 본인 계약이 한 달에 둘 이상이면 본인 몫을 첫 건에 모두 둔다, 그런 사람이 생기면 일수로 나눈다
+	function payParts(sq) {
 		var r = pay.by[sq];
+		if (!r || r.OFFICE) return null;
+		var ds = r.DETAILS || [], own = ds.filter(function(d) { return PAY_OWN.indexOf(d.DEPLOY_TYPE) >= 0; }), other = ds.filter(function(d) { return d.DEPLOY_TYPE && PAY_OWN.indexOf(d.DEPLOY_TYPE) < 0; });
+		if (!own.length || !other.length) return null;
+		var m = { by: {} }, num = function(v) { return Number(v || 0); };
+		m.by[own[0].DEPLOY_SQ] = { NET: num(r.NET), PROFIT: own.reduce(function(s, d) { return s + num(d.REAL_SALE); }, 0) - num(r.PAY_TOTAL) - num(r.COMPANY) };
+		other.forEach(function(d) { m.by[d.DEPLOY_SQ] = { NET: num(d.BASE_AMT), PROFIT: num(d.REAL_SALE) - num(d.BASE_AMT) }; });
+		m.NET = num(r.NET) + other.reduce(function(s, d) { return s + num(d.BASE_AMT); }, 0);
+		m.PROFIT = num(r.PROFIT);
+		return m;
+	}
+	function partCell($td, v, total) {
+		$td.addClass('dp-num font-weight-bold').toggleClass('text-danger', v < 0).text(dpWon(v));
+		if (total !== undefined) $td.append($('<div class="dp-part-sum">').text('합계 ' + dpWon(total)));
+		return $td;
+	}
+	// └ 줄(다른 계약)의 급여 칸: 나눈 몫이 있으면 실지급·영업이익만
+	function payChildCells(x) {
+		var m = payParts(x.STAFF_SQ), p = m && m.by[x.DEPLOY_SQ];
+		return payKeys().map(function(k) {
+			var $td = $('<td class="dp-pay">').attr('data-c', k);
+			return p && (k === 'P_NET' || k === 'P_PROFIT') ? partCell($td, p[k.substring(2)]) : $td;
+		});
+	}
+	// 사람 한 명의 급여 칸들. 급여 행이 없는 사람(그 달 급여 없음)은 빈 칸. top 을 주면 매입이 둘 이상인 사람은 그 줄 몫 + 아래 작게 합계
+	function payCells(sq, top) {
+		var r = pay.by[sq], m = top && payParts(sq), part = m && m.by[top.DEPLOY_SQ];
 		return payCols().map(function(c) {
 			var k = c[0], f = k.substring(2), $td = $('<td class="dp-pay">').attr('data-c', k).addClass(c[2] || '');
 			if (!r) return $td;
+			if (part && (k === 'P_NET' || k === 'P_PROFIT')) return partCell($td, part[f], m[f]);
 			if (k === 'P_TOG') return $td.append($('<a class="pl-btn" target="_blank" rel="noopener">').attr({ href: payUrl(sq), 'aria-label': r.STAFF_NM + ' 급여 상세(새 탭)', title: '급여 상세' }).text('💰'));
 			if (k === 'P_DAYS') { var d = r.DETAILS.filter(function(x) { return PAY_OWN.indexOf(x.DEPLOY_TYPE) >= 0; }).reduce(function(s, x) { return s + Number(x.WORK_DAYS || 0); }, 0); return $td.addClass('dp-num').text(d ? d + '일' : '대기'); }
 			if (k === 'P_DELTA') return $td.addClass('dp-num').text(r.DELTA_PCT === undefined ? '' : (r.DELTA_PCT > 0 ? '+' : '') + r.DELTA_PCT + '%').toggleClass('text-danger', Math.abs(r.DELTA_PCT || 0) >= 10);
@@ -637,6 +667,8 @@
 		visibleCols().forEach(function(c) { if (c[2]) put(c[0], dpWon(sum(rows, c[0]))); });
 		payCols().forEach(function(c) {
 			var f = c[0].substring(2);
+			// 실지급 합계는 줄 칸의 합계와 같게 업체 지급분(기타계약·외부)까지
+			if (c[0] === 'P_NET') return put(c[0], dpWon(groups.reduce(function(s, g) { var m = payParts(g.top.STAFF_SQ), r = pay.by[g.top.STAFF_SQ]; return s + (m ? m.NET : r ? Number(r.NET || 0) : 0); }, 0)));
 			if (/^P_(?!DAYS|FLAG|LINK|TOG|DELTA)/.test(c[0])) put(c[0], dpWon(f === '_SETTLE' ? ['NP_SETTLE', 'HI_SETTLE', 'EI_SETTLE', 'LTC_SETTLE', 'IT_SETTLE', 'LIT_SETTLE'].reduce(function(t, k) { return t + sum(ps, k); }, 0) : sum(ps, f)));
 		});
 	}
@@ -732,8 +764,7 @@
 			$tr.append($td);
 		});
 		// 급여는 사람 단위: 윗줄에만, └ 줄은 빈 칸
-		if (!child) $tr.append(payCells(r.STAFF_SQ));
-		else payKeys().forEach(function(k) { $tr.append($('<td class="dp-pay">').attr('data-c', k)); });
+		$tr.append(child ? payChildCells(r) : payCells(r.STAFF_SQ, r.PSEUDO ? null : r));
 		$tr.append($('<td data-c="_ACT">'));
 		return $tr;
 	}
