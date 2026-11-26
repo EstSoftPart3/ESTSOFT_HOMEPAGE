@@ -31,6 +31,8 @@ public class BoDeployService {
 	private static final String[] DEPLOY_TEXT = { "SALE_PARTNER_SQ", "BUY_PARTNER_SQ", "CLIENT_NM", "PRJ_NM", "WORK_AREA", "GRADE_CD", "END_DT", "PROB_END_DT", "MEMO" };
 	private static final List<String> COLUMNS = Arrays.asList("STAFF_NM", "EMP_TYPE_CD", "SALE_PARTNER_NM", "BUY_PARTNER_NM", "SALE_PRICE", "COST_PRICE", "CLIENT_NM", "PRJ_NM", "WORK_AREA", "GRADE_CD", "START_DT", "END_DT", "REMAIN", "TENURE", "HOME_AREA", "PRJ", "DUP", "MEMOS", "HIST");
 	private static final String COLUMN_PREF = "DEPLOY_COLUMNS";
+	private static final List<String> PAY_COLUMNS = Arrays.asList("TYPE", "CLIENT", "PRJ", "PERIOD", "PROB", "SALE_PRICE", "BASE_AMT");
+	private static final String PAY_COLUMN_PREF = "PAY_COLUMNS";
 	private static final int MAX_FILE = 5 * 1024 * 1024;
 
 	@Autowired
@@ -60,28 +62,45 @@ public class BoDeployService {
 	}
 
 	private List<String> columnOrder(String loginId) {
-		String saved = mapper.selectPref(pref(loginId));
+		return columnOrder(loginId, COLUMN_PREF);
+	}
+
+	/** 급여관리 표의 칸 순서(계약 칸 묶음 안에서만) */
+	public List<String> payColumnOrder(String loginId) {
+		return columnOrder(loginId, PAY_COLUMN_PREF);
+	}
+
+	private List<String> columnOrder(String loginId, String key) {
+		String saved = mapper.selectPref(pref(loginId, key));
 		return saved == null || saved.isEmpty() ? new ArrayList<>() : Arrays.asList(saved.split(","));
 	}
 
-	/** 빈 값이면 저장을 지워 기본 순서로 돌아간다. 값은 알려진 컬럼만 받는다 */
 	public void saveColumns(String loginId, String order) {
-		Map<String, Object> p = pref(loginId);
+		saveColumns(loginId, order, COLUMN_PREF, COLUMNS);
+	}
+
+	public void savePayColumns(String loginId, String order) {
+		saveColumns(loginId, order, PAY_COLUMN_PREF, PAY_COLUMNS);
+	}
+
+	/** 빈 값이면 저장을 지워 기본 순서로 돌아간다. 값은 알려진 컬럼만 받는다 */
+	private void saveColumns(String loginId, String order, String key, List<String> known) {
+		Map<String, Object> p = pref(loginId, key);
 		if (order == null || order.isEmpty()) {
 			mapper.deletePref(p);
 			return;
 		}
-		if (!COLUMNS.containsAll(Arrays.asList(order.split(",")))) {
+		if (!known.containsAll(Arrays.asList(order.split(",")))) {
 			throw new IllegalArgumentException("알 수 없는 컬럼입니다.");
 		}
 		p.put("PREF_VAL", order);
 		mapper.savePref(p);
 	}
 
-	private static Map<String, Object> pref(String loginId) {
+	private static Map<String, Object> pref(String loginId, String key) {
 		Map<String, Object> p = new HashMap<>();
 		p.put("EMPLY_ID", loginId);
-		p.put("PREF_KEY", COLUMN_PREF);
+		p.put("PREF_KEY", key);
 		return p;
 	}
 

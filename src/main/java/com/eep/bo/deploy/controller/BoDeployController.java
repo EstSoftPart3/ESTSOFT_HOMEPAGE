@@ -292,7 +292,16 @@ public class BoDeployController {
 			SecretFilter.View v = secret.view(loginId(session));
 			Map<String, Object> out = v.filterMap(payrollService.month(ym == null || ym.isEmpty() ? YearMonth.now().toString() : ym), "rows");
 			out.put("secretViewer", v.secret);
+			out.put("columns", deployService.payColumnOrder(loginId(session)));
 			return out;
+		});
+	}
+
+	@RequestMapping(value = "/admin/pay/saveColumnsData.do", method = RequestMethod.POST)
+	public ModelAndView savePayColumnsData(@RequestParam(value = "ORDER", required = false) String order, HttpSession session) {
+		return run(() -> {
+			deployService.savePayColumns(loginId(session), order);
+			return "OK";
 		});
 	}
 
