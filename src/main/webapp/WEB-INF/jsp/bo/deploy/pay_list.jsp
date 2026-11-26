@@ -197,13 +197,13 @@
 	var CALC = {
 		BASE_AMT: [['계약 단가 = 이 계약으로 이번 달 나가는 금액', '정규 = 계약단가 − 식대 (퇴사 달은 계약단가 × 근무일 ÷ 월 일수, 식대 없음)', '수습 = 수습급여 (입사 첫 달·수습해제 달은 일할)', '그 외 = (계약단가 ÷ 월 일수) × 근무일수', '다른 계약(정규 직원의 기타·외부 계약) 줄은 매입처에 주는 돈 · 우리 급여·명세서에 안 들어감', '칸을 눌러 고치면 노란 칸(수기)으로 고정'], ['PROBATION_PAY', 'MEAL', 'PRORATE_UNIT']],
 		MEAL_AMT: [['정규 = 식대', '수습 = 0 (수습해제 달은 해제 뒤 날짜만 일할)', '칸을 눌러 고치면 노란 칸(수기)으로 고정'], ['MEAL']],
-		PAY_TOTAL: [['지급계 = 기본 + 수당 칸 합']], DED_TOTAL: [['공제계 = 공제 칸 + 정산 칸 합']], _SETTLE: [['정산 = 국민연금·건강·고용·장기요양·소득세·지방소득세 정산 합', '칸별 정산은 성명을 눌러 상세에서 고칩니다']],
+		PAY_TOTAL: [['지급계 = 기본 + 수당 칸 합', 'P4H·외부 계약만 있는 사람은 이에스티 급여가 아니라 「— 업체 지급」 (그 돈은 기타·수수료 칸)']], DED_TOTAL: [['공제계 = 공제 칸 + 정산 칸 합']], _SETTLE: [['정산 = 국민연금·건강·고용·장기요양·소득세·지방소득세 정산 합', '칸별 정산은 성명을 눌러 상세에서 고칩니다']],
 		NET: [['실지급 = 지급계 − 공제계']], DELTA_PCT: [['전월대비 = (이번 달 실지급 − 전월 실지급) ÷ 전월 실지급']],
 		REAL_SALE: [['실매출 = (매출단가 ÷ 월 일수) × 근무일수', '같은 기간의 정규 건과 수습 건은 한 투입이라 한 번만 셉니다'], ['PRORATE_UNIT']],
 		COMPANY: [['회사부담 = 4대보험 회사분 (정규·수습만)', '퇴직금은 영업이익에서 빼지 않습니다(실제 지급할 때만 비용) — 옆 퇴직금(당월) 칸은 보여 주기만']],
 		RETIRE: [['퇴직금(당월) = 이 달 말 퇴사 가정 법정 퇴직금 − 지난달 말 퇴사 가정 법정 퇴직금 (정규·수습)', '법정 퇴직금 = 1일 평균임금 × 30 × 재직일수 ÷ 365, 재직 1년 미만은 0', '1일 평균임금 = (3개월 임금 + 최근 12개월 근속상여·연차수당 × 3/12) ÷ 3개월 일수 · 취업축하금·인재추천은 빼고 셉니다', '재직 시작 = 인사카드 계약 목록의 이어진 계약 처음 · 마우스를 올리면 총 퇴직금 예상과 근거']],
-		BUY: [['기타 = 본인 계약이 있는 사람에게 함께 걸린 기타계약·외부기타 몫 (업체에 주는 돈, 급여 아님)', '= (계약단가 ÷ 월 일수) × 근무일수'], ['PRORATE_UNIT']],
-		FEE: [['수수료 = 본인 계약이 있는 사람에게 함께 걸린 외부수수료(MCS) 몫 (업체에 주는 돈, 급여 아님)', '= (계약단가 ÷ 월 일수) × 근무일수'], ['PRORATE_UNIT']],
+		BUY: [['기타 = 업체에 주는 돈(급여 아님): 본인 계약이 있는 사람에게 함께 걸린 기타계약·외부기타 몫, 그리고 P4H·외부 계약만 있는 사람의 그 달 지급액', '= (계약단가 ÷ 월 일수) × 근무일수', '업체 몫만 있는 사람은 이 칸을 눌러 실제 준 돈을 고칩니다(지급계·실지급은 「— 업체 지급」)'], ['PRORATE_UNIT']],
+		FEE: [['수수료 = 업체에 주는 외부수수료(MCS) 몫(급여 아님): 본인 계약이 있는 사람에게 함께 걸린 것, 그리고 외부수수료 계약만 있는 사람의 그 달 지급액', '= (계약단가 ÷ 월 일수) × 근무일수'], ['PRORATE_UNIT']],
 		PROFIT: [['영업이익 = 실매출 − 지급계 − 회사부담 − 기타 − 수수료 (퇴직금 적립은 빼지 않음)', '투입현황에서 내근직으로 켠 사람은 빼고 셉니다(급여·공제는 그대로)']]
 	};
 	var PARAMS = [];
@@ -290,6 +290,9 @@
 	// 숨긴 다른 계약 줄의 몫을 뺀 이 사람의 손익. 다른 계약 줄 몫(매출 − 업체 몫)은 영업이익에 이미 들어 있다
 	function plView(r) {
 		var v = { sale: Number(r.REAL_SALE || 0), buy: Number(r.BUY || 0), fee: Number(r.FEE || 0), profit: Number(r.PROFIT || 0) };
+		// 업체 몫만 있는 사람: 지급계가 곧 업체에 준 돈이라 기타(수수료)로 보인다. 영업이익은 그대로
+		var vk = vendorKind(r);
+		if (vk) v[vk] += Number(r.PAY_TOTAL || 0);
 		r.DETAILS.forEach(function(d) {
 			if (!isOther(r, d) || otherShown(r, d)) return;
 			var amt = Number(d.BASE_AMT || 0), sale = Number(d.REAL_SALE || 0);
@@ -304,7 +307,8 @@
 		list.forEach(function(r) {
 			if (ownShown(r)) {
 				var v = plView(r);
-				k.pay += Number(r.PAY_TOTAL || 0); k.ded += Number(r.DED_TOTAL || 0); k.net += Number(r.NET || 0); k.sale += v.sale; k.buy += v.buy; k.fee += v.fee; k.profit += r.OFFICE ? 0 : v.profit;
+				if (!vendorKind(r)) { k.pay += Number(r.PAY_TOTAL || 0); k.ded += Number(r.DED_TOTAL || 0); k.net += Number(r.NET || 0); }
+				k.sale += v.sale; k.buy += v.buy; k.fee += v.fee; k.profit += r.OFFICE ? 0 : v.profit;
 				if (r.FLAGS.length) k.flag++;
 				return;
 			}
@@ -448,21 +452,28 @@
 				return;
 			}
 			var cs = contracts(r).filter(function(d) { return !isOther(r, d) || otherShown(r, d); }), dup = cs.length > 1, open = dup && isOpen(r), own = cs.filter(function(d) { return !isOther(r, d); }), span = open ? Math.max(1, own.length) : 1;
-			var pv = plView(r);
+			var pv = plView(r), vk = vendorKind(r);
 			function rs($td) { return $td.attr('rowspan', span); }
+			// 업체 몫만 있는 사람: 지급계·공제계·실지급은 비우고 업체에 준 돈은 기타(수수료) 칸에서 고친다. 계약 단가는 투입 건 단가
+			function vendorDash(cls) { return $('<td class="dp-num pl-calc text-muted">').addClass(cls || '').text('— 업체 지급').attr('title', '업체가 지급(이에스티 급여 아님) · 업체에 준 돈은 ' + (vk === 'fee' ? '수수료' : '기타') + ' 칸'); }
+			function plAmt(kind) {
+				if (vk !== kind) return $('<td class="dp-num x-pl pl-calc pl-buy">').text(pv[kind] ? dpWon(pv[kind]) : '—');
+				// 지급이 기본 하나뿐이면(보통) 이 칸을 눌러 업체에 준 돈(기본)을 고친다
+				return Number(r.PAY_TOTAL || 0) === Number(r.BASE_AMT || 0) ? cell(r, 'BASE_AMT', 'x-pl pl-buy') : $('<td class="dp-num x-pl pl-calc pl-buy">').text(dpWon(pv[kind]));
+			}
 			function rsAll($td) { return $td.attr('rowspan', open ? cs.length : 1); }
 			var $tr = $('<tr>').attr('data-sq', r.STAFF_SQ).toggleClass('pl-picked', !!picked[r.STAFF_SQ]).toggleClass('pl-secret', !!r.SECRET).toggleClass('pl-dup', dup)
 				.append(rsAll($('<td class="pl-pick-col">')).append($('<input type="checkbox" class="pl-pick">').val(r.STAFF_SQ).prop('checked', !!picked[r.STAFF_SQ]).attr('aria-label', r.STAFF_NM + ' 체크')))
 				.append(rsAll($('<td class="pl-name-col">')).append(dupArrow(r, cs)).append(r.SECRET ? $('<span title="시크릿">').text('🔒 ') : '').append($('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { openDetail(r); })));
 			contractCells(r, cs[0] || {}, true).forEach(function($td) { $tr.append($td); });
-			$tr.append((own.length > 1 ? $('<td class="dp-num">').text(dpWon((cs[0] || {}).BASE_AMT)).prepend(baseHowBtn(r)) : cell(r, 'BASE_AMT', '')).attr('data-c', 'BASE_AMT'));
+			$tr.append((vk ? $('<td class="dp-num">').text(dpWon((cs[0] || {}).COST_PRICE)).append(' <small class="text-muted">계약</small>').attr('title', '투입 건 계약 단가 · 그 달 업체에 실제로 준 돈은 ' + (vk === 'fee' ? '수수료' : '기타') + ' 칸') : own.length > 1 ? $('<td class="dp-num">').text(dpWon((cs[0] || {}).BASE_AMT)).prepend(baseHowBtn(r)) : cell(r, 'BASE_AMT', '')).attr('data-c', 'BASE_AMT'));
 			ALLOW.forEach(function(a) { $tr.append(rs(cell(r, a[0], 'x-allow'))); });
-			$tr.append(rs($('<td class="dp-num c-allow font-weight-bold pl-calc">').text(dpWon(r.PAY_TOTAL))));
+			$tr.append(rs(vk ? vendorDash('c-allow') : $('<td class="dp-num c-allow font-weight-bold pl-calc">').text(dpWon(r.PAY_TOTAL))));
 			DED.forEach(function(a) { $tr.append(rs(a[0] === '_SETTLE' ? $('<td class="dp-num x-ded pl-calc">').text(dpWon(SETTLES.reduce(function(s, k) { return s + Number(r[k] || 0); }, 0))).attr('title', '정산 합계 · 칸별 정산은 성명을 눌러 상세에서 고칩니다') : cell(r, a[0], 'x-ded'))); });
-			$tr.append(rs($('<td class="dp-num c-ded font-weight-bold pl-calc">').text(dpWon(r.DED_TOTAL)))).append(rs($('<td class="dp-num font-weight-bold pl-calc">').text(dpWon(r.NET))))
+			$tr.append(rs(vk ? vendorDash('c-ded') : $('<td class="dp-num c-ded font-weight-bold pl-calc">').text(dpWon(r.DED_TOTAL)))).append(rs(vk ? vendorDash() : $('<td class="dp-num font-weight-bold pl-calc">').text(dpWon(r.NET))))
 				.append(rs($('<td class="dp-num pl-calc">').text(r.DELTA_PCT === undefined ? '' : (r.DELTA_PCT > 0 ? '+' : '') + r.DELTA_PCT + '%').toggleClass('text-danger', Math.abs(r.DELTA_PCT || 0) >= 10)))
 				.append(rs($('<td class="pl-stub">')))
-				.append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(pv.sale)))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(pv.buy ? dpWon(pv.buy) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(pv.fee ? dpWon(pv.fee) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.COMPANY)))).append(rs(retireCell(r))).append(rs(r.OFFICE ? $('<td class="dp-num pl-profit text-muted" title="투입현황에서 내근직으로 켠 사람은 영업이익(합계 포함)에서 뺍니다">').text('내근 제외') : $('<td class="dp-num pl-profit font-weight-bold pl-calc">').text(dpWon(pv.profit))))
+				.append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(pv.sale)))).append(rs(plAmt('buy'))).append(rs(plAmt('fee'))).append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.COMPANY)))).append(rs(retireCell(r))).append(rs(r.OFFICE ? $('<td class="dp-num pl-profit text-muted" title="투입현황에서 내근직으로 켠 사람은 영업이익(합계 포함)에서 뺍니다">').text('내근 제외') : $('<td class="dp-num pl-profit font-weight-bold pl-calc">').text(dpWon(pv.profit))))
 				.append(rs($('<td>')).append(r.FLAGS.map(function(f) { return flagChip(r, f); })))
 				.append(rs($('<td>')).append(countBtn('💬', r.MEMO_CNT, r.STAFF_NM + ' 메모', function() { memoPopup(r); })))
 				.append(rs($('<td>')).append(countBtn('✎', r.CHG_CNT, r.STAFF_NM + ' 수정이력', function() { historyPopup(r); })));
@@ -485,7 +496,7 @@
 	function sumRow($h, list) {
 		var own = list.filter(ownShown), t = totals(list);
 		function s(k) { return own.reduce(function(a, r) { return a + Number(r[k] || 0); }, 0); }
-		var V = { BASE_AMT: s('BASE_AMT'), PAY_TOTAL: t.pay, DED_TOTAL: t.ded, NET: t.net, REAL_SALE: t.sale, BUY: t.buy, FEE: t.fee, PROFIT: t.profit, COMPANY: s('COMPANY'), RETIRE: s('RETIRE'),
+		var V = { BASE_AMT: own.reduce(function(a, r) { return a + Number(vendorKind(r) ? (contracts(r)[0] || {}).COST_PRICE || 0 : r.BASE_AMT || 0); }, 0), PAY_TOTAL: t.pay, DED_TOTAL: t.ded, NET: t.net, REAL_SALE: t.sale, BUY: t.buy, FEE: t.fee, PROFIT: t.profit, COMPANY: s('COMPANY'), RETIRE: s('RETIRE'),
 			_SETTLE: own.reduce(function(a, r) { return a + SETTLES.reduce(function(x, k) { return x + Number(r[k] || 0); }, 0); }, 0) };
 		ALLOW.concat(DED).forEach(function(a) { if (V[a[0]] === undefined) V[a[0]] = s(a[0]); });
 		var $s = $('<tr class="pl-sumrow">');
@@ -601,6 +612,12 @@
 	function isOwnT(t) { return OWN.indexOf(t) >= 0; }
 	function isFeeT(t) { return String(t || '').indexOf('EXTERNAL_MCS') === 0; }
 	function isOther(r, d) { var t = typeOf(d) || r.EMP_TYPE_CD; return !isOwnT(t) && r.DETAILS.some(function(x) { return isOwnT(typeOf(x)); }); }
+	// 업체 몫만 있는 사람(P4H·외부 단독): 이에스티 급여가 아니라 업체에 주는 돈. 'fee'(외부수수료만) | 'buy' | ''(본인 계약 있음)
+	function vendorKind(r) {
+		var ds = r.DETAILS;
+		if (!ds.length || ds.some(function(d) { return !typeOf(d) || isOwnT(typeOf(d)); })) return '';
+		return ds.every(function(d) { return isFeeT(typeOf(d)); }) ? 'fee' : 'buy';
+	}
 
 	// 수습도 정규직이다. 수습 기간 = 입사일부터 3개월(마지막 날은 3개월 되는 날 전날). inMonth: 이 달과 겹침, left: 오늘부터 남은 날
 	function probation(r, t) {
