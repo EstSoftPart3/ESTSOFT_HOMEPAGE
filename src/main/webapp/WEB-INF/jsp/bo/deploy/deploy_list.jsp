@@ -223,7 +223,7 @@
 		['CLIENT_NM', '고객사'], ['TENURE', '근속'], ['PRJ', '프로젝트 이력']];
 	var data = null, order = [], view = 'table', drag = null, page = 'ACTIVE', prjCache = {};
 	// 관리자 홈 바로가기: ?page=IDLE(대기 현황) · ENDING(철수 임박)
-	var pageParam = /[?&]page=(IDLE|ENDING|OFFICE|REST)\b/.exec(location.search);
+	var pageParam = /[?&]page=(IDLE|ENDING|FUTURE|OFFICE|REST)\b/.exec(location.search);
 	if (pageParam) page = pageParam[1];
 	// 기준월과 체크 칩(급여관리와 같은 구분). [키, 이름, 고용형태들]
 	var ym = moment().format('YYYY-MM'), sortKey = 'JOIN_DT', sortDir = 1;
@@ -505,7 +505,16 @@
 				STATE: o.kind === 'WAIT' ? 'WAIT' : o.kind === 'FUTURE' ? 'FUTURE' : '', END_DT: o.kind === 'WAIT' ? last1.END_DT : '', START_DT: o.kind === 'FUTURE' ? o.future.START_DT : '' };
 			groups.push({ top: r, rows: [r], leaves: [], kind: 'IDLE', idle: o });
 		});
+		// 투입예정: 기준월에 투입이 없고 다음 달에 시작하는 사람(합계에는 넣지 않는다)
+		if (checked._FUTURE) futureNew().forEach(function(x) { if (!by[x.STAFF_SQ]) { by[x.STAFF_SQ] = [x]; groups.push({ top: x, rows: [x], leaves: [], kind: 'FUTURE' }); } });
 		return groups.filter(function(g) { return g.kind ? matches(g.top, kw, true) : g.rows.some(function(x) { return matches(x, kw, anyChip); }); });
+	}
+	// 기준월에 걸친 투입이 없고 다음 달에 시작하는 투입 건(사람마다 첫 건)
+	function futureNew() {
+		var f = moment(ym + '-01'), l = f.clone().endOf('month'), nf = f.clone().add(1, 'month'), nl = nf.clone().endOf('month'), cur = {}, seen = {};
+		data.all.forEach(function(x) { if (!moment(x.START_DT).isAfter(l) && (!x.END_DT || !moment(x.END_DT).isBefore(f))) cur[x.STAFF_SQ] = 1; });
+		return data.all.filter(function(x) { return showSecret(x) && !cur[x.STAFF_SQ] && !moment(x.START_DT).isBefore(nf) && !moment(x.START_DT).isAfter(nl); })
+			.sort(function(a, b) { return a.START_DT.localeCompare(b.START_DT); }).filter(function(x) { return seen[x.STAFF_SQ] ? false : (seen[x.STAFF_SQ] = 1); });
 	}
 	// 투입현황 표의 대기중: 마지막 투입이 정규·수습이고 입사일이 기준월 말일 이전이며, 그 달에 걸친 투입 건이 없는 사람만(대기 현황 탭은 모두)
 	function idleInMonth() {
@@ -539,8 +548,8 @@
 			var n = groups.filter(function(g) { return !g.kind && g.rows.some(function(x) { return chipOf(x.EMP_TYPE_CD) === c[0]; }); }).length;
 			return { k: c[0], name: c[1], n: n, hide: c[0] === '_NONE' && !n };
 		}).concat([$('<span class="dp-chip-sep" aria-hidden="true">'),
-			{ k: '_OFFICE', name: '내근직', n: office.length, cls: 'dp-chip-st' }, { k: '_REST', name: '휴직중', n: rest.length, cls: 'dp-chip-st' }, { k: '_IDLE', name: '대기중', n: idle.length, cls: 'dp-chip-st' }]), checked, function() {
-			try { localStorage.setItem('dpAway', ['_OFFICE', '_REST', '_IDLE'].filter(function(k) { return checked[k]; }).join(',')); } catch (e) {}
+			{ k: '_OFFICE', name: '내근직', n: office.length, cls: 'dp-chip-st' }, { k: '_REST', name: '휴직중', n: rest.length, cls: 'dp-chip-st' }, { k: '_IDLE', name: '대기중', n: idle.length, cls: 'dp-chip-st' }, { k: '_FUTURE', name: '투입예정', n: futureNew().length, cls: 'dp-chip-st' }]), checked, function() {
+			try { localStorage.setItem('dpAway', ['_OFFICE', '_REST', '_IDLE', '_FUTURE'].filter(function(k) { return checked[k]; }).join(',')); } catch (e) {}
 			render();
 		});
 	}
@@ -619,7 +628,7 @@
 
 	function renderViews(idle, ending, office, rest) {
 		var active = data.current.filter(function(r) { return r.STATE === 'ACTIVE' && showSecret(r) && !away(r.STAFF_SQ); }).length;
-		$('#views').empty().append([['ACTIVE', '투입 현황', active, ''], ['IDLE', '대기 현황', idle.length, 'warn'], ['ENDING', '철수 임박', ending.length, 'bad'], ['OFFICE', '내근직', office.length, ''], ['REST', '휴직', rest.length, '']].map(function(v) {
+		$('#views').empty().append([['ACTIVE', '투입 현황', active, ''], ['IDLE', '대기 현황', idle.length, 'warn'], ['ENDING', '철수 임박', ending.length, 'bad'], ['FUTURE', '투입 예정', futureList().length, ''], ['OFFICE', '내근직', office.length, ''], ['REST', '휴직', rest.length, '']].map(function(v) {
 			return $('<button type="button" role="tab">').addClass(v[3]).attr({ 'data-page': v[0], 'aria-selected': page === v[0] }).text(v[1]).append($('<b>').text(v[2]));
 		}));
 	}
@@ -633,6 +642,7 @@
 		$('#btnAdd').toggle(page === 'ACTIVE');
 		if (page === 'IDLE') return renderIdle(idle);
 		if (page === 'ENDING') return renderEnding(ending);
+		if (page === 'FUTURE') return renderFuture(futureList());
 		if (page === 'OFFICE') return renderOffice(office);
 		if (page === 'REST') return renderRest(rest);
 		renderChips(monthGroups(true), office, rest, idleInMonth());
@@ -669,6 +679,7 @@
 	function putSums($h, groups) {
 		// 체크한 형태의 줄만(내근·휴직 사람은 그 사람 줄 모두). 건수는 사람·형태별 한 건(같은 정규직에서 프로젝트만 바뀐 줄은 한 건)
 		// 휴가 건(대기-유급휴가 등, 줄 대신 🏖 로 보이는 건)도 투입 건이라 합계에 넣는다(엑셀처럼 계약단가 포함)
+		groups = groups.filter(function(g) { return g.kind !== 'FUTURE'; }); // 다음 달 투입예정은 이 달 합계에 넣지 않는다
 		var rows = [].concat.apply([], groups.map(function(g) { return g.rows.concat(g.leaves || []).filter(function(x) { return !x.PSEUDO && (g.kind || checked[chipOf(x.EMP_TYPE_CD)]); }); }));
 		var cnt = {}; rows.forEach(function(x) { cnt[x.STAFF_SQ + '|' + chipOf(x.EMP_TYPE_CD)] = 1; });
 		var ps = groups.map(function(g) { return pay.by[g.top.STAFF_SQ]; }).filter(Boolean);
@@ -788,6 +799,7 @@
 			else if (c[0] === 'CLIENT_NM' && r.STATE === 'WAIT') $td.addClass('dp-mute').text('—');
 			else $td.text(v || '');
 			if (c[0] === 'PRJ_NM' && !child) leaveMarks($td, g);
+			if (c[0] === 'PRJ_NM' && g.kind === 'FUTURE') $td.append($('<span class="dp-st w ml-1">').text(moment(r.START_DT).format('M/D') + ' 투입예정'));
 			$tr.append($td);
 		});
 		// 급여는 사람 단위: 윗줄에만, └ 줄은 빈 칸
@@ -1361,6 +1373,35 @@
 			if (it.next) $b.append(childRow('└ 다음 투입', it.next, 10, moment(it.next.START_DT).format('M/D') + ' 시작 · 공백 ' + Math.max(0, moment(it.next.START_DT).diff(moment(x.END_DT), 'days') - 1) + '일'));
 		});
 		$('#altView').empty().append($t);
+	}
+
+	// 투입 예정 탭: 오늘 기준 다음 달에 시작하는 투입 건 모두(지금 진행 중인 사람의 다음 투입 포함)
+	function futureList() {
+		var nf = moment().add(1, 'month').startOf('month'), nl = nf.clone().endOf('month');
+		return data.all.filter(function(x) { return showSecret(x) && !moment(x.START_DT).isBefore(nf) && !moment(x.START_DT).isAfter(nl); })
+			.sort(function(a, b) { return secretFirst(a, b) || a.START_DT.localeCompare(b.START_DT) || String(a.STAFF_NM).localeCompare(String(b.STAFF_NM), 'ko'); });
+	}
+	var futKw = '';
+	function renderFuture(list) {
+		var cp = data.canPay, $kw = $('<input type="search" class="form-control form-control-sm mb-2" style="width:220px" placeholder="성명·프로젝트·고객사·매출처" aria-label="투입 예정 검색">').val(futKw);
+		var $t = $('<table class="table table-sm cal-table mb-0">').append('<thead><tr><th>성명</th><th>형태</th><th>매출처</th><th>고객사 · 프로젝트</th><th>근무지역</th><th>투입일</th><th>철수일</th>' + (cp ? '<th class="dp-num">매출단가 🔒</th><th class="dp-num">계약단가 🔒</th>' : '') + '<th>지금</th></tr></thead>');
+		var $b = $('<tbody>').appendTo($t);
+		if (!list.length) boEmpty($b, moment().add(1, 'month').format('YYYY년 M월') + '에 시작하는 투입이 없습니다.');
+		list.forEach(function(x) {
+			var now = depsOf(x.STAFF_SQ).filter(isActive)[0], s = staffOf(x.STAFF_SQ);
+			$b.append($('<tr>').toggleClass('dp-secret', !!x.SECRET).attr('data-q', [x.STAFF_NM, x.CLIENT_NM, x.PRJ_NM, x.SALE_PARTNER_NM, x.WORK_AREA].join(' ').toLowerCase())
+				.append($('<td>').append($('<button type="button" class="dp-name">').text(x.STAFF_NM).on('click', function() { openDetail(x); })))
+				.append($('<td>').text(typeName(x.EMP_TYPE_CD))).append($('<td>').text(x.SALE_PARTNER_NM || ''))
+				.append($('<td>').text([x.CLIENT_NM, x.PRJ_NM].filter(Boolean).join(' · '))).append($('<td>').text(x.WORK_AREA || ''))
+				.append($('<td>').text(x.START_DT).append(' <span class="dp-pill">D-' + Math.max(0, moment(x.START_DT).diff(today, 'days')) + '</span>'))
+				.append($('<td>').text(x.END_DT || '미정'))
+				.append(cp ? [$('<td class="dp-num">').text(dpWon(Number(x.SALE_PRICE || 0) - Number(x.CLIENT_DIRECT_AMT || 0))), $('<td class="dp-num">').text(x.COST_PRICE ? dpWon(x.COST_PRICE) : '미정')] : [])
+				.append($('<td>').text(now ? '진행 중 · ' + (now.PRJ_NM || '') : s.STATUS_CD === 'WAIT' ? '입사 예정' : '대기')));
+		});
+		function filter() { var q = $.trim($kw.val()).toLowerCase(); futKw = $kw.val(); $b.children('tr[data-q]').each(function() { this.hidden = !!q && this.getAttribute('data-q').indexOf(q) < 0; }); }
+		$kw.on('input', filter);
+		$('#altView').empty().append($kw).append($t);
+		filter();
 	}
 
 	function extendForm($after, x) {
