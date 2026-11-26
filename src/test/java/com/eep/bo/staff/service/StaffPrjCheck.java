@@ -177,6 +177,14 @@ public class StaffPrjCheck {
 		check(StaffVacationService.unpaidHalfDays(vs, java.time.LocalDate.parse("2026-01-01"), null, "2026-11") == 2 * 3 + 1 + 2 * 3, "무급 반일(달 안만): " + StaffVacationService.unpaidHalfDays(vs, java.time.LocalDate.parse("2026-01-01"), null, "2026-11"));
 		check(StaffVacationService.unpaidHalfDays(vs, java.time.LocalDate.parse("2026-11-10"), java.time.LocalDate.parse("2026-11-20"), "2026-11") == 1, "투입 기간 밖 무급은 안 셈");
 		check(com.eep.bo.deploy.service.PayCalc.unpaidCut(3_000_000, 6, 30) == 300_000 && com.eep.bo.deploy.service.PayCalc.unpaidCut(3_000_000, 1, 30) == 50_000, "무급 차감 금액");
+		java.util.List<String[]> free = java.util.Arrays.asList(new String[] { "BIZ", "2026-01-01", "2026-06-30" }, new String[] { "REGULAR", "2026-09-01", null });
+		check(StaffVacationService.notAllowed("2026-03-01", "2026-03-10", null, free) == null, "프리 계약 안 휴가 됨");
+		check(StaffVacationService.notAllowed("2026-06-20", "2026-07-10", null, free) != null, "프리 계약 끝을 넘는 휴가 안 됨");
+		check(StaffVacationService.notAllowed("2026-07-05", null, null, free) != null, "프리 계약 끝난 뒤(대기) 안 됨");
+		check(StaffVacationService.notAllowed("2026-10-01", null, null, free) == null, "정규 기간 휴직 됨");
+		check(StaffVacationService.notAllowed("2026-10-01", null, "2026-09-30 00:00:00", free) != null, "퇴사일 뒤 안 됨");
+		java.util.List<String[]> reg = java.util.Arrays.asList(new String[] { "REGULAR", "2026-01-01", "2026-01-31" }, new String[] { "PROBATION", "2026-03-01", "2026-03-31" });
+		check(StaffVacationService.notAllowed("2026-02-05", "2026-02-20", null, reg) == null, "정규·수습 투입 사이 대기 됨");
 
 		Map<String, Object> edu = item("EDU", "대학교(4년제)", " 가나대 ");
 		edu.put("C5", "졸업");

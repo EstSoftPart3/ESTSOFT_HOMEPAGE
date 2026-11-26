@@ -97,6 +97,8 @@ public class StaffVacationService {
 		if (!"Y".equals(paid) && !"N".equals(paid)) throw new IllegalArgumentException("유급·무급을 고르세요.");
 		if (memo != null && memo.length() > 1000) throw new IllegalArgumentException("메모는 1000자까지 넣을 수 있습니다.");
 		int vacSq = num(p.get("VAC_SQ"));
+		String why = notAllowed(start, end, jdbc.queryForObject("SELECT LEAVE_DT FROM TB_EEP_HR_STAFF_M WHERE STAFF_SQ = ?", String.class, staffSq), spans(staffSq));
+		if (why != null) throw new IllegalArgumentException(why);
 		if (!"Y".equals(p.get("FORCE"))) {
 			List<Map<String, Object>> over = jdbc.queryForList("SELECT VAC_SQ, START_DT, END_DT, VAC_CD, PAID_YN FROM TB_EEP_HR_VACATION_R WHERE STAFF_SQ = ? AND VAC_SQ <> ?"
 					+ " AND START_DT <= ? AND (END_DT IS NULL OR END_DT >= ?)", staffSq, vacSq, end == null ? "9999-12-31" : end, start);
@@ -117,6 +119,40 @@ public class StaffVacationService {
 		Map<String, Object> out = new HashMap<>();
 		out.put("VAC_SQ", vacSq);
 		return out;
+	}
+
+	/** 투입 건·계약 목록의 {형태, 시작, 끝(null=열림)}. 시작 순 */
+	private List<String[]> spans(int staffSq) {
+		List<String[]> out = new ArrayList<>();
+		for (Map<String, Object> r : jdbc.queryForList("SELECT EMP_TYPE_CD T, DATE_FORMAT(START_DT, '%Y-%m-%d') S, DATE_FORMAT(END_DT, '%Y-%m-%d') E FROM TB_EEP_DEPLOY_R WHERE STAFF_SQ = ? AND START_DT IS NOT NULL"
+				+ " UNION ALL SELECT EMP_TYPE_CD, START_DT, END_DT FROM TB_EEP_HR_CONTRACT_M WHERE STAFF_SQ = ? ORDER BY 2", staffSq, staffSq)) {
+			out.add(new String[] { str(r.get("T")), str(r.get("S")), str(r.get("E")) });
+		}
+		return out;
+	}
+
+	private static boolean salaried(String t) {
+		return "REGULAR".equals(t) || "PROBATION".equals(t);
+	}
+
+	/**
+	 * 휴가를 등록할 수 없으면 그 까닭, 되면 null (2026-11-26 사용자 규칙).
+	 * 퇴사일 뒤는 안 됨. 정규·수습은 시작일에 정규·수습 투입·계약이 걸쳐 있거나 앞뒤 투입이 정규·수습인 대기 기간이면 됨.
+	 * 계약직·프리는 휴가 기간 전체가 한 투입·계약 기간 안일 때만(계약이 끝나면 휴가가 아니라 대기로 옮긴다).
+	 * spans: {형태, 시작, 끝(null=열림)} 시작 순, end 가 null 이면 기간 미정
+	 */
+	static String notAllowed(String start, String end, String leaveDt, List<String[]> spans) {
+		if (leaveDt != null && leaveDt.length() >= 10 && start.compareTo(leaveDt.substring(0, 10)) > 0) return "퇴사일(" + leaveDt.substring(0, 10) + ") 뒤에는 휴가를 등록할 수 없어요.";
+		String[] prev = null, next = null;
+		for (String[] s : spans) {
+			boolean covers = s[1].compareTo(start) <= 0 && (s[2] == null || s[2].compareTo(start) >= 0);
+			if (covers && salaried(s[0])) return null;
+			if (covers && (s[2] == null || end != null && s[2].compareTo(end) >= 0)) return null; // 계약직·프리: 한 계약 안
+			if (s[1].compareTo(start) < 0) prev = s;
+			else if (next == null) next = s;
+		}
+		if (prev != null && salaried(prev[0]) && (next == null || salaried(next[0]))) return null; // 정규·수습의 투입 사이 대기
+		return "휴가·휴직은 정규·수습이거나 계약 기간 안일 때만 등록할 수 있어요. 계약직·프리는 계약 기간 안의 날짜로 등록하고, 계약이 끝났으면 투입현황에서 대기로 옮겨 주세요.";
 	}
 
 	public void delete(int vacSq, int staffSq) {
