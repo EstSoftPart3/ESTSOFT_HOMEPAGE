@@ -577,7 +577,7 @@
 				+ dpLine('재직', i.START + ' ~ ' + i.END + ' · ' + dpWon(i.SERVICE_DAYS) + '일')
 				+ dpLine('3개월 임금', dpWon(i.WAGE3) + ' (' + i.DAYS3 + '일)')
 				+ dpLine('상여 가산', dpWon(i.BONUS12) + ' × 3/12')
-				+ dpLine('1일 평균임금', avg) + '</div><div class="dp-sec">'
+				+ dpLine('1일 평균임금', avg) + dpLine('영업이익에서 뺀 적립(지급계 1/10)', dpWon(r.RETIRE_ACC)) + '</div><div class="dp-sec">'
 				+ dpLine('총 퇴직금 예상', dpWon(i.TOTAL), 't')
 				+ (i.ONE_YEAR !== undefined ? dpLine('1년 채우면 예상', dpWon(i.ONE_YEAR)) : '')
 				+ dpLine('지난달 말 예상', dpWon(i.PREV_TOTAL))

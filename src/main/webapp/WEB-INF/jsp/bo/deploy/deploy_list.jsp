@@ -286,7 +286,7 @@
 	// 급여관리와 같은 칸. 정산은 합계만(칸별 정산은 급여 상세에서)
 	var PAY_ALLOW = [['MEAL_AMT', '식대'], ['RESEARCH_AMT', '연구비'], ['DRIVE_AMT', '운전보조'], ['CHILD_AMT', '자녀보육'], ['BONUS_AMT', '상여'], ['FUEL_AMT', '유류비']];
 	var PAY_DED = [['NP_AMT', '국민연금'], ['HI_AMT', '건강보험'], ['LTC_AMT', '장기요양'], ['EI_AMT', '고용보험'], ['ACC_AMT', '산재'], ['IT_AMT', '소득세'], ['LIT_AMT', '지방소득세'], ['_SETTLE', '정산'], ['MUTUAL_AMT', '상조회비'], ['ETC_DED', '기타공제']];
-	var PAY_PL = [['REAL_SALE', '실매출'], ['BUY', '기타'], ['FEE', '수수료'], ['COMPANY', '회사부담']];
+	var PAY_PL = [['REAL_SALE', '실매출'], ['BUY', '기타'], ['FEE', '수수료'], ['COMPANY', '회사부담'], ['RETIRE_ACC', '퇴직적립']];
 	var PAY_OWN = ['REGULAR', 'PROBATION', 'SPECIAL', 'BIZ', 'EMP_INS'];
 	function loadPay(done) {
 		var want = ym;
@@ -352,7 +352,7 @@
 		var ds = r.DETAILS || [], own = ds.filter(function(d) { return PAY_OWN.indexOf(d.DEPLOY_TYPE) >= 0; }), other = ds.filter(function(d) { return d.DEPLOY_TYPE && PAY_OWN.indexOf(d.DEPLOY_TYPE) < 0; });
 		if (!own.length || !other.length) return null;
 		var m = { by: {} }, num = function(v) { return Number(v || 0); };
-		m.by[own[0].DEPLOY_SQ] = { NET: num(r.NET), PROFIT: own.reduce(function(s, d) { return s + num(d.REAL_SALE); }, 0) - num(r.PAY_TOTAL) - num(r.COMPANY) };
+		m.by[own[0].DEPLOY_SQ] = { NET: num(r.NET), PROFIT: own.reduce(function(s, d) { return s + num(d.REAL_SALE); }, 0) - num(r.PAY_TOTAL) - num(r.COMPANY) - num(r.RETIRE_ACC) };
 		other.forEach(function(d) { m.by[d.DEPLOY_SQ] = { NET: num(d.BASE_AMT), PROFIT: num(d.REAL_SALE) - num(d.BASE_AMT) }; });
 		m.NET = num(r.NET) + other.reduce(function(s, d) { return s + num(d.BASE_AMT); }, 0);
 		m.PROFIT = num(r.PROFIT);

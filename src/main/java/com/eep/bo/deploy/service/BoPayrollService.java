@@ -383,7 +383,7 @@ public class BoPayrollService {
 		Map<Object, Map<String, Object>> byYm = new HashMap<>();
 		rows.forEach(r -> byYm.put(r.get("PAY_YM"), r));
 		List<Map<String, Object>> rates = new ArrayList<>();
-		long sale = 0, pay = 0, company = 0;
+		long sale = 0, pay = 0, profit = 0;
 		Map<String, Object> last = null;
 		List<Map<String, Object>> months = new ArrayList<>();
 		for (Map<String, Object> d : details) {
@@ -394,7 +394,8 @@ public class BoPayrollService {
 			boolean only = month != null && ((List<?>) month.get("DETAILS")).size() == 1;
 			sale += n(d.get("REAL_SALE"));
 			pay += only ? n(month.get("PAY_TOTAL")) : n(d.get("BASE_AMT"));
-			company += only ? n(month.get("COMPANY")) : 0;
+			// 그 달 건이 하나뿐이면 사람 영업이익(회사부담·퇴직금 적립까지 뺀 값), 여럿이면 이 건 매출 − 기본
+			profit += only ? n(month.get("PROFIT")) : n(d.get("REAL_SALE")) - n(d.get("BASE_AMT"));
 			// 한 달에 투입 건이 여럿이면 공제는 사람 단위라 나눌 수 없어 이 건의 기본만 보인다
 			Map<String, Object> mo = new HashMap<>();
 			mo.put("PAY_YM", d.get("PAY_YM"));
@@ -430,7 +431,7 @@ public class BoPayrollService {
 		out.put("MONTHS", months);
 		out.put("SALE", sale);
 		out.put("PAY", pay);
-		out.put("PROFIT", sale - pay - company);
+		out.put("PROFIT", profit);
 		return out;
 	}
 
@@ -719,7 +720,7 @@ public class BoPayrollService {
 					}
 				}
 			}
-			// 퇴직금은 영업이익에서 빼지 않는다(11/23 결정: 실제 지급액만 비용, 법정 퇴직금은 retire() 로 보여 주기만)
+			// 법정 퇴직금(retire())은 보여 주기만. 영업이익에서는 아래 퇴직금 적립(지급계 1/10)을 뺀다(11/26 엑셀 기준으로 바꿈)
 			long company = salaried ? n(r.get("NP_AMT")) + n(r.get("HI_AMT")) + n(r.get("EI_AMT")) + n(r.get("LTC_AMT")) + n(r.get("ACC_AMT")) : 0;
 			r.put("SALARIED", salaried);
 			Map<String, Object> latest = ds.isEmpty() ? null : ds.get(ds.size() - 1);
@@ -734,7 +735,10 @@ public class BoPayrollService {
 			// 투입현황에서 내근직으로 켠 건만 있는 사람(임원·내근)은 엑셀처럼 영업이익에서 뺀다. 급여·공제는 그대로
 			boolean office = !ds.isEmpty() && ds.stream().allMatch(d -> "Y".equals(d.get("OFFICE_YN")));
 			r.put("OFFICE", office);
-			r.put("PROFIT", office ? 0 : sale - pay - company - buy - fee);
+			// 퇴직금 적립: 정규·수습은 지급계의 1/10 을 영업이익에서 뺀다(11/26 결정, 엑셀 「퇴직금」 칸과 같은 기준)
+			long retireAcc = "REGULAR".equals(type) || "PROBATION".equals(type) ? Math.round(pay / 10.0) : 0;
+			r.put("RETIRE_ACC", retireAcc);
+			r.put("PROFIT", office ? 0 : sale - pay - company - buy - fee - retireAcc);
 			r.put("WORK_DAYS", Math.min(days, totalDays));
 			r.put("TOTAL_DAYS", totalDays);
 			r.put("SALE_PRICE", latest == null ? 0 : n(latest.get("SALE_PRICE")));
