@@ -676,7 +676,9 @@
 		function put(k, txt) { $h.children('[data-c="' + k + '"]').append($('<div class="dp-sumv th-sum">').text(txt)); }
 		put('STAFF_NM', '합계 ' + groups.length + '명 · ' + Object.keys(cnt).length + '건');
 		// 매출단가는 고객사 직접계약을 뺀 우리 매출(엑셀 월매출과 같은 기준)
-		visibleCols().forEach(function(c) { if (c[2]) put(c[0], dpWon(c[0] === 'SALE_PRICE' ? sum(rows, 'SALE_PRICE') - sum(rows, 'CLIENT_DIRECT_AMT') : c[0] === 'REAL_SALE' ? rows.reduce(function(s, x) { return s + saleOf(x).amt; }, 0) : sum(rows, c[0]))); });
+		visibleCols().forEach(function(c) { if (c[2]) put(c[0], dpWon(c[0] === 'SALE_PRICE' ? sum(rows, 'SALE_PRICE') - sum(rows, 'CLIENT_DIRECT_AMT') : c[0] === 'REAL_SALE' ? rows.reduce(function(s, x) { return s + saleOf(x).amt; }, 0) : c[0] === 'COST_PRICE' ? costOnce() : sum(rows, c[0]))); });
+		// 계약단가는 사람·형태마다 한 번(윗줄 단가). 같은 정규직에서 프로젝트만 바뀐 줄·휴가 건은 같은 계약이라 다시 더하지 않는다(엑셀 계약단가와 같은 기준)
+		function costOnce() { var seen = {}; return rows.reduce(function(s, x) { var k = x.STAFF_SQ + '|' + chipOf(x.EMP_TYPE_CD); if (seen[k]) return s; seen[k] = 1; return s + Number(x.COST_PRICE || 0); }, 0); }
 		// 실지급·영업이익: 계약 줄마다 나눈 사람은 합계에 넣은 줄의 몫만(체크 안 한 기타계약·외부 몫은 빼고)
 		function partSum(f) {
 			return groups.reduce(function(s, g) {
