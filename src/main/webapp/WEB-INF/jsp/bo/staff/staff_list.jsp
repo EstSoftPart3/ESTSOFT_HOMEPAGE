@@ -428,14 +428,15 @@
 	<%@ include file="/WEB-INF/jsp/bo/boinclude/page_script.jspf"%>
 	<script>$(function() { hrDriveGear('STAFF'); }); // 드라이브 폴더·파일 이름 규칙 ⚙</script>
 	<script src="/resources/common/staff-career.js?v=20261120w"></script>
+	<script src="/resources/common/staff-vacation.js?v=20261126"></script>
 
 	<script>
 	// 공통코드 HR_STAFF_STATUS 의 이름·순서. 코드가 없을 때만 기본값
 	var STATUS = hrCodeMap('HR_STAFF_STATUS');
 	if ($.isEmptyObject(STATUS)) STATUS = { WORK: '재직', LEFT: '퇴사', WAIT: '대기' };
 	// 인사카드 탭: [이름, 그 탭에 그릴 SECTIONS 이름]. 영업정보·수행이력·서류·메모·보유 장비·시크릿은 따로 그린다
-	var CARD_TABS = [['기초정보', ['기초정보', '일자', '계좌(기업)', '비상연락망', '기타']], ['학력/교육', ['학력', '병역', '교육·자격']], ['영업정보', []], ['수행이력', []], ['서류', []], ['메모', []], ['보유 장비', []], ['🔒 시크릿', []]];
-	var TAB = { SALES: 2, CAREER: 3, DOCS: 4, MEMO: 5, EQP: 6, SECRET: 7 };
+	var CARD_TABS = [['기초정보', ['기초정보', '일자', '계좌(기업)', '비상연락망', '기타']], ['학력/교육', ['학력', '병역', '교육·자격']], ['영업정보', []], ['수행이력', []], ['서류', []], ['휴가', []], ['메모', []], ['보유 장비', []], ['🔒 시크릿', []]];
+	var TAB = { SALES: 2, CAREER: 3, DOCS: 4, VAC: 5, MEMO: 6, EQP: 7, SECRET: 8 };
 	var CAN_SECRET = false; // 슈퍼관리자만. 아니면 시크릿 탭을 그리지 않는다(서버도 같은 검사)
 	var SALES_TERMS = ['GRADE_NM', 'REAL_CAREER', 'WISH_PRICE', 'SCORE', 'GAPIL_YN', 'AUTO_APLY_YN', 'WISH_LOC'];
 	var SALES_TEXTS = ['WORK_DOMAIN', 'EXPERTISE', 'REPORT', 'ETC1', 'ETC2'];
@@ -737,7 +738,7 @@
 
 	// 탭 이름 뒤 건수. 0건이면 붙이지 않는다
 	function cardTabLabel(r, i) {
-		var n = i === TAB.CAREER ? (career && career.sq === r.STAFF_SQ && career.d ? career.d.items.length : r.PRJ_CNT) : i === TAB.MEMO ? r.MEMO_CNT : i === TAB.EQP ? r.EQP_CNT : 0;
+		var n = i === TAB.CAREER ? (career && career.sq === r.STAFF_SQ && career.d ? career.d.items.length : r.PRJ_CNT) : i === TAB.MEMO ? r.MEMO_CNT : i === TAB.EQP ? r.EQP_CNT : i === TAB.VAC ? r.VAC_CNT : 0;
 		if (i === TAB.DOCS) { var miss = missingDocs(r).length; return CARD_TABS[i][0] + (miss ? '(미제출 ' + miss + ')' : ''); }
 		return CARD_TABS[i][0] + (n ? '(' + n + ')' : '');
 	}
@@ -818,6 +819,10 @@
 			});
 		}
 		if (!docs || docs.sq !== r.STAFF_SQ) loadDocs(r.STAFF_SQ);
+		if (cardTab === TAB.VAC) {
+			// 달력·목록·등록 창은 홈 캘린더와 같은 공통 조각(resources/common/staff-vacation.js)
+			vacTab($('<div>').appendTo(card(true)), r, function(n) { r.VAC_CNT = n; refreshCardTabs(); });
+		}
 		if (cardTab === TAB.MEMO) {
 			var $mc = card(true).append('<div class="hr-section">메모</div>');
 			hrMemoFeed($('<div>').appendTo($mc), MEMO_API, r.STAFF_SQ, function() { load(refreshCardTabs); });

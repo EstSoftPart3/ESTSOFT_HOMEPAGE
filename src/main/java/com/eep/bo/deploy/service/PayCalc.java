@@ -89,6 +89,11 @@ public final class PayCalc {
 		return cost * days / total;
 	}
 
+	/** 무급휴가로 뺄 금액: 계약단가 ÷ 월 일수 × 무급 일수(halfDays 는 반일 단위, 하루 = 2), 원 미만 버림 */
+	public static long unpaidCut(long monthly, int halfDays, int total) {
+		return monthly * halfDays / (2L * total);
+	}
+
 	/** 월 금액 ÷ 전체일수 × 근무일수, 버림 단위(기본 천원) 미만 버림 */
 	public static long prorate(long monthly, int days, int total) {
 		return monthly * days / total / PRORATE_UNIT * PRORATE_UNIT;

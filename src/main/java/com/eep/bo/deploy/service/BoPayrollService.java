@@ -41,6 +41,9 @@ public class BoPayrollService {
 	@Autowired
 	private com.eep.bo.staff.service.StaffContractService contracts;
 
+	@Autowired
+	private com.eep.bo.staff.service.StaffVacationService vacations;
+
 	public boolean closed(String ym) {
 		return "Y".equals(mapper.selectClosed(one("YM", ym)));
 	}
@@ -52,7 +55,15 @@ public class BoPayrollService {
 		if (!closed) {
 			sync(ym);
 		}
-		List<Map<String, Object>> rows = derive(mapper.selectPayrollRows(one("YM", ym)), mapper.selectPayrollDetails(one("YM", ym)));
+		List<Map<String, Object>> raw = mapper.selectPayrollRows(one("YM", ym));
+		if (!closed) {
+			// 계산식 설명에 무급휴가 차감을 보이려고(sync 와 같은 휴가). 마감 달은 저장된 값 그대로라 붙이지 않는다
+			Map<Object, List<Map<String, Object>>> un = vacations.unpaid(ym);
+			Map<String, List<Map<String, Object>>> bySq = new HashMap<>();
+			un.forEach((k, v) -> bySq.put(String.valueOf(k), v));
+			raw.forEach(r -> { if (bySq.containsKey(String.valueOf(r.get("STAFF_SQ")))) r.put("UNPAID", bySq.get(String.valueOf(r.get("STAFF_SQ")))); });
+		}
+		List<Map<String, Object>> rows = derive(raw, mapper.selectPayrollDetails(one("YM", ym)));
 		Map<Object, Map<String, Object>> prev = new HashMap<>();
 		derive(mapper.selectPayrollRows(one("YM", YearMonth.parse(ym).minusMonths(1).toString())), new ArrayList<>()).forEach(r -> prev.put(r.get("STAFF_SQ"), r));
 		Map<String, List<Map<String, Object>>> plans = BonusCalc.byRecipient(bonusPlans());
@@ -490,6 +501,9 @@ public class BoPayrollService {
 				noBonus.add(String.valueOf(a.get("STAFF_SQ")));
 			}
 		});
+		// 인사카드·홈에서 등록한 무급휴가(엑셀에서 옮긴 휴가는 이미 반영된 기록이라 빠짐). 마감 전 달만 여기를 지난다
+		Map<String, List<Map<String, Object>>> unpaid = new HashMap<>();
+		vacations.unpaid(ym).forEach((k, v) -> unpaid.put(String.valueOf(k), v));
 		Map<Object, Map<String, Object>> existing = new HashMap<>();
 		mapper.selectPayrollRows(one("YM", ym)).forEach(r -> existing.put(r.get("STAFF_SQ"), r));
 		List<Object> keepDeploy = new ArrayList<>(), keepStaff = new ArrayList<>();
@@ -541,6 +555,11 @@ public class BoPayrollService {
 					}
 				} else {
 					b = 0; // 고정급은 한 달에 한 번만
+				}
+				// 무급휴가: 이 투입 기간과 겹치는 날만큼 (계약단가 ÷ 월 일수) × 일수를 뺀다(달력일, 반차 0.5일)
+				int unpaidHalf = com.eep.bo.staff.service.StaffVacationService.unpaidHalfDays(unpaid.get(String.valueOf(staff.get("STAFF_SQ"))), PayCalc.date(d.get("START_DT")), PayCalc.date(d.get("END_DT")), ym);
+				if (unpaidHalf > 0 && b > 0) {
+					b = Math.max(0, b - PayCalc.unpaidCut(n(d.get("COST_PRICE")), unpaidHalf, total));
 				}
 				// 본인 계약이 있는 사람의 기타계약·외부(수수료·기타)는 업체에 주는 돈이라 급여 기본에 넣지 않는다. 건별 기본(PAYROLL_D)에는 남겨 derive 가 기타·수수료로 센다
 				if (!hasOwn || PayCalc.isOwn(str(d.get("EMP_TYPE_CD")))) {
@@ -630,6 +649,13 @@ public class BoPayrollService {
 			auto += vendor ? 0 : b;
 			// 돈 흐름 카드용: 이 건이 급여·기타·수수료 중 무엇인지
 			d.put("KIND", !vendor ? "PAY" : PayCalc.isFee(t) ? "FEE" : "ETC");
+			// 마감 전 달의 무급휴가 차감(sync 와 같은 식). 아래 식은 차감 전 금액으로 맞춰 보고 끝에 차감을 붙인다
+			@SuppressWarnings("unchecked")
+			List<Map<String, Object>> un = (List<Map<String, Object>>) r.get("UNPAID");
+			int half = ym.isEmpty() || total == 0 ? 0 : com.eep.bo.staff.service.StaffVacationService.unpaidHalfDays(un, PayCalc.date(d.get("START_DT")), PayCalc.date(d.get("END_DT")), ym);
+			long cut = half > 0 && b > 0 ? PayCalc.unpaidCut(cost, half, total) : 0;
+			String tail = cut > 0 ? " − 무급휴가 " + (half % 2 == 0 ? String.valueOf(half / 2) : half / 2 + ".5") + "일 " + won(cut) + " = " + won(b) : "";
+			b += cut;
 			String how;
 			if (ym.isEmpty() || total == 0) {
 				how = won(b);
@@ -647,6 +673,7 @@ public class BoPayrollService {
 				String s = PayCalc.salariedHow(t, cost, ym, PayCalc.date(r.get("JOIN_DT")), PayCalc.date(d.get("PROB_END_DT")), lastDay);
 				how = s.contains("= " + won(b)) ? s : won(b) + " (저장된 값)";
 			}
+			if (cut > 0) how = how.endsWith("(저장된 값)") ? won(b - cut) + " (저장된 값)" : how + tail;
 			d.put("HOW", how);
 			out.add((vendor ? (PayCalc.isFee(t) ? "[수수료 · 급여 아님] " : "[기타 · 급여 아님] ") : "") + label(d) + " · " + (days < total ? days + "/" + total + "일" : "만근") + " : " + how);
 		}

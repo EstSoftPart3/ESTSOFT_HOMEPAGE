@@ -114,6 +114,7 @@
 	<script src="/resources/bo/plugins/fullcalendar-timegrid/main.min.js"></script>
 	<script src="/resources/bo/plugins/fullcalendar-interaction/main.min.js"></script>
 	<script src="/resources/bo/plugins/fullcalendar/locales/ko.js" charset="utf-8"></script>
+	<script src="/resources/common/staff-vacation.js?v=20261126"></script>
 	<script>
 	// 서버가 넣은 것: cards(열 수 있는 카드), journals(내 결재 차례), memos(최근 메모)
 	var HOME = ${homeJson};
@@ -178,19 +179,21 @@
 	var CAL_KIND = {
 		INTV_NEW: ['신입면접', '#0b6e8a'], INTV_EXP: ['경력면접', '#d6336c'], DEPLOY_IN: ['투입', '#2f7d32'], DEPLOY_OUT: ['철수', '#c62828'], PROB: ['수습 해제', '#b8860b'],
 		EDU: ['교육 시작', '#6b3fa0'], AVAIL: ['인터뷰', '#9c6ad6'], JOIN: ['입사', '#1565c0'], LEAVE: ['퇴사', '#78858f'],
-		PAY: ['급여 지급', '#d35400'], RC_INTV: ['모집 인터뷰', '#e8590c'], RC_CLOSE: ['모집 마감', '#795548'], MY: ['내 할 일', '#8e6fd8']
+		PAY: ['급여 지급', '#d35400'], RC_INTV: ['모집 인터뷰', '#e8590c'], RC_CLOSE: ['모집 마감', '#795548'], MY: ['내 할 일', '#8e6fd8'], VAC: ['휴가', '#2e9e6a']
 	};
 	// 카드(권한) → 그 카드가 넣는 일정 종류. 모두 우리 시스템에 등록된 정보(구글 캘린더 일정은 넣지 않는다)
-	var CAL_SRC = { STAFF: ['JOIN', 'LEAVE'], DEPLOY: ['DEPLOY_IN', 'DEPLOY_OUT', 'PROB'], INTV: ['INTV_NEW', 'INTV_EXP'], TRAINEE: ['EDU', 'AVAIL'], PAY: ['PAY'], RECRUIT: ['RC_INTV', 'RC_CLOSE'] };
+	var CAL_SRC = { STAFF: ['JOIN', 'LEAVE', 'VAC'], DEPLOY: ['DEPLOY_IN', 'DEPLOY_OUT', 'PROB'], INTV: ['INTV_NEW', 'INTV_EXP'], TRAINEE: ['EDU', 'AVAIL'], PAY: ['PAY'], RECRUIT: ['RC_INTV', 'RC_CLOSE'] };
 	var calEvents = [], calOff = {}, calendar = null, calTimer = null;
 	function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
 	try { calOff = JSON.parse(store('hmCalOff') || '{}') || {}; } catch (e) { calOff = {}; }
 	// date: yyyy-MM-dd(뒤는 무시), time: HH:mm 이면 시간 일정, info: 팝업에 보일 [[이름, 값]]
 	// pop: 업무 화면의 상세 팝업 주소(그 화면이 주소로 상세를 여는 것: 인사카드 ?STAFF_SQ, 투입 ?open, 면접 ?INTV_SQ, 교육생 ?TRN_SQ, 모집 ?open). 없으면 홈 요약 팝업
-	function calAdd(kind, date, title, href, time, info, pop) {
+	// last: 여러 날 일정의 마지막 날(yyyy-MM-dd, 그날 포함)
+	function calAdd(kind, date, title, href, time, info, pop, last) {
 		if (!date || !/^\d{4}-\d{2}-\d{2}/.test(date)) return;
 		var t = /^\d{2}:\d{2}$/.test(time || '') ? time : null;
-		calEvents.push({ kind: kind, start: date.substr(0, 10) + (t ? 'T' + t : ''), allDay: !t, name: title, title: CAL_KIND[kind][0] + ' ' + title, url: href, info: info || [], pop: pop || null });
+		var end = last && last > date.substr(0, 10) ? moment(last).add(1, 'days').format('YYYY-MM-DD') : null; // 달력의 끝은 다음 날(포함 안 함)
+		calEvents.push({ kind: kind, start: date.substr(0, 10) + (t ? 'T' + t : ''), end: end, allDay: !t, name: title, title: CAL_KIND[kind][0] + ' ' + title, url: href, info: info || [], pop: pop || null });
 		clearTimeout(calTimer);
 		calTimer = setTimeout(calPaint, 50);
 	}
@@ -203,7 +206,7 @@
 		if (!calendar) return;
 		calendar.removeAllEvents();
 		var evs = calShown().map(function(e) {
-			return { title: e.title, start: e.start, allDay: e.allDay, editable: false, backgroundColor: CAL_KIND[e.kind][1], borderColor: CAL_KIND[e.kind][1], textColor: '#fff', extendedProps: { ev: e } };
+			return { title: e.title, start: e.start, end: e.end || undefined, allDay: e.allDay, editable: false, backgroundColor: CAL_KIND[e.kind][1], borderColor: CAL_KIND[e.kind][1], textColor: '#fff', extendedProps: { ev: e } };
 		});
 		if (!calOff.MY) {
 			var v = calendar.view;
@@ -409,7 +412,9 @@
 		});
 		var $el = $('<div id="hmCalendar">');
 		var $add = $('<button type="button" class="btn btn-sm btn-outline-secondary py-0 ml-auto" id="hmTaskAdd">＋ 할 일</button>').on('click', function() { openTask(null, { START_DT: today.format('YYYY-MM-DD'), END_DT: today.format('YYYY-MM-DD') }); });
-		var $c = $('<div class="hm-card" id="hmCalCard" data-key="CAL">').append($('<header>').text('📅 일정').append($add))
+		// 직원관리 권한이 있으면 직원을 골라 휴가 등록(인사카드 휴가 탭과 같은 창)
+		var $vac = can('STAFF') ? $('<button type="button" class="btn btn-sm btn-outline-success py-0 ml-1" id="hmVacAdd">＋ 휴가</button>').on('click', function() { vacForm({ saved: vacLoad }); }) : null;
+		var $c = $('<div class="hm-card" id="hmCalCard" data-key="CAL">').append($('<header>').text('📅 일정').append($add).append($vac))
 			.append($('<div class="hm-body">').append($chips).append($el));
 		// 이번 주 할 일은 따로 위젯(달력을 작게 해도 안 깨지게)
 		var $week = $('<div class="hm-card" id="hmWeekCard" data-key="WEEK">').append($('<header>').append('이번 주 할 일 ').append('<span class="hm-pill cnt">…</span>'))
@@ -670,6 +675,19 @@
 				calAdd('JOIN', r.JOIN_DT, r.STAFF_NM, staffHref(r.STAFF_SQ), null, info, sp);
 				calAdd('LEAVE', r.LEAVE_DT, r.STAFF_NM, staffHref(r.STAFF_SQ), null, info, sp);
 			});
+		});
+		vacLoad();
+	}
+	// 휴가 일정(앞뒤 1년). 등록·수정 뒤에는 휴가만 다시 불러온다. 기간 미정은 오늘까지
+	function vacLoad() {
+		calEvents = calEvents.filter(function(e) { return e.kind !== 'VAC'; });
+		$.post('/admin/staff/vacationRangeData.do', { FROM: moment().subtract(1, 'years').format('YYYY-MM-DD'), TO: moment().add(1, 'years').format('YYYY-MM-DD') }).done(function(res) {
+			(res.list || []).forEach(function(v) {
+				var info = [['직원', v.STAFF_NM + (v.ORG_NM ? ' · ' + v.ORG_NM : '')], ['기간', vacPeriod(v)], ['종류', vacTypeName(v.VAC_CD)], ['구분', v.PAID_YN === 'Y' ? '유급' : '무급'], ['메모', v.MEMO]];
+				calAdd('VAC', v.START_DT, v.STAFF_NM + ' ' + vacTypeName(v.VAC_CD) + (v.PAID_YN === 'Y' ? '' : '(무급)'), staffHref(v.STAFF_SQ), null, info,
+					URL.staff + '?STAFF_SQ=' + v.STAFF_SQ, v.END_DT || today.format('YYYY-MM-DD'));
+			});
+			calPaint();
 		});
 	}
 

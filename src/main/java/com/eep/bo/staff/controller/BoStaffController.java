@@ -52,6 +52,9 @@ public class BoStaffController {
 	private StaffContractService contracts;
 
 	@Autowired
+	private com.eep.bo.staff.service.StaffVacationService vacations;
+
+	@Autowired
 	private BoMemberService memberService;
 
 	@Autowired
@@ -167,6 +170,7 @@ public class BoStaffController {
 		BoStaffService.delete(param);
 		career.deleteAll(param.get("STAFF_SQ"));
 		contracts.deleteAll(param.get("STAFF_SQ"));
+		vacations.deleteAll(param.get("STAFF_SQ"));
 		return json("result", "OK");
 	}
 
@@ -443,6 +447,32 @@ public class BoStaffController {
 	@RequestMapping(value = "/admin/staff/deleteContractData.do", method = RequestMethod.POST)
 	public ModelAndView deleteContractData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("CONTRACT_SQ") int contractSq) {
 		contracts.deleteContract(contractSq, staffSq);
+		return json("result", "OK");
+	}
+
+	// ── 휴가(인사카드 휴가 탭·홈 캘린더) ──
+
+	@RequestMapping(value = "/admin/staff/vacationData.do", method = RequestMethod.POST)
+	public ModelAndView vacationData(@RequestParam("STAFF_SQ") int staffSq) {
+		return json("list", vacations.list(staffSq));
+	}
+
+	/** 기간에 걸친 모든 직원 휴가(시크릿 직원은 시크릿 계정에게만) */
+	@RequestMapping(value = "/admin/staff/vacationRangeData.do", method = RequestMethod.POST)
+	public ModelAndView vacationRangeData(@RequestParam("FROM") String from, @RequestParam("TO") String to, HttpSession session) {
+		return json("list", secretFilter.view(loginId(session)).filter(vacations.range(from, to)));
+	}
+
+	/** 추가·수정. 겹치는 휴가가 있으면 저장하지 않고 OVERLAP 을 돌려준다(FORCE=Y 로 다시 보내면 저장) */
+	@RequestMapping(value = "/admin/staff/saveVacationData.do", method = RequestMethod.POST)
+	public ModelAndView saveVacationData(@RequestParam Map<String, Object> param, HttpSession session) {
+		param.remove("SRC_CD"); // 화면에서 등록한 휴가는 늘 USER(무급이면 급여 일할에 반영)
+		return json("result", vacations.save(param, loginId(session)));
+	}
+
+	@RequestMapping(value = "/admin/staff/deleteVacationData.do", method = RequestMethod.POST)
+	public ModelAndView deleteVacationData(@RequestParam("STAFF_SQ") int staffSq, @RequestParam("VAC_SQ") int vacSq) {
+		vacations.delete(vacSq, staffSq);
 		return json("result", "OK");
 	}
 

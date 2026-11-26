@@ -168,6 +168,16 @@ public class StaffPrjCheck {
 			}
 		}
 
+		// 휴가: 일수(달력일·반차 0.5·기간 미정은 오늘까지), 투입 기간과 겹치는 무급 반일 수, 급여 차감
+		java.time.LocalDate td = java.time.LocalDate.parse("2026-11-26");
+		check(StaffVacationService.days("2026-11-17", "2026-11-19", null, td) == 3 && StaffVacationService.days("2026-11-13", "2026-11-13", "PM", td) == 0.5
+				&& StaffVacationService.days("2026-11-20", null, null, td) == 7, "휴가 일수");
+		List<Map<String, Object>> vs = Arrays.asList(kv("START_DT", "2026-10-30", "END_DT", "2026-11-03", "HALF_CD", null), kv("START_DT", "2026-11-13", "END_DT", "2026-11-13", "HALF_CD", "PM"),
+				kv("START_DT", "2026-11-28", "END_DT", "2026-12-02", "HALF_CD", null));
+		check(StaffVacationService.unpaidHalfDays(vs, java.time.LocalDate.parse("2026-01-01"), null, "2026-11") == 2 * 3 + 1 + 2 * 3, "무급 반일(달 안만): " + StaffVacationService.unpaidHalfDays(vs, java.time.LocalDate.parse("2026-01-01"), null, "2026-11"));
+		check(StaffVacationService.unpaidHalfDays(vs, java.time.LocalDate.parse("2026-11-10"), java.time.LocalDate.parse("2026-11-20"), "2026-11") == 1, "투입 기간 밖 무급은 안 셈");
+		check(com.eep.bo.deploy.service.PayCalc.unpaidCut(3_000_000, 6, 30) == 300_000 && com.eep.bo.deploy.service.PayCalc.unpaidCut(3_000_000, 1, 30) == 50_000, "무급 차감 금액");
+
 		Map<String, Object> edu = item("EDU", "대학교(4년제)", " 가나대 ");
 		edu.put("C5", "졸업");
 		BoStaffService.checkItem(edu);
