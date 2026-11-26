@@ -735,8 +735,9 @@ public class BoPayrollService {
 			// 투입현황에서 내근직으로 켠 건만 있는 사람(임원·내근)은 엑셀처럼 영업이익에서 뺀다. 급여·공제는 그대로
 			boolean office = !ds.isEmpty() && ds.stream().allMatch(d -> "Y".equals(d.get("OFFICE_YN")));
 			r.put("OFFICE", office);
-			// 퇴직금 적립: 정규·수습은 지급계의 1/10 을 영업이익에서 뺀다(11/26 결정, 엑셀 「퇴직금」 칸과 같은 기준)
-			long retireAcc = "REGULAR".equals(type) || "PROBATION".equals(type) ? Math.round(pay / 10.0) : 0;
+			// 퇴직금 적립: 정규·수습은 (기본+식대+연구비+상여+유류비) 1/10 을 영업이익에서 뺀다(11/26 결정, 엑셀 「퇴직금」 수식과 같음 — 운전보조·자녀보육은 빠짐)
+			long retireAcc = "REGULAR".equals(type) || "PROBATION".equals(type)
+					? Math.round((n(r.get("BASE_AMT")) + n(r.get("MEAL_AMT")) + n(r.get("RESEARCH_AMT")) + n(r.get("BONUS_AMT")) + n(r.get("FUEL_AMT"))) / 10.0) : 0;
 			r.put("RETIRE_ACC", retireAcc);
 			r.put("PROFIT", office ? 0 : sale - pay - company - buy - fee - retireAcc);
 			r.put("WORK_DAYS", Math.min(days, totalDays));
