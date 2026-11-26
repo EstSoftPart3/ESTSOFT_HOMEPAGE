@@ -41,6 +41,8 @@
 	td.dp-pay.a { background: #eefaf8; } td.dp-pay.d { background: #fdf3ec; } td.dp-pay.p { background: #f6f1fc; }
 	td.dp-pay.edit { text-decoration: underline dotted rgba(11,110,138,.6); text-underline-offset: 3px; cursor: pointer; }
 	#payTog { margin-right: 6px; align-self: center; }
+	.dp-resize { height: 10px; cursor: ns-resize; background: linear-gradient(#b9c2cb, #b9c2cb) center / 48px 3px no-repeat; border-bottom: 1px solid #e5e9ee; }
+	.dp-resize:hover, .dp-resize:focus { background-color: #eef3f8; outline: none; }
 	.dp-pay-tog { border: 0; background: #111; color: #fff; border-radius: 999px; padding: 1px 10px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
 	.dp-pay-band { border: 0; border-radius: 8px; padding: 0 6px; font-size: 11px; font-weight: 700; color: #fff; margin-left: 4px; }
 	.dp-pay-band.a { background: #0e7c86; } .dp-pay-band.d { background: #b4531a; } .dp-pay-band.p { background: #6b3fa0; }
@@ -151,6 +153,7 @@
 									<tbody id="dpBody"></tbody>
 								</table>
 							</div>
+							<div class="dp-resize" id="mainResize" role="separator" aria-orientation="horizontal" aria-label="목록 높이 조절(↑↓)" tabindex="0" title="위아래로 끌어 목록 높이 조절 · 더블클릭하면 창에 맞춤"></div>
 							<div class="small text-muted px-3 py-2">
 								기준월에 걸친 투입 건을 보여 줍니다. 한 달에 두 건 이상이면 최근 건이 윗줄, 나머지는 └ 줄입니다. 칸을 누르면 바로 고치고 수정이력에 남습니다(되돌리기는 ✎ 이력에서).
 								머리글을 좌우로 끌면 순서가 바뀌고 이 계정에 저장됩니다(머리글에서 Alt+←/→ 도 됩니다). <b>추가</b>를 누르면 맨 아래에 입력 행이 생깁니다: Tab 이동, Enter 저장 후 다음 행, Esc 취소.
@@ -212,9 +215,10 @@
 	<script src="/resources/common/staff-career.js?v=20261120w"></script>
 
 	<script>
-	var COLS = [['STAFF_NM', '성명'], ['EMP_TYPE_CD', '형태'], ['HOME_AREA', '거주지역'], ['WORK_AREA', '근무지역'], ['SALE_PARTNER_NM', '매출처'], ['BUY_PARTNER_NM', '매입처'], ['SALE_PRICE', '매출단가', true], ['COST_PRICE', '계약단가', true],
-		['CLIENT_NM', '고객사'], ['PRJ_NM', '프로젝트'], ['JOIN_DT', '입사일'], ['GRADE_CD', '등급'], ['START_DT', '투입일'], ['END_DT', '철수일'], ['REMAIN', '남은 기간'], ['TENURE', '근속'], ['PRJ', '프로젝트 이력'],
-		['MEMOS', '메모'], ['HIST', '이력']];
+	// 이 순서가 순정(기본) 칸 순서. 급여 칸 묶음은 기본으로 계약단가 뒤
+	var COLS = [['STAFF_NM', '성명'], ['EMP_TYPE_CD', '형태'], ['SALE_PARTNER_NM', '매출처'], ['BUY_PARTNER_NM', '매입처'], ['PRJ_NM', '프로젝트'], ['JOIN_DT', '입사일'], ['START_DT', '투입일'], ['END_DT', '철수일'],
+		['REMAIN', '남은 기간'], ['GRADE_CD', '등급'], ['SALE_PRICE', '매출단가', true], ['COST_PRICE', '계약단가', true], ['HOME_AREA', '거주지역'], ['WORK_AREA', '근무지역'], ['CLIENT_NM', '고객사'],
+		['TENURE', '근속'], ['PRJ', '프로젝트 이력'], ['MEMOS', '메모'], ['HIST', '이력']];
 	var data = null, order = [], view = 'table', drag = null, page = 'ACTIVE', prjCache = {};
 	// 관리자 홈 바로가기: ?page=IDLE(대기 현황) · ENDING(철수 임박)
 	var pageParam = /[?&]page=(IDLE|ENDING|OFFICE|REST)\b/.exec(location.search);
@@ -224,8 +228,8 @@
 	// 고용형태 공통코드(HR_EMP_TYPE) 순서·이름대로 칩 하나씩. 코드에 없는 형태는 '코드 없음'
 	var CHIPS = hrAllCodes('HR_EMP_TYPE').map(function(c) { return [c.CD, c.NM, [c.CD]]; }).concat([['_NONE', '코드 없음', []]]), checked = {};
 	CHIPS.forEach(function(c) { checked[c[0]] = true; });
-	// 내근직·휴직중·대기중 칩은 기본 끔, 켠 상태는 이 브라우저에 기억
-	try { (localStorage.getItem('dpAway') || '').split(',').forEach(function(k) { if (k) checked[k] = true; }); } catch (e) {}
+	// 내근직·휴직중·대기중 칩은 기본 켬, 바꾼 상태는 이 브라우저에 기억
+	try { var away = localStorage.getItem('dpAway'); (away === null ? '_OFFICE,_REST,_IDLE' : away).split(',').forEach(function(k) { if (k) checked[k] = true; }); } catch (e) {}
 	function chipOf(type) { var c = CHIPS.filter(function(c) { return c[2].indexOf(type) >= 0; })[0]; return c ? c[0] : '_NONE'; }
 	// 칸 바로 수정: 화면 칸 → [저장 칸, 입력 종류]
 	var EDIT = { EMP_TYPE_CD: ['EMP_TYPE_CD', { code: 'HR_EMP_TYPE' }], GRADE_CD: ['GRADE_CD', { code: 'HR_DEPLOY_GRADE' }], SALE_PARTNER_NM: ['SALE_PARTNER_SQ', 'SALE_YN'], BUY_PARTNER_NM: ['BUY_PARTNER_SQ', 'BUY_YN'],
@@ -304,11 +308,11 @@
 		if (payBand.p) PAY_PL.forEach(function(x) { c.push(['P_' + x[0], x[1], 'p']); });
 		return c.concat([['P_PROFIT', 'Σ 영업이익', 'p', ['p', '손익']], ['P_FLAG', '확인 사항'], ['P_LINK', '메모·이력']]);
 	}
-	// 급여 칸 묶음 자리: 묶음 바로 앞 투입 칸 키('' = 맨 앞, 없으면 맨 뒤). 묶음째로만 옮기고 이 브라우저에 기억
+	// 급여 칸 묶음 자리: 묶음 바로 앞 투입 칸 키('' = 맨 앞, 저장 없으면 계약단가 뒤, 그 칸도 없으면 맨 뒤). 묶음째로만 옮기고 이 브라우저에 기억
 	var payAt = null;
 	try { payAt = localStorage.getItem('dpPayAt'); } catch (e) {}
 	function payKeys() { return payCols().map(function(c) { return c[0]; }); }
-	function payPos() { var i = order.indexOf(payAt); return payAt === '' ? 0 : i < 0 ? order.length : i + 1; }
+	function payPos() { var i = order.indexOf(payAt === null ? 'COST_PRICE' : payAt); return payAt === '' ? 0 : i < 0 ? order.length : i + 1; }
 	function setPayAt(k) { payAt = k; try { if (k === null) localStorage.removeItem('dpPayAt'); else localStorage.setItem('dpPayAt', k); } catch (e) {} }
 	function payUrl(sq, tab) { return '/admin/pay/openPayList.do?ym=' + ym + '&open=' + sq + (tab ? '&tab=' + tab : ''); }
 	function payTogBtn() {
@@ -629,12 +633,32 @@
 	}
 
 	// 표 높이를 창 남은 높이에 맞춰 페이지는 그대로, 표 안에서만 스크롤(머리글·합계가 늘 보이게)
+	// 아래 손잡이로 높이를 직접 정하면 그 값(이 브라우저에 기억, 손잡이 더블클릭이면 다시 창에 맞춤)
+	var userH = 0;
+	try { userH = Number(localStorage.getItem('dpScrollH')) || 0; } catch (e) {}
 	function fitScroll() {
 		var el = document.getElementById('mainScroll');
 		if (!el || !el.offsetParent) return;
-		el.style.maxHeight = Math.max(320, window.innerHeight - (el.getBoundingClientRect().top + window.pageYOffset) - 16) + 'px';
+		el.style.maxHeight = (userH || Math.max(320, window.innerHeight - (el.getBoundingClientRect().top + window.pageYOffset) - 16)) + 'px';
+	}
+	function setUserH(h) {
+		userH = h ? Math.max(200, Math.round(h)) : 0;
+		try { if (userH) localStorage.setItem('dpScrollH', userH); else localStorage.removeItem('dpScrollH'); } catch (e) {}
+		fitScroll();
 	}
 	$(window).on('resize', fitScroll);
+	$(function() {
+		$('#mainResize').on('mousedown', function(e) {
+			e.preventDefault();
+			var y = e.pageY, h = document.getElementById('mainScroll').getBoundingClientRect().height;
+			$(document).on('mousemove.dpr', function(ev) { setUserH(h + ev.pageY - y); }).one('mouseup', function() { $(document).off('mousemove.dpr'); });
+		}).on('dblclick', function() { setUserH(0); })
+			.on('keydown', function(e) {
+				if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+				e.preventDefault();
+				setUserH(document.getElementById('mainScroll').getBoundingClientRect().height + (e.key === 'ArrowDown' ? 40 : -40));
+			});
+	});
 
 	// 프로젝트 칸 앞뒤 표시: 휴직중·대기중(프로젝트 대신), 내근, 🏖 휴가(유급·무급만, 자세한 건 마우스를 올리면)
 	function shortDt(d) { return d ? moment(d).format('YY.M.D') : ''; }
@@ -842,7 +866,7 @@
 		if (fp && tp) return;
 		if (fp) { setPayAt(after ? to : i > 0 ? order[i - 1] : ''); return arrangeAll(); }
 		// 묶음 바로 앞 칸을 빼면 묶음은 그 앞 칸 뒤에 그대로 남는다
-		if (from === payAt) { var j = order.indexOf(from); setPayAt(j > 0 ? order[j - 1] : ''); }
+		if (from === (payAt === null ? 'COST_PRICE' : payAt)) { var j = order.indexOf(from); setPayAt(j > 0 ? order[j - 1] : ''); }
 		order.splice(order.indexOf(from), 1);
 		if (tp) { order.splice(payPos(), 0, from); if (!after) setPayAt(from); }
 		else order.splice(order.indexOf(to) + (after ? 1 : 0), 0, from);
