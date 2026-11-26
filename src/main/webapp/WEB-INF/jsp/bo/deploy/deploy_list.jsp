@@ -41,6 +41,8 @@
 	td.dp-pay.a { background: #eefaf8; } td.dp-pay.d { background: #fdf3ec; } td.dp-pay.p { background: #f6f1fc; }
 	td.dp-pay.edit { text-decoration: underline dotted rgba(11,110,138,.6); text-underline-offset: 3px; cursor: pointer; }
 	#payTog { margin-right: 6px; align-self: center; }
+	.dp-adj { font-size: 10.5px; font-weight: 700; color: #a33; line-height: 1.2; }
+	#dpBody td[data-c=REAL_SALE].edit { cursor: pointer; text-decoration: underline dotted rgba(23,105,47,.6); text-underline-offset: 3px; }
 	.dp-part-sum { font-size: 10.5px; font-weight: 400; color: #6b7680; line-height: 1.2; }
 	.dp-resize { height: 10px; cursor: ns-resize; background: linear-gradient(#b9c2cb, #b9c2cb) center / 48px 3px no-repeat; border-bottom: 1px solid #e5e9ee; }
 	.dp-resize:hover, .dp-resize:focus { background-color: #eef3f8; outline: none; }
@@ -237,7 +239,7 @@
 	var EDIT = { EMP_TYPE_CD: ['EMP_TYPE_CD', { code: 'HR_EMP_TYPE' }], GRADE_CD: ['GRADE_CD', { code: 'HR_DEPLOY_GRADE' }], SALE_PARTNER_NM: ['SALE_PARTNER_SQ', 'SALE_YN'], BUY_PARTNER_NM: ['BUY_PARTNER_SQ', 'BUY_YN'],
 		CLIENT_NM: ['CLIENT_NM'], PRJ_NM: ['PRJ_NM'], WORK_AREA: ['WORK_AREA'], START_DT: ['START_DT', 'date'], END_DT: ['END_DT', 'date'], SALE_PRICE: ['SALE_PRICE'], COST_PRICE: ['COST_PRICE'] };
 	var FIELD_NM = { EMP_TYPE_CD: '형태', SALE_PARTNER_SQ: '매출처', BUY_PARTNER_SQ: '매입처', CLIENT_NM: '고객사', PRJ_NM: '프로젝트', WORK_AREA: '근무지역', GRADE_CD: '등급', START_DT: '투입일', END_DT: '철수일',
-		PROB_END_DT: '수습해제일', SALE_PRICE: '매출단가', COST_PRICE: '계약단가', MEMO: '메모', OFFICE_YN: '내근직', REST_FROM_DT: '휴직 시작일', REST_TO_DT: '휴직 종료일', NEW: '등록', DELETE: '삭제' };
+		PROB_END_DT: '수습해제일', SALE_PRICE: '매출단가', COST_PRICE: '계약단가', MEMO: '메모', OFFICE_YN: '내근직', REST_FROM_DT: '휴직 시작일', REST_TO_DT: '휴직 종료일', NEW: '등록', DELETE: '삭제', SALE_ADJ: '실매출 조정' };
 	var today = moment().startOf('day'), YM = moment().format('YYYY-MM');
 	var SIDO = { '서울특별시': '서울', '서울시': '서울', '부산광역시': '부산', '대구광역시': '대구', '인천광역시': '인천', '광주광역시': '광주', '대전광역시': '대전', '울산광역시': '울산', '세종특별자치시': '세종',
 		'경기도': '경기', '강원도': '강원', '강원특별자치도': '강원', '충청북도': '충북', '충청남도': '충남', '전라북도': '전북', '전북특별자치도': '전북', '전라남도': '전남', '경상북도': '경북', '경상남도': '경남', '제주특별자치도': '제주' };
@@ -841,15 +843,42 @@
 		var net = Number((v === undefined ? r.SALE_PRICE : v) || 0) - Number(r.CLIENT_DIRECT_AMT || 0), m = moment(ym + '-01'), last = m.clone().endOf('month'), total = last.date();
 		var from = moment.max(moment(r.START_DT), m), to = r.END_DT ? moment.min(moment(r.END_DT), last) : last, days = Math.max(0, to.diff(from, 'days') + 1);
 		// shortcut: 일할 버림 단위를 1,000원으로 본다(급여관리 기준값 기본), 기준값을 바꾸면 이 화면 일할 금액만 천 원 단위로 보인다
-		return { net: net, days: days, total: total, amt: days >= total ? net : Math.floor(net * days / total / 1000) * 1000 };
+		var adj = adjOf(r);
+		return { net: net, days: days, total: total, base: days >= total ? net : Math.floor(net * days / total / 1000) * 1000, adj: adj, amt: (days >= total ? net : Math.floor(net * days / total / 1000) * 1000) + (adj ? adj.amt : 0) };
+	}
+	// 그 달 이 투입 건의 실매출 조정(급여 대장 건별 줄에 함께 온다)
+	function adjOf(r) {
+		var p = pay.by[r.STAFF_SQ], d = p && (p.DETAILS || []).filter(function(x) { return String(x.DEPLOY_SQ) === String(r.DEPLOY_SQ); })[0];
+		return d && Number(d.SALE_ADJ) ? { amt: Number(d.SALE_ADJ), why: d.SALE_ADJ_REASON || '' } : null;
+	}
+	// 실매출 조정 창: 금액(+ 더함 / − 뺌)과 사유. 0 으로 저장하면 조정이 지워진다
+	function adjPopup(r) {
+		var a = adjOf(r), s = saleOf(r);
+		var $amt = $('<input class="form-control dp-num" inputmode="numeric" placeholder="예: -224083 (빼기) / 50000 (더하기)">').val(a ? a.amt : '');
+		var $why = $('<input class="form-control" maxlength="300" placeholder="예: 26.11 삼성 구내식당 식대 선결제분">').val(a ? a.why : '');
+		var $box = $('<div>').append($('<div class="small text-muted mb-2">').text(ym + ' · 계산 실매출 ' + dpWon(s.base) + ' → 조정 후 실매출이 급여 영업이익·매출 현황에 쓰입니다'))
+			.append($('<label class="small mb-1">').text('조정 금액(빼려면 앞에 -)')).append($amt).append($('<label class="small mb-1 mt-2">').text('사유')).append($why);
+		bootbox.dialog({ title: r.STAFF_NM + ' · ' + (r.PRJ_NM || '') + ' 실매출 조정', message: $box, buttons: {
+			del: { label: '조정 지우기', className: 'btn-outline-danger' + (a ? '' : ' d-none'), callback: function() { send('0', ''); } },
+			cancel: { label: '취소', className: 'btn-secondary' },
+			ok: { label: '저장', className: 'btn-primary', callback: function() { send($amt.val(), $why.val()); return false; } } } });
+		function send(v, why) {
+			hrPost('/admin/deploy/saveSaleAdjData.do', { YM: ym, DEPLOY_SQ: r.DEPLOY_SQ, AMT: String(v).replace(/[,\s원]/g, '') || '0', REASON: why }, function() { bootbox.hideAll(); loadPay(render); });
+		}
 	}
 	// 실매출: 기준월에 일한 날만큼 일할(엑셀 실매출과 같은 값). 일부만 근무하면 마우스를 올려 계산식
 	function realSaleCell($td, r) {
-		var s = saleOf(r);
+		var s = saleOf(r), edit = data.canPay && !pay.closed && r.DEPLOY_SQ;
 		$td.addClass('dp-num');
-		if (!s.net) return $td;
+		if (!s.net && !s.adj) return edit ? $td.addClass('edit').attr('title', '눌러서 실매출 조정(사유와 함께 더하거나 빼기)').on('click', function() { adjPopup(r); }) : $td;
 		$td.text(dpWon(s.amt));
-		if (s.days < s.total) $td.attr('title', '(매출단가 ' + dpWon(s.net) + ' ÷ ' + s.total + '일) × ' + s.days + '일');
+		var tip = s.days < s.total ? '(매출단가 ' + dpWon(s.net) + ' ÷ ' + s.total + '일) × ' + s.days + '일 = ' + dpWon(s.base) : '';
+		if (s.adj) {
+			$td.append($('<div class="dp-adj">').text((s.adj.amt > 0 ? '+' : '') + dpWon(s.adj.amt) + ' 조정'));
+			tip = (tip ? tip + '\n' : '계산 ' + dpWon(s.base) + '\n') + '조정 ' + (s.adj.amt > 0 ? '+' : '') + dpWon(s.adj.amt) + ' · ' + s.adj.why;
+		}
+		if (edit) { $td.addClass('edit').on('click', function() { adjPopup(r); }); tip += (tip ? '\n' : '') + '눌러서 실매출 조정'; }
+		if (tip) $td.attr('title', tip);
 		if (r._saleSum !== undefined) $td.append($('<div class="dp-part-sum">').text('합계 ' + dpWon(r._saleSum)));
 		return $td;
 	}
@@ -930,7 +959,7 @@
 				res.result.forEach(function(h) {
 					var $act = $('<td>');
 					if (h.REVERTED_YN === 'Y') $act.append('<span class="dp-pill">되돌림됨</span>');
-					else if (h.FIELD_NM !== 'NEW' && h.FIELD_NM !== 'DELETE' && h.DEPLOY_NM != null) $act.append($('<button type="button" class="btn btn-sm btn-outline-secondary">↶ 되돌리기</button>').on('click', function() {
+					else if (h.FIELD_NM !== 'NEW' && h.FIELD_NM !== 'DELETE' && h.FIELD_NM !== 'SALE_ADJ' && h.DEPLOY_NM != null) $act.append($('<button type="button" class="btn btn-sm btn-outline-secondary">↶ 되돌리기</button>').on('click', function() {
 						bootbox.confirm((FIELD_NM[h.FIELD_NM] || h.FIELD_NM) + ' 을(를) ' + histVal(h.FIELD_NM, h.BEFORE_VAL) + ' 으로 되돌릴까요?', function(ok) {
 							if (ok) hrPost('/admin/deploy/revertData.do', { CHG_SQ: h.CHG_SQ, STAFF_SQ: r.STAFF_SQ }, function() { draw(); load(); });
 						});

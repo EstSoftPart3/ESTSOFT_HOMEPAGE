@@ -48,6 +48,43 @@ public class BoPayrollService {
 		return "Y".equals(mapper.selectClosed(one("YM", ym)));
 	}
 
+	/**
+	 * 실매출 조정: 그 달 그 투입 건의 실매출에 금액(+ 더함 / − 뺌)과 사유를 남긴다. 0 이면 지운다.
+	 * 급여·영업이익·매출 현황은 조정된 실매출로 계산된다(selectPayrollDetails·selectDeployLines). 바뀐 내용은 투입 수정이력에도 남긴다
+	 */
+	public void saveSaleAdj(String ym, Object deploySq, String amt, String reason, String loginId) {
+		checkYm(ym);
+		require(!closed(ym), "마감된 달은 고칠 수 없습니다. 마감을 해제한 뒤 고쳐 주세요.");
+		Map<String, Object> q = one("YM", ym);
+		q.put("DEPLOY_SQ", deploySq);
+		Map<String, Object> d = mapper.selectDeployOne(q);
+		require(d != null, "투입 건을 찾지 못했습니다. 새로 고쳐 주세요.");
+		String a = amt == null ? "" : amt.replaceAll("[,\\s원]", "");
+		require(a.matches("-?\\d{1,12}"), "금액은 숫자로 넣어 주세요(뺄 때는 앞에 -).");
+		long v = Long.parseLong(a);
+		String why = reason == null ? "" : reason.trim();
+		require(v == 0 || !why.isEmpty(), "사유를 적어 주세요.");
+		require(why.length() <= 300, "사유는 300자까지 적을 수 있습니다.");
+		Map<String, Object> before = mapper.selectSaleAdj(q);
+		if (v == 0) {
+			mapper.deleteSaleAdj(q);
+		} else {
+			q.put("AMT", v);
+			q.put("REASON", why);
+			q.put("UPDT_EMPLY_ID", loginId);
+			mapper.mergeSaleAdj(q);
+		}
+		Map<String, Object> h = new HashMap<>();
+		h.put("DEPLOY_SQ", deploySq);
+		h.put("STAFF_SQ", d.get("STAFF_SQ"));
+		h.put("FIELD", "SALE_ADJ");
+		h.put("BEFORE_VAL", before == null ? null : ym + " " + before.get("AMT") + " (" + before.get("REASON") + ")");
+		h.put("AFTER_VAL", v == 0 ? null : ym + " " + v + " (" + why + ")");
+		h.put("REASON", "실매출 조정");
+		h.put("EMPLY_ID", loginId);
+		mapper.insertDeployChange(h);
+	}
+
 	/** 그 달 대장. 마감 전이면 먼저 다시 계산한다 */
 	public Map<String, Object> month(String ym) {
 		checkYm(ym);

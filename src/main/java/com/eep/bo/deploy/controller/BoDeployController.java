@@ -104,6 +104,19 @@ public class BoDeployController {
 		});
 	}
 
+	/** 실매출 조정(그 달 그 투입 건, 금액 +/− 와 사유). 급여 권한이 있어야 한다 */
+	@RequestMapping(value = "/admin/deploy/saveSaleAdjData.do", method = RequestMethod.POST)
+	public ModelAndView saveSaleAdjData(@RequestParam("YM") String ym, @RequestParam("DEPLOY_SQ") long deploySq, @RequestParam(value = "AMT", defaultValue = "0") String amt,
+			@RequestParam(value = "REASON", defaultValue = "") String reason, HttpSession session) {
+		return run(() -> {
+			String id = loginId(session);
+			if (!canPay(id)) throw new IllegalArgumentException("실매출 조정은 급여 권한이 있어야 고칠 수 있습니다.");
+			secret.view(id).guard(secret.staffOfDeploy(deploySq));
+			payrollService.saveSaleAdj(ym, deploySq, amt, reason, id);
+			return "OK";
+		});
+	}
+
 	@RequestMapping(value = "/admin/deploy/deleteDeployData.do", method = RequestMethod.POST)
 	public ModelAndView deleteDeployData(@RequestParam Map<String, Object> param, HttpSession session) {
 		return run(() -> {

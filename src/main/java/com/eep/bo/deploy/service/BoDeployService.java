@@ -164,7 +164,7 @@ public class BoDeployService {
 	/** 수정이력에 남기는 칸. 단가는 급여 권한이 있을 때만 남기고 보여 준다 */
 	static final List<String> TRACK = Arrays.asList("EMP_TYPE_CD", "SALE_PARTNER_SQ", "BUY_PARTNER_SQ", "CLIENT_NM", "PRJ_NM", "WORK_AREA", "GRADE_CD",
 			"START_DT", "END_DT", "PROB_END_DT", "SALE_PRICE", "COST_PRICE", "MEMO", "CLIENT_DIRECT_CD", "CLIENT_DIRECT_AMT", "OFFICE_YN", "REST_FROM_DT", "REST_TO_DT");
-	static final List<String> PRICES = Arrays.asList("SALE_PRICE", "COST_PRICE", "CLIENT_DIRECT_CD", "CLIENT_DIRECT_AMT");
+	static final List<String> PRICES = Arrays.asList("SALE_PRICE", "COST_PRICE", "CLIENT_DIRECT_CD", "CLIENT_DIRECT_AMT", "SALE_ADJ");
 	/** 고객사 직접계약: 매출단가 옆 아이콘 팝업에서만 고친다(saveDirect) */
 	static final List<String> DIRECT = Arrays.asList("CLIENT_DIRECT_CD", "CLIENT_DIRECT_AMT");
 

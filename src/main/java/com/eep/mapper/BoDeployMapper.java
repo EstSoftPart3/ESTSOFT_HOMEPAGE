@@ -56,6 +56,9 @@ public interface BoDeployMapper {
 	public List<Map<String, Object>> selectPayrollRows(Map<String, Object> param);		//YM 또는 YEAR, STAFF_SQ
 	public List<Map<String, Object>> selectPayrollDetails(Map<String, Object> param);	//YM 또는 YEAR, STAFF_SQ
 	public int savePayrollDetail(Map<String, Object> param);
+	public Map<String, Object> selectSaleAdj(Map<String, Object> param);		//YM, DEPLOY_SQ
+	public int mergeSaleAdj(Map<String, Object> param);							//YM, DEPLOY_SQ, AMT, REASON, UPDT_EMPLY_ID
+	public int deleteSaleAdj(Map<String, Object> param);
 	public int deletePayrollDetailsExcept(Map<String, Object> param);			//YM, KEEP(유지할 DEPLOY_SQ 목록)
 	public int insertPayroll(Map<String, Object> param);						//YM, STAFF_SQ, EMP_TYPE_CD, BASE_AMT, MEAL_AMT, BONUS_AMT
 	public int updatePayrollAuto(Map<String, Object> param);					//위 칸을 다시 계산한 값으로
