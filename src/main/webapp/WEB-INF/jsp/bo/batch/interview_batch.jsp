@@ -36,7 +36,7 @@
 						<div class="cal-panel-head">
 							<span><i class="fas fa-cog"></i> 가져오기</span>
 							<span class="d-flex align-items-center" style="gap:12px">
-								<label class="mb-0 font-weight-normal"><input type="checkbox" id="srcAuto" disabled> 자동 09:00·면접 10분 전</label>
+								<label class="mb-0 font-weight-normal"><input type="checkbox" id="srcAuto" disabled> 자동 09~18시 매시·면접 10분 전</label>
 								<button type="button" id="runBtn" class="btn btn-sm btn-dark" onclick="runNow();">지금 실행</button>
 							</span>
 						</div>

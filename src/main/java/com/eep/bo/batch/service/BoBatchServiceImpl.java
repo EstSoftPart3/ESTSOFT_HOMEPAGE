@@ -84,9 +84,9 @@ public class BoBatchServiceImpl implements BoBatchService {
 		}
 	}
 
-	// homepage 컨테이너가 UTC 이고 Spring 3.2 @Scheduled 에는 zone 이 없다. UTC 00:00 = 서울 09:00
+	// homepage 컨테이너가 UTC 이고 Spring 3.2 @Scheduled 에는 zone 이 없다. UTC 00~09시 정각 = 서울 09~18시 매시(2026-11-26 사용자 요청)
 	@Override
-	@Scheduled(cron = "0 0 0 * * *")
+	@Scheduled(cron = "0 0 0-9 * * *")
 	public void runInterviewScheduled() {
 		List<Map<String, Object>> targets;
 		try {

@@ -162,7 +162,7 @@
 		<div class="rc-views" role="group" aria-label="보기">
 			<button type="button" data-view="cal" aria-pressed="true">📅 달력</button><button type="button" data-view="card" aria-pressed="false">▦ 카드</button><button type="button" data-view="table" aria-pressed="false">☰ 표</button><button type="button" data-view="board" aria-pressed="false">▥ 상태 보드</button><button type="button" data-view="tl" aria-pressed="false">▬ 타임라인</button>
 		</div>
-		<button type="button" class="btn btn-sm btn-outline-primary" id="calBtn" title="구글 캘린더(est.part2)의 모집·인터뷰 가져오기 — 매일 09:00 배치 때도 자동">📅 캘린더</button>
+		<button type="button" class="btn btn-sm btn-outline-primary" id="calBtn" title="구글 캘린더(est.part2)의 모집·인터뷰 가져오기 — 매일 09~18시 매시 배치 때도 자동">📅 캘린더</button>
 		<button type="button" class="btn btn-sm btn-primary" id="addBtn">+ 모집 등록</button>
 	</div>
 	<div class="rc-main" id="rcMain"><div class="text-muted p-3">불러오는 중…</div></div>
@@ -867,7 +867,7 @@ function calDialog() {
 		var $id = $('<input class="form-control form-control-sm" style="max-width:280px">').val(d.CAL_ID);
 		$f.empty().append($('<div class="d-flex align-items-center flex-wrap mb-2" style="gap:6px">').append('<b class="small">읽을 캘린더 ID</b>').append($id)
 			.append($('<button type="button" class="btn btn-sm btn-outline-secondary">저장</button>').on('click', function() { post({ ACT: 'SAVE', CAL_ID: $id.val() }, '저장했어요.'); }))
-			.append('<span class="rc-note">회사 공용 캘린더 연결(면접 배치와 같은)로 읽어요. 매일 09:00 배치 때 최근 30일을 자동으로 가져와요.</span>'));
+			.append('<span class="rc-note">회사 공용 캘린더 연결(면접 배치와 같은)로 읽어요. 매일 09~18시 매시 정각 배치 때 최근 30일을 자동으로 가져와요.</span>'));
 		$f.append($('<div class="d-flex align-items-center flex-wrap mb-2" style="gap:6px">').append($('<b class="small">').text('인사카드 없는 사람 대기자 등록'))
 			.append($('<span class="badge">').addClass(d.WAIT_ON ? 'badge-success' : 'badge-secondary').text(d.WAIT_ON ? '자동 등록 켜짐' : '미리보기만'))
 			.append($('<button type="button" class="btn btn-sm btn-outline-secondary">').text(d.WAIT_ON ? '자동 등록 끄기' : '자동 등록 켜기').on('click', function() {
