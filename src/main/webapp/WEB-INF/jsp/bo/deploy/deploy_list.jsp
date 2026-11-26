@@ -660,7 +660,8 @@
 	// 지금 걸러진 목록 기준. 단가는 계약 줄마다(휴가 건 빼고), 급여는 사람마다 한 번
 	function putSums($h, groups) {
 		// 체크한 형태의 줄만(내근·휴직 사람은 그 사람 줄 모두). 건수는 사람·형태별 한 건(같은 정규직에서 프로젝트만 바뀐 줄은 한 건)
-		var rows = [].concat.apply([], groups.map(function(g) { return g.rows.filter(function(x) { return !x.PSEUDO && (g.kind || checked[chipOf(x.EMP_TYPE_CD)]); }); }));
+		// 휴가 건(대기-유급휴가 등, 줄 대신 🏖 로 보이는 건)도 투입 건이라 합계에 넣는다(엑셀처럼 계약단가 포함)
+		var rows = [].concat.apply([], groups.map(function(g) { return g.rows.concat(g.leaves || []).filter(function(x) { return !x.PSEUDO && (g.kind || checked[chipOf(x.EMP_TYPE_CD)]); }); }));
 		var cnt = {}; rows.forEach(function(x) { cnt[x.STAFF_SQ + '|' + chipOf(x.EMP_TYPE_CD)] = 1; });
 		var ps = groups.map(function(g) { return pay.by[g.top.STAFF_SQ]; }).filter(Boolean);
 		function sum(list, f) { return list.reduce(function(s, x) { return s + Number(x[f] || 0); }, 0); }
