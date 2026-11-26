@@ -86,7 +86,7 @@
 	.dp-st.o { background: #2f4a6d; color: #fff; } .dp-st.r { background: #e7f0ff; color: #1c4f9c; border: 1px solid #b6cdf3; margin-left: 0; } .dp-st.w { background: #fff3e0; color: #8a5a00; border: 1px solid #f3cf8d; margin-left: 0; }
 	.dp-lv { border-radius: 9px; padding: 0 6px; font-size: 11px; font-weight: 700; margin-left: 6px; line-height: 18px; }
 	.dp-lv.p { background: #fff1d6; border: 1px solid #f0c36d; color: #7a5600; } .dp-lv.u { background: #f1f3f5; border: 1px solid #c5ccd3; color: #495057; }
-	#dpHead th { position: sticky; top: 0; z-index: 3; background: #fafbfc; box-shadow: 0 1px 0 rgba(17,17,17,.1); }
+	#dpHead th { position: sticky; top: 0; z-index: 3; background: #fafbfc; box-shadow: 0 1px 0 rgba(17,17,17,.1); vertical-align: top; } /* 칸 이름은 늘 윗줄, 합계는 그 아래 */
 	#dpHead th:last-child { right: 0; z-index: 4; }
 	.pl-sort { background: none; border: 0; padding: 0 0 0 3px; color: #9aa4ac; font-size: 10px; cursor: pointer; }
 	.pl-sort.on { color: #0b6e8a; }
@@ -248,7 +248,7 @@
 		$(document).on('change', '.dp-filter', render);
 		$('[data-view]').on('click', function() { view = $(this).data('view'); $('[data-view]').removeClass('active'); $(this).addClass('active'); render(); });
 		$('#btnAdd').on('click', function() { if (view !== 'table') $('[data-view=table]').click(); addRow(true); });
-		$('#btnResetCols').on('click', function() { saveOrder(''); order = defaultOrder(); arrangeAll(); });
+		$('#btnResetCols').on('click', function() { saveOrder(''); order = defaultOrder(); payOrder = []; try { localStorage.removeItem('dpPayOrder'); } catch (e) {} arrangeAll(); });
 		$('#ym').val(ym).on('change', function() { if (this.value) { ym = this.value; loadPay(render); } });
 		$('#prevYm, #nextYm').on('click', function() { ym = moment(ym + '-01').add(this.id === 'prevYm' ? -1 : 1, 'months').format('YYYY-MM'); $('#ym').val(ym); loadPay(render); });
 	});
@@ -303,7 +303,14 @@
 		if (payBand.p) PAY_PL.forEach(function(x) { c.push(['P_' + x[0], x[1], 'p']); });
 		return c.concat([['P_PROFIT', 'Σ 영업이익', 'p', ['p', '손익']], ['P_FLAG', '확인 사항'], ['P_LINK', '메모·이력']]);
 	}
-	function payKeys() { return payCols().map(function(c) { return c[0]; }); }
+	// 급여 칸 순서: 이 브라우저에 기억. 펼친 칸처럼 저장된 순서에 없는 칸은 기본 순서에서 바로 앞 칸 뒤에. 접기·펴기 칸(P_TOG)은 늘 맨 앞
+	var payOrder = [];
+	try { payOrder = (localStorage.getItem('dpPayOrder') || '').split(',').filter(Boolean); } catch (e) {}
+	function payKeys() {
+		var def = payCols().map(function(c) { return c[0]; }), out = payOrder.filter(function(k) { return def.indexOf(k) >= 0 && k !== 'P_TOG'; });
+		def.forEach(function(k, i) { if (k !== 'P_TOG' && out.indexOf(k) < 0) out.splice(i > 1 ? out.indexOf(def[i - 1]) + 1 : 0, 0, k); });
+		return def.indexOf('P_TOG') >= 0 ? ['P_TOG'].concat(out) : out;
+	}
 	function payUrl(sq, tab) { return '/admin/pay/openPayList.do?ym=' + ym + '&open=' + sq + (tab ? '&tab=' + tab : ''); }
 	function payHeads() {
 		return payCols().map(function(c) {
@@ -815,7 +822,18 @@
 
 	function saveOrder(val) { $.post('/admin/deploy/saveColumnsData.do', { ORDER: val }); }
 
+	// 투입 칸은 투입 칸끼리, 급여 칸은 급여 칸끼리 옮긴다(투입 칸 순서는 계정에, 급여 칸 순서는 이 브라우저에 저장)
 	function move(from, to, after) {
+		if (/^P_/.test(from) !== /^P_/.test(to)) return;
+		if (/^P_/.test(from)) {
+			var cur = payKeys().filter(function(k) { return k !== 'P_TOG'; });
+			if (to === 'P_TOG') { to = cur[0]; after = false; }
+			cur.splice(cur.indexOf(from), 1);
+			cur.splice(cur.indexOf(to) + (after ? 1 : 0), 0, from);
+			payOrder = cur.concat(payOrder.filter(function(k) { return cur.indexOf(k) < 0; }));
+			try { localStorage.setItem('dpPayOrder', payOrder.join(',')); } catch (e) {}
+			return arrangeAll();
+		}
 		order.splice(order.indexOf(from), 1);
 		order.splice(order.indexOf(to) + (after ? 1 : 0), 0, from);
 		arrangeAll();
@@ -825,7 +843,7 @@
 	function bindDrag() {
 		$('#dpHead tr').first().children('th').each(function() {
 			var th = this, c = $(th).attr('data-c');
-			if (c === '_ACT' || /^P_/.test(c)) return; // 급여 칸 묶음은 순서 고정
+			if (c === '_ACT' || c === 'P_TOG') return; // 급여 접기·펴기 칸은 맨 앞 고정
 			$(th).attr({ draggable: true, tabindex: 0, title: '끌어서 순서 변경 (Alt+←/→)' });
 			function after(e) { var r = th.getBoundingClientRect(); return e.originalEvent.clientX > r.left + r.width / 2; }
 			function clear() { $('#dpHead th').removeClass('drop-l drop-r dragging'); }
@@ -836,7 +854,7 @@
 				.on('keydown', function(e) {
 					if (!e.altKey || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
 					e.preventDefault();
-					var next = order[order.indexOf(c) + (e.key === 'ArrowRight' ? 1 : -1)];
+					var list = /^P_/.test(c) ? payKeys().filter(function(k) { return k !== 'P_TOG'; }) : order, next = list[list.indexOf(c) + (e.key === 'ArrowRight' ? 1 : -1)];
 					if (next) { move(c, next, e.key === 'ArrowRight'); th.focus(); }
 				});
 		});
