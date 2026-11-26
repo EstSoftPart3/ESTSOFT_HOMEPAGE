@@ -38,6 +38,9 @@ public class BoPayrollService {
 	@Autowired
 	private BoDeployMapper mapper;
 
+	@Autowired
+	private com.eep.bo.staff.service.StaffContractService contracts;
+
 	public boolean closed(String ym) {
 		return "Y".equals(mapper.selectClosed(one("YM", ym)));
 	}
@@ -53,6 +56,7 @@ public class BoPayrollService {
 		Map<Object, Map<String, Object>> prev = new HashMap<>();
 		derive(mapper.selectPayrollRows(one("YM", YearMonth.parse(ym).minusMonths(1).toString())), new ArrayList<>()).forEach(r -> prev.put(r.get("STAFF_SQ"), r));
 		Map<String, List<Map<String, Object>>> plans = BonusCalc.byRecipient(bonusPlans());
+		retire(ym, rows, plans);
 		for (Map<String, Object> r : rows) {
 			r.put("BONUS_PLAN", plans.getOrDefault(String.valueOf(r.get("STAFF_SQ")), new ArrayList<>()));
 			Map<String, Object> p = prev.get(r.get("STAFF_SQ"));
@@ -85,6 +89,86 @@ public class BoPayrollService {
 		String payDt = mapper.selectPayDate(q);
 		out.put("PAY_DT", payDt != null && !payDt.isEmpty() ? payDt : YearMonth.parse(ym).plusMonths(1).atDay(15).toString()); // 따로 정하지 않으면 익월 15일
 		return out;
+	}
+
+	/**
+	 * 정규·수습 줄에 법정 퇴직금(보여 주기만, 영업이익에서 빼지 않음): RETIRE = 이 달 말 퇴사 가정 총액 − 지난달 말 총액, RETIRE_INFO = 말풍선 근거.
+	 * 평균임금 상여는 근속상여·연차수당만(취업축하금·인재추천은 임금 아님, 11/26 사용자 결정). 재직 시작은 인사카드 계약 목록의 이어진 계약 처음.
+	 */
+	void retire(String ym, List<Map<String, Object>> rows, Map<String, List<Map<String, Object>>> plans) {
+		YearMonth m0 = YearMonth.parse(ym);
+		Map<String, Map<String, long[]>> pays = new HashMap<>(); // STAFF_SQ → YM → { 임금(상여 뺀 지급), 평균임금 상여 }
+		for (int i = 0; i <= 13; i++) {
+			String m = m0.minusMonths(i).toString();
+			for (Map<String, Object> r : i == 0 ? rows : mapper.selectPayrollRows(one("YM", m))) {
+				String sq = String.valueOf(r.get("STAFF_SQ"));
+				long wage = 0;
+				for (String f : PAY_FIELDS) {
+					wage += "BONUS_AMT".equals(f) ? 0 : n(r.get(f));
+				}
+				// shortcut: 상여 종류는 상여관리 계획으로만 가린다 — 시스템 이전(엑셀 이관) 달의 상여는 모두 근속상여로 본다
+				long gift = 0;
+				for (Map<String, Object> p : plans.getOrDefault(sq, new ArrayList<>())) {
+					String label = str(p.get("LABEL"));
+					if (m.equals(p.get("YM")) && Boolean.TRUE.equals(p.get("OK")) && (label.startsWith("취업축하") || label.startsWith("인재추천"))) {
+						gift += n(p.get("AMT"));
+					}
+				}
+				long[] v = pays.computeIfAbsent(sq, k -> new HashMap<>()).computeIfAbsent(m, k -> new long[2]);
+				v[0] += wage;
+				v[1] += Math.max(0, n(r.get("BONUS_AMT")) - gift);
+			}
+		}
+		Map<String, List<String[]>> cs = contracts.periods();
+		for (Map<String, Object> r : rows) {
+			if (!Boolean.TRUE.equals(r.get("SALARIED"))) {
+				continue;
+			}
+			String sq = String.valueOf(r.get("STAFF_SQ"));
+			Map<String, long[]> p = pays.getOrDefault(sq, new HashMap<>());
+			LocalDate[] now = service(cs.get(sq), r.get("JOIN_DT"), m0), before = service(cs.get(sq), r.get("JOIN_DT"), m0.minusMonths(1));
+			Map<String, Object> a = now == null ? null : PayCalc.legalRetire(now[0], now[1], p);
+			if (a == null) {
+				continue;
+			}
+			Map<String, Object> b = before == null ? null : PayCalc.legalRetire(before[0], before[1], p);
+			long prev = b == null ? 0 : n(b.get("TOTAL"));
+			a.put("PREV_TOTAL", prev);
+			r.put("RETIRE", n(a.get("TOTAL")) - prev);
+			r.put("RETIRE_INFO", a);
+		}
+	}
+
+	/** { 재직 시작, 계산 끝 }: 그 달 말에 걸친(또는 그 전 마지막) 계약에서 31일 안으로 이어진 앞 계약까지. 계약이 없으면 인사카드 입사일. 그 달에 계약이 끝나면 끝은 종료일 */
+	static LocalDate[] service(List<String[]> cs, Object join, YearMonth m) {
+		LocalDate end = m.atEndOfMonth();
+		if (cs == null || cs.isEmpty()) {
+			LocalDate j = PayCalc.date(join);
+			return j == null || j.isAfter(end) ? null : new LocalDate[] { j, end };
+		}
+		int at = -1;
+		for (int i = 0; i < cs.size(); i++) {
+			if (!LocalDate.parse(cs.get(i)[0]).isAfter(end)) {
+				at = i;
+			}
+		}
+		if (at < 0) {
+			return null;
+		}
+		LocalDate start = LocalDate.parse(cs.get(at)[0]);
+		String endDt = cs.get(at)[1];
+		if (endDt != null && YearMonth.from(LocalDate.parse(endDt)).equals(m)) {
+			end = LocalDate.parse(endDt);
+		}
+		for (int i = at - 1; i >= 0; i--) {
+			String e = cs.get(i)[1];
+			if (e != null && LocalDate.parse(e).plusDays(31).isBefore(start)) {
+				break;
+			}
+			LocalDate s = LocalDate.parse(cs.get(i)[0]);
+			start = s.isBefore(start) ? s : start;
+		}
+		return new LocalDate[] { start, end };
 	}
 
 	/** 홈 달력: from~to 달의 급여 지급일(정하지 않았으면 익월 15일)과 마감 여부. 급여를 다시 계산하지 않고 읽기만 한다 */
@@ -608,10 +692,9 @@ public class BoPayrollService {
 					}
 				}
 			}
-			long company = salaried
-					? n(r.get("NP_AMT")) + n(r.get("HI_AMT")) + n(r.get("EI_AMT")) + n(r.get("LTC_AMT")) + n(r.get("ACC_AMT"))
-							+ PayCalc.retire(n(r.get("BASE_AMT")), n(r.get("MEAL_AMT")), n(r.get("RESEARCH_AMT")), n(r.get("FUEL_AMT")), n(r.get("BONUS_AMT")))
-					: 0;
+			// 퇴직금은 영업이익에서 빼지 않는다(11/23 결정: 실제 지급액만 비용, 법정 퇴직금은 retire() 로 보여 주기만)
+			long company = salaried ? n(r.get("NP_AMT")) + n(r.get("HI_AMT")) + n(r.get("EI_AMT")) + n(r.get("LTC_AMT")) + n(r.get("ACC_AMT")) : 0;
+			r.put("SALARIED", salaried);
 			Map<String, Object> latest = ds.isEmpty() ? null : ds.get(ds.size() - 1);
 			r.put("DETAILS", ds);
 			r.put("PAY_TOTAL", pay);

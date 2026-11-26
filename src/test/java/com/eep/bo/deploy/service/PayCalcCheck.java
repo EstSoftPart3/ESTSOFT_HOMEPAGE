@@ -42,7 +42,45 @@ public class PayCalcCheck {
 		// 해제가 지난 수습은 정규로 계산
 		r = PayCalc.salaried("PROBATION", 3000000, "2027-01", LocalDate.parse("2026-09-14"), LocalDate.parse("2026-12-14"), LocalDate.parse("2027-01-31"));
 		same(r[0], 2800000L, "해제 지난 수습");
-		same(PayCalc.retire(4000000, 200000, 0, 0, 500000), 470000L, "퇴직금 적립");
+		// 법정 퇴직금: 노무 대행 명세서 3건의 숫자(이름 없음)와 같게 나와야 한다
+		Map<String, long[]> p1 = new HashMap<>(); // 3개월 꽉 찬 달, 상여 12개월 251만
+		for (String m : new String[] { "2025-11", "2025-12", "2026-01" }) p1.put(m, new long[] { 2166000, 0 });
+		p1.put("2025-02", new long[] { 2166000, 500000 }); p1.put("2025-03", new long[] { 2166000, 500000 }); p1.put("2025-04", new long[] { 2166000, 10000 });
+		p1.put("2025-06", new long[] { 2166000, 500000 }); p1.put("2025-09", new long[] { 2166000, 500000 }); p1.put("2025-12", new long[] { 2166000, 500000 });
+		Map<String, Object> l1 = PayCalc.legalRetire(LocalDate.parse("2024-10-14"), LocalDate.parse("2026-01-31"), p1);
+		same(l1.get("AVG"), "77451.09", "평균임금(꽉 찬 3개월)");
+		same(l1.get("SERVICE_DAYS"), 475L, "재직일수");
+		same(l1.get("TOTAL"), 3023775L, "퇴직금(꽉 찬 3개월)");
+		Map<String, long[]> p2 = new HashMap<>(); // 퇴사일 3/6: 창이 12/7 부터라 12월은 일할, 3월은 이미 일할 지급(419,226)
+		p2.put("2025-12", new long[] { 2166000, 500000 }); p2.put("2026-01", new long[] { 2166000, 0 }); p2.put("2026-02", new long[] { 2166000, 0 }); p2.put("2026-03", new long[] { 419226, 500000 });
+		p2.put("2025-06", new long[] { 2166000, 500000 }); p2.put("2025-09", new long[] { 2166000, 500000 }); p2.put("2025-03", new long[] { 2166000, 500000 });
+		Map<String, Object> l2 = PayCalc.legalRetire(LocalDate.parse("2024-10-15"), LocalDate.parse("2026-03-06"), p2);
+		same(l2.get("WAGE3"), 6498000L, "3개월 임금(달 중간 퇴사)");
+		same(l2.get("DAYS3"), 90L, "3개월 일수");
+		same(l2.get("AVG"), "77755.56", "평균임금(달 중간 퇴사)");
+		same(l2.get("TOTAL"), 3246560L, "퇴직금(달 중간 퇴사)");
+		Map<String, long[]> p3 = new HashMap<>(); // 소수 둘째 자리 올림(92,222.222 → 92,222.23)
+		for (String m : new String[] { "2026-01", "2026-02", "2026-03" }) p3.put(m, new long[] { 2600000, 0 });
+		p3.put("2025-03", new long[] { 2600000, 400000 }); p3.put("2025-05", new long[] { 2600000, 500000 }); p3.put("2025-08", new long[] { 2600000, 500000 });
+		p3.put("2025-11", new long[] { 2600000, 500000 }); p3.put("2026-02", new long[] { 2600000, 500000 });
+		Map<String, Object> l3 = PayCalc.legalRetire(LocalDate.parse("2022-09-27"), LocalDate.parse("2026-03-31"), p3);
+		same(l3.get("AVG"), "92222.23", "평균임금 올림");
+		same(l3.get("TOTAL"), 9717443L, "퇴직금(장기 근속)");
+		Map<String, Object> l4 = PayCalc.legalRetire(LocalDate.parse("2026-02-01"), LocalDate.parse("2026-10-31"), p3);
+		same(l4.get("TOTAL"), 0L, "1년 미만은 0");
+		same(PayCalc.legalRetire(LocalDate.parse("2025-11-01"), LocalDate.parse("2026-10-31"), p3).containsKey("ONE_YEAR"), false, "딱 1년이면 대상");
+		// 재직 시작: 31일 안으로 이어진 계약은 처음부터, 더 비면 재입사로 새로. 그 달에 계약이 끝나면 끝은 종료일
+		List<String[]> cs = new ArrayList<>();
+		cs.add(new String[] { "2021-09-09", "2024-02-29" });
+		cs.add(new String[] { "2024-03-10", "2024-07-10" });
+		cs.add(new String[] { "2025-07-01", null });
+		LocalDate[] sv = BoPayrollService.service(cs, null, java.time.YearMonth.parse("2024-05"));
+		same(sv[0] + "~" + sv[1], "2021-09-09~2024-05-31", "이어진 계약은 처음부터");
+		sv = BoPayrollService.service(cs, null, java.time.YearMonth.parse("2024-07"));
+		same(sv[0] + "~" + sv[1], "2021-09-09~2024-07-10", "계약이 끝나는 달은 종료일까지");
+		sv = BoPayrollService.service(cs, null, java.time.YearMonth.parse("2026-10"));
+		same(sv[0] + "~" + sv[1], "2025-07-01~2026-10-31", "1년 가까이 비면 재입사로 새로");
+		same(BoPayrollService.service(null, "2026-02-01", java.time.YearMonth.parse("2026-10"))[0], "2026-02-01", "계약이 없으면 입사일");
 		bonus();
 
 		// 대장 합계·손익 (엑셀 BP, BQ, BV)
@@ -77,8 +115,8 @@ public class PayCalcCheck {
 		same(row.get("PAY_TOTAL"), 4700000L, "지급계");
 		same(row.get("DED_TOTAL"), 600450L, "공제계");
 		same(row.get("NET"), 4099550L, "실지급");
-		same(row.get("COMPANY"), 852450L, "회사부담");
-		same(row.get("PROFIT"), 1447550L, "영업이익");
+		same(row.get("COMPANY"), 382450L, "회사부담 = 4대보험 회사분(퇴직금은 영업이익에서 빼지 않음)");
+		same(row.get("PROFIT"), 1917550L, "영업이익");
 		same(BoPayrollService.flags(row).get(0).get("K"), "상여", "확인 사항 키워드");
 		row.put("LEDGER_PAY", 4900000L);
 		same(BoPayrollService.flags(row).get(1).get("D").toString().split("\n")[2], "차이 +200,000", "대장차 설명");
@@ -93,9 +131,9 @@ public class PayCalcCheck {
 		ds.add(split);
 		BoPayrollService.derive(rows, ds);
 		same(row.get("PAY_TOTAL"), 4700000L, "기타 계약 몫은 지급계에 안 들어감");
-		same(row.get("COMPANY"), 852450L, "기타 계약 몫에는 퇴직금 적립 없음");
+		same(row.get("COMPANY"), 382450L, "기타 계약 몫은 회사부담에 안 들어감");
 		same(row.get("BUY"), 600000L, "외부 매입");
-		same(row.get("PROFIT"), 1447550L - 600000L, "영업이익에서 외부 매입을 뺌");
+		same(row.get("PROFIT"), 1917550L - 600000L, "영업이익에서 외부 매입을 뺌");
 		// 고용보험알바(본인 계약) + P4H(기타) + MCS(수수료): 업체 몫은 기타·수수료로 따로
 		d.put("DEPLOY_TYPE", "EMP_INS");
 		Map<String, Object> fee = new HashMap<>(split);

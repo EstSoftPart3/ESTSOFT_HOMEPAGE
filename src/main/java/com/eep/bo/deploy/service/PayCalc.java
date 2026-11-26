@@ -1,9 +1,13 @@
 package com.eep.bo.deploy.service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.Map;
 
 /** 월 급여 계산. '이에스티_투입현황' 엑셀의 수식을 그대로 옮겼다. DB 를 쓰지 않는다 */
 public final class PayCalc {
@@ -137,9 +141,53 @@ public final class PayCalc {
 		return String.format("%,d", v);
 	}
 
-	/** 퇴직금 적립: (기본+식대+연구비+유류비+상여) ÷ 10 */
-	public static long retire(long base, long meal, long research, long fuel, long bonus) {
-		return (base + meal + research + fuel + bonus) / 10;
+	/**
+	 * 법정 퇴직금(근로자퇴직급여 보장법): 1일 평균임금 × 30 × 재직일수 ÷ 365, 재직 1년 미만이면 0.
+	 * 1일 평균임금 = (퇴직일 전 3개월 임금 + 최근 12개월 상여 × 3/12) ÷ 3개월 일수, 소수 둘째 자리 올림(노무 명세서와 같게). 퇴직금은 원 미만 버림.
+	 * pays: 'YYYY-MM' → { 그 달 임금(상여 뺀 지급), 평균임금에 넣는 상여(근속상여·연차수당) }.
+	 * 3개월 창이 달 중간에서 시작하면 그 달 임금은 일수로 나눈다(입사로 짧아진 창은 이미 일할 지급이라 그대로).
+	 * 돌려주는 값: TOTAL, AVG, WAGE3, DAYS3, BONUS12, START, END, SERVICE_DAYS, 1년 미만이면 ONE_YEAR(1년 채울 때 예상)
+	 */
+	public static Map<String, Object> legalRetire(LocalDate start, LocalDate end, Map<String, long[]> pays) {
+		if (start == null || end == null || start.isAfter(end)) {
+			return null;
+		}
+		LocalDate windowFrom = end.minusMonths(3).plusDays(1), from = start.isAfter(windowFrom) ? start : windowFrom;
+		long days3 = ChronoUnit.DAYS.between(from, end) + 1;
+		BigDecimal wage3 = BigDecimal.ZERO;
+		for (YearMonth m = YearMonth.from(from); !m.isAfter(YearMonth.from(end)); m = m.plusMonths(1)) {
+			long w = pays.getOrDefault(m.toString(), new long[2])[0];
+			if (m.equals(YearMonth.from(from)) && from.equals(windowFrom) && from.getDayOfMonth() > 1) {
+				wage3 = wage3.add(BigDecimal.valueOf(w * (m.lengthOfMonth() - from.getDayOfMonth() + 1) / m.lengthOfMonth()));
+			} else {
+				wage3 = wage3.add(BigDecimal.valueOf(w));
+			}
+		}
+		long bonus12 = 0;
+		for (int i = 0; i < 12; i++) {
+			bonus12 += pays.getOrDefault(YearMonth.from(end).minusMonths(i).toString(), new long[2])[1];
+		}
+		BigDecimal avg = wage3.add(BigDecimal.valueOf(bonus12).multiply(BigDecimal.valueOf(3)).divide(BigDecimal.valueOf(12), 10, RoundingMode.HALF_UP))
+				.divide(BigDecimal.valueOf(days3), 10, RoundingMode.HALF_UP).setScale(2, RoundingMode.CEILING);
+		long service = ChronoUnit.DAYS.between(start, end) + 1;
+		boolean year = !start.plusYears(1).isAfter(end.plusDays(1));
+		Map<String, Object> out = new HashMap<>();
+		out.put("START", start.toString());
+		out.put("END", end.toString());
+		out.put("SERVICE_DAYS", service);
+		out.put("WAGE3", wage3.longValue());
+		out.put("DAYS3", days3);
+		out.put("BONUS12", bonus12);
+		out.put("AVG", avg);
+		out.put("TOTAL", year ? retireAmount(avg, service) : 0L);
+		if (!year) {
+			out.put("ONE_YEAR", retireAmount(avg, 365));
+		}
+		return out;
+	}
+
+	private static long retireAmount(BigDecimal avg, long days) {
+		return avg.multiply(BigDecimal.valueOf(30 * days)).divide(BigDecimal.valueOf(365), 0, RoundingMode.FLOOR).longValue();
 	}
 
 }

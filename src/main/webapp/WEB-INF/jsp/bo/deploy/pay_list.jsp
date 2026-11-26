@@ -188,10 +188,11 @@
 		PAY_TOTAL: [['지급계 = 기본 + 수당 칸 합']], DED_TOTAL: [['공제계 = 공제 칸 + 정산 칸 합']], _SETTLE: [['정산 = 국민연금·건강·고용·장기요양·소득세·지방소득세 정산 합', '칸별 정산은 성명을 눌러 상세에서 고칩니다']],
 		NET: [['실지급 = 지급계 − 공제계']], DELTA_PCT: [['전월대비 = (이번 달 실지급 − 전월 실지급) ÷ 전월 실지급']],
 		REAL_SALE: [['실매출 = (매출단가 ÷ 월 일수) × 근무일수', '같은 기간의 정규 건과 수습 건은 한 투입이라 한 번만 셉니다'], ['PRORATE_UNIT']],
-		COMPANY: [['회사부담 = 4대보험 회사분 + 퇴직금 적립 (정규·수습만)', '퇴직금 적립 = (기본 + 식대 + 연구비 + 유류비 + 상여) ÷ 10']],
+		COMPANY: [['회사부담 = 4대보험 회사분 (정규·수습만)', '퇴직금은 영업이익에서 빼지 않습니다(실제 지급할 때만 비용) — 옆 퇴직금(당월) 칸은 보여 주기만']],
+		RETIRE: [['퇴직금(당월) = 이 달 말 퇴사 가정 법정 퇴직금 − 지난달 말 퇴사 가정 법정 퇴직금 (정규·수습)', '법정 퇴직금 = 1일 평균임금 × 30 × 재직일수 ÷ 365, 재직 1년 미만은 0', '1일 평균임금 = (3개월 임금 + 최근 12개월 근속상여·연차수당 × 3/12) ÷ 3개월 일수 · 취업축하금·인재추천은 빼고 셉니다', '재직 시작 = 인사카드 계약 목록의 이어진 계약 처음 · 마우스를 올리면 총 퇴직금 예상과 근거']],
 		BUY: [['기타 = 본인 계약이 있는 사람에게 함께 걸린 기타계약·외부기타 몫 (업체에 주는 돈, 급여 아님)', '= (계약단가 ÷ 월 일수) × 근무일수'], ['PRORATE_UNIT']],
 		FEE: [['수수료 = 본인 계약이 있는 사람에게 함께 걸린 외부수수료(MCS) 몫 (업체에 주는 돈, 급여 아님)', '= (계약단가 ÷ 월 일수) × 근무일수'], ['PRORATE_UNIT']],
-		PROFIT: [['영업이익 = 실매출 − 지급계 − 회사부담 − 기타 − 수수료', '투입현황에서 내근직으로 켠 사람은 빼고 셉니다(급여·공제는 그대로)']]
+		PROFIT: [['영업이익 = 실매출 − 지급계 − 회사부담 − 기타 − 수수료 (퇴직금 적립은 빼지 않음)', '투입현황에서 내근직으로 켠 사람은 빼고 셉니다(급여·공제는 그대로)']]
 	};
 	var PARAMS = [];
 	var LABEL = { CLOSE: '마감', REOPEN: '마감 해제', MEMO: '메모', BONUS: '상여 적용', BONUS_EXCLUDE: '상여 제외' };
@@ -384,7 +385,7 @@
 			$b.append($('<tr>').toggleClass('table-info', (c[1] || []).indexOf(p.PARAM_K) >= 0).append($('<td>').text(p.NM)).append($('<td class="dp-num">').append($in))
 				.append($('<td class="small text-muted">').text(p.UPDT_DT ? (p.EMPLY_NM || p.UPDT_EMPLY_ID) + ' · ' + p.UPDT_DT : '기본값')).append($('<td>').append($save)));
 		});
-		$b.append('<tr class="text-muted"><td>퇴직금 적립 비율</td><td class="dp-num">1/10</td><td class="small" colspan="2">고정 · 바꾸면 마감된 달의 영업이익까지 바뀌어 막아 두었습니다</td></tr>');
+		$b.append('<tr class="text-muted"><td>퇴직금</td><td class="dp-num">법정</td><td class="small" colspan="2">1일 평균임금 × 30 × 재직일수 ÷ 365 · 영업이익에서 빼지 않고 보여 주기만</td></tr>');
 		dpInfo('🧮 계산 기준값', $box.append($t).append('<div class="small text-muted">파란 줄은 이 칸 계산에 쓰는 값입니다. 바꾼 내용은 수정이력(직원 없음)에 남습니다.</div>'));
 	}
 
@@ -400,7 +401,7 @@
 		if (pickedYm !== ym) { picked = {}; pickedYm = ym; }
 		var bands = $('<tr class="pl-bands">').append('<th colspan="9"></th>')
 			.append(band('show-allow', 'allow', '수당', ALLOW.length)).append(band('show-ded', 'ded', '공제', DED.length)).append('<th colspan="2"></th>')
-			.append(band('show-pl', 'pl', '손익', 5)).append('<th colspan="3"></th>');
+			.append(band('show-pl', 'pl', '손익', 6)).append('<th colspan="3"></th>');
 		var $h = $('<tr>').append($('<th class="pl-pick-col">').append($('<input type="checkbox" id="pickAll" aria-label="보이는 사람 모두 체크">')))
 			.append(sortTh('성명', 'STAFF_NM')).append(sortTh('형태', 'TYPE')).append(sortTh('고객사', 'CLIENT')).append(sortTh('프로젝트', 'PRJ'))
 			.append(sortTh('근무기간', 'PERIOD')).append($('<th>').append($('<button type="button" class="pl-prob-btn" id="probToggle">').attr('aria-expanded', probOpen).text(probOpen ? '수습기간 ▾' : '수습 ▸')))
@@ -409,7 +410,7 @@
 		$h.append(sortTh('지급계', 'PAY_TOTAL', 'dp-num c-allow pl-calc-h'));
 		DED.forEach(function(a) { $h.append(a[0] === '_SETTLE' ? $('<th class="dp-num x-ded pl-calc-h">').text(a[1]).prepend(calcBtn('_SETTLE', a[1])) : sortTh(a[1], a[0], 'dp-num x-ded')); });
 		$h.append(sortTh('공제계', 'DED_TOTAL', 'dp-num c-ded pl-calc-h')).append(sortTh('실지급', 'NET', 'dp-num pl-calc-h')).append(sortTh('전월대비', 'DELTA_PCT', 'dp-num pl-calc-h')).append('<th class="pl-stub"></th>');
-		[['실매출', 'REAL_SALE'], ['기타', 'BUY'], ['수수료', 'FEE'], ['회사부담', 'COMPANY']].forEach(function(t) { $h.append(sortTh(t[0], t[1], 'dp-num x-pl pl-calc-h')); });
+		[['실매출', 'REAL_SALE'], ['기타', 'BUY'], ['수수료', 'FEE'], ['회사부담', 'COMPANY'], ['퇴직금(당월)', 'RETIRE']].forEach(function(t) { $h.append(sortTh(t[0], t[1], 'dp-num x-pl pl-calc-h')); });
 		$h.append(sortTh('영업이익', 'PROFIT', 'dp-num pl-profit pl-calc-h')); // 손익을 접어도 영업이익은 보인다
 		$h.append(sortTh('확인 사항', 'FLAGS')).append('<th>메모</th><th>이력</th>');
 		$('#lHead').empty().append(bands).append($h);
@@ -446,7 +447,7 @@
 			$tr.append(rs($('<td class="dp-num c-ded font-weight-bold pl-calc">').text(dpWon(r.DED_TOTAL)))).append(rs($('<td class="dp-num font-weight-bold pl-calc">').text(dpWon(r.NET))))
 				.append(rs($('<td class="dp-num pl-calc">').text(r.DELTA_PCT === undefined ? '' : (r.DELTA_PCT > 0 ? '+' : '') + r.DELTA_PCT + '%').toggleClass('text-danger', Math.abs(r.DELTA_PCT || 0) >= 10)))
 				.append(rs($('<td class="pl-stub">')))
-				.append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(pv.sale)))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(pv.buy ? dpWon(pv.buy) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(pv.fee ? dpWon(pv.fee) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.COMPANY)))).append(rs(r.OFFICE ? $('<td class="dp-num pl-profit text-muted" title="투입현황에서 내근직으로 켠 사람은 영업이익(합계 포함)에서 뺍니다">').text('내근 제외') : $('<td class="dp-num pl-profit font-weight-bold pl-calc">').text(dpWon(pv.profit))))
+				.append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(pv.sale)))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(pv.buy ? dpWon(pv.buy) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc pl-buy">').text(pv.fee ? dpWon(pv.fee) : '—'))).append(rs($('<td class="dp-num x-pl pl-calc">').text(dpWon(r.COMPANY)))).append(rs(retireCell(r))).append(rs(r.OFFICE ? $('<td class="dp-num pl-profit text-muted" title="투입현황에서 내근직으로 켠 사람은 영업이익(합계 포함)에서 뺍니다">').text('내근 제외') : $('<td class="dp-num pl-profit font-weight-bold pl-calc">').text(dpWon(pv.profit))))
 				.append(rs($('<td>')).append(r.FLAGS.map(function(f) { return flagChip(r, f); })))
 				.append(rs($('<td>')).append(countBtn('💬', r.MEMO_CNT, r.STAFF_NM + ' 메모', function() { memoPopup(r); })))
 				.append(rs($('<td>')).append(countBtn('✎', r.CHG_CNT, r.STAFF_NM + ' 수정이력', function() { historyPopup(r); })));
@@ -474,6 +475,27 @@
 	}
 
 	// 다른 계약 줄의 칸들(성명 뒤부터): 계약 단가·지급계·실지급만, 수당·공제·손익 칸은 비운다
+	// 퇴직금(당월): 이 달 말 퇴사 가정 법정 퇴직금 − 지난달 말. 마우스를 올리면 총 예상과 계산 근거
+	function retireCell(r) {
+		var i = r.RETIRE_INFO, $td = $('<td class="dp-num x-pl pl-calc">');
+		if (!i) return $td.text('—').attr('title', '정규·수습만 계산합니다');
+		$td.text(dpWon(r.RETIRE)).attr({ tabindex: 0, 'aria-label': r.STAFF_NM + ' 퇴직금 당월 ' + dpWon(r.RETIRE) + ', 총 예상 ' + dpWon(i.TOTAL) });
+		dpHover($td, $td, function() {
+			var avg = Number(i.AVG).toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+			return '<div class="dp-card sm"><div class="dp-card-top">' + dpEsc(r.STAFF_NM) + ' 법정 퇴직금<span>' + dpEsc(i.END) + ' 퇴사 가정</span></div><div class="dp-sec">'
+				+ dpLine('재직', i.START + ' ~ ' + i.END + ' · ' + dpWon(i.SERVICE_DAYS) + '일')
+				+ dpLine('3개월 임금', dpWon(i.WAGE3) + ' (' + i.DAYS3 + '일)')
+				+ dpLine('상여 가산', dpWon(i.BONUS12) + ' × 3/12')
+				+ dpLine('1일 평균임금', avg) + '</div><div class="dp-sec">'
+				+ dpLine('총 퇴직금 예상', dpWon(i.TOTAL), 't')
+				+ (i.ONE_YEAR !== undefined ? dpLine('1년 채우면 예상', dpWon(i.ONE_YEAR)) : '')
+				+ dpLine('지난달 말 예상', dpWon(i.PREV_TOTAL))
+				+ dpLine('이 달 증가 = 퇴직금(당월)', dpWon(r.RETIRE)) + '</div>'
+				+ '<div class="dp-sec"><div><span class="dp-mute" style="white-space:normal">평균임금 × 30 × 재직일수 ÷ 365 · 재직 1년 미만은 0 · 영업이익에서 빼지 않음</span><span></span></div></div></div>';
+		});
+		return $td;
+	}
+
 	function otherCells(r, d) {
 		var out = contractCells(r, d, false), amt = dpWon(d.BASE_AMT);
 		out.push($('<td class="dp-num">').text(amt).attr('title', '다른 계약 · 매입처에 주는 돈(우리 급여 아님, 급여명세서 없음)'));
@@ -481,7 +503,7 @@
 		out.push($('<td class="dp-num c-allow font-weight-bold">').text(amt));
 		DED.forEach(function() { out.push($('<td class="x-ded">')); });
 		out.push($('<td class="c-ded">'), $('<td class="dp-num font-weight-bold">').text(amt), $('<td>'), $('<td class="pl-stub">'));
-		for (var i = 0; i < 4; i++) out.push($('<td class="x-pl">'));
+		for (var i = 0; i < 5; i++) out.push($('<td class="x-pl">'));
 		out.push($('<td class="pl-profit">'), $('<td>'), $('<td>'), $('<td>'));
 		return out;
 	}

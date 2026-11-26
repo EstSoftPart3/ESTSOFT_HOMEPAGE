@@ -167,6 +167,15 @@ public class StaffContractService {
 			throw new IllegalArgumentException("파일을 찾지 못했습니다.");
 	}
 
+	/** 사람별 계약 기간 { 시작, 종료(진행 중이면 null) }, 시작 순. 급여관리 법정 퇴직금의 재직일수용 */
+	public Map<String, List<String[]>> periods() {
+		Map<String, List<String[]>> out = new LinkedHashMap<>();
+		jdbc.query("SELECT STAFF_SQ, START_DT, END_DT FROM TB_EEP_HR_CONTRACT_M ORDER BY STAFF_SQ, START_DT", rs -> {
+			out.computeIfAbsent(rs.getString(1), k -> new ArrayList<>()).add(new String[] { rs.getString(2), rs.getString(3) });
+		});
+		return out;
+	}
+
 	/** 직원 삭제 때 같이 지운다 */
 	public void deleteAll(Object staffSq) {
 		tx.execute(s -> {
