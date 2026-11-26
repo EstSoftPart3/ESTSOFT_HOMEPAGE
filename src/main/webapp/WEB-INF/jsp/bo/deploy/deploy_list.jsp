@@ -73,9 +73,8 @@
 	/* 급여관리와 같은 목록: 체크 칩, 고정 머리글, 위 스크롤, 정렬, 두 줄 */
 	.pl-chks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 14px; }
 	.pl-scroll { max-height: calc(100vh - 140px); min-height: 320px; overflow: auto; }
-	/* 머리글 바로 아래 고정 합계 줄(높이는 fitScroll 이 첫 머리글 줄 높이로 맞춤) */
-	#dpHead tr.dp-sumrow th { top: var(--dp-h1, 33px); background: #eef5ff; color: #0b4a8a; font-weight: 700; font-size: 12px; white-space: nowrap; box-shadow: 0 2px 0 #9cc1ea; }
-	#dpHead tr.dp-sumrow th.dp-pay-h { background: #e3ecf8 !important; color: #0b4a8a; }
+	/* 칸별 합계: 머리글 칸 아랫줄(머리글과 같이 고정) */
+	#dpHead .dp-sumv { margin: 3px -8px -4px; padding: 2px 8px; background: #eef5ff; color: #0b4a8a; font-size: 12px; font-weight: 700; white-space: nowrap; border-top: 1px solid #9cc1ea; }
 	.dp-chip-sep { width: 1px; height: 22px; background: #c9d1db; margin: 0 4px; }
 	.pl-chip.dp-chip-st { border-color: #8aa2c0; }
 	.dp-st { display: inline-block; border-radius: 8px; padding: 0 7px; font-size: 11px; font-weight: 700; margin-left: 4px; }
@@ -563,7 +562,8 @@
 			$h.append($th);
 		});
 		$h.append(payHeads()).append($('<th data-c="_ACT">').append('<span class="sr-only">작업</span>'));
-		$('#dpHead').empty().append($h, sumRow(groups));
+		putSums($h, groups);
+		$('#dpHead').empty().append($h);
 		bindDrag();
 		var $b = $('#dpBody').empty();
 		if (!groups.length) boEmpty($b, moment(ym + '-01').format('YYYY년 M월') + '에 걸친 투입이 없습니다. 체크나 기준월을 바꿔 보세요.');
@@ -572,24 +572,19 @@
 		fitScroll();
 	}
 
-	// 머리글 아래 고정 합계 줄: 지금 걸러진 목록 기준. 단가는 계약 줄마다(휴가 건 빼고), 급여는 사람마다 한 번
-	function sumRow(groups) {
+	// 칸별 합계: 머리글 칸 안 아랫줄에 넣는다(머리글이 한 줄이어야 공통 틀고정이 동작해서 줄을 따로 만들지 않음).
+	// 지금 걸러진 목록 기준. 단가는 계약 줄마다(휴가 건 빼고), 급여는 사람마다 한 번
+	function putSums($h, groups) {
 		var rows = [].concat.apply([], groups.map(function(g) { return g.rows; })).filter(function(x) { return !x.PSEUDO; });
 		var ps = groups.map(function(g) { return pay.by[g.top.STAFF_SQ]; }).filter(Boolean);
 		function sum(list, f) { return list.reduce(function(s, x) { return s + Number(x[f] || 0); }, 0); }
-		var $s = $('<tr class="dp-sumrow">');
-		visibleCols().forEach(function(c) {
-			var $th = $('<th>').attr('data-c', c[0]);
-			if (c[0] === 'STAFF_NM') $th.text('합계 ' + groups.length + '명 · ' + rows.length + '건');
-			else if (c[2]) $th.addClass('dp-num').text(dpWon(sum(rows, c[0])));
-			$s.append($th);
-		});
+		function put(k, txt) { $h.children('[data-c="' + k + '"]').append($('<div class="dp-sumv">').text(txt)); }
+		put('STAFF_NM', '합계 ' + groups.length + '명 · ' + rows.length + '건');
+		visibleCols().forEach(function(c) { if (c[2]) put(c[0], dpWon(sum(rows, c[0]))); });
 		payCols().forEach(function(c) {
-			var $th = $('<th class="dp-pay-h">').attr('data-c', c[0]), f = c[0].substring(2);
-			if (/^P_(?!DAYS|FLAG|LINK|TOG|DELTA)/.test(c[0])) $th.addClass('dp-num').text(dpWon(f === '_SETTLE' ? ['NP_SETTLE', 'HI_SETTLE', 'EI_SETTLE', 'LTC_SETTLE', 'IT_SETTLE', 'LIT_SETTLE'].reduce(function(t, k) { return t + sum(ps, k); }, 0) : sum(ps, f)));
-			$s.append($th);
+			var f = c[0].substring(2);
+			if (/^P_(?!DAYS|FLAG|LINK|TOG|DELTA)/.test(c[0])) put(c[0], dpWon(f === '_SETTLE' ? ['NP_SETTLE', 'HI_SETTLE', 'EI_SETTLE', 'LTC_SETTLE', 'IT_SETTLE', 'LIT_SETTLE'].reduce(function(t, k) { return t + sum(ps, k); }, 0) : sum(ps, f)));
 		});
-		return $s.append('<th data-c="_ACT">');
 	}
 
 	// 표 높이를 창 남은 높이에 맞춰 페이지는 그대로, 표 안에서만 스크롤(머리글·합계가 늘 보이게)
@@ -597,7 +592,6 @@
 		var el = document.getElementById('mainScroll');
 		if (!el || !el.offsetParent) return;
 		el.style.maxHeight = Math.max(320, window.innerHeight - (el.getBoundingClientRect().top + window.pageYOffset) - 16) + 'px';
-		el.style.setProperty('--dp-h1', $('#dpHead tr').first().outerHeight() + 'px');
 	}
 	$(window).on('resize', fitScroll);
 
