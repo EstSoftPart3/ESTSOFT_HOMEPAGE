@@ -868,13 +868,13 @@ function calDialog() {
 		$f.empty().append($('<div class="d-flex align-items-center flex-wrap mb-2" style="gap:6px">').append('<b class="small">읽을 캘린더 ID</b>').append($id)
 			.append($('<button type="button" class="btn btn-sm btn-outline-secondary">저장</button>').on('click', function() { post({ ACT: 'SAVE', CAL_ID: $id.val() }, '저장했어요.'); }))
 			.append('<span class="rc-note">회사 공용 캘린더 연결(면접 배치와 같은)로 읽어요. 매일 09:00 배치 때 최근 30일을 자동으로 가져와요.</span>'));
-		$f.append($('<div class="d-flex align-items-center flex-wrap mb-2" style="gap:6px">').append($('<b class="small">').text('인터뷰 일정 캘린더 ' + d.INTV_CAL_ID))
+		$f.append($('<div class="d-flex align-items-center flex-wrap mb-2" style="gap:6px">').append($('<b class="small">').text('인사카드 없는 사람 대기자 등록'))
 			.append($('<span class="badge">').addClass(d.WAIT_ON ? 'badge-success' : 'badge-secondary').text(d.WAIT_ON ? '자동 등록 켜짐' : '미리보기만'))
 			.append($('<button type="button" class="btn btn-sm btn-outline-secondary">').text(d.WAIT_ON ? '자동 등록 끄기' : '자동 등록 켜기').on('click', function() {
 				var act = d.WAIT_ON ? 'WAIT_OFF' : 'WAIT_ON';
-				bootbox.confirm(d.WAIT_ON ? '인터뷰 일정 캘린더를 다시 미리보기만 할까요?' : '인터뷰 일정 캘린더의 인터뷰를 지원자로 넣고, 인사카드가 없는 사람(이번 달 이후 인터뷰)은 대기자로 등록할까요? 아래 「미리보기」 목록이 그대로 들어가요.', function(ok) { if (ok) post({ ACT: act }, '바꿨어요.'); });
+				bootbox.confirm(d.WAIT_ON ? '인사카드 없는 사람은 다시 미리보기만 할까요?' : '「인터뷰 - 이름(사업명)」인데 인사카드가 없는 사람(이번 달 이후 인터뷰)을 대기자로 등록하고 지원자·인터뷰로 넣을까요? 아래 「미리보기」 목록이 다음 가져오기 때 들어가요.', function(ok) { if (ok) post({ ACT: act }, '바꿨어요.'); });
 			}))
-			.append('<span class="rc-note">「인터뷰 - 이름(사업명)」만 읽어요. 켜기 전에는 무엇이 들어갈지만 보여 줘요. 모집을 못 찾거나 동명이인이면 넣지 않고 「못 맞춘 이유」에 남겨요.</span>'));
+			.append('<span class="rc-note">켜기 전에는 무엇이 들어갈지만 보여 줘요. 모집을 못 찾거나 동명이인이면 넣지 않고 「못 맞춘 이유」에 남겨요.</span>'));
 		var l = d.last;
 		if (!l) { $f.append('<div class="rc-note mb-2">아직 가져온 적이 없어요. 처음엔 「처음부터 전체」로 2021년 1월부터 가져와 주세요.</div>'); return; }
 		$f.append($('<div class="small mb-1">').text('마지막 가져오기 ' + l.AT + ' · ' + ({ AUTO: '배치', RUN: '최근 30일', ALL: '처음부터 전체' }[l.TRIGGER] || l.TRIGGER) + ' · ' + l.FROM + ' 부터 · ' + l.CAL_ID));

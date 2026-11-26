@@ -194,7 +194,6 @@ public class BoRecruitController {
 			if ("SAVE".equals(act)) recruit.saveCalId(calId);
 			if ("WAIT_ON".equals(act) || "WAIT_OFF".equals(act)) recruit.saveWaitOn("WAIT_ON".equals(act));
 			Map<String, Object> out = new HashMap<>();
-			out.put("INTV_CAL_ID", recruit.intvCalId());
 			out.put("WAIT_ON", recruit.waitOn());
 			if ("RUN".equals(act) || "ALL".equals(act)) {
 				out.put("run", recruit.importCalendar("ALL".equals(act) ? RecruitService.CAL_FIRST : java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).minusDays(30), act));
