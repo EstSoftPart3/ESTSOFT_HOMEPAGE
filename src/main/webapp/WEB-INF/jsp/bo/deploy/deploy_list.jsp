@@ -469,10 +469,13 @@
 		});
 		return groups.filter(function(g) { return g.kind ? matches(g.top, kw, true) : g.rows.some(function(x) { return matches(x, kw, anyChip); }); });
 	}
-	// 투입현황 표의 대기중: 마지막 투입이 정규·수습이고 입사일이 기준월 말일 이전인 사람만(대기 현황 탭은 모두)
+	// 투입현황 표의 대기중: 마지막 투입이 정규·수습이고 입사일이 기준월 말일 이전이며, 그 달에 걸친 투입 건이 없는 사람만(대기 현황 탭은 모두)
 	function idleInMonth() {
-		var last = moment(ym + '-01').endOf('month');
-		return idleList().filter(function(o) { return o.s.JOIN_DT && !moment(o.s.JOIN_DT).isAfter(last) && /^(REGULAR|PROBATION)$/.test((o.last || {}).EMP_TYPE_CD || ''); });
+		var first = moment(ym + '-01'), last = first.clone().endOf('month');
+		return idleList().filter(function(o) {
+			return o.s.JOIN_DT && !moment(o.s.JOIN_DT).isAfter(last) && /^(REGULAR|PROBATION)$/.test((o.last || {}).EMP_TYPE_CD || '')
+				&& !depsOf(o.s.STAFF_SQ).some(function(x) { return !moment(x.START_DT).isAfter(last) && (!x.END_DT || !moment(x.END_DT).isBefore(first)); });
+		});
 	}
 	function isLeave(x) { return /휴가/.test(x.PRJ_NM || '') && !Number(x.SALE_PRICE); }
 
