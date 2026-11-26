@@ -229,7 +229,7 @@
 	var CHIPS = hrAllCodes('HR_EMP_TYPE').map(function(c) { return [c.CD, c.NM, [c.CD]]; }).concat([['_NONE', '코드 없음', []]]), checked = {};
 	CHIPS.forEach(function(c) { checked[c[0]] = true; });
 	// 내근직·휴직중·대기중 칩은 기본 켬, 바꾼 상태는 이 브라우저에 기억
-	try { var away = localStorage.getItem('dpAway'); (away === null ? '_OFFICE,_REST,_IDLE' : away).split(',').forEach(function(k) { if (k) checked[k] = true; }); } catch (e) {}
+	try { (function(s) { return s === null ? '_OFFICE,_REST,_IDLE' : s; })(localStorage.getItem('dpAway')).split(',').forEach(function(k) { if (k) checked[k] = true; }); } catch (e) {}
 	function chipOf(type) { var c = CHIPS.filter(function(c) { return c[2].indexOf(type) >= 0; })[0]; return c ? c[0] : '_NONE'; }
 	// 칸 바로 수정: 화면 칸 → [저장 칸, 입력 종류]
 	var EDIT = { EMP_TYPE_CD: ['EMP_TYPE_CD', { code: 'HR_EMP_TYPE' }], GRADE_CD: ['GRADE_CD', { code: 'HR_DEPLOY_GRADE' }], SALE_PARTNER_NM: ['SALE_PARTNER_SQ', 'SALE_YN'], BUY_PARTNER_NM: ['BUY_PARTNER_SQ', 'BUY_YN'],
