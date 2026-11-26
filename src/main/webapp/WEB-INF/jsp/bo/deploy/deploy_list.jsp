@@ -73,8 +73,15 @@
 	/* 급여관리와 같은 목록: 체크 칩, 고정 머리글, 위 스크롤, 정렬, 두 줄 */
 	.pl-chks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 14px; }
 	.pl-scroll { max-height: calc(100vh - 140px); min-height: 320px; overflow: auto; }
-	.dp-sum { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 6px 12px; margin: 0 0 6px; background: #f4f7fb; border: 1px solid #e1e7ef; border-radius: 6px; font-size: 13px; }
-	.dp-sum b { font-variant-numeric: tabular-nums; }
+	/* 머리글 바로 아래 고정 합계 줄(높이는 fitScroll 이 첫 머리글 줄 높이로 맞춤) */
+	#dpHead tr.dp-sumrow th { top: var(--dp-h1, 33px); background: #eef5ff; color: #0b4a8a; font-weight: 700; font-size: 12px; white-space: nowrap; box-shadow: 0 2px 0 #9cc1ea; }
+	#dpHead tr.dp-sumrow th.dp-pay-h { background: #e3ecf8 !important; color: #0b4a8a; }
+	.dp-chip-sep { width: 1px; height: 22px; background: #c9d1db; margin: 0 4px; }
+	.pl-chip.dp-chip-st { border-color: #8aa2c0; }
+	.dp-st { display: inline-block; border-radius: 8px; padding: 0 7px; font-size: 11px; font-weight: 700; margin-left: 4px; }
+	.dp-st.o { background: #2f4a6d; color: #fff; } .dp-st.r { background: #e7f0ff; color: #1c4f9c; border: 1px solid #b6cdf3; margin-left: 0; } .dp-st.w { background: #fff3e0; color: #8a5a00; border: 1px solid #f3cf8d; margin-left: 0; }
+	.dp-lv { border-radius: 9px; padding: 0 6px; font-size: 11px; font-weight: 700; margin-left: 6px; line-height: 18px; }
+	.dp-lv.p { background: #fff1d6; border: 1px solid #f0c36d; color: #7a5600; } .dp-lv.u { background: #f1f3f5; border: 1px solid #c5ccd3; color: #495057; }
 	#dpHead th { position: sticky; top: 0; z-index: 3; background: #fafbfc; box-shadow: 0 1px 0 rgba(17,17,17,.1); }
 	#dpHead th:last-child { right: 0; z-index: 4; }
 	.pl-sort { background: none; border: 0; padding: 0 0 0 3px; color: #9aa4ac; font-size: 10px; cursor: pointer; }
@@ -133,8 +140,7 @@
 							<div class="ml-auto"><button type="button" class="btn btn-sm btn-outline-secondary" id="btnResetCols">컬럼 순서 초기화</button></div>
 						</div>
 						<div id="tableView">
-								<div class="dp-sum" id="dpSum" aria-live="polite"></div>
-								<div class="pl-scroll" id="mainScroll">
+									<div class="pl-scroll" id="mainScroll">
 								<table data-no-card class="table table-sm cal-table mb-0">
 									<thead id="dpHead"></thead>
 									<tbody id="dpBody"></tbody>
@@ -206,6 +212,8 @@
 	// 고용형태 공통코드(HR_EMP_TYPE) 순서·이름대로 칩 하나씩. 코드에 없는 형태는 '코드 없음'
 	var CHIPS = hrAllCodes('HR_EMP_TYPE').map(function(c) { return [c.CD, c.NM, [c.CD]]; }).concat([['_NONE', '코드 없음', []]]), checked = {};
 	CHIPS.forEach(function(c) { checked[c[0]] = true; });
+	// 내근직·휴직중·대기중 칩은 기본 끔, 켠 상태는 이 브라우저에 기억
+	try { (localStorage.getItem('dpAway') || '').split(',').forEach(function(k) { if (k) checked[k] = true; }); } catch (e) {}
 	function chipOf(type) { var c = CHIPS.filter(function(c) { return c[2].indexOf(type) >= 0; })[0]; return c ? c[0] : '_NONE'; }
 	// 칸 바로 수정: 화면 칸 → [저장 칸, 입력 종류]
 	var EDIT = { EMP_TYPE_CD: ['EMP_TYPE_CD', { code: 'HR_EMP_TYPE' }], GRADE_CD: ['GRADE_CD', { code: 'HR_DEPLOY_GRADE' }], SALE_PARTNER_NM: ['SALE_PARTNER_SQ', 'SALE_YN'], BUY_PARTNER_NM: ['BUY_PARTNER_SQ', 'BUY_YN'],
@@ -395,18 +403,38 @@
 	// 기준월에 걸친 투입을 사람별로 묶는다. 최근 건이 윗줄(top), 나머지는 └ 줄
 	function monthGroups(anyChip) {
 		var first = moment(ym + '-01'), last = first.clone().endOf('month'), kw = $.trim($('#keyword').val()).toLowerCase(), by = {}, keys = [];
+		// 내근직·휴직중은 칩을 켰을 때만 같은 표에 섞는다. 그 달 건이 없으면 마지막 내근·휴직 건 한 줄
+		var kindOf = function(sq) { return restOf(sq) ? 'REST' : isOffice(sq) ? 'OFFICE' : ''; };
+		function put(x) { if (!by[x.STAFF_SQ]) { by[x.STAFF_SQ] = []; keys.push(x.STAFF_SQ); } by[x.STAFF_SQ].push(x); }
 		data.all.forEach(function(x) {
-			if (moment(x.START_DT).isAfter(last) || (x.END_DT && moment(x.END_DT).isBefore(first)) || !showSecret(x) || away(x.STAFF_SQ)) return;
-			if (!by[x.STAFF_SQ]) { by[x.STAFF_SQ] = []; keys.push(x.STAFF_SQ); }
-			by[x.STAFF_SQ].push(x);
+			if (moment(x.START_DT).isAfter(last) || (x.END_DT && moment(x.END_DT).isBefore(first)) || !showSecret(x)) return;
+			var k = kindOf(x.STAFF_SQ);
+			if (!k || checked['_' + k]) put(x);
 		});
-		return keys.map(function(k) {
+		if (checked._OFFICE) officeList().forEach(function(o) { if (!by[o.s.STAFF_SQ] && o.x) put(o.x); });
+		if (checked._REST) restList().forEach(function(o) { if (!by[o.s.STAFF_SQ]) put(o.x); });
+		// 기준일: 이번 달이면 오늘, 아니면 그 달 말일. 그날 진행 중인 건이 윗줄(급여 칸도 그 줄)
+		var ref = ym === YM ? today : last;
+		var groups = keys.map(function(k) {
 			var rows = by[k].slice().sort(function(a, b) { return b.START_DT.localeCompare(a.START_DT); });
 			// 수습도 정규직이다. 같은 달 수습·정규 건이 함께 있으면 정규 건 한 줄만 보인다(수습 D-n 은 형태 칸에)
 			if (dpProbReg(rows.map(function(x) { return x.EMP_TYPE_CD; }))) rows = rows.filter(function(x) { return x.EMP_TYPE_CD !== 'PROBATION'; });
-			return { top: rows[0], rows: rows };
-		}).filter(function(g) { return g.rows.some(function(x) { return matches(x, kw, anyChip); }); });
+			// 휴가 건(대기-유급휴가 등)은 └ 줄이 아니라 윗줄 프로젝트 칸의 🏖 표시로
+			var leaves = rows.filter(isLeave);
+			if (leaves.length < rows.length) rows = rows.filter(function(x) { return !isLeave(x); }); else leaves = [];
+			var now = rows.filter(function(x) { return !moment(x.START_DT).isAfter(ref) && (!x.END_DT || !moment(x.END_DT).isBefore(ref)); })[0];
+			if (now) rows = [now].concat(rows.filter(function(x) { return x !== now; }));
+			return { top: rows[0], rows: rows, leaves: leaves, kind: kindOf(k) };
+		});
+		if (checked._IDLE) idleList().forEach(function(o) {
+			if (by[o.s.STAFF_SQ]) return;
+			var last1 = o.last || {}, r = { STAFF_SQ: o.s.STAFF_SQ, STAFF_NM: o.s.STAFF_NM, SECRET: o.s.SECRET, JOIN_DT: o.s.JOIN_DT, HOME_ADDR: o.s.ADDR, EMP_TYPE_CD: last1.EMP_TYPE_CD, PSEUDO: true,
+				STATE: o.kind === 'WAIT' ? 'WAIT' : o.kind === 'FUTURE' ? 'FUTURE' : '', END_DT: o.kind === 'WAIT' ? last1.END_DT : '', START_DT: o.kind === 'FUTURE' ? o.future.START_DT : '' };
+			groups.push({ top: r, rows: [r], leaves: [], kind: 'IDLE', idle: o });
+		});
+		return groups.filter(function(g) { return g.kind ? matches(g.top, kw, true) : g.rows.some(function(x) { return matches(x, kw, anyChip); }); });
 	}
+	function isLeave(x) { return /휴가/.test(x.PRJ_NM || '') && !Number(x.SALE_PRICE); }
 
 	function counts(list) { var m = {}; (list || []).forEach(function(c) { m[c.STAFF_SQ] = Number(c.CNT); }); return m; }
 
@@ -425,11 +453,15 @@
 		});
 	}
 
-	function renderChips(groups) {
+	function renderChips(groups, office, rest, idle) {
 		boChips('#chks', CHIPS.map(function(c) {
-			var n = groups.filter(function(g) { return g.rows.some(function(x) { return chipOf(x.EMP_TYPE_CD) === c[0]; }); }).length;
+			var n = groups.filter(function(g) { return !g.kind && g.rows.some(function(x) { return chipOf(x.EMP_TYPE_CD) === c[0]; }); }).length;
 			return { k: c[0], name: c[1], n: n, hide: c[0] === '_NONE' && !n };
-		}), checked, render);
+		}).concat([$('<span class="dp-chip-sep" aria-hidden="true">'),
+			{ k: '_OFFICE', name: '내근직', n: office.length, cls: 'dp-chip-st' }, { k: '_REST', name: '휴직중', n: rest.length, cls: 'dp-chip-st' }, { k: '_IDLE', name: '대기중', n: idle.length, cls: 'dp-chip-st' }]), checked, function() {
+			try { localStorage.setItem('dpAway', ['_OFFICE', '_REST', '_IDLE'].filter(function(k) { return checked[k]; }).join(',')); } catch (e) {}
+			render();
+		});
 	}
 
 	// ── 탭: 투입 현황 · 대기 현황 · 철수 임박 ──
@@ -438,8 +470,8 @@
 	function depsOf(sq) { return data.all.filter(function(x) { return x.STAFF_SQ === sq; }); }
 	function isActive(x) { return !moment(x.START_DT).isAfter(today) && (!x.END_DT || !moment(x.END_DT).isBefore(today)); }
 
-	// 내근직: 내근직으로 켠 투입 건이 하나라도 있는 사람. 투입 현황·대기·철수 임박에서 빠지고 내근직 탭에만 보인다
-	function isOffice(sq) { return data.all.some(function(x) { return x.STAFF_SQ === sq && x.OFFICE_YN === 'Y'; }); }
+	// 내근직: 가장 최근 투입 건이 내근직인 사람(예전에만 내근이었으면 아님). 투입 현황·대기·철수 임박에서 빠지고 내근직 탭에 보인다
+	function isOffice(sq) { var last = depsOf(sq).reduce(function(a, x) { return !a || x.START_DT >= a.START_DT ? x : a; }, null); return !!last && last.OFFICE_YN === 'Y'; }
 	// 휴직: 휴직 기간이 끝나지 않은(예정 포함) 투입 건. 있으면 다른 탭에서 모두 빠지고 휴직 탭에만 보인다. 종료일이 지나면 원래 목록으로
 	function restOf(sq) { return data.all.filter(function(x) { return x.STAFF_SQ === sq && x.REST_FROM_DT && (!x.REST_TO_DT || !moment(x.REST_TO_DT).isBefore(today)); }).pop(); }
 	function away(sq) { return isOffice(sq) || !!restOf(sq); }
@@ -509,7 +541,7 @@
 		if (page === 'ENDING') return renderEnding(ending);
 		if (page === 'OFFICE') return renderOffice(office);
 		if (page === 'REST') return renderRest(rest);
-		renderChips(monthGroups(true));
+		renderChips(monthGroups(true), office, rest, idle);
 		$('#tableView').toggle(view === 'table');
 		$('#timelineView').toggle(view === 'timeline');
 		if (view === 'timeline') renderTimeline(filtered()); else renderTable(sortGroups(monthGroups()));
@@ -527,26 +559,60 @@
 			$h.append($th);
 		});
 		$h.append(payHeads()).append($('<th data-c="_ACT">').append('<span class="sr-only">작업</span>'));
-		$('#dpHead').empty().append($h);
+		$('#dpHead').empty().append($h, sumRow(groups));
 		bindDrag();
 		var $b = $('#dpBody').empty();
 		if (!groups.length) boEmpty($b, moment(ym + '-01').format('YYYY년 M월') + '에 걸친 투입이 없습니다. 체크나 기준월을 바꿔 보세요.');
 		groups.forEach(function(g) { var open = isOpen(g); g.rows.forEach(function(r, i) { if (!i || open) $b.append(viewRow(r, g, i > 0).toggleClass('dp-dup', g.rows.length > 1)); }); });
 		arrangeAll();
-		renderSum(groups);
+		fitScroll();
 	}
 
-	// 표 위 합계: 지금 걸러진 목록 기준. 단가는 계약 줄마다, 급여는 사람마다 한 번
-	function renderSum(groups) {
-		var rows = [].concat.apply([], groups.map(function(g) { return g.rows; }));
+	// 머리글 아래 고정 합계 줄: 지금 걸러진 목록 기준. 단가는 계약 줄마다(휴가 건 빼고), 급여는 사람마다 한 번
+	function sumRow(groups) {
+		var rows = [].concat.apply([], groups.map(function(g) { return g.rows; })).filter(function(x) { return !x.PSEUDO; });
+		var ps = groups.map(function(g) { return pay.by[g.top.STAFF_SQ]; }).filter(Boolean);
 		function sum(list, f) { return list.reduce(function(s, x) { return s + Number(x[f] || 0); }, 0); }
-		var items = [['인원', groups.length + '명'], ['투입 건', rows.length + '건']];
-		if (data.canPay) {
-			items.push(['매출단가 합', dpWon(sum(rows, 'SALE_PRICE'))], ['계약단가 합', dpWon(sum(rows, 'COST_PRICE'))]);
-			var ps = groups.map(function(g) { return pay.by[g.top.STAFF_SQ]; }).filter(Boolean);
-			if (ps.length) items.push(['실매출 합', dpWon(sum(ps, 'REAL_SALE'))], ['실지급 합', dpWon(sum(ps, 'NET'))], ['영업이익 합', dpWon(sum(ps, 'PROFIT'))]);
-		}
-		$('#dpSum').empty().append(items.map(function(x) { return $('<span>').text(x[0] + ' ').append($('<b>').text(x[1])); }));
+		var $s = $('<tr class="dp-sumrow">');
+		visibleCols().forEach(function(c) {
+			var $th = $('<th>').attr('data-c', c[0]);
+			if (c[0] === 'STAFF_NM') $th.text('합계 ' + groups.length + '명 · ' + rows.length + '건');
+			else if (c[2]) $th.addClass('dp-num').text(dpWon(sum(rows, c[0])));
+			$s.append($th);
+		});
+		payCols().forEach(function(c) {
+			var $th = $('<th class="dp-pay-h">').attr('data-c', c[0]), f = c[0].substring(2);
+			if (/^P_(?!DAYS|FLAG|LINK|TOG|DELTA)/.test(c[0])) $th.addClass('dp-num').text(dpWon(f === '_SETTLE' ? ['NP_SETTLE', 'HI_SETTLE', 'EI_SETTLE', 'LTC_SETTLE', 'IT_SETTLE', 'LIT_SETTLE'].reduce(function(t, k) { return t + sum(ps, k); }, 0) : sum(ps, f)));
+			$s.append($th);
+		});
+		return $s.append('<th data-c="_ACT">');
+	}
+
+	// 표 높이를 창 남은 높이에 맞춰 페이지는 그대로, 표 안에서만 스크롤(머리글·합계가 늘 보이게)
+	function fitScroll() {
+		var el = document.getElementById('mainScroll');
+		if (!el || !el.offsetParent) return;
+		el.style.maxHeight = Math.max(320, window.innerHeight - (el.getBoundingClientRect().top + window.pageYOffset) - 16) + 'px';
+		el.style.setProperty('--dp-h1', $('#dpHead tr').first().outerHeight() + 'px');
+	}
+	$(window).on('resize', fitScroll);
+
+	// 프로젝트 칸 앞뒤 표시: 휴직중·대기중(프로젝트 대신), 내근, 🏖 휴가(유급·무급만, 자세한 건 마우스를 올리면)
+	function shortDt(d) { return d ? moment(d).format('YY.M.D') : ''; }
+	function statusCell($td, g, r) {
+		if (g.kind === 'REST') r = restOf(r.STAFF_SQ) || r;
+		if (g.kind === 'REST') return $td.append($('<span class="dp-st r">').text('휴직중')).append(' ' + [r.PRJ_NM || '휴직', shortDt(r.REST_FROM_DT) + ' ~ ' + shortDt(r.REST_TO_DT)].join(' / '));
+		var o = g.idle;
+		return $td.append($('<span class="dp-st w">').text('대기중')).append(' ' + (o.kind === 'FUTURE' ? shortDt(o.future.START_DT) + ' 투입 예정' : o.kind === 'WAIT' ? shortDt(moment(o.last.END_DT).add(1, 'days')) + ' ~' : '입사 후 투입 전'));
+	}
+	function leaveMarks($td, g) {
+		if (g.kind === 'OFFICE') $td.append($('<span class="dp-st o">').text('내근'));
+		g.leaves.forEach(function(x) {
+			var paid = !/무급/.test(x.PRJ_NM), days = x.END_DT ? moment(x.END_DT).diff(moment(x.START_DT), 'days') + 1 : '';
+			var tip = (x.PRJ_NM || '휴가') + ' · ' + x.START_DT + ' ~ ' + (x.END_DT || '') + (days ? ' (' + days + '일)' : '') + (x.MEMO ? '\n' + x.MEMO : '');
+			$td.append($('<button type="button" class="dp-lv">').addClass(paid ? 'p' : 'u').text('🏖 ' + (paid ? '유급' : '무급')).attr({ title: tip, 'aria-label': tip })
+				.on('click', function(e) { e.stopPropagation(); openDetail(x); }));
+		});
 	}
 
 	// 사람 단위 칸(성명·근속·거주지역·이력 등)은 윗줄에만, 계약 단위 칸은 줄마다
@@ -567,13 +633,15 @@
 		visibleCols().forEach(function(c) {
 			var $td = $('<td>').attr('data-c', c[0]), v = r[c[0]];
 			if (PERSON.indexOf(c[0]) >= 0) { if (child) return; $td.attr('rowspan', span); }
-			if (c[0] === 'REMAIN' && child) $td.append($('<span class="dp-pill">').addClass(rm.tone).text(rm.text)).append(dpInfoBtn(r.STAFF_NM + ' 투입 상세', function() { openDetail(r); }));
-			else if (c[0] === 'STAFF_NM') $td.append(dupArrow(g)).append(r.SECRET ? $('<span title="시크릿">').text('🔒 ') : '').append($('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { openDetail(r); }));
+			if (c[0] === 'PRJ_NM' && !child && (g.kind === 'REST' || g.kind === 'IDLE')) statusCell($td, g, r);
+			else if (r.PSEUDO && EDIT[c[0]]) $td.text(''); // 대기중 사람: 그 달 투입 건이 없으니 고칠 칸도 없다
+			else if (c[0] === 'REMAIN' && child) $td.append($('<span class="dp-pill">').addClass(rm.tone).text(rm.text)).append(dpInfoBtn(r.STAFF_NM + ' 투입 상세', function() { openDetail(r); }));
+			else if (c[0] === 'STAFF_NM') $td.append(dupArrow(g)).append(r.SECRET ? $('<span title="시크릿">').text('🔒 ') : '').append(r.PSEUDO ? $('<span class="font-weight-bold">').text(r.STAFF_NM) : $('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { openDetail(r); }));
 			else if (c[0] === 'MEMOS') $td.append(countBtn('💬', counts(data.memoCounts)[r.STAFF_SQ], r.STAFF_NM + ' 메모', function() { memoPopup(r); }));
 			else if (c[0] === 'HIST') $td.append(countBtn('✎', counts(data.chgCounts)[r.STAFF_SQ], r.STAFF_NM + ' 수정이력', function() { historyPopup(r); }));
 			else if (EDIT[c[0]]) editCell($td, r, c);
 			else if (c[0] === 'EMP_TYPE_CD') $td.text(typeName(v));
-			else if (c[2]) $td.addClass('dp-num').text(v ? dpWon(v) : '').append(c[0] === 'SALE_PRICE' ? dpInfoBtn(r.STAFF_NM + ' 단가·급여 이력', function() { payHistory(r); }) : '');
+			else if (c[2]) $td.addClass('dp-num').text(v ? dpWon(v) : '').append(c[0] === 'SALE_PRICE' && !r.PSEUDO ? dpInfoBtn(r.STAFF_NM + ' 단가·급여 이력', function() { payHistory(r); }) : '');
 			else if (c[0] === 'REMAIN') $td.append($('<span class="dp-pill">').addClass(rm.tone).text(rm.text));
 			else if (c[0] === 'TENURE') $td.text(tenure(r.JOIN_DT));
 			else if (c[0] === 'HOME_AREA') $td.text(area(r.HOME_ADDR));
@@ -581,6 +649,7 @@
 			else if (c[0] === 'PRJ') $td.append(prjBtn(r.STAFF_SQ, r.STAFF_NM));
 			else if (c[0] === 'CLIENT_NM' && r.STATE === 'WAIT') $td.addClass('dp-mute').text('—');
 			else $td.text(v || '');
+			if (c[0] === 'PRJ_NM' && !child) leaveMarks($td, g);
 			$tr.append($td);
 		});
 		// 급여는 사람 단위: 윗줄에만 두고 └ 줄까지 합친다
@@ -727,7 +796,7 @@
 	}
 
 	function bindDrag() {
-		$('#dpHead th').each(function() {
+		$('#dpHead tr').first().children('th').each(function() {
 			var th = this, c = $(th).attr('data-c');
 			if (c === '_ACT' || /^P_/.test(c)) return; // 급여 칸 묶음은 순서 고정
 			$(th).attr({ draggable: true, tabindex: 0, title: '끌어서 순서 변경 (Alt+←/→)' });
