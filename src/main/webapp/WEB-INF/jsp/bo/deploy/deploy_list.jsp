@@ -100,6 +100,7 @@
 	#dpBody tr.dp-sub td[data-c=EMP_TYPE_CD]::before { content: '└ '; color: #8a949c; }
 	/* 단가 강조: 매출단가 연두, 계약단가 주황 */
 	#dpHead th[data-c=SALE_PRICE], #dpBody td[data-c=SALE_PRICE] { background-color: #e7f6ec; color: #17692f; font-weight: 700; }
+	#dpHead th[data-c=REAL_SALE], #dpBody td[data-c=REAL_SALE] { background-color: #f1faf3; color: #17692f; font-weight: 700; }
 	#dpHead th[data-c=COST_PRICE], #dpBody td[data-c=COST_PRICE] { background-color: #fff1e2; color: #8a4b00; font-weight: 700; }
 	#dpHead th[data-c=SALE_PRICE] { box-shadow: inset 0 3px 0 #2e9e57; } #dpHead th[data-c=COST_PRICE] { box-shadow: inset 0 3px 0 #d9822b; }
 	/* 같은 달 다른 계약이 있는 사람: 왼쪽 주황 띠 + 성명 앞 작은 화살표 */
@@ -218,7 +219,7 @@
 	<script>
 	// 이 순서가 순정(기본) 칸 순서. 급여 칸 묶음은 기본으로 계약단가 뒤, 기본 정렬은 입사일 오름차순
 	var COLS = [['STAFF_NM', '성명'], ['EMP_TYPE_CD', '형태'], ['SALE_PARTNER_NM', '매출처'], ['BUY_PARTNER_NM', '매입처'], ['PRJ_NM', '프로젝트'], ['GRADE_CD', '등급'], ['JOIN_DT', '입사일'], ['START_DT', '투입일'],
-		['END_DT', '철수일'], ['REMAIN', '남은 기간'], ['SALE_PRICE', '매출단가', true], ['COST_PRICE', '계약단가', true], ['MEMOS', '메모'], ['HIST', '이력'], ['HOME_AREA', '거주지역'], ['WORK_AREA', '근무지역'],
+		['END_DT', '철수일'], ['REMAIN', '남은 기간'], ['SALE_PRICE', '매출단가', true], ['REAL_SALE', '실매출', true], ['COST_PRICE', '계약단가', true], ['MEMOS', '메모'], ['HIST', '이력'], ['HOME_AREA', '거주지역'], ['WORK_AREA', '근무지역'],
 		['CLIENT_NM', '고객사'], ['TENURE', '근속'], ['PRJ', '프로젝트 이력']];
 	var data = null, order = [], view = 'table', drag = null, page = 'ACTIVE', prjCache = {};
 	// 관리자 홈 바로가기: ?page=IDLE(대기 현황) · ENDING(철수 임박)
@@ -522,7 +523,7 @@
 		REMAIN: function(g) { return remain(g.top).days; }, TENURE: function(g) { return g.top.JOIN_DT || ''; },
 		HOME_AREA: function(g) { return area(g.top.HOME_ADDR); }, EMP_TYPE_CD: function(g) { return typeLabel(g.top); },
 		MEMOS: function(g) { return counts(data.memoCounts)[g.top.STAFF_SQ] || 0; }, HIST: function(g) { return counts(data.chgCounts)[g.top.STAFF_SQ] || 0; },
-		PRJ: function(g) { return staffOf(g.top.STAFF_SQ).PRJ_CNT || 0; }
+		PRJ: function(g) { return staffOf(g.top.STAFF_SQ).PRJ_CNT || 0; }, REAL_SALE: function(g) { return g.top.PSEUDO ? 0 : saleOf(g.top).amt; }
 	};
 	function sortVal(g) { var v = SORT[sortKey] ? SORT[sortKey](g) : g.top[sortKey]; return v === undefined || v === null ? '' : v; }
 	function sortGroups(list) {
@@ -675,7 +676,7 @@
 		function put(k, txt) { $h.children('[data-c="' + k + '"]').append($('<div class="dp-sumv th-sum">').text(txt)); }
 		put('STAFF_NM', '합계 ' + groups.length + '명 · ' + Object.keys(cnt).length + '건');
 		// 매출단가는 고객사 직접계약을 뺀 우리 매출(엑셀 월매출과 같은 기준)
-		visibleCols().forEach(function(c) { if (c[2]) put(c[0], dpWon(c[0] === 'SALE_PRICE' ? sum(rows, 'SALE_PRICE') - sum(rows, 'CLIENT_DIRECT_AMT') : sum(rows, c[0]))); });
+		visibleCols().forEach(function(c) { if (c[2]) put(c[0], dpWon(c[0] === 'SALE_PRICE' ? sum(rows, 'SALE_PRICE') - sum(rows, 'CLIENT_DIRECT_AMT') : c[0] === 'REAL_SALE' ? rows.reduce(function(s, x) { return s + saleOf(x).amt; }, 0) : sum(rows, c[0]))); });
 		// 실지급·영업이익: 계약 줄마다 나눈 사람은 합계에 넣은 줄의 몫만(체크 안 한 기타계약·외부 몫은 빼고)
 		function partSum(f) {
 			return groups.reduce(function(s, g) {
@@ -768,7 +769,8 @@
 			var $td = $('<td>').attr('data-c', c[0]), v = r[c[0]];
 			if (PERSON.indexOf(c[0]) >= 0 && child) { $tr.append($td); return; }
 			if (c[0] === 'PRJ_NM' && !child && (g.kind === 'REST' || g.kind === 'IDLE')) statusCell($td, g, r);
-			else if (r.PSEUDO && EDIT[c[0]]) $td.text(''); // 대기중 사람: 그 달 투입 건이 없으니 고칠 칸도 없다
+			else if (r.PSEUDO && (EDIT[c[0]] || c[0] === 'REAL_SALE')) $td.text(''); // 대기중 사람: 그 달 투입 건이 없으니 고칠 칸도 없다
+			else if (c[0] === 'REAL_SALE') realSaleCell($td, r);
 			else if (c[0] === 'REMAIN' && child) $td.append($('<span class="dp-pill">').addClass(rm.tone).text(rm.text)).append(dpInfoBtn(r.STAFF_NM + ' 투입 상세', function() { openDetail(r); }));
 			else if (c[0] === 'STAFF_NM') $td.append(dupArrow(g)).append(r.SECRET ? $('<span title="시크릿">').text('🔒 ') : '').append(r.PSEUDO ? $('<span class="font-weight-bold">').text(r.STAFF_NM) : $('<button type="button" class="dp-name">').text(r.STAFF_NM).on('click', function() { openDetail(r); }));
 			else if (c[0] === 'MEMOS') $td.append(countBtn('💬', counts(data.memoCounts)[r.STAFF_SQ], r.STAFF_NM + ' 메모', function() { memoPopup(r); }));
@@ -827,6 +829,16 @@
 		// shortcut: 일할 버림 단위를 1,000원으로 본다(급여관리 기준값 기본), 기준값을 바꾸면 이 화면 일할 금액만 천 원 단위로 보인다
 		return { net: net, days: days, total: total, amt: days >= total ? net : Math.floor(net * days / total / 1000) * 1000 };
 	}
+	// 실매출: 기준월에 일한 날만큼 일할(엑셀 실매출과 같은 값). 일부만 근무하면 마우스를 올려 계산식
+	function realSaleCell($td, r) {
+		var s = saleOf(r);
+		$td.addClass('dp-num');
+		if (!s.net) return $td;
+		$td.text(dpWon(s.amt));
+		if (s.days < s.total) $td.attr('title', '(매출단가 ' + dpWon(s.net) + ' ÷ ' + s.total + '일) × ' + s.days + '일');
+		if (r._saleSum !== undefined) $td.append($('<div class="dp-part-sum">').text('합계 ' + dpWon(r._saleSum)));
+		return $td;
+	}
 	function editCell($td, r, c) {
 		var e = EDIT[c[0]], field = e[0], type = e[1] === 'SALE_YN' || e[1] === 'BUY_YN' ? partnerOptions(e[1], r[field]) : e[1];
 		if (c[2]) $td.addClass('dp-num');
@@ -836,9 +848,9 @@
 				if (c[0] === 'EMP_TYPE_CD') $c.text(typeLabel(r));
 				else if (c[0] === 'SALE_PRICE') {
 					// 급여관리와 같은 모양: 기준월에 일부만 근무하면 일할(월 금액 취소선 + 일할 금액), 직접계약은 🤝 에만
+					// 매출단가 칸은 월 단가 그대로(직접계약 뺀 우리 매출), 일할은 옆 실매출 칸에
 					var s = saleOf(r, v);
-					dpSaleFill($c, r, s.net, s.days, s.total, s.amt, function() { directPopup(r); }).append(dpInfoBtn(r.STAFF_NM + ' 단가·급여 이력', function() { payHistory(r); }));
-					if (r._saleSum !== undefined) $c.append($('<div class="dp-part-sum">').text('합계 ' + dpWon(r._saleSum)));
+					dpSaleFill($c, r, s.net, s.total, s.total, s.net, function() { directPopup(r); }).append(dpInfoBtn(r.STAFF_NM + ' 단가·급여 이력', function() { payHistory(r); }));
 				}
 				else if (c[2]) $c.text(v ? dpWon(v) : '');
 				else if (c[0] === 'WORK_AREA') $c.text(v || '').append(farFrom(r.HOME_ADDR, v) ? $('<span class="dp-far">원거리</span>') : '');
@@ -984,6 +996,7 @@
 			else if (k === 'GRADE_CD') $td.append(put(k, hrControl({ code: 'HR_DEPLOY_GRADE' }, preset.GRADE_CD)));
 			else if (k === 'SALE_PARTNER_NM') $td.append(put(k, hrControl(partnerOptions('SALE_YN'), '')));
 			else if (k === 'BUY_PARTNER_NM') $td.append(put(k, hrControl(partnerOptions('BUY_YN'), '')));
+			else if (k === 'REAL_SALE') $td.append('<span class="dp-mute">자동</span>');
 			else if (c[2]) $td.append(put(k, $('<input class="form-control dp-num" inputmode="numeric" placeholder="0">')));
 			else if (k === 'START_DT' || k === 'END_DT') $td.append(put(k, $('<input class="form-control" type="date">')));
 			else if (k === 'REMAIN' || k === 'TENURE' || k === 'HOME_AREA' || k === 'PRJ' || k === 'JOIN_DT') $td.append('<span class="dp-mute">자동</span>');
