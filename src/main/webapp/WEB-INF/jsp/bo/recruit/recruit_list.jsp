@@ -546,19 +546,13 @@ function viewBoard($m, list) {
 	});
 	$m.append($('<div class="rc-note mb-2">').text('모집 카드를 옆 칸으로 끌면 상태가 바뀌어요. 지원자는 카드를 눌러 상세 팝업 오른쪽 대기자에서 추가해요.')).append($('<div class="rc-board-wrap" style="overflow:auto">').append($g));
 }
-// 달력: 등록·마감·인터뷰·투입 시작
+// 달력: 인터뷰·모집 등록일
 function viewCal($m, list) {
 	var base = calMonth || today().substring(0, 7), y = +base.substring(0, 4), mo = +base.substring(5, 7);
 	var first = new Date(y, mo - 1, 1), start = new Date(first); start.setDate(1 - ((first.getDay() + 6) % 7));
-	// 날짜마다 인터뷰(시간순, 위)와 모집 일정(같은 모집의 등록·마감·투입은 한 줄로 합침)
-	var ev = {}, KIND = { reg: '● 등록', due: '⏰ 마감', start: '▶ 투입' };
-	function day(d) { d = d.substring(0, 10); return ev[d] = ev[d] || { intv: [], rec: {}, order: [] }; }
-	function add(d, cls, sq) {
-		if (!d) return;
-		var x = day(d);
-		if (!x.rec[sq]) { x.rec[sq] = []; x.order.push(sq); }
-		x.rec[sq].push(cls);
-	}
+	// 날짜마다 인터뷰(시간순, 위)와 모집(등록일에만 고객사 이름. 마감·투입 시작은 「즉시」가 1일로 들어가 몰려 보여 뺌)
+	var ev = {};
+	function day(d) { d = d.substring(0, 10); return ev[d] = ev[d] || { intv: [], order: [] }; }
 	// 모집 일정 아래 지원자 한 줄(이름 단계, 탈락 제외)
 	function apLine(sq) {
 		var ap = appsOf(sq).filter(function(a) { return a.STEP_CD !== 'DROP'; });
@@ -567,9 +561,7 @@ function viewCal($m, list) {
 		return $('<span class="ev-ap">').text(txt).attr('title', txt).on('click', function(e) { e.stopPropagation(); detail(sq); });
 	}
 	list.forEach(function(r) {
-		add(r.REG_D, 'reg', r.RECRUIT_SQ);
-		add(r.CLOSE_DT, 'due', r.RECRUIT_SQ);
-		add(r.START_DT, 'start', r.RECRUIT_SQ);
+		if (r.REG_D) day(r.REG_D).order.push(r.RECRUIT_SQ);
 		appsOf(r.RECRUIT_SQ).forEach(function(a) { if (a.INTV_DT) day(a.INTV_DT).intv.push({ a: a, r: r }); }); // 탈락한 인터뷰도 「탈락」으로 남긴다
 	});
 	var $nav = $('<div class="d-flex align-items-center mb-2" style="gap:6px">')
@@ -577,7 +569,7 @@ function viewCal($m, list) {
 		.append($('<b>').text(y + '년 ' + mo + '월'))
 		.append($('<button type="button" class="btn btn-sm btn-outline-secondary" aria-label="다음 달">›</button>').on('click', function() { var d = new Date(y, mo, 1); calMonth = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2); render(); }))
 		.append($('<button type="button" class="btn btn-sm btn-link">이번 달</button>').on('click', function() { calMonth = null; render(); }))
-		.append('<span class="rc-cal-legend ml-auto"><span class="ev intv"><b>14:00</b> 🎤 인터뷰</span><span class="ev reg">● 등록</span><span class="ev due">⏰ 마감</span><span class="ev start">▶ 투입</span><span class="ev-ap">👤 지원자</span></span>');
+		.append('<span class="rc-cal-legend ml-auto"><span class="ev intv"><b>14:00</b> 🎤 인터뷰</span><span class="ev reg">고객사(모집 등록일)</span><span class="ev-ap">👤 지원자</span></span>');
 	var $t = $('<table class="rc-cal">').append('<thead><tr><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th>토</th><th>일</th></tr></thead>'), $b = $('<tbody>').appendTo($t), t = today();
 	for (var w = 0; w < 6; w++) {
 		var $tr = $('<tr>');
@@ -596,9 +588,8 @@ function viewCal($m, list) {
 						.on('click', function() { noteDialog(v.a); })); // 달력 인터뷰는 바로 기록 창(본인 제출이면 보기)
 				});
 				x.order.forEach(function(sq) {
-					var r = recruitOf(sq), kinds = x.rec[sq], txt = kinds.map(function(k) { return KIND[k]; }).join(' · ') + ' ' + (r.CLIENT_NM || '모집');
-					var main = ['start', 'due', 'reg'].filter(function(k) { return kinds.indexOf(k) >= 0; })[0]; // 색은 투입 > 마감 > 등록
-					$td.append($('<span class="ev">').addClass(main).text(txt).attr('title', txt + ' ' + (r.PRJ_NM || '')).on('click', function() { detail(sq); }));
+					var r = recruitOf(sq), txt = r.CLIENT_NM || '모집';
+					$td.append($('<span class="ev reg">').text(txt).attr('title', '모집 등록 · ' + txt + ' ' + (r.PRJ_NM || '')).on('click', function() { detail(sq); }));
 					$td.append(apLine(sq));
 				});
 			}
@@ -870,13 +861,20 @@ function uploadFiles(sq, files, done) {
 
 // ── 📅 캘린더 가져오기(plans/recruit-cal-import-spec.html): 설정·마지막 결과·못 맞춘 일정, 지금 가져오기 ──
 function calDialog() {
-	var CNT = [['NEW', '모집 새로'], ['SAME', '이미 있음'], ['INTV', '인터뷰 맞춤'], ['ADD', '지원자 추가'], ['MISS', '못 맞춤'], ['OTHER', '그 밖 일정']];
+	var CNT = [['NEW', '모집 새로'], ['SAME', '이미 있음'], ['INTV', '인터뷰 맞춤'], ['ADD', '지원자 추가'], ['WAIT', '대기자 등록'], ['DRY', '미리보기'], ['MISS', '못 맞춤'], ['OTHER', '그 밖 일정']];
 	var $f = $('<div>'), dlg;
 	function paint(d) {
 		var $id = $('<input class="form-control form-control-sm" style="max-width:280px">').val(d.CAL_ID);
 		$f.empty().append($('<div class="d-flex align-items-center flex-wrap mb-2" style="gap:6px">').append('<b class="small">읽을 캘린더 ID</b>').append($id)
 			.append($('<button type="button" class="btn btn-sm btn-outline-secondary">저장</button>').on('click', function() { post({ ACT: 'SAVE', CAL_ID: $id.val() }, '저장했어요.'); }))
 			.append('<span class="rc-note">회사 공용 캘린더 연결(면접 배치와 같은)로 읽어요. 매일 09:00 배치 때 최근 30일을 자동으로 가져와요.</span>'));
+		$f.append($('<div class="d-flex align-items-center flex-wrap mb-2" style="gap:6px">').append($('<b class="small">').text('인터뷰 일정 캘린더 ' + d.INTV_CAL_ID))
+			.append($('<span class="badge">').addClass(d.WAIT_ON ? 'badge-success' : 'badge-secondary').text(d.WAIT_ON ? '자동 등록 켜짐' : '미리보기만'))
+			.append($('<button type="button" class="btn btn-sm btn-outline-secondary">').text(d.WAIT_ON ? '자동 등록 끄기' : '자동 등록 켜기').on('click', function() {
+				var act = d.WAIT_ON ? 'WAIT_OFF' : 'WAIT_ON';
+				bootbox.confirm(d.WAIT_ON ? '인터뷰 일정 캘린더를 다시 미리보기만 할까요?' : '인터뷰 일정 캘린더의 인터뷰를 지원자로 넣고, 인사카드가 없는 사람(이번 달 이후 인터뷰)은 대기자로 등록할까요? 아래 「미리보기」 목록이 그대로 들어가요.', function(ok) { if (ok) post({ ACT: act }, '바꿨어요.'); });
+			}))
+			.append('<span class="rc-note">「인터뷰 - 이름(사업명)」만 읽어요. 켜기 전에는 무엇이 들어갈지만 보여 줘요. 모집을 못 찾거나 동명이인이면 넣지 않고 「못 맞춘 이유」에 남겨요.</span>'));
 		var l = d.last;
 		if (!l) { $f.append('<div class="rc-note mb-2">아직 가져온 적이 없어요. 처음엔 「처음부터 전체」로 2021년 1월부터 가져와 주세요.</div>'); return; }
 		$f.append($('<div class="small mb-1">').text('마지막 가져오기 ' + l.AT + ' · ' + ({ AUTO: '배치', RUN: '최근 30일', ALL: '처음부터 전체' }[l.TRIGGER] || l.TRIGGER) + ' · ' + l.FROM + ' 부터 · ' + l.CAL_ID));
@@ -884,6 +882,12 @@ function calDialog() {
 		var $s = $('<div class="d-flex flex-wrap mb-2" style="gap:6px">');
 		CNT.forEach(function(c) { $s.append($('<div class="rc-calstat">').toggleClass('bad', c[0] === 'MISS' && (l.CNT || {})[c[0]] > 0).append($('<b>').text((l.CNT || {})[c[0]] || 0)).append(document.createTextNode(c[1]))); });
 		$f.append($s);
+		var drl = l.DRY_LIST || [];
+		if (drl.length) {
+			var $dt = $('<table class="table table-sm mb-2" data-nopick>').append('<thead><tr><th>날짜</th><th>인터뷰 일정</th><th>켜면 할 일(미리보기)</th></tr></thead>'), $db = $('<tbody>').appendTo($dt);
+			drl.forEach(function(m) { $db.append($('<tr>').append($('<td class="text-nowrap">').text(m.D)).append($('<td>').text(m.T)).append($('<td class="text-primary">').text(m.WHY))); });
+			$f.append($dt);
+		}
 		var miss = l.MISS_LIST || [];
 		if (miss.length) {
 			var $t = $('<table class="table table-sm mb-1" data-nopick>').append('<thead><tr><th>날짜</th><th>일정</th><th>못 맞춘 이유</th></tr></thead>'), $b = $('<tbody>').appendTo($t);
